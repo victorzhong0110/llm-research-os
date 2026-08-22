@@ -1,0 +1,8 @@
+# Invalid: unknown top-level field is rejected (extra="forbid").
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: unknown-field
+  revision: 1
+  title: Has an unexpected field
+budget_usd: 1000

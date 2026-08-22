@@ -1,0 +1,7 @@
+# Invalid: metadata.id is not a lowercase slug.
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: Not_A_Slug
+  revision: 1
+  title: Bad id

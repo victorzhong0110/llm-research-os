@@ -1,0 +1,19 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: small-model-lr
+  revision: 2
+  title: Does a lower learning rate stabilize a tiny LM?
+hypotheses:
+  - id: lr-stability
+    statement: A 4x lower learning rate reduces late-training loss spikes.
+    prediction: Fewer loss spikes after step 1000 versus baseline.
+  - id: lr-throughput
+    statement: The lower learning rate does not reduce tokens-per-second.
+evidence: []
+datasets: []
+models: []
+workflows: []
+evaluations: []
+resources: {}
+policies: {}

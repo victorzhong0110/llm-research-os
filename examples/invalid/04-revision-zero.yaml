@@ -1,0 +1,7 @@
+# Invalid: revision must be >= 1.
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: bad-revision
+  revision: 0
+  title: Revision must be positive

@@ -1,0 +1,7 @@
+# Invalid: kind must be ResearchProject.
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: bad-kind
+  revision: 1
+  title: Wrong kind

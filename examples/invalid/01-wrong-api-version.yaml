@@ -1,0 +1,7 @@
+# Invalid: apiVersion does not match the supported v0alpha1 contract.
+apiVersion: researchos.dev/v1
+kind: ResearchProject
+metadata:
+  id: bad-api-version
+  revision: 1
+  title: Wrong apiVersion

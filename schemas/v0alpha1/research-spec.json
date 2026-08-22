@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "Hypothesis": {
+      "additionalProperties": false,
+      "description": "A falsifiable claim that evidence can support or refute.",
+      "properties": {
+        "id": {
+          "description": "Hypothesis identifier, unique within the spec.",
+          "title": "Id",
+          "type": "string"
+        },
+        "prediction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-registered expected outcome, if any.",
+          "title": "Prediction"
+        },
+        "statement": {
+          "description": "The claim under test.",
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "statement"
+      ],
+      "title": "Hypothesis",
+      "type": "object"
+    },
+    "SpecMetadata": {
+      "additionalProperties": false,
+      "description": "Identity and revision of a research project document.",
+      "properties": {
+        "id": {
+          "description": "Stable, slug-like project identifier.",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Monotonic revision; drafts bump this.",
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "title": {
+          "description": "Human-readable project title.",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "title"
+      ],
+      "title": "SpecMetadata",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/researchos.dev/v0alpha1/research-spec.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned research project definition (``kind: ResearchProject``).",
+  "properties": {
+    "apiVersion": {
+      "default": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "datasets": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Datasets",
+      "type": "array"
+    },
+    "evaluations": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Evaluations",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "hypotheses": {
+      "items": {
+        "$ref": "#/$defs/Hypothesis"
+      },
+      "title": "Hypotheses",
+      "type": "array"
+    },
+    "kind": {
+      "default": "ResearchProject",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/SpecMetadata"
+    },
+    "models": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Models",
+      "type": "array"
+    },
+    "policies": {
+      "additionalProperties": true,
+      "title": "Policies",
+      "type": "object"
+    },
+    "resources": {
+      "additionalProperties": true,
+      "title": "Resources",
+      "type": "object"
+    },
+    "workflows": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Workflows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metadata"
+  ],
+  "title": "ResearchSpec",
+  "type": "object",
+  "x-apiVersion": "researchos.dev/v0alpha1"
+}

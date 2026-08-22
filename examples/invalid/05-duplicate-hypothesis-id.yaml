@@ -1,0 +1,12 @@
+# Invalid: hypothesis ids must be unique; 'dup' appears twice.
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: dup-hypotheses
+  revision: 1
+  title: Duplicate hypothesis ids
+hypotheses:
+  - id: dup
+    statement: First claim.
+  - id: dup
+    statement: Second claim collides on id.
