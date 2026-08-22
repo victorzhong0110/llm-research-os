@@ -31,6 +31,38 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 
 - [项目宪章与最小内核规格 v0.1](docs/charter-v0.1.md)
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
+- [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
+- [架构决策记录](docs/adr/README.md)
+- [持续威胁模型](docs/security/threat-model.md)
+
+## 本地开发
+
+需要 Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)。训练后端不安装到核心控制面环境中。
+
+```bash
+uv sync --locked --all-groups
+uv run researchos validate examples/valid/minimal.yaml
+uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
+uv run ruff check .
+uv run mypy src
+uv run pytest
+```
+
+生成的 JSON Schema 是第三方实现使用的语言中立契约：
+
+```text
+schemas/research-spec/v0alpha1.schema.json
+```
+
+不要手工编辑该文件。修改 Pydantic 编写模型后，使用以下命令重新生成并审查协议差异：
+
+```bash
+uv run researchos schema --output schemas/research-spec/v0alpha1.schema.json
+```
+
+## 当前安全边界
+
+M0只验证规范、差异和模拟语义，不执行任意训练代码、插件或远程Worker。任何真实GPU消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅[安全政策](SECURITY.md)。
 
 ## License
 

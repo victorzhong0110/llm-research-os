@@ -1,0 +1,22 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: implicit-cycle
+  revision: 1
+  title: Arbitrary graph cycle
+workflows:
+  - id: workflow.invalid-cycle
+    graph:
+      nodes:
+        - kind: task
+          id: first
+          blockType: simulated.task
+        - kind: task
+          id: second
+          blockType: simulated.task
+      edges:
+        - source: first
+          target: second
+        - source: second
+          target: first
+

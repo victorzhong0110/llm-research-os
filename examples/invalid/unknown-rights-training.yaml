@@ -1,0 +1,15 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: unknown-rights-training
+  revision: 1
+  title: Unknown rights used for training
+datasets:
+  - id: dataset.invalid
+    version: v1
+    sources:
+      - uri: https://example.invalid/data
+        rights: unknown
+        allowedUses:
+          - training
+

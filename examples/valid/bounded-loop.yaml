@@ -1,0 +1,47 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-bounded-loop
+  revision: 1
+  title: Bounded accelerator-backed research loop
+questions: []
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+resources:
+  - id: remote-gpu
+    kind: gpu
+    count: 1
+    provider: example-provider
+    paid: true
+    maxCost: 5
+    currency: USD
+    maxWallTimeSeconds: 3600
+workflows:
+  - id: workflow.iteration
+    graph:
+      nodes:
+        - kind: loop
+          id: research-loop
+          maxIterations: 3
+          mayIncurCost: true
+          maxCost: 5
+          currency: USD
+          maxWallTimeSeconds: 3600
+          checkpoint: true
+          until:
+            language: researchos.expr/v0alpha1
+            expression: metrics.validation_loss <= 1.0
+          body:
+            nodes:
+              - kind: task
+                id: train
+                blockType: example.train
+                resourceRefs:
+                  - remote-gpu
+            edges: []
+      edges: []
+evaluations: []
+policies: {}
+

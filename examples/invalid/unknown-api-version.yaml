@@ -1,0 +1,7 @@
+apiVersion: researchos.dev/v1
+kind: ResearchProject
+metadata:
+  id: invalid-version
+  revision: 1
+  title: Invalid API version
+

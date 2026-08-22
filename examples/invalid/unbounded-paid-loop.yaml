@@ -1,0 +1,30 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: unbounded-paid-loop
+  revision: 1
+  title: Paid loop without cost and time caps
+resources:
+  - id: paid-api
+    kind: remote-service
+    paid: true
+    maxCost: 2
+    maxWallTimeSeconds: 600
+workflows:
+  - id: workflow.invalid-loop
+    graph:
+      nodes:
+        - kind: loop
+          id: loop
+          maxIterations: 3
+          mayIncurCost: true
+          body:
+            nodes:
+              - kind: task
+                id: call-api
+                blockType: example.api
+                resourceRefs:
+                  - paid-api
+            edges: []
+      edges: []
+

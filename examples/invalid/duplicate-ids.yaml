@@ -1,0 +1,13 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: duplicate-ids
+  revision: 1
+  title: Duplicate IDs
+questions:
+  - id: same-id
+    question: First object
+hypotheses:
+  - id: same-id
+    statement: Second object
+
