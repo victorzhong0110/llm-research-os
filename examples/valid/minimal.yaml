@@ -1,0 +1,29 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-minimal
+  revision: 1
+  title: Minimal simulated research project
+questions:
+  - id: rq.loss
+    question: Can the simulated intervention reduce validation loss?
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+workflows:
+  - id: workflow.simulation
+    graph:
+      nodes:
+        - kind: task
+          id: simulate
+          blockType: simulated.experiment
+      edges: []
+evaluations: []
+resources: []
+policies:
+  paidActionsRequireApproval: true
+  destructiveActionsRequireApproval: true
+  preserveAiDissent: true
+  unknownEvidenceMayTrain: false
+

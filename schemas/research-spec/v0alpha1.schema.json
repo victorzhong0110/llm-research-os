@@ -1,0 +1,1122 @@
+{
+  "$defs": {
+    "ApprovalBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "approval",
+          "default": "approval",
+          "title": "Kind",
+          "type": "string"
+        },
+        "prompt": {
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "requiredRole": {
+          "default": "researcher",
+          "minLength": 1,
+          "title": "Requiredrole",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "title": "ApprovalBlock",
+      "type": "object"
+    },
+    "ConditionExpression": {
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "minLength": 1,
+          "title": "Expression",
+          "type": "string"
+        },
+        "language": {
+          "const": "researchos.expr/v0alpha1",
+          "default": "researchos.expr/v0alpha1",
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "title": "ConditionExpression",
+      "type": "object"
+    },
+    "DataUse": {
+      "enum": [
+        "research-read",
+        "retrieval",
+        "training",
+        "redistribution"
+      ],
+      "title": "DataUse",
+      "type": "string"
+    },
+    "DatasetSource": {
+      "additionalProperties": false,
+      "properties": {
+        "allowedUses": {
+          "items": {
+            "$ref": "#/$defs/DataUse"
+          },
+          "title": "Alloweduses",
+          "type": "array"
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Digest"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        },
+        "rights": {
+          "$ref": "#/$defs/RightsStatus",
+          "default": "unknown"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "title": "DatasetSource",
+      "type": "object"
+    },
+    "DatasetSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/DatasetSource"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "splits": {
+          "additionalProperties": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Splits",
+          "type": "object"
+        },
+        "transforms": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Transforms",
+          "type": "array"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sources"
+      ],
+      "title": "DatasetSpec",
+      "type": "object"
+    },
+    "EvaluationSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "baselineRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Baselinerefs",
+          "type": "array"
+        },
+        "datasetRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Datasetrefs",
+          "type": "array"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/MetricSpec"
+          },
+          "minItems": 1,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "stopConditions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Stopconditions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "metrics"
+      ],
+      "title": "EvaluationSpec",
+      "type": "object"
+    },
+    "EvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "claims": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "contentDigest": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contentdigest"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        },
+        "rights": {
+          "$ref": "#/$defs/RightsStatus",
+          "default": "unknown"
+        },
+        "snapshotUri": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshoturi"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/EvidenceSourceType"
+        },
+        "sourceUri": {
+          "minLength": 1,
+          "title": "Sourceuri",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "id",
+        "sourceUri",
+        "sourceType"
+      ],
+      "title": "EvidenceRecord",
+      "type": "object"
+    },
+    "EvidenceSourceType": {
+      "enum": [
+        "paper",
+        "code",
+        "note",
+        "dataset",
+        "web",
+        "experiment",
+        "other"
+      ],
+      "title": "EvidenceSourceType",
+      "type": "string"
+    },
+    "Hypothesis": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/Prediction"
+          },
+          "title": "Predictions",
+          "type": "array"
+        },
+        "questionRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Questionrefs",
+          "type": "array"
+        },
+        "statement": {
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "statement"
+      ],
+      "title": "Hypothesis",
+      "type": "object"
+    },
+    "LoopBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/WorkflowGraph"
+        },
+        "checkpoint": {
+          "default": true,
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "currency": {
+          "default": "USD",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "loop",
+          "default": "loop",
+          "title": "Kind",
+          "type": "string"
+        },
+        "maxCost": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxcost"
+        },
+        "maxIterations": {
+          "exclusiveMinimum": 0,
+          "title": "Maxiterations",
+          "type": "integer"
+        },
+        "maxWallTimeSeconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalltimeseconds"
+        },
+        "mayIncurCost": {
+          "default": false,
+          "title": "Mayincurcost",
+          "type": "boolean"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionExpression"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "body",
+        "maxIterations"
+      ],
+      "title": "LoopBlock",
+      "type": "object"
+    },
+    "MetricSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "direction": {
+          "default": "informational",
+          "enum": [
+            "maximize",
+            "minimize",
+            "target",
+            "informational"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "MetricSpec",
+      "type": "object"
+    },
+    "ModelSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "minLength": 1,
+          "title": "Architecture",
+          "type": "string"
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "sourceRevision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcerevision"
+        },
+        "sourceUri": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceuri"
+        }
+      },
+      "required": [
+        "id",
+        "architecture"
+      ],
+      "title": "ModelSpec",
+      "type": "object"
+    },
+    "PolicySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "destructiveActionsRequireApproval": {
+          "default": true,
+          "title": "Destructiveactionsrequireapproval",
+          "type": "boolean"
+        },
+        "paidActionsRequireApproval": {
+          "default": true,
+          "title": "Paidactionsrequireapproval",
+          "type": "boolean"
+        },
+        "preserveAiDissent": {
+          "const": true,
+          "default": true,
+          "title": "Preserveaidissent",
+          "type": "boolean"
+        },
+        "unknownEvidenceMayTrain": {
+          "const": false,
+          "default": false,
+          "title": "Unknownevidencemaytrain",
+          "type": "boolean"
+        }
+      },
+      "title": "PolicySpec",
+      "type": "object"
+    },
+    "Prediction": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedDirection": {
+          "default": "unknown",
+          "enum": [
+            "increase",
+            "decrease",
+            "unchanged",
+            "range",
+            "unknown"
+          ],
+          "title": "Expecteddirection",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "metric": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric"
+        },
+        "statement": {
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "statement"
+      ],
+      "title": "Prediction",
+      "type": "object"
+    },
+    "ProjectMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "revision": {
+          "exclusiveMinimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "title"
+      ],
+      "title": "ProjectMetadata",
+      "type": "object"
+    },
+    "ResearchQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "tags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "question"
+      ],
+      "title": "ResearchQuestion",
+      "type": "object"
+    },
+    "ResourceKind": {
+      "enum": [
+        "cpu",
+        "gpu",
+        "tpu",
+        "ascend",
+        "remote-service",
+        "other"
+      ],
+      "title": "ResourceKind",
+      "type": "string"
+    },
+    "ResourceSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "currency": {
+          "default": "USD",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ResourceKind"
+        },
+        "maxCost": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxcost"
+        },
+        "maxWallTimeSeconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalltimeseconds"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "paid": {
+          "default": false,
+          "title": "Paid",
+          "type": "boolean"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "title": "ResourceSpec",
+      "type": "object"
+    },
+    "RightsStatus": {
+      "enum": [
+        "allowed",
+        "restricted",
+        "unknown"
+      ],
+      "title": "RightsStatus",
+      "type": "string"
+    },
+    "TaskBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "blockType": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Blocktype",
+          "type": "string"
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "task",
+          "default": "task",
+          "title": "Kind",
+          "type": "string"
+        },
+        "resourceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Resourcerefs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "blockType"
+      ],
+      "title": "TaskBlock",
+      "type": "object"
+    },
+    "WorkflowEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "sourcePort": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceport"
+        },
+        "target": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Target",
+          "type": "string"
+        },
+        "targetPort": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Targetport"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "WorkflowEdge",
+      "type": "object"
+    },
+    "WorkflowGraph": {
+      "additionalProperties": false,
+      "properties": {
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/WorkflowEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "approval": "#/$defs/ApprovalBlock",
+                "loop": "#/$defs/LoopBlock",
+                "task": "#/$defs/TaskBlock"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TaskBlock"
+              },
+              {
+                "$ref": "#/$defs/ApprovalBlock"
+              },
+              {
+                "$ref": "#/$defs/LoopBlock"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "title": "WorkflowGraph",
+      "type": "object"
+    },
+    "WorkflowSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "graph": {
+          "$ref": "#/$defs/WorkflowGraph"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "graph"
+      ],
+      "title": "WorkflowSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/research-spec/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Root object for the v0alpha1 research protocol.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "datasets": {
+      "items": {
+        "$ref": "#/$defs/DatasetSpec"
+      },
+      "title": "Datasets",
+      "type": "array"
+    },
+    "evaluations": {
+      "items": {
+        "$ref": "#/$defs/EvaluationSpec"
+      },
+      "title": "Evaluations",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRecord"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "extensions": {
+      "additionalProperties": true,
+      "title": "Extensions",
+      "type": "object"
+    },
+    "hypotheses": {
+      "items": {
+        "$ref": "#/$defs/Hypothesis"
+      },
+      "title": "Hypotheses",
+      "type": "array"
+    },
+    "kind": {
+      "const": "ResearchProject",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ProjectMetadata"
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/ModelSpec"
+      },
+      "title": "Models",
+      "type": "array"
+    },
+    "policies": {
+      "$ref": "#/$defs/PolicySpec"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/ResearchQuestion"
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/ResourceSpec"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "workflows": {
+      "items": {
+        "$ref": "#/$defs/WorkflowSpec"
+      },
+      "title": "Workflows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata"
+  ],
+  "title": "ResearchSpec",
+  "type": "object"
+}

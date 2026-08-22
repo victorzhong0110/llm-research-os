@@ -1,0 +1,17 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: unknown-edge
+  revision: 1
+  title: Unknown edge node
+workflows:
+  - id: workflow.invalid
+    graph:
+      nodes:
+        - kind: task
+          id: existing
+          blockType: simulated.task
+      edges:
+        - source: existing
+          target: missing
+
