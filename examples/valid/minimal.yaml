@@ -18,6 +18,7 @@ workflows:
         - kind: task
           id: simulate
           blockType: simulated.experiment
+          blockVersion: 0.1.0
       edges: []
 evaluations: []
 resources: []
@@ -26,4 +27,3 @@ policies:
   destructiveActionsRequireApproval: true
   preserveAiDissent: true
   unknownEvidenceMayTrain: false
-

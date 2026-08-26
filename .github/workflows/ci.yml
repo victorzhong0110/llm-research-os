@@ -35,5 +35,21 @@ jobs:
         run: uv run mypy src
       - name: Test
         run: uv run pytest
-      - name: Verify generated schema
+      - name: Verify generated schemas
         run: uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
+      - name: Verify BlockManifest schema
+        run: >-
+          uv run researchos schema --contract block-manifest
+          --check schemas/block-manifest/v0alpha1.schema.json
+      - name: Verify block command report schema
+        run: >-
+          uv run researchos schema --contract block-command-report
+          --check schemas/block-command-report/v0alpha1.schema.json
+      - name: Verify dry-run report schema
+        run: >-
+          uv run researchos schema --contract dry-run-report
+          --check schemas/dry-run-report/v0alpha1.schema.json
+      - name: Verify problem report schema
+        run: >-
+          uv run researchos schema --contract problem-report
+          --check schemas/problem-report/v0alpha1.schema.json

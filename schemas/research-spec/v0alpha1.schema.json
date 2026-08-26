@@ -873,6 +873,11 @@
           "title": "Blocktype",
           "type": "string"
         },
+        "blockVersion": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Blockversion",
+          "type": "string"
+        },
         "config": {
           "additionalProperties": true,
           "title": "Config",
@@ -904,7 +909,8 @@
       },
       "required": [
         "id",
-        "blockType"
+        "blockType",
+        "blockVersion"
       ],
       "title": "TaskBlock",
       "type": "object"

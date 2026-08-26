@@ -1,0 +1,1053 @@
+{
+  "$defs": {
+    "DiagnosticSeverity": {
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "DiagnosticSeverity",
+      "type": "string"
+    },
+    "DryRunStatus": {
+      "enum": [
+        "ready",
+        "blocked"
+      ],
+      "title": "DryRunStatus",
+      "type": "string"
+    },
+    "ExecutionPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "graph": {
+          "$ref": "#/$defs/PlannedGraph"
+        },
+        "plannerVersion": {
+          "const": "researchos.planner/v0alpha1",
+          "title": "Plannerversion",
+          "type": "string"
+        },
+        "policyRequirements": {
+          "items": {
+            "$ref": "#/$defs/PolicyRequirement"
+          },
+          "title": "Policyrequirements",
+          "type": "array"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectRef"
+        },
+        "registryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/PlannedResource"
+          },
+          "title": "Resources",
+          "type": "array"
+        },
+        "specDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        },
+        "workflowId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workflowid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "plannerVersion",
+        "project",
+        "workflowId",
+        "specDigest",
+        "registryDigest",
+        "graph"
+      ],
+      "title": "ExecutionPlan",
+      "type": "object"
+    },
+    "PlanDiagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/DiagnosticSeverity"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "path",
+        "message"
+      ],
+      "title": "PlanDiagnostic",
+      "type": "object"
+    },
+    "PlanDigests": {
+      "additionalProperties": false,
+      "properties": {
+        "plan": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan"
+        },
+        "registry": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registry",
+          "type": "string"
+        },
+        "spec": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Spec",
+          "type": "string"
+        }
+      },
+      "required": [
+        "spec",
+        "registry"
+      ],
+      "title": "PlanDigests",
+      "type": "object"
+    },
+    "PlanStage": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "approval": "#/$defs/PlannedApproval",
+                "loop": "#/$defs/PlannedLoop",
+                "task": "#/$defs/PlannedTask"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/PlannedTask"
+              },
+              {
+                "$ref": "#/$defs/PlannedApproval"
+              },
+              {
+                "$ref": "#/$defs/PlannedLoop"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "nodes"
+      ],
+      "title": "PlanStage",
+      "type": "object"
+    },
+    "PlanSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "approvalCount": {
+          "minimum": 0,
+          "title": "Approvalcount",
+          "type": "integer"
+        },
+        "basis": {
+          "enum": [
+            "planned",
+            "source"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "loopCount": {
+          "minimum": 0,
+          "title": "Loopcount",
+          "type": "integer"
+        },
+        "stageCount": {
+          "minimum": 0,
+          "title": "Stagecount",
+          "type": "integer"
+        },
+        "taskCount": {
+          "minimum": 0,
+          "title": "Taskcount",
+          "type": "integer"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "basis",
+        "taskCount",
+        "approvalCount",
+        "loopCount",
+        "stageCount"
+      ],
+      "title": "PlanSummary",
+      "type": "object"
+    },
+    "PlannedApproval": {
+      "additionalProperties": false,
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Dependson",
+          "type": "array"
+        },
+        "disposition": {
+          "const": "would-pause",
+          "default": "would-pause",
+          "title": "Disposition",
+          "type": "string"
+        },
+        "kind": {
+          "const": "approval",
+          "default": "approval",
+          "title": "Kind",
+          "type": "string"
+        },
+        "nodePath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Nodepath",
+          "type": "array"
+        },
+        "promptDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Promptdigest",
+          "type": "string"
+        },
+        "requiredRole": {
+          "minLength": 1,
+          "title": "Requiredrole",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodePath",
+        "requiredRole",
+        "promptDigest"
+      ],
+      "title": "PlannedApproval",
+      "type": "object"
+    },
+    "PlannedCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "evaluated": {
+          "const": false,
+          "default": false,
+          "title": "Evaluated",
+          "type": "boolean"
+        },
+        "expressionDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Expressiondigest",
+          "type": "string"
+        },
+        "language": {
+          "const": "researchos.expr/v0alpha1",
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "required": [
+        "language",
+        "expressionDigest"
+      ],
+      "title": "PlannedCondition",
+      "type": "object"
+    },
+    "PlannedEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "control",
+            "data"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sourcePath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sourcepath",
+          "type": "array"
+        },
+        "sourcePort": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceport"
+        },
+        "sourceValueType": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcevaluetype"
+        },
+        "targetPath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Targetpath",
+          "type": "array"
+        },
+        "targetPort": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Targetport"
+        },
+        "targetValueType": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Targetvaluetype"
+        }
+      },
+      "required": [
+        "kind",
+        "sourcePath",
+        "targetPath"
+      ],
+      "title": "PlannedEdge",
+      "type": "object"
+    },
+    "PlannedGraph": {
+      "additionalProperties": false,
+      "properties": {
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/PlannedEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/PlanStage"
+          },
+          "minItems": 1,
+          "title": "Stages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "stages"
+      ],
+      "title": "PlannedGraph",
+      "type": "object"
+    },
+    "PlannedLoop": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/PlannedGraph"
+        },
+        "checkpoint": {
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "dependsOn": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Dependson",
+          "type": "array"
+        },
+        "execution": {
+          "const": "not-executed",
+          "default": "not-executed",
+          "title": "Execution",
+          "type": "string"
+        },
+        "kind": {
+          "const": "loop",
+          "default": "loop",
+          "title": "Kind",
+          "type": "string"
+        },
+        "maxCost": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxcost"
+        },
+        "maxIterations": {
+          "minimum": 1,
+          "title": "Maxiterations",
+          "type": "integer"
+        },
+        "maxWallTimeSeconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalltimeseconds"
+        },
+        "mayIncurCost": {
+          "title": "Mayincurcost",
+          "type": "boolean"
+        },
+        "nodePath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Nodepath",
+          "type": "array"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannedCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "nodePath",
+        "maxIterations",
+        "currency",
+        "mayIncurCost",
+        "checkpoint",
+        "body"
+      ],
+      "title": "PlannedLoop",
+      "type": "object"
+    },
+    "PlannedResource": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ResourceKind"
+        },
+        "maxCost": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxcost"
+        },
+        "maxWallTimeSeconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalltimeseconds"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "paid": {
+          "title": "Paid",
+          "type": "boolean"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "count",
+        "paid",
+        "currency"
+      ],
+      "title": "PlannedResource",
+      "type": "object"
+    },
+    "PlannedTask": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "const": "not-evaluated",
+          "default": "not-evaluated",
+          "title": "Authorization",
+          "type": "string"
+        },
+        "block": {
+          "$ref": "#/$defs/ResolvedBlock"
+        },
+        "configDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Configdigest",
+          "type": "string"
+        },
+        "declaredCapabilities": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Declaredcapabilities",
+          "type": "array"
+        },
+        "declaredPermissions": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Declaredpermissions",
+          "type": "array"
+        },
+        "dependsOn": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Dependson",
+          "type": "array"
+        },
+        "execution": {
+          "const": "not-executed",
+          "default": "not-executed",
+          "title": "Execution",
+          "type": "string"
+        },
+        "kind": {
+          "const": "task",
+          "default": "task",
+          "title": "Kind",
+          "type": "string"
+        },
+        "nodePath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Nodepath",
+          "type": "array"
+        },
+        "resourceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Resourcerefs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodePath",
+        "block",
+        "configDigest"
+      ],
+      "title": "PlannedTask",
+      "type": "object"
+    },
+    "PolicyRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "disposition": {
+          "const": "required-not-evaluated",
+          "default": "required-not-evaluated",
+          "title": "Disposition",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "subject"
+      ],
+      "title": "PolicyRequirement",
+      "type": "object"
+    },
+    "ProjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ],
+      "title": "ProjectRef",
+      "type": "object"
+    },
+    "ResolvedBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "manifestDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "runtimeType": {
+          "$ref": "#/$defs/RuntimeType"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "manifestDigest",
+        "runtimeType"
+      ],
+      "title": "ResolvedBlock",
+      "type": "object"
+    },
+    "ResourceKind": {
+      "enum": [
+        "cpu",
+        "gpu",
+        "tpu",
+        "ascend",
+        "remote-service",
+        "other"
+      ],
+      "title": "ResourceKind",
+      "type": "string"
+    },
+    "RuntimeType": {
+      "enum": [
+        "simulated",
+        "python",
+        "container",
+        "remote-service",
+        "composite"
+      ],
+      "title": "RuntimeType",
+      "type": "string"
+    },
+    "SideEffectSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "blocksExecuted": {
+          "const": 0,
+          "default": 0,
+          "title": "Blocksexecuted",
+          "type": "integer"
+        },
+        "networkRequests": {
+          "const": 0,
+          "default": 0,
+          "title": "Networkrequests",
+          "type": "integer"
+        },
+        "paidActions": {
+          "const": 0,
+          "default": 0,
+          "title": "Paidactions",
+          "type": "integer"
+        },
+        "persistentWrites": {
+          "const": 0,
+          "default": 0,
+          "title": "Persistentwrites",
+          "type": "integer"
+        }
+      },
+      "title": "SideEffectSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/dry-run-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "diagnostics": {
+            "not": {
+              "contains": {
+                "properties": {
+                  "severity": {
+                    "const": "error"
+                  }
+                },
+                "required": [
+                  "severity"
+                ]
+              }
+            }
+          },
+          "digests": {
+            "properties": {
+              "plan": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "required": [
+              "plan"
+            ]
+          },
+          "plan": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "summary": {
+            "properties": {
+              "basis": {
+                "const": "planned"
+              },
+              "truncated": {
+                "const": false
+              }
+            },
+            "required": [
+              "basis",
+              "truncated"
+            ]
+          }
+        },
+        "required": [
+          "plan",
+          "workflowId"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "blocked"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "plan"
+          ]
+        },
+        "properties": {
+          "diagnostics": {
+            "contains": {
+              "properties": {
+                "severity": {
+                  "const": "error"
+                }
+              },
+              "required": [
+                "severity"
+              ]
+            },
+            "minItems": 1
+          },
+          "digests": {
+            "not": {
+              "required": [
+                "plan"
+              ]
+            }
+          },
+          "summary": {
+            "properties": {
+              "basis": {
+                "const": "source"
+              },
+              "stageCount": {
+                "const": 0
+              }
+            },
+            "required": [
+              "basis",
+              "stageCount"
+            ]
+          }
+        },
+        "required": [
+          "workflowId"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "diagnostics": {
+      "items": {
+        "$ref": "#/$defs/PlanDiagnostic"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+    },
+    "digests": {
+      "$ref": "#/$defs/PlanDigests"
+    },
+    "kind": {
+      "const": "DryRunReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "plan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionPlan"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project": {
+      "$ref": "#/$defs/ProjectRef"
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/SideEffectSummary"
+    },
+    "status": {
+      "$ref": "#/$defs/DryRunStatus"
+    },
+    "summary": {
+      "$ref": "#/$defs/PlanSummary"
+    },
+    "workflowId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workflowid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "status",
+    "project",
+    "workflowId",
+    "digests",
+    "summary"
+  ],
+  "title": "DryRunReport",
+  "type": "object"
+}

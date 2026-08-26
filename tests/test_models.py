@@ -68,3 +68,58 @@ def test_constitutional_policy_values_cannot_be_disabled() -> None:
     document["policies"]["preserveAiDissent"] = False
     with pytest.raises(ValidationError):
         ResearchSpec.model_validate(document)
+
+
+def test_task_block_requires_exact_semantic_version() -> None:
+    document = load_document(EXAMPLES / "valid" / "minimal.yaml")
+    task = document["workflows"][0]["graph"]["nodes"][0]
+    del task["blockVersion"]
+    with pytest.raises(ValidationError, match="Field required"):
+        ResearchSpec.model_validate(document)
+
+
+def test_block_version_rejects_leading_zero_semver() -> None:
+    document = load_document(EXAMPLES / "valid" / "minimal.yaml")
+    document["workflows"][0]["graph"]["nodes"][0]["blockVersion"] = "01.0.0"
+    with pytest.raises(ValidationError, match="string_pattern_mismatch"):
+        ResearchSpec.model_validate(document)
+
+
+def test_task_resource_references_must_be_unique() -> None:
+    document = load_document(EXAMPLES / "valid" / "bounded-loop.yaml")
+    task = document["workflows"][0]["graph"]["nodes"][0]["body"]["nodes"][0]
+    task["resourceRefs"].append("remote-gpu")
+    with pytest.raises(ValidationError, match="resourceRefs entries must be unique"):
+        ResearchSpec.model_validate(document)
+
+
+def test_loop_and_risky_resource_currencies_must_match() -> None:
+    document = load_document(EXAMPLES / "valid" / "bounded-loop.yaml")
+    document["workflows"][0]["graph"]["nodes"][0]["currency"] = "EUR"
+    with pytest.raises(ValidationError, match="does not match"):
+        ResearchSpec.model_validate(document)
+
+
+def test_non_finite_metric_targets_are_rejected() -> None:
+    document = load_document(EXAMPLES / "valid" / "minimal.yaml")
+    document["evaluations"] = [
+        {"id": "evaluation", "metrics": [{"id": "loss", "target": float("nan")}]}
+    ]
+    with pytest.raises(ValidationError, match="finite number"):
+        ResearchSpec.model_validate(document)
+
+
+def test_data_edge_ports_must_be_declared_as_a_pair() -> None:
+    document = load_document(EXAMPLES / "valid" / "minimal.yaml")
+    graph = document["workflows"][0]["graph"]
+    graph["nodes"].append(
+        {
+            "kind": "task",
+            "id": "second",
+            "blockType": "simulated.experiment",
+            "blockVersion": "0.1.0",
+        }
+    )
+    graph["edges"] = [{"source": "simulate", "target": "second", "sourcePort": "result"}]
+    with pytest.raises(ValidationError, match="sourcePort and targetPort"):
+        ResearchSpec.model_validate(document)

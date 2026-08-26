@@ -1,0 +1,31 @@
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: example.transform
+  version: 0.1.0
+  title: Inert transform declaration
+runtime:
+  type: simulated
+inputs:
+  - id: source
+    valueType: researchos.dataset/v0alpha1
+    required: true
+outputs:
+  - id: transformed
+    valueType: researchos.dataset/v0alpha1
+configSchema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    method:
+      type: string
+  required:
+    - method
+  additionalProperties: false
+resources: {}
+capabilities:
+  - data.transform.simulated
+permissions: []
+telemetry: []
+reproducibility: {}
+extensions: {}

@@ -1,0 +1,25 @@
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: example.train
+  version: 0.1.0
+  title: Inert training declaration for M0 planning tests
+runtime:
+  type: simulated
+inputs: []
+outputs:
+  - id: metrics
+    valueType: researchos.metrics/v0alpha1
+configSchema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+resources: {}
+capabilities:
+  - train.simulated
+permissions: []
+telemetry:
+  - metric
+reproducibility:
+  deterministic: true
+extensions: {}

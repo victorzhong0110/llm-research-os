@@ -11,7 +11,7 @@ workflows:
         - kind: task
           id: existing
           blockType: simulated.task
+          blockVersion: 0.1.0
       edges:
         - source: existing
           target: missing
-

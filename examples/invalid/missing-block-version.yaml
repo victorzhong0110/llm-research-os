@@ -1,0 +1,14 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: missing-block-version
+  revision: 1
+  title: Task without exact BlockManifest version
+workflows:
+  - id: workflow.invalid
+    graph:
+      nodes:
+        - kind: task
+          id: task
+          blockType: simulated.experiment
+      edges: []

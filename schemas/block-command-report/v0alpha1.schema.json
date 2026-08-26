@@ -1,0 +1,460 @@
+{
+  "$defs": {
+    "BlockManifest": {
+      "additionalProperties": false,
+      "description": "Language-neutral declaration of one versioned workflow block.",
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "configSchema": {
+          "additionalProperties": true,
+          "title": "Configschema",
+          "type": "object"
+        },
+        "extensions": {
+          "additionalProperties": true,
+          "title": "Extensions",
+          "type": "object"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/BlockPort"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "kind": {
+          "const": "Block",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/BlockMetadata"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/BlockPort"
+          },
+          "title": "Outputs",
+          "type": "array"
+        },
+        "permissions": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Permissions",
+          "type": "array"
+        },
+        "reproducibility": {
+          "additionalProperties": true,
+          "title": "Reproducibility",
+          "type": "object"
+        },
+        "resources": {
+          "additionalProperties": true,
+          "title": "Resources",
+          "type": "object"
+        },
+        "runtime": {
+          "$ref": "#/$defs/BlockRuntime"
+        },
+        "telemetry": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Telemetry",
+          "type": "array"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "runtime"
+      ],
+      "title": "BlockManifest",
+      "type": "object"
+    },
+    "BlockManifestValidationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "BlockManifestValidationReport",
+          "title": "Kind",
+          "type": "string"
+        },
+        "manifestDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "valid": {
+          "const": true,
+          "title": "Valid",
+          "type": "boolean"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "valid",
+        "id",
+        "version",
+        "manifestDigest"
+      ],
+      "title": "BlockManifestValidationReport",
+      "type": "object"
+    },
+    "BlockMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "BlockMetadata",
+      "type": "object"
+    },
+    "BlockPort": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "valueType": {
+          "default": "researchos.any",
+          "minLength": 1,
+          "title": "Valuetype",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "BlockPort",
+      "type": "object"
+    },
+    "BlockRegistryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "manifest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlockManifest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "manifestDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Permissions",
+          "type": "array"
+        },
+        "runtimeType": {
+          "$ref": "#/$defs/RuntimeType"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "runtimeType",
+        "manifestDigest"
+      ],
+      "title": "BlockRegistryEntry",
+      "type": "object"
+    },
+    "BlockRegistryReport": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "list"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocks": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "manifest"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "show"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocks": {
+                "items": {
+                  "properties": {
+                    "manifest": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  },
+                  "required": [
+                    "manifest"
+                  ]
+                },
+                "maxItems": 1,
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/BlockRegistryEntry"
+          },
+          "title": "Blocks",
+          "type": "array"
+        },
+        "kind": {
+          "const": "BlockRegistryReport",
+          "title": "Kind",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "list",
+            "show"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "registryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "operation",
+        "registryDigest",
+        "blocks"
+      ],
+      "title": "BlockRegistryReport",
+      "type": "object"
+    },
+    "BlockRuntime": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "entrypoint": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entrypoint"
+        },
+        "type": {
+          "$ref": "#/$defs/RuntimeType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "BlockRuntime",
+      "type": "object"
+    },
+    "RuntimeType": {
+      "enum": [
+        "simulated",
+        "python",
+        "container",
+        "remote-service",
+        "composite"
+      ],
+      "title": "RuntimeType",
+      "type": "string"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/block-command-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "BlockManifestValidationReport": "#/$defs/BlockManifestValidationReport",
+      "BlockRegistryReport": "#/$defs/BlockRegistryReport"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/BlockRegistryReport"
+    },
+    {
+      "$ref": "#/$defs/BlockManifestValidationReport"
+    }
+  ]
+}
