@@ -1,7 +1,7 @@
 {
   "specversion": "1.0",
-  "id": "evt.unknown-field",
-  "source": "https://researchos.dev/projects/example-minimal",
+  "id": "evt.invalid-percent-source",
+  "source": "https://researchos.dev/projects/%zz",
   "type": "run.started",
   "time": "2026-08-21T12:00:00Z",
   "subject": "example-minimal",
@@ -11,7 +11,6 @@
   "sequencetype": "Integer",
   "streamid": "example-minimal",
   "streamversion": 0,
-  "surprise": true,
   "data": {
     "schemaVersion": "v0alpha1",
     "actor": {

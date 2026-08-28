@@ -26,10 +26,16 @@ conforming v0alpha1 implementation MUST also enforce the semantic rules below.
 This slice validates documents only. It MUST NOT write events, open a database, project
 state, execute a run, or contact a network, process, GPU, model API or paid service.
 
+External documents MUST use the JSON Schema field names. Python attribute names such as
+`schema_version`, `project_id`, `experiment_revision` and `evidence_refs` are not part of
+the document contract. Numeric fields MUST be JSON numbers, not strings or booleans.
+CloudEvents identity strings MUST be stored as supplied; validators MUST NOT trim or
+otherwise normalize them.
+
 ## 2. CloudEvents envelope
 
 Every document MUST be a single JSON object using CloudEvents 1.0 structured-mode attribute
-names:
+names. The following example is the committed minimal valid event:
 
 ```json
 {
@@ -41,26 +47,48 @@ names:
   "subject": "example-minimal",
   "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
   "datacontenttype": "application/json",
-  "sequence": 0,
+  "sequence": "1",
+  "sequencetype": "Integer",
   "streamid": "example-minimal",
   "streamversion": 0,
-  "data": {}
+  "data": {
+    "schemaVersion": "v0alpha1",
+    "actor": {
+      "id": "researcher.alice"
+    },
+    "projectId": "example-minimal",
+    "experimentRevision": 1,
+    "payload": {},
+    "evidenceRefs": []
+  }
 }
 ```
 
 - `specversion` MUST be `1.0`.
 - `id`, `source` and `type` are CloudEvents required context attributes and are required
   here.
-- `time` is required in v0alpha1 and MUST include a timezone offset or `Z`. Naive local
-  timestamps are invalid.
+- `time` is required in v0alpha1. In an external document it MUST be an RFC3339 string with
+  a timezone offset or `Z`. Naive timestamps, numeric Unix times and native datetime values
+  are invalid document input.
 - `subject`, `dataschema` and `datacontenttype` are present in v0alpha1. `dataschema` MUST
   be the committed schema URI. `datacontenttype` MUST be `application/json`.
-- `source` is a CloudEvents URI-reference: non-empty, without whitespace, at most 2048
-  characters.
-- `sequence`, `streamid` and `streamversion` are required extension attributes.
+- `source` MUST be a non-empty RFC 3986 URI-reference. Invalid percent-encoding (for
+  example `%zz`), NUL, control characters and other CloudEvents-disallowed Unicode code
+  points are invalid.
+- CloudEvents String attributes (`id`, `source`, `type`, `subject`, `sequence`,
+  `sequencetype`, `streamid`, `correlationid`, `causationid`) MUST NOT contain control
+  characters (U+0000–U+001F, U+007F–U+009F), Unicode noncharacters, or unpaired surrogates.
+- `sequence` and `sequencetype` follow the CloudEvents Sequence extension. `sequencetype`
+  MUST be `Integer`. `sequence` MUST be the string encoding of a signed 32-bit Integer in
+  the closed range `"1"` through `"2147483647"`. `"0"`, leading zeros, JSON numbers and
+  booleans are invalid.
+- The reference validator MUST NOT generate, default or mint `sequence`. A later SQLite
+  append-only store atomically allocates the next Integer sequence when persisting; this
+  slice does not perform that allocation.
+- `streamid` is required. `streamversion` is a JSON integer in `0` through `2147483647`.
 - `correlationid` and `causationid` MAY be omitted.
-- `id`, `time` and `sequence` MUST be supplied by the caller. Implementations MUST NOT mint
-  them during validation or schema generation.
+- `id` and `time` MUST be supplied by the caller. Implementations MUST NOT mint them during
+  validation or schema generation.
 
 v0alpha1 does not implement CloudEvents HTTP, Kafka, AMQP or binary-mode bindings.
 
@@ -85,17 +113,19 @@ Unknown structural fields on the envelope, `data` or `actor` MUST fail validatio
 catches misspellings and prevents hidden protocol behavior.
 
 `payload` is the only declared open object. It MUST contain finite JSON-compatible values
-(no NaN, Infinity, bytes or non-JSON types). All text, including payload keys and strings,
-MUST be valid Unicode scalar values. Lone surrogates are invalid.
+(no NaN, Infinity, bytes, tuples or other non-JSON types). Nested values MUST be JSON
+objects, arrays, strings, numbers, booleans or null. All text, including payload keys and
+strings, MUST be valid Unicode scalar values. Lone surrogates are invalid.
 
 ## 5. References instead of bodies
 
 Events MUST NOT embed file bytes or document bodies. Large artifacts, logs, prompts, notes
 and model outputs belong in the artifact store and are referenced by URI and digest.
 
-v0alpha1 rejects `payload` objects that contain any of these keys at any depth: `content`,
-`body`, `bytes`, `fileBytes`, `inlineContent`, `rawBody`. `evidenceRefs` entries MUST be
-unique; they are identifiers, not inlined evidence documents.
+v0alpha1 rejects `payload` objects that contain any of these keys at any JSON depth:
+`content`, `body`, `bytes`, `fileBytes`, `inlineContent`, `rawBody`. Sequence types that are
+not JSON arrays, including tuples, are not payload containers and MUST be rejected.
+`evidenceRefs` entries MUST be unique; they are identifiers, not inlined evidence documents.
 
 Secrets MUST NOT be placed in envelope context attributes.
 
@@ -109,21 +139,25 @@ uv run pytest tests/test_events.py tests/test_event_schema.py
 
 Valid examples MUST pass both Draft 2020-12 structural validation and reference semantic
 validation. Invalid examples may target either layer. Embedded bodies are a semantic rule:
-JSON Schema MAY accept them while the reference implementation MUST reject them.
+JSON Schema MAY accept them while the reference implementation MUST reject them. Documents
+rejected by the committed JSON Schema MUST also be rejected by the reference validator.
 
-## 7. Deliberate v0alpha1 limitations
+## 7. Open questions
 
-v0alpha1 does not yet define:
+The following items remain undecided and MUST NOT be filled in by adapters:
 
 - a catalog of `type` values;
 - actor kind, role or display-name fields;
-- whether a later append-only store assigns `sequence` instead of requiring producers to
-  supply it;
 - stream identity (per project, run, attempt or other);
-- CloudEvents `sequencetype` or string-valued `sequence`;
 - charset parameters on `datacontenttype`;
 - UUID-only `id` syntax;
+- whether `subject` should become optional to match CloudEvents;
+- whether omitted `payload` / `evidenceRefs` equal `{}` / `[]`;
+- `correlationid` / `causationid` reference and self-causation rules;
+- whether `dataschema` may use fragments or redirects;
+- a complete inline-content denylist and payload size/depth limits;
 - persistence, projection, run state machines or runtime emission.
 
-These omissions are explicit. Adapters MUST NOT fill them with hidden, incompatible
-semantics and call the result conforming v0alpha1 behavior.
+`sequence` type, the invalidity of `0`, and allocation ownership are decided above: the
+document uses CloudEvents `sequencetype: Integer` string values `"1"`–`"2147483647"`; the
+validator never mints them; a later SQLite append store allocates them atomically.
