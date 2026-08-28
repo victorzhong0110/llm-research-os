@@ -1,0 +1,35 @@
+{
+  "specversion": "1.0",
+  "id": "evt.run.attempt.1",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "type": "run.heartbeat",
+  "time": "2026-08-21T20:15:30+08:00",
+  "subject": "run.sim-1",
+  "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+  "datacontenttype": "application/json",
+  "sequence": "7",
+  "sequencetype": "Integer",
+  "streamid": "run.sim-1",
+  "streamversion": 3,
+  "correlationid": "corr.train-loop",
+  "causationid": "evt.run.started.1",
+  "data": {
+    "schemaVersion": "v0alpha1",
+    "actor": {
+      "id": "runtime.simulated"
+    },
+    "projectId": "example-minimal",
+    "experimentRevision": 1,
+    "runId": "run.sim-1",
+    "attemptId": "attempt.1",
+    "blockId": "simulate",
+    "payload": {
+      "status": "running",
+      "artifactRef": {
+        "uri": "researchos://artifacts/sha256-b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c",
+        "digest": "sha256:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"
+      }
+    },
+    "evidenceRefs": ["ev.paper-1", "ev.note-2"]
+  }
+}

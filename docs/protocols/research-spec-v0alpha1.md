@@ -153,7 +153,7 @@ Valid examples MUST pass both Draft 2020-12 structural validation and reference 
 v0alpha1 now defines BlockManifest declarations and a pure static dry-run compiler, but it
 does not yet define or perform:
 
-- ResearchEvent and Run state-machine schemas;
+- Run state-machine schemas;
 - expression evaluation;
 - block entrypoint import or execution;
 - Worker transport or authentication;

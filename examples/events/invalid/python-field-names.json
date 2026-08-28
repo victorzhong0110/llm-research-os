@@ -1,0 +1,24 @@
+{
+  "specversion": "1.0",
+  "id": "evt.python-field-names",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "type": "run.started",
+  "time": "2026-08-21T12:00:00Z",
+  "subject": "example-minimal",
+  "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+  "datacontenttype": "application/json",
+  "sequence": "1",
+  "sequencetype": "Integer",
+  "streamid": "example-minimal",
+  "streamversion": 0,
+  "data": {
+    "schema_version": "v0alpha1",
+    "actor": {
+      "id": "researcher.alice"
+    },
+    "project_id": "example-minimal",
+    "experiment_revision": 1,
+    "payload": {},
+    "evidence_refs": []
+  }
+}

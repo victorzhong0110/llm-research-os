@@ -25,6 +25,9 @@ from llm_research_os.blocks.schema import canonical_schema as canonical_block_sc
 from llm_research_os.blocks.schema import schema_matches as block_schema_matches
 from llm_research_os.blocks.schema import write_schema as write_block_schema
 from llm_research_os.canonical import content_digest
+from llm_research_os.events.schema import canonical_schema as canonical_event_schema
+from llm_research_os.events.schema import schema_matches as event_schema_matches
+from llm_research_os.events.schema import write_schema as write_event_schema
 from llm_research_os.execution import PlanningInputError, TrustedKernel
 from llm_research_os.execution.models import (
     DryRunReport,
@@ -61,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--contract",
         choices=(
             "research-spec",
+            "research-event",
             "block-manifest",
             "block-command-report",
             "dry-run-report",
@@ -180,6 +184,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_research_schema
         matches = research_schema_matches
         write = write_research_schema
+    elif contract == "research-event":
+        canonical = canonical_event_schema
+        matches = event_schema_matches
+        write = write_event_schema
     elif contract == "block-manifest":
         canonical = canonical_block_schema
         matches = block_schema_matches
@@ -192,10 +200,12 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_dry_run_schema
         matches = dry_run_schema_matches
         write = write_dry_run_schema
-    else:
+    elif contract == "problem-report":
         canonical = canonical_problem_schema
         matches = problem_schema_matches
         write = write_problem_schema
+    else:
+        raise AssertionError(f"unhandled schema contract: {contract}")
     if check is not None:
         if matches(check):
             print(f"schema is current: {check}")

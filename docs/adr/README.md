@@ -17,7 +17,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0011](0011-apache-2-license.md) | Apache-2.0 project license | Accepted | Written; contribution mechanics follow up |
 | [0012](0012-python-and-dependencies.md) | Python 3.12+, pyproject and uv | Accepted | Written |
 | [0013](0013-schema-authority.md) | Versioned JSON Schema external contract | Accepted | Written |
-| 0014 | CloudEvents-compatible ResearchEvent envelope | Accepted | Record pending |
+| [0014](0014-cloudevents-compatible-research-event.md) | CloudEvents-compatible ResearchEvent envelope | Accepted | Written |
 | 0015 | SQLite event source, projections and artifact addressing | Accepted | Record pending |
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending |
 | 0017 | Minimal model interface and capability negotiation | Direction accepted | M1 implementation pending |

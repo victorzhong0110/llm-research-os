@@ -1,0 +1,27 @@
+{
+  "specversion": "1.0",
+  "id": "evt.embedded-body",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "type": "artifact.created",
+  "time": "2026-08-21T12:00:00Z",
+  "subject": "example-minimal",
+  "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+  "datacontenttype": "application/json",
+  "sequence": "1",
+  "sequencetype": "Integer",
+  "streamid": "example-minimal",
+  "streamversion": 0,
+  "data": {
+    "schemaVersion": "v0alpha1",
+    "actor": {
+      "id": "researcher.alice"
+    },
+    "projectId": "example-minimal",
+    "experimentRevision": 1,
+    "payload": {
+      "uri": "researchos://artifacts/inline",
+      "body": "# this document body must live in an artifact, not the event\n"
+    },
+    "evidenceRefs": []
+  }
+}
