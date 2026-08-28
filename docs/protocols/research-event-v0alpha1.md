@@ -68,13 +68,16 @@ names. The following example is the committed minimal valid event:
 - `id`, `source` and `type` are CloudEvents required context attributes and are required
   here.
 - `time` is required in v0alpha1. In an external document it MUST be an RFC3339 string with
-  a timezone offset or `Z`. Naive timestamps, numeric Unix times and native datetime values
-  are invalid document input.
+  a timezone offset or `Z`. Offset hours MUST be `00`–`23` and minutes `00`–`59`; values
+  such as `+00:60` are invalid. Naive timestamps, numeric Unix times and native datetime
+  values are invalid document input.
 - `subject`, `dataschema` and `datacontenttype` are present in v0alpha1. `dataschema` MUST
   be the committed schema URI. `datacontenttype` MUST be `application/json`.
-- `source` MUST be a non-empty RFC 3986 URI-reference. Invalid percent-encoding (for
-  example `%zz`), NUL, control characters and other CloudEvents-disallowed Unicode code
-  points are invalid.
+- `source` MUST be a non-empty RFC 3986 URI-reference and MUST match the URI-reference
+  component grammar, not only the allowed character set. Invalid percent-encoding (for
+  example `%zz`), more than one fragment (`a#b#c`), an unclosed IP-literal (`http://[`),
+  a `[` outside an IP-literal (`foo[bar`), NUL, control characters and other
+  CloudEvents-disallowed Unicode code points are invalid.
 - CloudEvents String attributes (`id`, `source`, `type`, `subject`, `sequence`,
   `sequencetype`, `streamid`, `correlationid`, `causationid`) MUST NOT contain control
   characters (U+0000–U+001F, U+007F–U+009F), Unicode noncharacters, or unpaired surrogates.
@@ -114,8 +117,9 @@ catches misspellings and prevents hidden protocol behavior.
 
 `payload` is the only declared open object. It MUST contain finite JSON-compatible values
 (no NaN, Infinity, bytes, tuples or other non-JSON types). Nested values MUST be JSON
-objects, arrays, strings, numbers, booleans or null. All text, including payload keys and
-strings, MUST be valid Unicode scalar values. Lone surrogates are invalid.
+objects, arrays, strings, numbers, booleans or null. Cyclic object or array graphs MUST be
+rejected. All text, including payload keys and strings, MUST be valid Unicode scalar
+values. Lone surrogates are invalid.
 
 ## 5. References instead of bodies
 

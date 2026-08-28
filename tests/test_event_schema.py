@@ -139,6 +139,22 @@ def test_schema_invalid_documents_are_rejected_by_the_model() -> None:
     percent_source["source"] = "https://researchos.dev/projects/%zz"
     cases.append(("invalid percent-encoding", percent_source))
 
+    offset_time = _valid_document()
+    offset_time["time"] = "2026-08-21T12:00:00+00:60"
+    cases.append(("RFC3339 offset minutes 60", offset_time))
+
+    double_fragment = _valid_document()
+    double_fragment["source"] = "a#b#c"
+    cases.append(("URI-reference double fragment", double_fragment))
+
+    unclosed_ip_literal = _valid_document()
+    unclosed_ip_literal["source"] = "http://["
+    cases.append(("URI-reference unclosed IP-literal", unclosed_ip_literal))
+
+    bracket_in_path = _valid_document()
+    bracket_in_path["source"] = "foo[bar"
+    cases.append(("URI-reference bracket in path", bracket_in_path))
+
     sequence_zero = _valid_document()
     sequence_zero["sequence"] = "0"
     cases.append(("sequence zero", sequence_zero))

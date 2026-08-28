@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
+from time import monotonic
 
 import pytest
 from pydantic import ValidationError
@@ -99,6 +100,21 @@ def test_time_requires_an_rfc3339_timezone_string() -> None:
     assert event.time == "2026-08-21T12:00:00Z"
 
 
+def test_time_rejects_out_of_range_rfc3339_offsets() -> None:
+    document = _valid_document()
+    document["time"] = "2026-08-21T12:00:00+00:60"
+    with pytest.raises(ValidationError):
+        validate_event_document(document)
+
+    document["time"] = "2026-08-21T12:00:00+24:00"
+    with pytest.raises(ValidationError):
+        validate_event_document(document)
+
+    document["time"] = "2026-08-21T20:15:30+08:00"
+    event = validate_event_document(document)
+    assert event.time == "2026-08-21T20:15:30+08:00"
+
+
 def test_numeric_fields_reject_string_and_bool_coercion() -> None:
     document = _valid_document()
     document["sequence"] = 1
@@ -162,6 +178,18 @@ def test_cloudevents_identity_strings_are_not_trimmed() -> None:
         validate_event_document(document)
 
 
+@pytest.mark.parametrize(
+    "source",
+    ["a#b#c", "http://[", "foo[bar"],
+    ids=["double-fragment", "unclosed-ip-literal", "bare-brackets"],
+)
+def test_source_rejects_malformed_uri_reference_structure(source: str) -> None:
+    document = _valid_document()
+    document["source"] = source
+    with pytest.raises(ValidationError):
+        validate_event_document(document)
+
+
 def test_source_rejects_invalid_uri_references_and_forbidden_characters() -> None:
     document = _valid_document()
     document["source"] = "https://researchos.dev/projects/%zz"
@@ -180,6 +208,13 @@ def test_source_rejects_invalid_uri_references_and_forbidden_characters() -> Non
     document["source"] = "https://researchos.dev/projects/example-minimal"
     with pytest.raises(ValidationError):
         validate_event_document(document)
+
+
+def test_source_accepts_structured_rfc3986_uri_references() -> None:
+    document = _valid_document()
+    document["source"] = "http://[2001:db8::1]/projects/example-minimal"
+    event = validate_event_document(document)
+    assert event.source == "http://[2001:db8::1]/projects/example-minimal"
 
 
 def test_evidence_refs_must_be_unique() -> None:
@@ -223,6 +258,37 @@ def test_payload_rejects_embedded_bodies_inside_tuples() -> None:
     data["payload"] = {"items": ({"body": "inline"},)}
     with pytest.raises(ValidationError, match="JSON object, array, string, number"):
         validate_event_document(document)
+
+
+def test_payload_rejects_cyclic_json_structures_without_hanging() -> None:
+    document = _valid_document()
+    data = document["data"]
+    assert isinstance(data, dict)
+    cycle: dict[str, object] = {}
+    cycle["self"] = cycle
+    data["payload"] = cycle
+    started = monotonic()
+    with pytest.raises(ValidationError, match="cyclic JSON structures"):
+        validate_event_document(document)
+    assert monotonic() - started < 1
+
+    nested: list[object] = []
+    nested.append({"items": nested})
+    data["payload"] = {"root": nested}
+    started = monotonic()
+    with pytest.raises(ValidationError, match="cyclic JSON structures"):
+        validate_event_document(document)
+    assert monotonic() - started < 1
+
+
+def test_payload_allows_shared_acyclic_json_objects() -> None:
+    document = _valid_document()
+    data = document["data"]
+    assert isinstance(data, dict)
+    shared = {"ok": True}
+    data["payload"] = {"left": shared, "right": shared}
+    event = validate_event_document(document)
+    assert event.data.payload["left"] is event.data.payload["right"]
 
 
 def test_text_must_be_unicode_scalars() -> None:

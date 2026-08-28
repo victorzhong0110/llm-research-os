@@ -30,10 +30,12 @@ Use a CloudEvents 1.0 compatible structured JSON envelope (decision `4-EC`):
   in `"1"` through `"2147483647"`; `"0"` is invalid.
 - The reference validator does not generate `sequence`. A later SQLite append-only store
   atomically allocates the next Integer sequence when persisting.
-- `source` is an RFC 3986 URI-reference. CloudEvents String attributes reject control
+- `source` is an RFC 3986 URI-reference and is checked against the URI-reference grammar,
+  not only the allowed character set. CloudEvents String attributes reject control
   characters, noncharacters and unpaired surrogates.
 - External documents use Schema field names only, exact JSON types, RFC3339 `time` strings
-  with a timezone, and no silent trimming of identity values.
+  with a timezone whose offset hours are `00`–`23` and minutes `00`–`59`, and no silent
+  trimming of identity values.
 - M0 commits only to structured JSON. It does not implement HTTP, Kafka, AMQP or binary-mode
   bindings.
 - Large files and document bodies are referenced, never embedded. Secrets must not appear in
