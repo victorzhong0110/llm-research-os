@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "EventActor": {
+      "additionalProperties": false,
+      "description": "Closed actor identity. Additional actor facets are not part of v0alpha1.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "EventActor",
+      "type": "object"
+    },
+    "ResearchEventData": {
+      "additionalProperties": false,
+      "description": "Versioned ResearchEvent domain payload carried in CloudEvents ``data``.",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/EventActor"
+        },
+        "attemptId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attemptid"
+        },
+        "blockId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blockid"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "experimentRevision": {
+          "exclusiveMinimum": 0,
+          "title": "Experimentrevision",
+          "type": "integer"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "projectId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runid"
+        },
+        "schemaVersion": {
+          "const": "v0alpha1",
+          "title": "Schemaversion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "actor",
+        "projectId",
+        "experimentRevision",
+        "payload",
+        "evidenceRefs"
+      ],
+      "title": "ResearchEventData",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CloudEvents 1.0 compatible structured JSON envelope for ResearchEvent.",
+  "properties": {
+    "causationid": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Causationid"
+    },
+    "correlationid": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correlationid"
+    },
+    "data": {
+      "$ref": "#/$defs/ResearchEventData"
+    },
+    "datacontenttype": {
+      "const": "application/json",
+      "title": "Datacontenttype",
+      "type": "string"
+    },
+    "dataschema": {
+      "const": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "title": "Dataschema",
+      "type": "string"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 0,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "source": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^[^\\s\\\\]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "specversion": {
+      "const": "1.0",
+      "title": "Specversion",
+      "type": "string"
+    },
+    "streamid": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Streamid",
+      "type": "string"
+    },
+    "streamversion": {
+      "minimum": 0,
+      "title": "Streamversion",
+      "type": "integer"
+    },
+    "subject": {
+      "minLength": 1,
+      "title": "Subject",
+      "type": "string"
+    },
+    "time": {
+      "format": "date-time",
+      "title": "Time",
+      "type": "string"
+    },
+    "type": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "subject",
+    "dataschema",
+    "datacontenttype",
+    "data",
+    "sequence",
+    "streamid",
+    "streamversion"
+  ],
+  "title": "ResearchEvent",
+  "type": "object"
+}

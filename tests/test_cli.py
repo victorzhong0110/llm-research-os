@@ -7,6 +7,7 @@ from llm_research_os.cli import main
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
 SCHEMA = Path(__file__).parents[1] / "schemas" / "research-spec" / "v0alpha1.schema.json"
+EVENT_SCHEMA = Path(__file__).parents[1] / "schemas" / "research-event" / "v0alpha1.schema.json"
 BLOCK_SCHEMA = Path(__file__).parents[1] / "schemas" / "block-manifest" / "v0alpha1.schema.json"
 BLOCK_REPORT_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "block-command-report" / "v0alpha1.schema.json"
@@ -34,6 +35,18 @@ def test_schema_check_command() -> None:
 
 
 def test_all_contract_schema_check_commands() -> None:
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "research-event",
+                "--check",
+                str(EVENT_SCHEMA),
+            ]
+        )
+        == 0
+    )
     assert (
         main(
             [

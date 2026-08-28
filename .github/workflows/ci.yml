@@ -53,3 +53,7 @@ jobs:
         run: >-
           uv run researchos schema --contract problem-report
           --check schemas/problem-report/v0alpha1.schema.json
+      - name: Verify ResearchEvent schema
+        run: >-
+          uv run researchos schema --contract research-event
+          --check schemas/research-event/v0alpha1.schema.json

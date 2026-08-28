@@ -33,6 +33,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 - [项目宪章与最小内核规格 v0.1](docs/charter-v0.1.md)
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
 - [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
+- [ResearchEvent v0alpha1规范说明](docs/protocols/research-event-v0alpha1.md)
 - [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -52,6 +53,8 @@ uv run researchos validate examples/valid/minimal.yaml
 uv run researchos blocks list
 uv run researchos dry-run examples/valid/minimal.yaml
 uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
+uv run researchos schema --contract research-event \
+  --check schemas/research-event/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -61,6 +64,7 @@ uv run pytest
 
 ```text
 schemas/research-spec/v0alpha1.schema.json
+schemas/research-event/v0alpha1.schema.json
 schemas/block-manifest/v0alpha1.schema.json
 schemas/block-command-report/v0alpha1.schema.json
 schemas/dry-run-report/v0alpha1.schema.json
