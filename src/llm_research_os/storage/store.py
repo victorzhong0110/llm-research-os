@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from time import monotonic, sleep
 from types import TracebackType
 from typing import Any, Self, cast
 
@@ -38,6 +39,7 @@ from llm_research_os.storage.schema import (
 
 DEFAULT_BUSY_TIMEOUT_SECONDS = 5.0
 MAX_READ_PAGE_SIZE = 1_000
+_MAX_WAL_RETRY_DELAY_SECONDS = 0.05
 _STORE_ASSIGNED_FIELDS = frozenset({"sequence", "sequencetype", "streamversion"})
 _SELECT_EVENT_COLUMNS = """
     SELECT sequence, event_id, stream_id, stream_version, event_type,
@@ -111,6 +113,13 @@ class EventStore:
                 os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
             self._configure_connection(timeout_seconds)
             self._initialize_or_verify_schema()
+        except sqlite3.Error as exc:
+            connection = getattr(self, "_connection", None)
+            if connection is not None:
+                connection.close()
+            raise EventStoreSchemaError(
+                f"could not initialize event-store database: {self._path}"
+            ) from exc
         except Exception:
             connection = getattr(self, "_connection", None)
             if connection is not None:
@@ -152,10 +161,7 @@ class EventStore:
         self._connection.execute("PRAGMA recursive_triggers = ON")
         self._connection.execute("PRAGMA trusted_schema = OFF")
         self._connection.execute("PRAGMA synchronous = FULL")
-        journal_mode = cast(
-            str,
-            self._connection.execute("PRAGMA journal_mode = WAL").fetchone()[0],
-        )
+        journal_mode = self._enable_wal(timeout_seconds)
         if journal_mode.lower() != "wal":
             raise EventStoreSchemaError("database does not support required SQLite WAL mode")
         foreign_keys = cast(
@@ -164,6 +170,28 @@ class EventStore:
         )
         if foreign_keys != 1:
             raise EventStoreSchemaError("SQLite foreign-key enforcement could not be enabled")
+
+    def _enable_wal(self, timeout_seconds: float) -> str:
+        """Enable WAL, retrying SQLite lock contention within the configured timeout."""
+
+        deadline = monotonic() + timeout_seconds
+        retry_delay = 0.001
+        while True:
+            try:
+                row = self._connection.execute("PRAGMA journal_mode = WAL").fetchone()
+                if row is None:
+                    raise EventStoreSchemaError("SQLite returned no journal mode")
+                return cast(str, row[0])
+            except sqlite3.OperationalError as exc:
+                error_code = getattr(exc, "sqlite_errorcode", None)
+                primary_code = error_code & 0xFF if isinstance(error_code, int) else None
+                if primary_code not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}:
+                    raise
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    raise EventStoreSchemaError("timed out while enabling SQLite WAL mode") from exc
+                sleep(min(retry_delay, remaining))
+                retry_delay = min(retry_delay * 2, _MAX_WAL_RETRY_DELAY_SECONDS)
 
     @contextmanager
     def _immediate_transaction(self) -> Iterator[None]:
@@ -181,8 +209,9 @@ class EventStore:
             int,
             self._connection.execute("PRAGMA application_id").fetchone()[0],
         )
-        objects = self._schema_objects()
-        if application_id == 0 and not objects:
+        if application_id == 0:
+            # A concurrent creator may commit between separate header/schema reads.
+            # Let the serialized transaction below re-check both from one write slot.
             self._create_schema()
         elif application_id != APPLICATION_ID:
             raise EventStoreSchemaError(
@@ -202,7 +231,8 @@ class EventStore:
                 return
             if application_id != 0 or objects:
                 raise EventStoreSchemaError(
-                    "database changed while the event-store schema was being initialized"
+                    "database is not an LLM Research OS event store "
+                    f"(application_id={application_id})"
                 )
             for statement in MIGRATION_STATEMENTS:
                 self._connection.execute(statement)

@@ -5,6 +5,7 @@ import stat
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Barrier
 from typing import Any
 
 import pytest
@@ -317,8 +318,10 @@ def test_concurrent_connections_allocate_without_duplicates(tmp_path: Path) -> N
 
 def test_concurrent_first_open_applies_migration_once(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
+    start = Barrier(4)
 
     def open_store(_: int) -> int:
+        start.wait()
         with EventStore(database, clock=_clock) as store:
             return store.schema_version
 
@@ -328,6 +331,16 @@ def test_concurrent_first_open_applies_migration_once(tmp_path: Path) -> None:
     assert versions == [SCHEMA_VERSION] * 4
     with EventStore(database, clock=_clock) as store:
         assert store.verify_integrity() == 0
+
+
+def test_corrupt_database_initialization_wraps_sqlite_error(tmp_path: Path) -> None:
+    database = tmp_path / "corrupt.db"
+    database.write_bytes(b"not a SQLite database")
+
+    with pytest.raises(EventStoreSchemaError, match="could not initialize") as captured:
+        EventStore(database, clock=_clock)
+
+    assert isinstance(captured.value.__cause__, sqlite3.DatabaseError)
 
 
 def test_persisted_json_is_canonical_and_indexed(tmp_path: Path) -> None:
