@@ -1,0 +1,22 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: unpaired-data-port
+  revision: 1
+  title: Data edge with only one declared port
+workflows:
+  - id: workflow.invalid
+    graph:
+      nodes:
+        - kind: task
+          id: source
+          blockType: simulated.experiment
+          blockVersion: 0.1.0
+        - kind: task
+          id: target
+          blockType: simulated.experiment
+          blockVersion: 0.1.0
+      edges:
+        - source: source
+          target: target
+          sourcePort: result

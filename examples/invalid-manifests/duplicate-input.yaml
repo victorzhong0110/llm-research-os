@@ -1,0 +1,13 @@
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: invalid.duplicate-input
+  version: 0.1.0
+runtime:
+  type: simulated
+inputs:
+  - id: data
+  - id: data
+configSchema:
+  type: object
+  additionalProperties: false

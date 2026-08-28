@@ -38,10 +38,10 @@ workflows:
               - kind: task
                 id: train
                 blockType: example.train
+                blockVersion: 0.1.0
                 resourceRefs:
                   - remote-gpu
             edges: []
       edges: []
 evaluations: []
 policies: {}
-

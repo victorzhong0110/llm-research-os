@@ -1,0 +1,21 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: duplicate-resource-ref
+  revision: 1
+  title: Duplicate task resource reference
+resources:
+  - id: local-cpu
+    kind: cpu
+workflows:
+  - id: workflow.invalid
+    graph:
+      nodes:
+        - kind: task
+          id: task
+          blockType: simulated.experiment
+          blockVersion: 0.1.0
+          resourceRefs:
+            - local-cpu
+            - local-cpu
+      edges: []

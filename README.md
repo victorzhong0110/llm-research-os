@@ -6,7 +6,8 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 
 ## 当前状态
 
-项目宪章 v0.1 及第 18 章技术基线已经接受。当前进入 M0：先证明研究定义、协议、验证、事件与模拟运行时，不执行真实 GPU 训练。
+项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec 协议基础，并已
+实现纯静态规划内核；当前仍不执行任何训练任务或真实 GPU 工作负载。
 
 ## M0 目标
 
@@ -32,6 +33,12 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 - [项目宪章与最小内核规格 v0.1](docs/charter-v0.1.md)
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
 - [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
+- [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
+- [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
+- [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
+- [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
+- [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
+- [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 
@@ -42,6 +49,8 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 ```bash
 uv sync --locked --all-groups
 uv run researchos validate examples/valid/minimal.yaml
+uv run researchos blocks list
+uv run researchos dry-run examples/valid/minimal.yaml
 uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
@@ -52,17 +61,40 @@ uv run pytest
 
 ```text
 schemas/research-spec/v0alpha1.schema.json
+schemas/block-manifest/v0alpha1.schema.json
+schemas/block-command-report/v0alpha1.schema.json
+schemas/dry-run-report/v0alpha1.schema.json
+schemas/problem-report/v0alpha1.schema.json
 ```
 
-不要手工编辑该文件。修改 Pydantic 编写模型后，使用以下命令重新生成并审查协议差异：
+不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
 
 ```bash
 uv run researchos schema --output schemas/research-spec/v0alpha1.schema.json
 ```
 
+## 静态 dry-run
+
+```bash
+uv run researchos dry-run examples/valid/minimal.yaml --format json
+```
+
+`ready`只表示规范、积木解析、端口、资源和静态计划完整，不表示实验已批准、
+已执行或科学上正确。循环不会展开，`until`不会求值，配置与审批正文只以摘要进入报告。
+
+附加积木清单只能从用户明确提供的普通 YAML/JSON 文件或非递归目录读取：
+
+```bash
+uv run researchos blocks validate examples/manifests/example-train.yaml
+uv run researchos dry-run examples/valid/bounded-loop.yaml \
+  --registry examples/manifests/example-train.yaml
+```
+
 ## 当前安全边界
 
-M0只验证规范、差异和模拟语义，不执行任意训练代码、插件或远程Worker。任何真实GPU消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅[安全政策](SECURITY.md)。
+M0 当前只验证协议、差异并编译无副作用的静态计划，不导入积木入口点，不执行任意
+训练代码、表达式、插件或远程 Worker，也不写事件或制品。任何真实 GPU 消费、外部
+账户操作或不可逆操作仍需单独批准。安全问题请参阅[安全政策](SECURITY.md)。
 
 ## License
 

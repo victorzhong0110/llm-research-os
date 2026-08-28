@@ -25,9 +25,37 @@ from pydantic import (
 
 def _require_json_object(value: dict[str, Any]) -> dict[str, Any]:
     try:
-        json.dumps(value, allow_nan=False)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("value must contain only finite JSON-compatible data") from exc
+        json.dumps(value, allow_nan=False, ensure_ascii=False).encode("utf-8")
+    except (TypeError, UnicodeError, ValueError) as exc:
+        raise ValueError(
+            "value must contain only finite JSON-compatible Unicode scalar data"
+        ) from exc
+    return value
+
+
+def _require_unicode_scalars(value: Any) -> Any:
+    stack = [value]
+    seen: set[int] = set()
+    while stack:
+        current = stack.pop()
+        if isinstance(current, str):
+            try:
+                current.encode("utf-8")
+            except UnicodeEncodeError as exc:
+                raise ValueError("text must contain only valid Unicode scalar values") from exc
+        elif isinstance(current, dict):
+            identity = id(current)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            stack.extend(current.keys())
+            stack.extend(current.values())
+        elif isinstance(current, (list, tuple, set)):
+            identity = id(current)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            stack.extend(current)
     return value
 
 
@@ -42,6 +70,20 @@ Identifier = Annotated[
 ]
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 CurrencyCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
+SemanticVersion = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        pattern=(
+            r"^(0|[1-9][0-9]*)\."
+            r"(0|[1-9][0-9]*)\."
+            r"(0|[1-9][0-9]*)"
+            r"(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+            r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?"
+            r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+        ),
+    ),
+]
 NonNegativeMoney = Annotated[Decimal, Field(ge=0)]
 JsonObject = Annotated[dict[str, Any], AfterValidator(_require_json_object)]
 
@@ -50,11 +92,17 @@ class StrictModel(BaseModel):
     """Base model for protocol objects: unknown structural fields are errors."""
 
     model_config = ConfigDict(
+        allow_inf_nan=False,
         extra="forbid",
         populate_by_name=True,
         str_strip_whitespace=True,
         validate_assignment=True,
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def text_uses_unicode_scalars(cls, value: Any) -> Any:
+        return _require_unicode_scalars(value)
 
 
 class RightsStatus(StrEnum):
@@ -214,13 +262,28 @@ class WorkflowEdge(StrictModel):
     source_port: Identifier | None = Field(default=None, alias="sourcePort")
     target_port: Identifier | None = Field(default=None, alias="targetPort")
 
+    @model_validator(mode="after")
+    def data_ports_are_paired(self) -> Self:
+        if (self.source_port is None) != (self.target_port is None):
+            raise ValueError(
+                "sourcePort and targetPort must either both be present or both be absent"
+            )
+        return self
+
 
 class TaskBlock(StrictModel):
     kind: Literal["task"] = "task"
     id: Identifier
     block_type: Identifier = Field(alias="blockType")
+    block_version: SemanticVersion = Field(alias="blockVersion")
     config: JsonObject = Field(default_factory=dict)
     resource_refs: list[Identifier] = Field(default_factory=list, alias="resourceRefs")
+
+    @model_validator(mode="after")
+    def resource_references_are_unique(self) -> Self:
+        if len(self.resource_refs) != len(set(self.resource_refs)):
+            raise ValueError("resourceRefs entries must be unique")
+        return self
 
 
 class ApprovalBlock(StrictModel):
@@ -390,12 +453,23 @@ class ResearchSpec(StrictModel):
                 loop_resources = cls._validate_graph_resources(
                     node.body, resources, risky_resources
                 )
-                if (node.may_incur_cost or loop_resources.intersection(risky_resources)) and (
+                risky_loop_resources = loop_resources.intersection(risky_resources)
+                if (node.may_incur_cost or risky_loop_resources) and (
                     node.max_cost is None or node.max_wall_time_seconds is None
                 ):
                     raise ValueError(
                         f"loop {node.id!r} uses paid/accelerated capability and requires "
                         "maxCost and maxWallTimeSeconds"
+                    )
+                mismatched_currencies = {
+                    resources[resource_id].currency
+                    for resource_id in risky_loop_resources
+                    if resources[resource_id].currency != node.currency
+                }
+                if mismatched_currencies:
+                    raise ValueError(
+                        f"loop {node.id!r} currency {node.currency!r} does not match its "
+                        f"paid/accelerated resources: {sorted(mismatched_currencies)}"
                     )
                 used.update(loop_resources)
         return used

@@ -11,12 +11,13 @@ workflows:
         - kind: task
           id: first
           blockType: simulated.task
+          blockVersion: 0.1.0
         - kind: task
           id: second
           blockType: simulated.task
+          blockVersion: 0.1.0
       edges:
         - source: first
           target: second
         - source: second
           target: first
-

@@ -2,7 +2,7 @@
 
 > Status: Active M0 baseline  
 > Last reviewed: 2026-08-22  
-> Scope: ResearchSpec authoring, validation, schema generation and planned control-plane boundaries
+> Scope: ResearchSpec and BlockManifest validation, deterministic planning and planned control-plane boundaries
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -18,7 +18,7 @@ This document is intentionally updated as executable capability is added. A miti
 
 ## 2. Current boundary
 
-M0 parses local YAML/JSON, validates a ResearchSpec, generates JSON Schema and compares immutable revisions. It does **not** execute workflow blocks, evaluate `until` expressions, contact model APIs, run plugins, start containers, connect Workers, spend money or upload artifacts.
+M0 parses local YAML/JSON, validates ResearchSpec and BlockManifest documents, generates JSON Schema, compares immutable revisions and compiles a deterministic dry-run report. It does **not** execute workflow blocks, import manifest entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers, connect Workers, spend money, write events or upload artifacts.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -26,6 +26,8 @@ M0 parses local YAML/JSON, validates a ResearchSpec, generates JSON Schema and c
 | ResearchSpec document | Untrusted structured input | Implemented validation boundary |
 | Core protocol package | Trusted kernel code | Implemented subset |
 | Generated JSON Schema | Published external contract | Implemented |
+| BlockManifest and sealed registry | Untrusted declarations resolved as inert data | Implemented validation and digest boundary |
+| Dry-run plan/report | Trusted-kernel output, not an execution result | Implemented pure planning boundary |
 | AI/model providers | Untrusted proposals and content | Not connected in M0 |
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -64,8 +66,10 @@ M0 parses local YAML/JSON, validates a ResearchSpec, generates JSON Schema and c
 - Facts are appended; corrections create new facts rather than rewriting history.
 - Artifact content is addressed and verified by digest before use.
 - Failure, disconnection and unknown are distinct terminal or recovery states.
+- Every planned task resolves one exact block version and manifest digest.
+- Dry-run cannot execute a block or claim an execution result.
 
-Only the first five invariants have partial executable checks in the current M0 slice. The remaining invariants are implementation requirements for subsequent slices.
+ResearchSpec, exact block resolution and pure planning invariants have executable checks. Event, artifact, secret, policy-execution and runtime-state invariants remain requirements for subsequent slices.
 
 ## 6. Threat register
 
@@ -85,10 +89,15 @@ Only the first five invariants have partial executable checks in the current M0 
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
-| TM-015 | Oversized documents or deeply nested loops exhaust parser resources | Local or service denial of service | No public parser endpoint in M0 | Add size/depth limits before network exposure |
+| TM-015 | Oversized documents, YAML alias amplification, configs, schemas or deeply nested loops exhaust resources | Local or service denial of service | Duplicate keys and YAML aliases are rejected; decoded documents, manifests, registries, configs and schemas have byte/depth/node/count limits; configSchema uses an allowlisted non-regex/non-combinatorial subset; planning counts iteratively and never expands iterations | Tested locally; stronger process isolation required before public service exposure |
 | TM-016 | Dependency or GitHub Action compromise runs attacker code | Maintainer/CI compromise | Locked Python dependencies; CI actions pinned to commits; read-only CI token | Review lock changes; add release provenance later |
-| TM-017 | Backend `config` is interpreted as a shell command without review | Arbitrary code execution | M0 never executes configs; future BlockManifest declares runtime and permissions | Blocker before NativeProcessRuntime |
+| TM-017 | Backend `config` is interpreted as a shell command without review | Arbitrary code execution | Config is validated against an offline manifest schema and represented only by digest; dry-run never executes it | Runtime isolation remains a blocker before NativeProcessRuntime |
 | TM-018 | Semantic diff hides meaningful list changes through reordering | Unreviewed experiment change | ID-aware diff reports object additions/removals/changes and ignores only pure reordering | Tested in M0; expand conformance corpus |
+| TM-019 | Registry shadowing or version confusion changes a block silently | Wrong or malicious implementation | Exact id/version lookup, duplicate rejection, sealed registry and manifest digest binding | Tested in M0 |
+| TM-020 | Manifest loading or dry-run imports code, evaluates text or retrieves a remote schema | Host compromise or data exfiltration | Manifests are revalidated into private inert snapshots; remote refs, expensive Schema keywords and symlinks are rejected; process/import/network/eval tripwires | Tested in M0 |
+| TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and Python-reference content digests without host/time data; golden vectors committed | Tested inside reference implementation; cross-language canonicalization remains open |
+| TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls | Partial mitigation; typed SecretRef and general redaction still required |
+| TM-023 | A dry-run or future simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters | Tested for dry-run; SimulatedRuntime gate remains |
 
 ## 7. M0 security gates
 
@@ -105,9 +114,14 @@ Before merging executable capability, the following gates apply:
 
 - M0 is local pre-release software and does not yet defend a public network service.
 - `config` and `extensions` are structurally declared but their future consumers must perform capability-specific validation.
+- M0 has no typed `SecretRef`; users must not place credentials in ResearchSpec or manifests. Dry-run avoids echoing arbitrary values but is not a complete secret-scanning system.
 - Rights metadata can be wrong or incomplete; the validator enforces declared policy but is not a legal authority.
 - Cost caps in this slice are protocol declarations, not runtime enforcement.
 - JSON Schema consumers still need the normative semantic tests for cross-object references and acyclicity.
+- v0alpha1 digests are opaque Python-reference identifiers, not independently verifiable
+  cross-language canonical hashes; stable protocol work must adopt a normative encoding.
+- YAML node and depth budgets are enforced after alias-free composition. The 8 MiB source
+  cap bounds input size, but transient parser memory is still a residual risk until
+  composer-phase budgets or process isolation are implemented for a public service.
 
 These risks must not be described as solved until their corresponding executable gates pass.
-

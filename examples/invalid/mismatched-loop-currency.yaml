@@ -1,30 +1,34 @@
 apiVersion: researchos.dev/v0alpha1
 kind: ResearchProject
 metadata:
-  id: unbounded-paid-loop
+  id: mismatched-loop-currency
   revision: 1
-  title: Paid loop without cost and time caps
+  title: Loop and resource currencies cannot be compared
 resources:
-  - id: paid-api
-    kind: remote-service
+  - id: paid-gpu
+    kind: gpu
     paid: true
-    maxCost: 2
+    maxCost: 5
+    currency: USD
     maxWallTimeSeconds: 600
 workflows:
-  - id: workflow.invalid-loop
+  - id: workflow.invalid
     graph:
       nodes:
         - kind: loop
           id: loop
-          maxIterations: 3
+          maxIterations: 2
           mayIncurCost: true
+          maxCost: 5
+          currency: EUR
+          maxWallTimeSeconds: 600
           body:
             nodes:
               - kind: task
-                id: call-api
-                blockType: example.api
+                id: train
+                blockType: example.train
                 blockVersion: 0.1.0
                 resourceRefs:
-                  - paid-api
+                  - paid-gpu
             edges: []
       edges: []

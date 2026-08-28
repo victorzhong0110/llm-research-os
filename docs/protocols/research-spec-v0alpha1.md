@@ -51,6 +51,10 @@ References MUST resolve:
 - every task `resourceRefs` entry to a declared resource;
 - every workflow edge endpoint to a node in the same graph.
 
+Each task MUST bind an exact semantic version through `blockVersion`. A planner MUST resolve
+the pair `(blockType, blockVersion)` exactly and MUST NOT select a latest, nearest or
+case-insensitive alternative. Repeated `resourceRefs` entries are invalid.
+
 IDs are identifiers, not filesystem paths or shell fragments. Implementations MUST NOT interpolate an ID into a path or command without separate encoding and validation.
 
 ## 4. Closed structure and extension points
@@ -65,9 +69,18 @@ Open-ended values are allowed only at declared boundaries:
 
 These values MUST contain finite JSON-compatible data. Their presence does not grant execution permission. A consumer MUST validate the relevant block or extension schema before acting on them.
 
+The M0 reference loader rejects duplicate JSON/YAML mapping keys and all YAML aliases, so a
+document has one unambiguous tree interpretation and small alias graphs cannot amplify into
+large decoded values. It caps source documents at 8 MiB and decoded trees at 100,000 nodes
+and 128 levels. Invalid Unicode surrogate code points are rejected before digesting.
+
 ## 5. Workflow semantics
 
 Each `WorkflowGraph` MUST be acyclic. Edges MUST reference existing nodes, self-edges are invalid and duplicate edges are invalid.
+
+An edge with neither `sourcePort` nor `targetPort` is a control dependency. A data edge MUST
+declare both ports. Static planning additionally verifies that both ports exist on the exact
+resolved BlockManifest and that their declared value types are compatible.
 
 Iteration is represented only by a `LoopBlock`:
 
@@ -90,6 +103,10 @@ A loop that either:
 - references a paid, GPU, TPU or Ascend resource anywhere in its nested body
 
 MUST also declare loop-level `maxCost` and `maxWallTimeSeconds`. These are protocol limits. Runtime enforcement is required before real execution and is not implemented in this slice.
+
+The loop currency MUST match every paid or accelerated resource referenced by its nested
+body. v0alpha1 does not perform currency conversion and therefore MUST NOT pretend that
+cross-currency limits are comparable.
 
 ## 7. Evidence and dataset rights
 
@@ -125,6 +142,7 @@ The current diff does not yet calculate compatibility or scientific-risk severit
 ```bash
 uv run researchos validate examples/valid/minimal.yaml
 uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
+uv run researchos dry-run examples/valid/minimal.yaml --format json
 uv run pytest
 ```
 
@@ -132,11 +150,12 @@ Valid examples MUST pass both Draft 2020-12 structural validation and reference 
 
 ## 11. Deliberate M0 limitations
 
-v0alpha1 does not yet define:
+v0alpha1 now defines BlockManifest declarations and a pure static dry-run compiler, but it
+does not yet define or perform:
 
-- BlockManifest port typing and capability negotiation;
 - ResearchEvent and Run state-machine schemas;
 - expression evaluation;
+- block entrypoint import or execution;
 - Worker transport or authentication;
 - plugin discovery or isolation;
 - secret-reference objects;
@@ -144,4 +163,3 @@ v0alpha1 does not yet define:
 - runtime enforcement of budgets and approvals.
 
 These omissions are explicit. Adapters MUST NOT fill them with hidden, incompatible semantics and call the result conforming v0alpha1 behavior.
-

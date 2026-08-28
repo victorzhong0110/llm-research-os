@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "ProblemDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "path": {
+          "default": "",
+          "pattern": "^(?:/(?:[^~/]|~[01])*)*$",
+          "title": "Path",
+          "type": "string"
+        },
+        "type": {
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "type"
+      ],
+      "title": "ProblemDetail",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/problem-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/ProblemDetail"
+      },
+      "minItems": 1,
+      "title": "Errors",
+      "type": "array"
+    },
+    "kind": {
+      "const": "ProblemReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "valid": {
+      "const": false,
+      "title": "Valid",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "valid",
+    "errors"
+  ],
+  "title": "ProblemReport",
+  "type": "object"
+}

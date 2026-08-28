@@ -1,0 +1,12 @@
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: invalid.external-ref
+  version: 0.1.0
+runtime:
+  type: simulated
+configSchema:
+  type: object
+  properties:
+    payload:
+      $ref: https://example.invalid/schema.json
