@@ -4,6 +4,7 @@ from llm_research_os.storage.errors import (
     DuplicateEventError,
     EventAppendError,
     EventIntegrityError,
+    EventSequenceConflictError,
     EventStoreError,
     EventStoreSchemaError,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "DuplicateEventError",
     "EventAppendError",
     "EventIntegrityError",
+    "EventSequenceConflictError",
     "EventStore",
     "EventStoreError",
     "EventStoreSchemaError",

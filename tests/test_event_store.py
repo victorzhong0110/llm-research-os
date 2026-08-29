@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import stat
 from concurrent.futures import ThreadPoolExecutor
@@ -16,16 +17,20 @@ from llm_research_os.storage import (
     DuplicateEventError,
     EventAppendError,
     EventIntegrityError,
+    EventSequenceConflictError,
     EventStore,
     EventStoreError,
     EventStoreSchemaError,
 )
 from llm_research_os.storage.schema import (
     APPLICATION_ID,
+    EXPECTED_SCHEMA_DEFINITIONS,
+    EXPECTED_SCHEMA_OBJECTS,
     MIGRATION_NAME,
     MIGRATION_STATEMENTS,
     SCHEMA_DEFINITION_DIGEST,
     SCHEMA_VERSION,
+    normalize_schema_sql,
 )
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "events"
@@ -417,3 +422,271 @@ def test_default_constructor_still_creates_a_new_database(tmp_path: Path) -> Non
     with EventStore(database, clock=_clock) as store:
         assert store.verify_integrity() == 0
     assert database.is_file()
+
+
+def _concurrent_appends(
+    database: Path,
+    *,
+    expected_last_sequence: int | None,
+    stream_ids: tuple[str, str] = ("project.example", "project.example"),
+) -> list[tuple[str, object]]:
+    start = Barrier(2, timeout=5)
+
+    def append_one(index: int) -> tuple[str, object]:
+        with EventStore(database, clock=_clock) as store:
+            start.wait()
+            try:
+                stored = store.append(
+                    _event_draft(index, stream_id=stream_ids[index - 1]),
+                    expected_last_sequence=expected_last_sequence,
+                )
+                return ("ok", stored)
+            except EventSequenceConflictError as exc:
+                return ("conflict", exc)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        return list(executor.map(append_one, (1, 2)))
+
+
+def test_empty_store_accepts_expected_last_sequence_zero(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        assert store.last_sequence() == 0
+        stored = store.append(_event_draft(1), expected_last_sequence=0)
+        assert stored.event.sequence == "1"
+        assert stored.sequence == 1
+        assert store.last_sequence() == 1
+        assert store.verify_integrity() == 1
+
+
+def test_append_succeeds_with_current_global_head(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        first = store.append(_event_draft(1), expected_last_sequence=0)
+        second = store.append(_event_draft(2), expected_last_sequence=first.sequence)
+        assert second.event.sequence == "2"
+        assert store.last_sequence() == 2
+
+
+def test_stale_expected_head_conflicts(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1), expected_last_sequence=0)
+        with pytest.raises(EventSequenceConflictError) as captured:
+            store.append(_event_draft(2), expected_last_sequence=0)
+        assert captured.value.expected_last_sequence == 0
+        assert captured.value.actual_last_sequence == 1
+
+
+def test_future_expected_head_conflicts(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1), expected_last_sequence=0)
+        with pytest.raises(EventSequenceConflictError) as captured:
+            store.append(_event_draft(2), expected_last_sequence=2)
+        assert captured.value.expected_last_sequence == 2
+        assert captured.value.actual_last_sequence == 1
+        assert store.last_sequence() == 1
+
+
+@pytest.mark.parametrize("value", [True, False, "1", 1.0, -1, 2_147_483_648])
+def test_append_rejects_illegal_expected_last_sequence(tmp_path: Path, value: object) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        with pytest.raises(ValueError, match="expected_last_sequence"):
+            store.append(_event_draft(1), expected_last_sequence=value)  # type: ignore[arg-type]
+        assert store.last_sequence() == 0
+        assert store.verify_integrity() == 0
+
+
+def test_conflict_does_not_insert_or_advance_stream_or_sequence(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        first = store.append(_event_draft(1), expected_last_sequence=0)
+        assert first.stream_version == 0
+        with pytest.raises(EventSequenceConflictError):
+            store.append(_event_draft(2), expected_last_sequence=0)
+        assert store.get_event("evt.store.2") is None
+        assert store.last_sequence() == 1
+        assert store.verify_integrity() == 1
+        retried = store.append(_event_draft(2), expected_last_sequence=1)
+        assert retried.event.sequence == "2"
+        assert retried.stream_version == 1
+        assert store.last_sequence() == 2
+        assert store.verify_integrity() == 2
+
+
+def test_duplicate_event_id_outranks_stale_expected_head(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1), expected_last_sequence=0)
+        with pytest.raises(DuplicateEventError, match=r"evt\.store\.1"):
+            store.append(_event_draft(1, stream_id="different.stream"), expected_last_sequence=0)
+        with pytest.raises(DuplicateEventError, match=r"evt\.store\.1"):
+            store.append(_event_draft(1), expected_last_sequence=1)
+        assert store.last_sequence() == 1
+        assert store.verify_integrity() == 1
+
+
+def test_concurrent_same_expected_head_exactly_one_wins(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock):
+        pass
+
+    results = _concurrent_appends(database, expected_last_sequence=0)
+    successes = [item for kind, item in results if kind == "ok"]
+    conflicts = [item for kind, item in results if kind == "conflict"]
+    assert len(successes) == 1
+    assert len(conflicts) == 1
+    stored = successes[0]
+    conflict = conflicts[0]
+    assert stored.event.sequence == "1"
+    assert isinstance(conflict, EventSequenceConflictError)
+    assert conflict.expected_last_sequence == 0
+    assert conflict.actual_last_sequence == 1
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.last_sequence() == 1
+        assert store.verify_integrity() == 1
+        present = {
+            event_id
+            for event_id in ("evt.store.1", "evt.store.2")
+            if store.get_event(event_id) is not None
+        }
+        assert len(present) == 1
+
+
+def test_concurrent_same_head_conflicts_across_different_streams(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock):
+        pass
+
+    results = _concurrent_appends(
+        database,
+        expected_last_sequence=0,
+        stream_ids=("stream.alpha", "stream.beta"),
+    )
+    successes = [item for kind, item in results if kind == "ok"]
+    conflicts = [item for kind, item in results if kind == "conflict"]
+    assert len(successes) == 1
+    assert len(conflicts) == 1
+    assert successes[0].stream_version == 0
+    assert isinstance(conflicts[0], EventSequenceConflictError)
+    assert conflicts[0].expected_last_sequence == 0
+    assert conflicts[0].actual_last_sequence == 1
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.last_sequence() == 1
+        assert store.verify_integrity() == 1
+        rows = store.read_events(limit=10)
+        assert len(rows) == 1
+        assert rows[0].event.streamid in {"stream.alpha", "stream.beta"}
+
+
+def test_unconditional_append_still_allows_concurrent_writers(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock):
+        pass
+
+    results = _concurrent_appends(database, expected_last_sequence=None)
+    assert [kind for kind, _ in results] == ["ok", "ok"]
+    sequences = sorted(item.sequence for _, item in results)
+    assert sequences == [1, 2]
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.last_sequence() == 2
+        assert store.verify_integrity() == 2
+
+
+def test_last_sequence_empty_appended_and_reopened(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        assert store.last_sequence() == 0
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+        assert store.last_sequence() == 2
+    with EventStore(database, clock=_clock) as reopened:
+        assert reopened.last_sequence() == 2
+    with EventStore(database, create=False, clock=_clock) as readonly:
+        assert readonly.last_sequence() == 2
+
+
+def test_last_sequence_is_max_not_event_count(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DROP TRIGGER events_reject_delete")
+        connection.execute("DELETE FROM events WHERE sequence = 1")
+        connection.execute(_trigger_statement("events_reject_delete"))
+
+    with EventStore(database, clock=_clock) as store:
+        count = store._connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        assert count == 1
+        assert store.last_sequence() == 2
+
+
+def test_conflict_attributes_are_structured_and_readonly(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1), expected_last_sequence=0)
+        with pytest.raises(EventSequenceConflictError) as captured:
+            store.append(_event_draft(2), expected_last_sequence=0)
+
+    error = captured.value
+    assert isinstance(error, EventAppendError)
+    assert error.expected_last_sequence == 0
+    assert error.actual_last_sequence == 1
+    with pytest.raises(AttributeError):
+        error.expected_last_sequence = 9  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        error.actual_last_sequence = 9  # type: ignore[misc]
+    assert "SELECT" not in str(error)
+    assert "sqlite" not in str(error).lower()
+
+
+def test_last_sequence_wraps_sqlite_errors(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    store = EventStore(database, clock=_clock)
+    store.close()
+    with pytest.raises(EventStoreError, match="could not read the global event sequence") as captured:
+        store.last_sequence()
+    assert isinstance(captured.value.__cause__, sqlite3.Error)
+    assert "SELECT" not in str(captured.value)
+
+
+def test_cas_precondition_does_not_change_schema_or_event_contract(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        stored = store.append(_event_draft(1), expected_last_sequence=0)
+        assert store.schema_version == SCHEMA_VERSION
+        assert store._schema_objects() == EXPECTED_SCHEMA_OBJECTS
+        definitions = {
+            (str(row[0]), str(row[1])): normalize_schema_sql(str(row[2]))
+            for row in store._connection.execute(
+                """
+                SELECT type, name, sql
+                FROM sqlite_master
+                WHERE name NOT LIKE 'sqlite_%'
+                """
+            ).fetchall()
+        }
+        assert definitions == EXPECTED_SCHEMA_DEFINITIONS
+        migration = store._connection.execute(
+            "SELECT version, name, schema_digest FROM schema_migrations"
+        ).fetchone()
+        assert migration == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        columns = [
+            row[1] for row in store._connection.execute("PRAGMA table_info(events)").fetchall()
+        ]
+        assert "expected_last_sequence" not in columns
+        document = stored.event.model_dump(mode="json", by_alias=True, exclude_none=True)
+        assert "expected_last_sequence" not in document
+
+    with sqlite3.connect(database) as connection:
+        event_json = connection.execute("SELECT event_json FROM events").fetchone()[0]
+        persisted = json.loads(event_json)
+    assert "expected_last_sequence" not in persisted
+    assert persisted["sequence"] == "1"
