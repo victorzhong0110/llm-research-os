@@ -278,9 +278,7 @@ def _create_temp(root: Path) -> tuple[Path, int]:
     except OSError as exc:
         _close_quietly(descriptor)
         _unlink_quietly(temp_path)
-        raise ArtifactStoreError(
-            f"could not inspect temporary artifact file: {temp_path}"
-        ) from exc
+        raise ArtifactStoreError(f"could not inspect temporary artifact file: {temp_path}") from exc
     return temp_path, descriptor
 
 
@@ -378,9 +376,7 @@ def _require_matching_object(
     finally:
         _close_quietly(descriptor)
     if actual != digest or actual_size != size:
-        raise ArtifactIntegrityError(
-            f"existing artifact object does not match digest {digest}"
-        )
+        raise ArtifactIntegrityError(f"existing artifact object does not match digest {digest}")
     return ArtifactRecord(digest=digest, size_bytes=size, storage_key=storage_key)
 
 
