@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+import types
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -151,22 +153,53 @@ def test_replay_rejects_gaps_before_yielding(tmp_path: Path) -> None:
 
 
 def _retained_collection_lengths(iterator: object) -> dict[str, int]:
-    frame = getattr(iterator, "gi_frame", None)
-    assert frame is not None
     lengths: dict[str, int] = {}
-    for name, value in frame.f_locals.items():
-        if isinstance(value, (set, dict, list)):
-            lengths[name] = len(value)
+    current: object | None = iterator
+    depth = 0
+    while isinstance(current, types.GeneratorType):
+        frame = current.gi_frame
+        assert frame is not None
+        for name, value in frame.f_locals.items():
+            if isinstance(value, (set, dict, list)):
+                lengths[f"{depth}:{name}"] = len(value)
+        nested = current.gi_yieldfrom
+        current = nested if isinstance(nested, types.GeneratorType) else None
+        depth += 1
     return lengths
+
+
+def test_retained_collection_lengths_observes_inner_seen_ids() -> None:
+    def inner() -> Iterator[int]:
+        seen_ids: set[str] = set()
+        page = ["item"]
+        for index in range(1, 5):
+            seen_ids.add(str(index))
+            yield index
+            assert page == ["item"]
+
+    def outer() -> Iterator[int]:
+        yield from inner()
+
+    generated = outer()
+    assert next(generated) == 1
+    first = _retained_collection_lengths(generated)
+    assert first["1:seen_ids"] == 1
+    assert first["1:page"] == 1
+    for _ in range(3):
+        next(generated)
+    last = _retained_collection_lengths(generated)
+    assert last["1:seen_ids"] == 4
+    assert last["1:page"] == 1
 
 
 def test_replay_pager_state_does_not_grow_with_history(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     history = 40
+    page_size = 1
     with EventStore(database) as store:
         for index in range(1, history + 1):
             store.append(_event_draft(index))
-        replayed = replay_events(store, page_size=1)
+        replayed = replay_events(store, page_size=page_size)
         samples: list[dict[str, int]] = []
         seen = 0
         for _item in replayed:
@@ -177,9 +210,13 @@ def test_replay_pager_state_does_not_grow_with_history(tmp_path: Path) -> None:
     assert seen == history
     assert len(samples) == 4
     for sample in samples:
-        assert "seen_ids" not in sample
-        assert all(length <= 1 for length in sample.values())
-    assert samples[0] == samples[-1]
+        assert any(name.startswith("1:") for name in sample), sample
+        assert not any(name.split(":", 1)[1] == "seen_ids" for name in sample)
+        page_lengths = [length for name, length in sample.items() if name.endswith(":page")]
+        assert page_lengths
+        assert all(length <= page_size for length in page_lengths)
+        assert all(length <= page_size for length in sample.values())
+    assert samples[0] == samples[1] == samples[2] == samples[3]
 
 
 class OptionalFlagProjection:
