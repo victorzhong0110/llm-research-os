@@ -343,6 +343,17 @@ def test_corrupt_database_initialization_wraps_sqlite_error(tmp_path: Path) -> N
     assert isinstance(captured.value.__cause__, sqlite3.DatabaseError)
 
 
+def test_existing_only_open_wraps_corrupt_database_without_modifying_it(tmp_path: Path) -> None:
+    database = tmp_path / "corrupt.db"
+    payload = b"not a SQLite database\x00\xff"
+    database.write_bytes(payload)
+    with pytest.raises(EventStoreSchemaError, match="could not initialize") as captured:
+        EventStore(database, create=False, clock=_clock)
+    assert isinstance(captured.value.__cause__, sqlite3.DatabaseError)
+    assert database.read_bytes() == payload
+    assert list(tmp_path.iterdir()) == [database]
+
+
 def test_persisted_json_is_canonical_and_indexed(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database, clock=_clock) as store:
@@ -382,3 +393,27 @@ def test_canonical_storage_preserves_explicit_optional_nulls(tmp_path: Path) -> 
         event_json = connection.execute("SELECT event_json FROM events").fetchone()[0]
     assert '"correlationid":null' in event_json
     assert stored.event.correlationid is None
+
+
+def test_existing_only_open_does_not_create_a_missing_database(tmp_path: Path) -> None:
+    database = tmp_path / "missing.db"
+    with pytest.raises(EventStoreSchemaError, match="does not exist"):
+        EventStore(database, create=False, clock=_clock)
+    assert not database.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_existing_only_open_reads_an_initialized_database(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft())
+    with EventStore(database, create=False, clock=_clock) as store:
+        assert store.get_event("evt.store.1") is not None
+        assert store.verify_integrity() == 1
+
+
+def test_default_constructor_still_creates_a_new_database(tmp_path: Path) -> None:
+    database = tmp_path / "created.db"
+    with EventStore(database, clock=_clock) as store:
+        assert store.verify_integrity() == 0
+    assert database.is_file()
