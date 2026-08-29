@@ -22,6 +22,7 @@ from llm_research_os.storage.errors import (
     DuplicateEventError,
     EventAppendError,
     EventIntegrityError,
+    EventSequenceConflictError,
     EventStoreError,
     EventStoreSchemaError,
 )
@@ -57,6 +58,18 @@ def _recorded_timestamp(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
         raise EventStoreError("event-store clock must return a timezone-aware datetime")
     return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _validate_expected_last_sequence(value: int | None) -> int | None:
+    """Reject illegal CAS tokens before opening the append transaction."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("expected_last_sequence must be an integer")
+    if value < 0 or value > CLOUD_EVENTS_INTEGER_MAX:
+        raise ValueError("expected_last_sequence is outside the supported sequence range")
+    return value
 
 
 def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
@@ -110,7 +123,9 @@ class EventStore:
 
     Callers provide every ResearchEvent field except ``sequence``, ``sequencetype`` and
     ``streamversion``. The store assigns those three fields atomically and returns the
-    complete external-contract event that was persisted.
+    complete external-contract event that was persisted. Optional
+    ``expected_last_sequence`` is a Python API precondition on the global event head,
+    not a ResearchEvent field.
 
     ``EventStore(path)`` creates a versioned database when the path does not exist.
     ``EventStore(path, create=False)`` opens an existing database with SQLite
@@ -333,9 +348,21 @@ class EventStore:
         if quick_check != "ok":
             raise EventStoreSchemaError(f"SQLite quick_check failed: {quick_check}")
 
-    def append(self, document: dict[str, Any]) -> StoredEvent:
-        """Validate and atomically append one store-sequenced ResearchEvent draft."""
+    def append(
+        self,
+        document: dict[str, Any],
+        *,
+        expected_last_sequence: int | None = None,
+    ) -> StoredEvent:
+        """Validate and atomically append one store-sequenced ResearchEvent draft.
 
+        ``expected_last_sequence`` is a Python API precondition, not a ResearchEvent
+        field. ``None`` keeps the existing unconditional append. ``0`` requires an
+        empty store. A positive Integer requires that exact global ``MAX(sequence)``.
+        Conflicts are not retried; the caller must replay and re-validate.
+        """
+
+        expected_head = _validate_expected_last_sequence(expected_last_sequence)
         if type(document) is not dict:
             raise EventAppendError("event draft must be a JSON object")
         supplied = sorted(_STORE_ASSIGNED_FIELDS.intersection(document))
@@ -368,6 +395,8 @@ class EventStore:
                     "SELECT COALESCE(MAX(sequence), 0) FROM events"
                 ).fetchone()[0],
             )
+            if expected_head is not None and expected_head != last_sequence:
+                raise EventSequenceConflictError(expected_head, last_sequence)
             if last_sequence >= CLOUD_EVENTS_INTEGER_MAX:
                 raise EventAppendError("global event sequence is exhausted")
             sequence = last_sequence + 1
@@ -432,6 +461,23 @@ class EventStore:
                 raise EventAppendError("SQLite rejected the append-only event row") from exc
 
         return StoredEvent(event=event, recorded_at=recorded_at, digest=digest)
+
+    def last_sequence(self) -> int:
+        """Return the current global event-head concurrency token.
+
+        An empty store returns ``0``. This reads ``MAX(sequence)``, not an event
+        count, and does not replace ``verify_integrity()``.
+        """
+
+        try:
+            row = self._connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) FROM events"
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not read the global event sequence") from exc
+        if row is None:
+            raise EventStoreError("could not read the global event sequence")
+        return cast(int, row[0])
 
     def get_event(self, event_id: str) -> StoredEvent | None:
         """Read one event by immutable CloudEvents ID and verify its stored representation."""
