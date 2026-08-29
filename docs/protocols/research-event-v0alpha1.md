@@ -85,9 +85,9 @@ names. The following example is the committed minimal valid event:
   MUST be `Integer`. `sequence` MUST be the string encoding of a signed 32-bit Integer in
   the closed range `"1"` through `"2147483647"`. `"0"`, leading zeros, JSON numbers and
   booleans are invalid.
-- The reference validator MUST NOT generate, default or mint `sequence`. A later SQLite
-  append-only store atomically allocates the next Integer sequence when persisting; this
-  slice does not perform that allocation.
+- The reference validator MUST NOT generate, default or mint `sequence`. The SQLite EventStore
+  defined by ADR-0015 atomically allocates the next Integer sequence when persisting; validation
+  alone does not perform that allocation.
 - `streamid` is required. `streamversion` is a JSON integer in `0` through `2147483647`.
 - `correlationid` and `causationid` MAY be omitted.
 - `id` and `time` MUST be supplied by the caller. Implementations MUST NOT mint them during
@@ -160,8 +160,9 @@ The following items remain undecided and MUST NOT be filled in by adapters:
 - `correlationid` / `causationid` reference and self-causation rules;
 - whether `dataschema` may use fragments or redirects;
 - a complete inline-content denylist and payload size/depth limits;
-- persistence, projection, run state machines or runtime emission.
+- projection, run state machines or runtime emission;
+- artifact indexing and the remaining SQLite schema migrations.
 
 `sequence` type, the invalidity of `0`, and allocation ownership are decided above: the
 document uses CloudEvents `sequencetype: Integer` string values `"1"`–`"2147483647"`; the
-validator never mints them; a later SQLite append store allocates them atomically.
+validator never mints them; the SQLite EventStore allocates them atomically.

@@ -6,8 +6,9 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 
 ## 当前状态
 
-项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec 协议基础，并已
-实现纯静态规划内核；当前仍不执行任何训练任务或真实 GPU 工作负载。
+项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec、ResearchEvent
+协议基础和纯静态规划内核；SQLite 追加式事件事实源正在评审，当前仍不执行任何训练
+任务或真实 GPU 工作负载。
 
 ## M0 目标
 
@@ -40,6 +41,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 - [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
 - [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
+- [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 
@@ -96,9 +98,10 @@ uv run researchos dry-run examples/valid/bounded-loop.yaml \
 
 ## 当前安全边界
 
-M0 当前只验证协议、差异并编译无副作用的静态计划，不导入积木入口点，不执行任意
-训练代码、表达式、插件或远程 Worker，也不写事件或制品。任何真实 GPU 消费、外部
-账户操作或不可逆操作仍需单独批准。安全问题请参阅[安全政策](SECURITY.md)。
+M0 当前验证协议和差异、编译无副作用的静态计划，并可向本地 SQLite 追加事件事实。
+它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，也不写制品。
+任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
+[安全政策](SECURITY.md)。
 
 ## License
 

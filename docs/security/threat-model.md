@@ -1,8 +1,10 @@
 # Living Threat Model
 
-> Status: Active M0 baseline  
-> Last reviewed: 2026-08-22  
-> Scope: ResearchSpec and BlockManifest validation, deterministic planning and planned control-plane boundaries
+> Status: Active M0 baseline
+>
+> Last reviewed: 2026-08-28
+>
+> Scope: protocol validation, deterministic planning, local event persistence and planned control-plane boundaries
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -18,7 +20,11 @@ This document is intentionally updated as executable capability is added. A miti
 
 ## 2. Current boundary
 
-M0 parses local YAML/JSON, validates ResearchSpec and BlockManifest documents, generates JSON Schema, compares immutable revisions and compiles a deterministic dry-run report. It does **not** execute workflow blocks, import manifest entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers, connect Workers, spend money, write events or upload artifacts.
+M0 parses local YAML/JSON, validates ResearchSpec, ResearchEvent and BlockManifest documents,
+generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report and
+can append complete events to a local SQLite fact store. It does **not** execute workflow blocks,
+import manifest entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start
+containers, connect Workers, spend money, project Run state or upload artifacts.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -32,7 +38,8 @@ M0 parses local YAML/JSON, validates ResearchSpec and BlockManifest documents, g
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
-| Event and artifact stores | Integrity and confidentiality targets | Planned in later M0 slices |
+| Local SQLite event store | Integrity and confidentiality target | Append/read foundation implemented for review |
+| Artifact store and query projections | Integrity and confidentiality targets | Planned in later M0 slices |
 
 ## 3. Protected assets
 
@@ -69,7 +76,9 @@ M0 parses local YAML/JSON, validates ResearchSpec and BlockManifest documents, g
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 
-ResearchSpec, exact block resolution and pure planning invariants have executable checks. Event, artifact, secret, policy-execution and runtime-state invariants remain requirements for subsequent slices.
+ResearchSpec, exact block resolution, pure planning and append-only event-store invariants have
+executable checks. Artifact, secret, policy-execution, projection and runtime-state invariants
+remain requirements for subsequent slices.
 
 ## 6. Threat register
 
@@ -85,7 +94,7 @@ ResearchSpec, exact block resolution and pure planning invariants have executabl
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Planned content addressing and digest verification | Later M0 artifact slice |
-| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | Planned append-only event source and rebuildable projections | Later M0 event slice |
+| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; projections remain rebuildable consumers | Event source tested; projection replay pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
@@ -98,6 +107,8 @@ ResearchSpec, exact block resolution and pure planning invariants have executabl
 | TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and Python-reference content digests without host/time data; golden vectors committed | Tested inside reference implementation; cross-language canonicalization remains open |
 | TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls | Partial mitigation; typed SecretRef and general redaction still required |
 | TM-023 | A dry-run or future simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters | Tested for dry-run; SimulatedRuntime gate remains |
+| TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities | Tested with concurrent local connections |
+| TM-025 | Corrupt JSON or duplicated index columns are trusted during replay | Wrong projection or concealed event substitution | Every read revalidates canonical event JSON, content digest and extracted columns; full scans reject sequence gaps | Tested locally; no malicious-host guarantee |
 
 ## 7. M0 security gates
 
@@ -120,6 +131,10 @@ Before merging executable capability, the following gates apply:
 - JSON Schema consumers still need the normative semantic tests for cross-object references and acyclicity.
 - v0alpha1 digests are opaque Python-reference identifiers, not independently verifiable
   cross-language canonical hashes; stable protocol work must adopt a normative encoding.
+- A host administrator can disable SQLite triggers, rewrite the file and recompute unkeyed
+  digests. M0 has no signature, external anchor or deletion-proof hash chain.
+- ResearchEvent payload size/depth limits remain open; the local store does not yet add a
+  separate operational byte/depth cap.
 - YAML node and depth budgets are enforced after alias-free composition. The 8 MiB source
   cap bounds input size, but transient parser memory is still a residual risk until
   composer-phase budgets or process isolation are implemented for a public service.
