@@ -1,0 +1,346 @@
+{
+  "$defs": {
+    "AttemptSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Attemptid",
+          "type": "string"
+        },
+        "cancellationRequested": {
+          "title": "Cancellationrequested",
+          "type": "boolean"
+        },
+        "lastEventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Lasteventid",
+          "type": "string"
+        },
+        "lastHeartbeatSequence": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lastheartbeatsequence"
+        },
+        "lastSequence": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Lastsequence",
+          "type": "integer"
+        },
+        "ordinal": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "retryDecisionId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Retrydecisionid"
+        },
+        "retryHint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryHint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retryOf": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Retryof"
+        },
+        "status": {
+          "$ref": "#/$defs/AttemptStatus"
+        }
+      },
+      "required": [
+        "attemptId",
+        "ordinal",
+        "retryOf",
+        "retryDecisionId",
+        "status",
+        "cancellationRequested",
+        "retryHint",
+        "lastEventId",
+        "lastSequence"
+      ],
+      "title": "AttemptSnapshot",
+      "type": "object"
+    },
+    "AttemptStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "lost",
+        "unknown",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "title": "AttemptStatus",
+      "type": "string"
+    },
+    "RetryHint": {
+      "enum": [
+        "retryable",
+        "not-retryable",
+        "unknown"
+      ],
+      "title": "RetryHint",
+      "type": "string"
+    },
+    "RunDigests": {
+      "additionalProperties": false,
+      "properties": {
+        "plan": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Plan",
+          "type": "string"
+        },
+        "registry": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registry",
+          "type": "string"
+        },
+        "spec": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Spec",
+          "type": "string"
+        }
+      },
+      "required": [
+        "spec",
+        "registry",
+        "plan"
+      ],
+      "title": "RunDigests",
+      "type": "object"
+    },
+    "RunReview": {
+      "additionalProperties": false,
+      "properties": {
+        "decisionId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decisionid"
+        },
+        "eventId": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eventid"
+        },
+        "reviewed": {
+          "title": "Reviewed",
+          "type": "boolean"
+        },
+        "sequence": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sequence"
+        }
+      },
+      "required": [
+        "reviewed"
+      ],
+      "title": "RunReview",
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "retry_pending",
+        "lost",
+        "unknown",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "title": "RunStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/run-state/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activeAttemptId": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Activeattemptid"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "attempts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AttemptSnapshot"
+      },
+      "maxItems": 32,
+      "title": "Attempts",
+      "type": "array"
+    },
+    "cancellationRequested": {
+      "title": "Cancellationrequested",
+      "type": "boolean"
+    },
+    "digests": {
+      "$ref": "#/$defs/RunDigests"
+    },
+    "experimentRevision": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Experimentrevision",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "RunSnapshot",
+      "title": "Kind",
+      "type": "string"
+    },
+    "lastEventId": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Lasteventid",
+      "type": "string"
+    },
+    "lastSequence": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Lastsequence",
+      "type": "integer"
+    },
+    "maxAttempts": {
+      "maximum": 32,
+      "minimum": 1,
+      "title": "Maxattempts",
+      "type": "integer"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "review": {
+      "$ref": "#/$defs/RunReview"
+    },
+    "runId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/RunStatus"
+    },
+    "workflowId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workflowid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "experimentRevision",
+    "runId",
+    "workflowId",
+    "digests",
+    "maxAttempts",
+    "status",
+    "cancellationRequested",
+    "activeAttemptId",
+    "lastEventId",
+    "lastSequence",
+    "review"
+  ],
+  "title": "RunSnapshot",
+  "type": "object"
+}

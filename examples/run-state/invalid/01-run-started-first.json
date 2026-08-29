@@ -1,0 +1,29 @@
+{
+  "events": [
+    {
+      "specversion": "1.0",
+      "id": "evt.run.started.2",
+      "source": "https://researchos.dev/projects/example",
+      "type": "run.started",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "2",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {},
+        "evidenceRefs": [],
+        "runId": "run.example"
+      }
+    }
+  ]
+}

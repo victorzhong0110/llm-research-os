@@ -1,0 +1,260 @@
+{
+  "events": [
+    {
+      "specversion": "1.0",
+      "id": "evt.run.queued.1",
+      "source": "https://researchos.dev/projects/example",
+      "type": "run.queued",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "1",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "workflowId": "wf.train",
+          "specDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "registryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "planDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "maxAttempts": 3
+        },
+        "evidenceRefs": [],
+        "runId": "run.example"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.run.started.2",
+      "source": "https://researchos.dev/projects/example",
+      "type": "run.started",
+      "time": "2026-08-28T00:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "2",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {},
+        "evidenceRefs": [],
+        "runId": "run.example"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.queued.3",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.queued",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "3",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "ordinal": 1,
+          "retryOf": null,
+          "retryDecisionId": null
+        },
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.1"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.started.4",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.started",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "4",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {},
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.1"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.failed.5",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.failed",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "5",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "reasonCode": "reason.oom",
+          "retryHint": "retryable"
+        },
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.1"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.queued.6",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.queued",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "6",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "ordinal": 2,
+          "retryOf": "attempt.1",
+          "retryDecisionId": "decision.retry.1"
+        },
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.2"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.started.7",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.started",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "7",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {},
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.2"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.failed.8",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.failed",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "8",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "reasonCode": "reason.oom",
+          "retryHint": "retryable"
+        },
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.2"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt.attempt.queued.9",
+      "source": "https://researchos.dev/projects/example",
+      "type": "attempt.queued",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "9",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "ordinal": 3,
+          "retryOf": "attempt.1",
+          "retryDecisionId": "decision.retry.2"
+        },
+        "evidenceRefs": [],
+        "runId": "run.example",
+        "attemptId": "attempt.3"
+      }
+    }
+  ]
+}
