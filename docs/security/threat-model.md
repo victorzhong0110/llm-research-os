@@ -95,7 +95,7 @@ projection and runtime-state invariants remain requirements for subsequent slice
 | TM-007 | Secret appears in spec, log, event, model prompt or artifact | Credential and private-data exposure | Planned typed secret references, redaction and sink policies | Blocker before external APIs/Workers |
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
-| TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; digest-derived paths; atomic link publish; existing mismatch fails closed and is not overwritten | File object layer tested; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
+| TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; root `st_dev`/`st_ino` identity; dirfd walk of `tmp`/`objects`/`sha256`/shard with `O_NOFOLLOW`; digest-derived basenames; atomic `link` plus directory fsync; existing mismatch fails closed and is not overwritten | File object layer tested, including intermediate symlink escape, root substitution and fsync-retry recovery; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
 | TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers | Event source and replay fold tested; persistent projections pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
@@ -136,9 +136,10 @@ Before merging executable capability, the following gates apply:
 - A host administrator can disable SQLite triggers, rewrite the file and recompute unkeyed
   digests. M0 has no signature, external anchor or deletion-proof hash chain.
 - Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a
-  host administrator who replaces object bytes and updates the digest in lockstep. Artifact rows,
-  media types and deletion/GC remain unimplemented, so there is still no durable index or
-  tombstone independent of the file tree.
+  host administrator who replaces object bytes and updates the digest in lockstep. Dirfd anchoring
+  stops intermediate symlink escape and root-path substitution; it does not stop a privileged
+  writer who can mutate the already-opened inode. Artifact rows, media types and deletion/GC remain
+  unimplemented, so there is still no durable index or tombstone independent of the file tree.
 - ResearchEvent payload size/depth limits remain open; the local store does not yet add a
   separate operational byte/depth cap.
 - YAML node and depth budgets are enforced after alias-free composition. The 8 MiB source

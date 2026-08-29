@@ -46,18 +46,39 @@ Object paths are derived only after `parse_artifact_digest` accepts the whole
 string. Uppercase hex, extra prefix/suffix, path separators and `..` segments
 are rejected before any filesystem join.
 
+Every public operation re-opens the store root with
+`O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`, `fstat`s it, and compares
+`st_dev`/`st_ino` with the identity recorded at construction. A replaced or
+rebuilt root fails closed.
+
+From that held root dirfd the store walks `tmp`, `objects`, `sha256` and the
+digest shard with `os.open(..., dir_fd=parent_fd)` (and `mkdir` / `stat` /
+`link` / `unlink` the same way). Intermediate directory symlinks are rejected
+and never followed. The object itself is opened from the shard dirfd plus the
+digest basename, again with `O_NOFOLLOW` and an `fstat` regular-file check.
+`exists`, `verify` and `open` share that walk.
+
 Publication is:
 
 1. open the source with `O_NOFOLLOW`, then `fstat` the descriptor so a symlink,
    directory, FIFO, socket or device cannot sneak past a pre-check;
-2. stream the bytes into a private temporary file under `root/tmp` on the same
-   filesystem, hashing each chunk;
+2. stream the bytes into a private temporary file created through the `tmp`
+   dirfd, hashing each chunk;
 3. `fsync` the temporary file;
-4. `os.link` it onto the digest path (`link` fails if the destination exists,
-   and unlike `rename` it does not replace a dest);
-5. if the destination already exists, re-hash it and reuse it only when digest
-   and size match; a truncated or substituted object fails closed and is never
-   overwritten.
+4. `os.link(..., src_dir_fd=tmp, dst_dir_fd=shard, follow_symlinks=False)`
+   (`link` fails if the destination exists, and unlike `rename` it does not
+   replace a dest);
+5. `fsync` the shard directory. If the destination already exists, re-hash it
+   and reuse it only when digest and size match, then still `fsync` the shard
+   so a previous “link succeeded, directory fsync failed” call can be repaired.
+
+Each newly created `tmp` / `objects` / `sha256` / shard directory is followed
+by `fsync` of its parent dirfd. A retry that finds the directory already
+present still fsyncs the parent, so a crash between `mkdir` and parent fsync
+is recovered. A `put` returns success only after that call has completed the
+required directory fsyncs; it does not assume an earlier failed attempt did
+the work. A complete object may remain after a failed fsync; the next matching
+`put` must fsync before returning.
 
 Concurrent importers of the same bytes therefore converge on one complete
 object. Callers all receive the same digest.
@@ -69,7 +90,10 @@ only checks that the path is a regular file; use `verify` when the bytes will
 be trusted. Local SHA-256 detects accidental truncation and bit-rot. It does
 **not** defend a host administrator who can rewrite the object file and
 recompute the digest. There is no signature, external anchor or keyed MAC in
-this slice.
+this slice. Directory dirfd anchoring likewise cannot stop a privileged host
+from replacing the underlying inode after we have opened it; it does stop
+intermediate-path symlink escape and post-init root substitution at the
+recorded path.
 
 Created `tmp/`, `objects/sha256/<ab>/` directories use owner-only `0700`. New
 objects use `0600`. Existing directories are not chmod'd, so their mode is
@@ -78,6 +102,8 @@ never widened.
 ## Operational boundary
 
 - The store root must already be a real local directory, not a symlink or file.
+  After construction, operations bind to that directory's device and inode, not
+  whatever later occupies the original path.
 - Keep the object tree on a local filesystem. Cross-device `link` is not a
   supported import path. A checkout-root `artifacts/` directory stays gitignored
   so local object trees are not committed; the library lives at
