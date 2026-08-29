@@ -19,31 +19,19 @@ def replay_events(
 ) -> Iterator[StoredEvent]:
     """Yield verified events in global sequence order using bounded pages.
 
-    When ``freeze_high_water`` is true, the current maximum sequence is snapshotted
-    before the first yield. Events appended after that snapshot are omitted.
-    The iterator never materializes the full store in memory.
+    When ``freeze_high_water`` is true, ``verify_integrity()`` snapshots the
+    contiguous event count before the first yield. Events appended after that
+    snapshot are omitted. The iterator never materializes the full store in memory.
     """
 
     _require_replay_bounds(after_sequence, page_size)
-    until_sequence = _snapshot_high_water(store, page_size=page_size) if freeze_high_water else None
+    until_sequence = store.verify_integrity() if freeze_high_water else None
     yield from _iter_stored_events(
         store,
         after_sequence=after_sequence,
         page_size=page_size,
         until_sequence=until_sequence,
     )
-
-
-def _snapshot_high_water(store: EventStore, *, page_size: int) -> int:
-    after_sequence = 0
-    high_water = 0
-    while True:
-        page = store.read_events(after_sequence=after_sequence, limit=page_size)
-        if not page:
-            return high_water
-        _require_increasing_page(page, after_sequence=after_sequence)
-        high_water = page[-1].sequence
-        after_sequence = high_water
 
 
 def _iter_stored_events(
@@ -54,7 +42,6 @@ def _iter_stored_events(
     until_sequence: int | None,
 ) -> Iterator[StoredEvent]:
     expected = after_sequence + 1
-    seen_ids: set[str] = set()
     current = after_sequence
     while True:
         if until_sequence is not None and current >= until_sequence:
@@ -85,10 +72,6 @@ def _iter_stored_events(
                     "global event sequence is not contiguous: "
                     f"expected {expected}, found {sequence}"
                 )
-            event_id = stored.event.id
-            if event_id in seen_ids:
-                raise EventIntegrityError(f"duplicate event id during replay: {event_id}")
-            seen_ids.add(event_id)
             yield stored
             expected = sequence + 1
             current = sequence
@@ -105,14 +88,3 @@ def _require_replay_bounds(after_sequence: int, page_size: int) -> None:
         or not 1 <= page_size <= MAX_READ_PAGE_SIZE
     ):
         raise ValueError(f"page_size must be an integer in 1..{MAX_READ_PAGE_SIZE}")
-
-
-def _require_increasing_page(page: list[StoredEvent], *, after_sequence: int) -> None:
-    expected = after_sequence + 1
-    for stored in page:
-        if stored.sequence < expected:
-            raise EventIntegrityError(
-                "global event sequence is out of order: "
-                f"expected at least {expected}, found {stored.sequence}"
-            )
-        expected = stored.sequence + 1

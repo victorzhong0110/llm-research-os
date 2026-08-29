@@ -99,3 +99,122 @@ def test_replay_rejects_sequence_gaps(tmp_path: Path) -> None:
 
     with EventStore(database) as store, pytest.raises(EventIntegrityError, match="not contiguous"):
         list(replay_events(store, page_size=1))
+
+
+class _FakeStoredEvent:
+    def __init__(self, sequence: int) -> None:
+        self.sequence = sequence
+        self.event = type("Event", (), {"id": f"evt.{sequence}"})()
+
+
+class _NeverEmptyStore:
+    def __init__(self) -> None:
+        self.read_calls = 0
+
+    def verify_integrity(self) -> int:
+        return 3
+
+    def read_events(self, *, after_sequence: int = 0, limit: int = 100) -> list[_FakeStoredEvent]:
+        self.read_calls += 1
+        if self.read_calls > 8:
+            raise AssertionError("replay paged until empty instead of freezing high water")
+        return [_FakeStoredEvent(after_sequence + offset) for offset in range(1, limit + 1)]
+
+
+def test_replay_freezes_high_water_without_waiting_for_an_empty_page() -> None:
+    store = _NeverEmptyStore()
+    events = list(replay_events(store, page_size=2))  # type: ignore[arg-type]
+    assert [item.sequence for item in events] == [1, 2, 3]
+    assert store.read_calls <= 2
+
+
+def test_replay_rejects_gaps_before_yielding(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+
+    def trigger(name: str) -> str:
+        marker = f"CREATE TRIGGER {name}"
+        return next(statement for statement in MIGRATION_STATEMENTS if marker in statement)
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DROP TRIGGER events_reject_delete")
+        connection.execute("DELETE FROM events WHERE sequence = 1")
+        connection.execute(trigger("events_reject_delete"))
+
+    yielded: list[int] = []
+    with EventStore(database) as store, pytest.raises(EventIntegrityError, match="not contiguous"):
+        for item in replay_events(store, page_size=1):
+            yielded.append(item.sequence)
+    assert yielded == []
+
+
+def _retained_collection_lengths(iterator: object) -> dict[str, int]:
+    frame = getattr(iterator, "gi_frame", None)
+    assert frame is not None
+    lengths: dict[str, int] = {}
+    for name, value in frame.f_locals.items():
+        if isinstance(value, (set, dict, list)):
+            lengths[name] = len(value)
+    return lengths
+
+
+def test_replay_pager_state_does_not_grow_with_history(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    history = 40
+    with EventStore(database) as store:
+        for index in range(1, history + 1):
+            store.append(_event_draft(index))
+        replayed = replay_events(store, page_size=1)
+        samples: list[dict[str, int]] = []
+        seen = 0
+        for _item in replayed:
+            seen += 1
+            if seen in {1, 10, 20, 40}:
+                samples.append(_retained_collection_lengths(replayed))
+
+    assert seen == history
+    assert len(samples) == 4
+    for sample in samples:
+        assert "seen_ids" not in sample
+        assert all(length <= 1 for length in sample.values())
+    assert samples[0] == samples[-1]
+
+
+class OptionalFlagProjection:
+    def initial_state(self) -> bool | None:
+        return False
+
+    def apply(self, state: bool | None, event: ResearchEvent) -> bool | None:
+        if event.type == "run.started":
+            return True
+        if event.type == "run.completed":
+            return None
+        return state
+
+
+class NoneProjection:
+    def initial_state(self) -> None:
+        return None
+
+    def apply(self, state: None, event: ResearchEvent) -> None:
+        return None
+
+
+def test_fold_resumes_from_explicit_none_checkpoint(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    projection = OptionalFlagProjection()
+    with EventStore(database) as store:
+        store.append(_event_draft(1, event_type="run.started"))
+        store.append(_event_draft(2, event_type="run.heartbeat"))
+        store.append(_event_draft(3, event_type="run.completed"))
+        store.append(_event_draft(4, event_type="run.heartbeat"))
+        events = [item.event for item in replay_events(store, page_size=2)]
+
+    assert fold_events(events, projection) is None
+    checkpoint = fold_events(events[:3], projection)
+    assert checkpoint is None
+    assert fold_events(events[3:], projection, resume=None) is None
+    assert fold_events(events[3:], projection) is False
+    assert fold_events(events, NoneProjection(), resume=None) is None

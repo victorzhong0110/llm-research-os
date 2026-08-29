@@ -343,6 +343,17 @@ def test_corrupt_database_initialization_wraps_sqlite_error(tmp_path: Path) -> N
     assert isinstance(captured.value.__cause__, sqlite3.DatabaseError)
 
 
+def test_existing_only_open_wraps_corrupt_database_without_modifying_it(tmp_path: Path) -> None:
+    database = tmp_path / "corrupt.db"
+    payload = b"not a SQLite database\x00\xff"
+    database.write_bytes(payload)
+    with pytest.raises(EventStoreSchemaError, match="could not initialize") as captured:
+        EventStore(database, create=False, clock=_clock)
+    assert isinstance(captured.value.__cause__, sqlite3.DatabaseError)
+    assert database.read_bytes() == payload
+    assert list(tmp_path.iterdir()) == [database]
+
+
 def test_persisted_json_is_canonical_and_indexed(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database, clock=_clock) as store:

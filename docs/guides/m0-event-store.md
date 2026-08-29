@@ -59,8 +59,8 @@ uv run researchos events verify research.db --format json
 
 - `get` prints one verified ResearchEvent.
 - `list` returns one bounded page in global sequence order.
-- `replay` prints JSON Lines, one complete event per line, freezing the high-water sequence at
-  start so later appends are omitted from that run.
+- `replay` prints JSON Lines, one complete event per line. It freezes the high-water sequence with
+  `verify_integrity()` before the first line, so later appends are omitted from that run.
 - `verify` runs the full integrity scan and reports the event count.
 - Missing event IDs exit `1`. Database, input and integrity errors exit `2` with a ProblemReport
   on stderr.

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Protocol
+from typing import Protocol, cast
 
 from llm_research_os.events.models import ResearchEvent
+
+_RESUME_UNSET = object()
 
 
 class Projection[StateT](Protocol):
@@ -22,15 +24,15 @@ def fold_events[StateT](
     events: Iterable[ResearchEvent],
     projection: Projection[StateT],
     *,
-    resume: StateT | None = None,
+    resume: StateT | object = _RESUME_UNSET,
 ) -> StateT:
     """Fold verified events into projection state without performing I/O.
 
-    ``resume`` continues from a previously folded state. When omitted, the
-    projection starts from ``initial_state()``.
+    Omit ``resume`` to start from ``initial_state()``. Pass ``resume=None`` when
+    ``None`` is a legitimate checkpoint for ``StateT``.
     """
 
-    state = projection.initial_state() if resume is None else resume
+    state = projection.initial_state() if resume is _RESUME_UNSET else cast(StateT, resume)
     for event in events:
         state = projection.apply(state, event)
     return state

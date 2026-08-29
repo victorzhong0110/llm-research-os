@@ -256,3 +256,47 @@ def test_query_commands_do_not_change_event_count_or_sequence(
         main(command)
         capsys.readouterr()  # type: ignore[attr-defined]
         assert _fingerprint(database) == before
+
+
+def test_corrupt_database_returns_problem_report_for_all_event_commands(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    database = tmp_path / "corrupt.db"
+    payload = b"not a SQLite database\x00\xff arbitrary bytes"
+    database.write_bytes(payload)
+    before = database.stat().st_mtime_ns
+    commands = (
+        ["events", "get", str(database), "evt.store.1", "--format", "json"],
+        ["events", "list", str(database), "--format", "json"],
+        ["events", "replay", str(database)],
+        ["events", "verify", str(database), "--format", "json"],
+    )
+    for command in commands:
+        assert main(command) == 2
+        output = capsys.readouterr()  # type: ignore[attr-defined]
+        assert output.out == ""
+        assert "Traceback" not in output.err
+        assert "DatabaseError" not in output.err
+        problem = json.loads(output.err)
+        assert problem["kind"] == "ProblemReport"
+        assert problem["valid"] is False
+        assert database.read_bytes() == payload
+        assert database.stat().st_mtime_ns == before
+        assert list(tmp_path.iterdir()) == [database]
+
+
+def test_replay_sequence_gap_fails_before_any_output(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _populate(database, count=2)
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DROP TRIGGER events_reject_delete")
+        connection.execute("DELETE FROM events WHERE sequence = 1")
+        connection.execute(_trigger_statement("events_reject_delete"))
+
+    assert main(["events", "replay", str(database)]) == 2
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    assert output.out == ""
+    problem = json.loads(output.err)
+    assert problem["kind"] == "ProblemReport"
+    assert "contiguous" in problem["errors"][0]["message"]
