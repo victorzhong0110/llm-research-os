@@ -77,6 +77,17 @@ concurrent connections, duplicate rollback without sequence gaps, trigger-protec
 canonical JSON and digest verification, index disagreement, missing sequence detection, bounded
 reads, symlink rejection and fail-closed handling of unrelated databases.
 
+## Implementation status
+
+The local file object layer (`LocalArtifactStore`) stores content-addressed bytes outside SQLite
+under `objects/sha256/<ab>/<remaining digest>`. Import hashes raw file bytes, never canonical JSON.
+Operations are anchored at a recorded root inode and walk each directory component through held
+dirfds, so intermediate symlinks are not followed. Existing matching objects are reused; mismatched
+objects fail closed and are not overwritten. A successful `put` fsyncs new directory entries and the
+shard after `link`; a previous link-without-fsync is repaired by the next matching `put`.
+This does **not** add `artifacts` or `artifact_links` tables, media-type/URI protocol freeze,
+lifecycle/GC, artifact CLI or ResearchEvent emission. The accepted `6-DBC` decision is unchanged.
+
 ## References
 
 - [SQLite transactions](https://www.sqlite.org/lang_transaction.html)

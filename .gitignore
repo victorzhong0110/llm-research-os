@@ -13,6 +13,6 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
-artifacts/
-runs/
+/artifacts/
+/runs/
 *.log
