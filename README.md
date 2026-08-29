@@ -7,8 +7,8 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 ## 当前状态
 
 项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec、ResearchEvent
-协议基础和纯静态规划内核；SQLite 追加式事件事实源正在评审，当前仍不执行任何训练
-任务或真实 GPU 工作负载。
+协议基础、纯静态规划内核、SQLite 追加式事件事实源，以及本地内容寻址制品对象层；
+当前仍不执行任何训练任务或真实 GPU 工作负载。
 
 ## M0 目标
 
@@ -42,6 +42,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 - [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
+- [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 
@@ -111,8 +112,9 @@ uv run researchos events verify research.db --format json
 
 ## 当前安全边界
 
-M0 当前验证协议和差异、编译无副作用的静态计划，并可向本地 SQLite 追加、查询和回放事件事实。
-它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，也不写制品或持久化投影。
+M0 当前验证协议和差异、编译无副作用的静态计划，可向本地 SQLite 追加、查询和回放事件事实，
+并可将常规本地文件导入内容寻址制品目录。它不导入积木入口点，不执行任意训练代码、表达式、
+插件或远程 Worker，不写 SQLite 制品索引或持久化投影，也不提供制品 CLI 或网络上传。
 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
 [安全政策](SECURITY.md)。
 

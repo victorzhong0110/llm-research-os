@@ -18,7 +18,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0012](0012-python-and-dependencies.md) | Python 3.12+, pyproject and uv | Accepted | Written |
 | [0013](0013-schema-authority.md) | Versioned JSON Schema external contract | Accepted | Written |
 | [0014](0014-cloudevents-compatible-research-event.md) | CloudEvents-compatible ResearchEvent envelope | Accepted | Written |
-| [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay and in-memory folds implemented for review; persistent projections/artifacts pending |
+| [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay, in-memory folds and local file CAS implemented for review; SQLite artifact index and persistent projections pending |
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending |
 | 0017 | Minimal model interface and capability negotiation | Direction accepted | M1 implementation pending |
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |

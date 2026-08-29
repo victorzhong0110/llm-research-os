@@ -2,9 +2,9 @@
 
 > Status: Active M0 baseline
 >
-> Last reviewed: 2026-08-28
+> Last reviewed: 2026-08-29
 >
-> Scope: protocol validation, deterministic planning, local event persistence and planned control-plane boundaries
+> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects and planned control-plane boundaries
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -22,10 +22,11 @@ This document is intentionally updated as executable capability is added. A miti
 
 M0 parses local YAML/JSON, validates ResearchSpec, ResearchEvent and BlockManifest documents,
 generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report,
-can append complete events to a local SQLite fact store, and can query, verify and replay those
-facts through a read-only CLI. It does **not** execute workflow blocks, import manifest
+can append complete events to a local SQLite fact store, can query, verify and replay those
+facts through a read-only CLI, and can import regular local files into a content-addressed
+artifact directory. It does **not** execute workflow blocks, import manifest
 entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers,
-connect Workers, spend money, persist projections or upload artifacts.
+connect Workers, spend money, persist projections, index artifacts in SQLite or upload artifacts.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -40,7 +41,7 @@ connect Workers, spend money, persist projections or upload artifacts.
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
-| Artifact store and query projections | Integrity and confidentiality targets | In-memory rebuildable folds only; persistent projections planned |
+| Artifact store and query projections | Integrity and confidentiality targets | Local file CAS implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
 
@@ -77,9 +78,9 @@ connect Workers, spend money, persist projections or upload artifacts.
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 
-ResearchSpec, exact block resolution, pure planning and append-only event-store invariants have
-executable checks. Artifact, secret, policy-execution, projection and runtime-state invariants
-remain requirements for subsequent slices.
+ResearchSpec, exact block resolution, pure planning, append-only event-store and local artifact
+object invariants have executable checks. SQLite artifact indexing, secret, policy-execution,
+projection and runtime-state invariants remain requirements for subsequent slices.
 
 ## 6. Threat register
 
@@ -94,7 +95,7 @@ remain requirements for subsequent slices.
 | TM-007 | Secret appears in spec, log, event, model prompt or artifact | Credential and private-data exposure | Planned typed secret references, redaction and sink policies | Blocker before external APIs/Workers |
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
-| TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Planned content addressing and digest verification | Later M0 artifact slice |
+| TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; digest-derived paths; atomic link publish; existing mismatch fails closed and is not overwritten | File object layer tested; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
 | TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers | Event source and replay fold tested; persistent projections pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
@@ -134,6 +135,10 @@ Before merging executable capability, the following gates apply:
   cross-language canonical hashes; stable protocol work must adopt a normative encoding.
 - A host administrator can disable SQLite triggers, rewrite the file and recompute unkeyed
   digests. M0 has no signature, external anchor or deletion-proof hash chain.
+- Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a
+  host administrator who replaces object bytes and updates the digest in lockstep. Artifact rows,
+  media types and deletion/GC remain unimplemented, so there is still no durable index or
+  tombstone independent of the file tree.
 - ResearchEvent payload size/depth limits remain open; the local store does not yet add a
   separate operational byte/depth cap.
 - YAML node and depth budgets are enforced after alias-free composition. The 8 MiB source
