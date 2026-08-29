@@ -489,7 +489,11 @@ def test_future_expected_head_conflicts(tmp_path: Path) -> None:
         assert store.last_sequence() == 1
 
 
-@pytest.mark.parametrize("value", [True, False, "1", 1.0, -1, 2_147_483_648])
+@pytest.mark.parametrize(
+    "value",
+    [True, False, "1", 1.0, -1, 2_147_483_648],
+    ids=["bool-true", "bool-false", "str", "float", "negative", "above-max"],
+)
 def test_append_rejects_illegal_expected_last_sequence(tmp_path: Path, value: object) -> None:
     database = tmp_path / "research.db"
     with EventStore(database, clock=_clock) as store:
@@ -651,7 +655,9 @@ def test_last_sequence_wraps_sqlite_errors(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     store = EventStore(database, clock=_clock)
     store.close()
-    with pytest.raises(EventStoreError, match="could not read the global event sequence") as captured:
+    with pytest.raises(
+        EventStoreError, match="could not read the global event sequence"
+    ) as captured:
         store.last_sequence()
     assert isinstance(captured.value.__cause__, sqlite3.Error)
     assert "SELECT" not in str(captured.value)
@@ -677,7 +683,7 @@ def test_cas_precondition_does_not_change_schema_or_event_contract(tmp_path: Pat
         migration = store._connection.execute(
             "SELECT version, name, schema_digest FROM schema_migrations"
         ).fetchone()
-        assert migration == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        assert tuple(migration) == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
         columns = [
             row[1] for row in store._connection.execute("PRAGMA table_info(events)").fetchall()
         ]
