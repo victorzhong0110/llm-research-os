@@ -21,10 +21,11 @@ This document is intentionally updated as executable capability is added. A miti
 ## 2. Current boundary
 
 M0 parses local YAML/JSON, validates ResearchSpec, ResearchEvent and BlockManifest documents,
-generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report and
-can append complete events to a local SQLite fact store. It does **not** execute workflow blocks,
-import manifest entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start
-containers, connect Workers, spend money, project Run state or upload artifacts.
+generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report,
+can append complete events to a local SQLite fact store, and can query, verify and replay those
+facts through a read-only CLI. It does **not** execute workflow blocks, import manifest
+entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers,
+connect Workers, spend money, persist projections or upload artifacts.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -38,8 +39,8 @@ containers, connect Workers, spend money, project Run state or upload artifacts.
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
-| Local SQLite event store | Integrity and confidentiality target | Append/read foundation implemented for review |
-| Artifact store and query projections | Integrity and confidentiality targets | Planned in later M0 slices |
+| Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
+| Artifact store and query projections | Integrity and confidentiality targets | In-memory rebuildable folds only; persistent projections planned |
 
 ## 3. Protected assets
 
@@ -94,7 +95,7 @@ remain requirements for subsequent slices.
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Planned content addressing and digest verification | Later M0 artifact slice |
-| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; projections remain rebuildable consumers | Event source tested; projection replay pending |
+| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers | Event source and replay fold tested; persistent projections pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |

@@ -1,4 +1,4 @@
-"""Command-line entry point for the M0 protocol and planning toolchain."""
+"""Command-line entry point for the M0 protocol, planning and event-query toolchain."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from llm_research_os.blocks.schema import canonical_schema as canonical_block_sc
 from llm_research_os.blocks.schema import schema_matches as block_schema_matches
 from llm_research_os.blocks.schema import write_schema as write_block_schema
 from llm_research_os.canonical import content_digest
+from llm_research_os.events.models import ResearchEvent
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
@@ -45,11 +46,14 @@ from llm_research_os.problem import ProblemDetail, ProblemReport
 from llm_research_os.problem_schema import canonical_schema as canonical_problem_schema
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
+from llm_research_os.projections import replay_events
 from llm_research_os.spec.diff import semantic_diff
 from llm_research_os.spec.io import SpecLoadError, load_spec
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
+from llm_research_os.storage import EventStore, EventStoreError
+from llm_research_os.storage.store import MAX_READ_PAGE_SIZE
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -122,7 +126,63 @@ def build_parser() -> argparse.ArgumentParser:
         default="text",
         help="human-readable overview or versioned complete JSON",
     )
+
+    events = subparsers.add_parser("events", help="query and replay stored ResearchEvents")
+    event_commands = events.add_subparsers(dest="events_command", required=True)
+    events_get = event_commands.add_parser("get", help="read one verified ResearchEvent")
+    events_get.add_argument("database", type=Path)
+    events_get.add_argument("event_id")
+    _add_event_format_argument(events_get)
+    events_list = event_commands.add_parser("list", help="read one bounded page of events")
+    events_list.add_argument("database", type=Path)
+    events_list.add_argument(
+        "--after-sequence",
+        type=int,
+        default=0,
+        metavar="N",
+        help="return events with sequence greater than N",
+    )
+    events_list.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        metavar="N",
+        help=f"maximum events to return (1..{MAX_READ_PAGE_SIZE})",
+    )
+    _add_event_format_argument(events_list)
+    events_replay = event_commands.add_parser(
+        "replay", help="emit verified events as JSON Lines using paged reads"
+    )
+    events_replay.add_argument("database", type=Path)
+    events_replay.add_argument(
+        "--after-sequence",
+        type=int,
+        default=0,
+        metavar="N",
+        help="start after this global sequence",
+    )
+    events_replay.add_argument(
+        "--page-size",
+        type=int,
+        default=100,
+        metavar="N",
+        help=f"store page size (1..{MAX_READ_PAGE_SIZE})",
+    )
+    events_verify = event_commands.add_parser(
+        "verify", help="run full event-store integrity checks"
+    )
+    events_verify.add_argument("database", type=Path)
+    _add_event_format_argument(events_verify)
     return parser
+
+
+def _add_event_format_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="human-readable overview or deterministic JSON",
+    )
 
 
 def _add_registry_arguments(parser: argparse.ArgumentParser) -> None:
@@ -154,6 +214,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _dry_run(args.document, args.workflow, args.registry, args.format)
     if args.command == "blocks":
         return _blocks(args)
+    if args.command == "events":
+        return _events(args)
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -314,6 +376,131 @@ def _blocks(args: argparse.Namespace) -> int:
     )
     _print_registry_result(report, args.format)
     return 0
+
+
+def _events(args: argparse.Namespace) -> int:
+    if args.events_command == "get":
+        return _events_get(args.database, args.event_id, args.format)
+    if args.events_command == "list":
+        return _events_list(args.database, args.after_sequence, args.limit, args.format)
+    if args.events_command == "replay":
+        return _events_replay(args.database, args.after_sequence, args.page_size)
+    if args.events_command == "verify":
+        return _events_verify(args.database, args.format)
+    raise AssertionError(f"unhandled events command: {args.events_command}")
+
+
+def _events_get(database: Path, event_id: str, output_format: str) -> int:
+    try:
+        with EventStore(database, create=False) as store:
+            stored = store.get_event(event_id)
+    except (EventStoreError, OSError, ValueError) as exc:
+        _print_error(exc, output_format)
+        return 2
+    if stored is None:
+        _print_problem(
+            ProblemReport(
+                apiVersion="researchos.dev/v0alpha1",
+                kind="ProblemReport",
+                valid=False,
+                errors=(
+                    ProblemDetail(
+                        message=f"event not found: {event_id}",
+                        type="event-not-found",
+                    ),
+                ),
+            ),
+            output_format,
+        )
+        return 1
+    _print_event(stored.event, output_format)
+    return 0
+
+
+def _events_list(
+    database: Path,
+    after_sequence: int,
+    limit: int,
+    output_format: str,
+) -> int:
+    try:
+        with EventStore(database, create=False) as store:
+            page = store.read_events(after_sequence=after_sequence, limit=limit)
+            events = [item.event for item in page]
+    except (EventStoreError, OSError, ValueError) as exc:
+        _print_error(exc, output_format)
+        return 2
+    if output_format == "json":
+        payload = {"events": [_event_document(event) for event in events]}
+        print(_dumps_json(payload))
+        return 0
+    if not events:
+        print("events: 0")
+        return 0
+    for event in events:
+        print(
+            f"{_safe_text(event.sequence)} {_safe_text(event.id)} "
+            f"{_safe_text(event.type)} {_safe_text(event.streamid)}"
+        )
+    return 0
+
+
+def _events_replay(database: Path, after_sequence: int, page_size: int) -> int:
+    try:
+        with EventStore(database, create=False) as store:
+            for stored in replay_events(
+                store,
+                after_sequence=after_sequence,
+                page_size=page_size,
+            ):
+                print(_dumps_json(_event_document(stored.event), indent=None))
+    except (EventStoreError, OSError, ValueError) as exc:
+        _print_error(exc, "json")
+        return 2
+    return 0
+
+
+def _events_verify(database: Path, output_format: str) -> int:
+    try:
+        with EventStore(database, create=False) as store:
+            event_count = store.verify_integrity()
+    except (EventStoreError, OSError, ValueError) as exc:
+        _print_error(exc, output_format)
+        return 2
+    if output_format == "json":
+        print(_dumps_json({"eventCount": event_count, "valid": True}))
+        return 0
+    print(f"valid: {event_count} event(s)")
+    return 0
+
+
+def _print_event(event: ResearchEvent, output_format: str) -> None:
+    payload = _event_document(event)
+    if output_format == "json":
+        print(_dumps_json(payload))
+        return
+    print(f"id: {_safe_text(event.id)}")
+    print(f"type: {_safe_text(event.type)}")
+    print(f"sequence: {_safe_text(event.sequence)}")
+    print(f"streamid: {_safe_text(event.streamid)}")
+    print(f"streamversion: {_safe_text(event.streamversion)}")
+    print(f"time: {_safe_text(event.time)}")
+    print(f"subject: {_safe_text(event.subject)}")
+    print(_dumps_json(payload))
+
+
+def _event_document(event: ResearchEvent) -> dict[str, object]:
+    return event.model_dump(mode="json", by_alias=True)
+
+
+def _dumps_json(payload: object, *, indent: int | None = 2) -> str:
+    return json.dumps(
+        payload,
+        allow_nan=False,
+        ensure_ascii=False,
+        indent=indent,
+        sort_keys=True,
+    )
 
 
 def _print_dry_run(report: DryRunReport, output_format: str) -> None:

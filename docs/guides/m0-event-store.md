@@ -41,8 +41,33 @@ with EventStore("research.db") as store:
 ```
 
 Every read revalidates canonical JSON, the ResearchEvent contract, its SHA-256 digest and indexed
-columns. `read_events` is a bounded storage primitive, not the user-facing query/replay interface;
-that interface belongs to a separate Cursor work package.
+columns. `read_events` is a bounded storage primitive. Query and replay CLI commands consume it
+through paged reads and never load the whole store into memory.
+
+`EventStore(path)` creates a versioned database when the path is missing.
+`EventStore(path, create=False)` opens an existing database with SQLite `mode=ro` and fails without
+creating a file if the path does not exist. Query commands use that existing-only mode.
+
+## Query and replay CLI
+
+```bash
+uv run researchos events get research.db evt.example.1 --format json
+uv run researchos events list research.db --after-sequence 0 --limit 100 --format json
+uv run researchos events replay research.db --after-sequence 0 --page-size 100
+uv run researchos events verify research.db --format json
+```
+
+- `get` prints one verified ResearchEvent.
+- `list` returns one bounded page in global sequence order.
+- `replay` prints JSON Lines, one complete event per line, freezing the high-water sequence at
+  start so later appends are omitted from that run.
+- `verify` runs the full integrity scan and reports the event count.
+- Missing event IDs exit `1`. Database, input and integrity errors exit `2` with a ProblemReport
+  on stderr.
+- These commands do not accept SQL, sort expressions or field expressions, and they do not append.
+
+In-memory projection folds consume already-verified ordered events. Persistent projection tables
+are not part of this slice.
 
 ## Operational boundary
 

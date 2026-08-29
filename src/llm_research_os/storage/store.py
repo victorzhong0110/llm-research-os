@@ -83,18 +83,45 @@ def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
     return source, False
 
 
+def _connect_sqlite(
+    path: Path,
+    *,
+    create: bool,
+    is_new: bool,
+    timeout_seconds: float,
+) -> sqlite3.Connection:
+    if create:
+        return sqlite3.connect(path, timeout=timeout_seconds, autocommit=True)
+    try:
+        return sqlite3.connect(
+            f"{path.as_uri()}?mode=ro",
+            timeout=timeout_seconds,
+            autocommit=True,
+            uri=True,
+        )
+    except sqlite3.OperationalError as exc:
+        if is_new:
+            raise EventStoreSchemaError(f"database does not exist: {path}") from exc
+        raise EventStoreSchemaError(f"could not open database: {path}") from exc
+
+
 class EventStore:
     """A single-connection local event store.
 
     Callers provide every ResearchEvent field except ``sequence``, ``sequencetype`` and
     ``streamversion``. The store assigns those three fields atomically and returns the
     complete external-contract event that was persisted.
+
+    ``EventStore(path)`` creates a versioned database when the path does not exist.
+    ``EventStore(path, create=False)`` opens an existing database with SQLite
+    ``mode=ro`` and fails without creating a file if the path is missing.
     """
 
     def __init__(
         self,
         path: str | Path,
         *,
+        create: bool = True,
         timeout_seconds: float = DEFAULT_BUSY_TIMEOUT_SECONDS,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
@@ -103,16 +130,17 @@ class EventStore:
         self._path, is_new = _validate_database_path(path)
         self._clock = clock
         try:
-            self._connection = sqlite3.connect(
+            self._connection = _connect_sqlite(
                 self._path,
-                timeout=timeout_seconds,
-                autocommit=True,
+                create=create,
+                is_new=is_new,
+                timeout_seconds=timeout_seconds,
             )
             self._connection.row_factory = sqlite3.Row
-            if is_new:
+            if create and is_new:
                 os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
             self._configure_connection(timeout_seconds)
-            self._initialize_or_verify_schema()
+            self._initialize_or_verify_schema(allow_create=create)
         except sqlite3.Error as exc:
             connection = getattr(self, "_connection", None)
             if connection is not None:
@@ -204,7 +232,7 @@ class EventStore:
                 self._connection.execute("ROLLBACK")
             raise
 
-    def _initialize_or_verify_schema(self) -> None:
+    def _initialize_or_verify_schema(self, *, allow_create: bool) -> None:
         application_id = cast(
             int,
             self._connection.execute("PRAGMA application_id").fetchone()[0],
@@ -212,6 +240,10 @@ class EventStore:
         if application_id == 0:
             # A concurrent creator may commit between separate header/schema reads.
             # Let the serialized transaction below re-check both from one write slot.
+            if not allow_create:
+                raise EventStoreSchemaError(
+                    "database is not an initialized LLM Research OS event store"
+                )
             self._create_schema()
         elif application_id != APPLICATION_ID:
             raise EventStoreSchemaError(

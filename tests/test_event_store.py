@@ -382,3 +382,27 @@ def test_canonical_storage_preserves_explicit_optional_nulls(tmp_path: Path) -> 
         event_json = connection.execute("SELECT event_json FROM events").fetchone()[0]
     assert '"correlationid":null' in event_json
     assert stored.event.correlationid is None
+
+
+def test_existing_only_open_does_not_create_a_missing_database(tmp_path: Path) -> None:
+    database = tmp_path / "missing.db"
+    with pytest.raises(EventStoreSchemaError, match="does not exist"):
+        EventStore(database, create=False, clock=_clock)
+    assert not database.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_existing_only_open_reads_an_initialized_database(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft())
+    with EventStore(database, create=False, clock=_clock) as store:
+        assert store.get_event("evt.store.1") is not None
+        assert store.verify_integrity() == 1
+
+
+def test_default_constructor_still_creates_a_new_database(tmp_path: Path) -> None:
+    database = tmp_path / "created.db"
+    with EventStore(database, clock=_clock) as store:
+        assert store.verify_integrity() == 0
+    assert database.is_file()

@@ -96,10 +96,23 @@ uv run researchos dry-run examples/valid/bounded-loop.yaml \
   --registry examples/manifests/example-train.yaml
 ```
 
+## 事件查询与回放
+
+只读命令打开既有 SQLite 数据库，不会在路径缺失时创建文件，也不会追加事件：
+
+```bash
+uv run researchos events get research.db evt.example.1 --format json
+uv run researchos events list research.db --after-sequence 0 --limit 100
+uv run researchos events replay research.db --page-size 100
+uv run researchos events verify research.db --format json
+```
+
+`replay` 输出 JSON Lines，并在开始时冻结高水位，因此执行期间追加的新事件不会进入本次结果。
+
 ## 当前安全边界
 
-M0 当前验证协议和差异、编译无副作用的静态计划，并可向本地 SQLite 追加事件事实。
-它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，也不写制品。
+M0 当前验证协议和差异、编译无副作用的静态计划，并可向本地 SQLite 追加、查询和回放事件事实。
+它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，也不写制品或持久化投影。
 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
 [安全政策](SECURITY.md)。
 
