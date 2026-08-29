@@ -54,9 +54,10 @@ Valid traces cover success plus review, explicit retry, unknown/lost recovery, c
 racing with completion, and requested cancellation. Invalid traces cover illegal first events,
 inferred Run completion, retry while lost/unknown, reused Attempt IDs, retry forks, ordinal
 skips, unrequested cancel, guessing lost as cancelled, terminal rewrites, non-terminal review,
-binding drift, sequence errors and closed-payload failures. Tests also prove checkpoint/resume
-equality, EventStore rebuild determinism, project-scoped `runId`, heartbeat non-inference,
-unrelated-type no-ops and bounded retained state.
+binding drift, sequence errors and closed-payload failures. External snapshots/checkpoints
+that violate the same status, retry-chain, or cursor invariants are rejected. Tests also prove
+checkpoint/resume equality, EventStore rebuild determinism, project-scoped `runId`, heartbeat
+non-inference, unrelated-type no-ops and bounded retained state.
 
 ## References
 

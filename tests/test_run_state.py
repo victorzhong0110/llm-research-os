@@ -155,13 +155,18 @@ def test_attempt_succeeded_does_not_complete_the_run() -> None:
     assert snapshot.review.reviewed is False
 
 
-def test_full_fold_matches_checkpoint_resume() -> None:
-    events = _load_trace(EXAMPLES / "valid" / "02-failed-retry-succeeded.json")["events"]
+@pytest.mark.parametrize("path", sorted((EXAMPLES / "valid").glob("*.json")), ids=lambda p: p.name)
+def test_full_fold_matches_checkpoint_resume(path: Path) -> None:
+    events = _load_trace(path)["events"]
     projection = RunStateProjection(project_id="project.example", run_id="run.example")
     parsed = _events(events)
     full = fold_events(parsed, projection)
+    if full is not None:
+        assert validate_run_snapshot_document(run_snapshot_document(full)) == full
     for index in range(len(parsed) + 1):
         checkpoint = fold_events(parsed[:index], projection)
+        if checkpoint is not None:
+            assert validate_run_snapshot_document(run_snapshot_document(checkpoint)) == checkpoint
         resumed = fold_events(parsed[index:], projection, resume=checkpoint)
         assert resumed == full
 
@@ -477,6 +482,105 @@ def test_bool_is_not_accepted_as_a_snapshot_sequence() -> None:
         validate_run_snapshot_document(snapshot)
 
 
+def _clone_valid_snapshot(name: str) -> dict[str, Any]:
+    return json.loads(json.dumps(_load_trace(EXAMPLES / "valid" / name)["snapshot"]))
+
+
+def _unreview(document: dict[str, Any]) -> None:
+    document["review"] = {
+        "reviewed": False,
+        "eventId": None,
+        "sequence": None,
+        "decisionId": None,
+    }
+
+
+def _assert_impossible_snapshot(document: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        validate_run_snapshot_document(document)
+
+
+def test_failed_run_with_succeeded_latest_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["status"] = "failed"
+    _assert_impossible_snapshot(document)
+
+
+def test_completed_run_with_failed_latest_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["attempts"][0]["status"] = "failed"
+    document["attempts"][0]["retryHint"] = "retryable"
+    _assert_impossible_snapshot(document)
+
+
+def test_retry_pending_with_succeeded_latest_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["status"] = "retry_pending"
+    _unreview(document)
+    _assert_impossible_snapshot(document)
+
+
+def test_lost_run_with_mismatched_active_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    _unreview(document)
+    document["status"] = "lost"
+    document["attempts"][0]["status"] = "running"
+    document["activeAttemptId"] = document["attempts"][0]["attemptId"]
+    _assert_impossible_snapshot(document)
+
+
+def test_unknown_run_with_mismatched_active_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    _unreview(document)
+    document["status"] = "unknown"
+    document["attempts"][0]["status"] = "lost"
+    document["activeAttemptId"] = document["attempts"][0]["attemptId"]
+    _assert_impossible_snapshot(document)
+
+
+def test_cancelled_run_without_cancellation_request_is_rejected() -> None:
+    document = _clone_valid_snapshot("05-cancel-requested-then-cancelled.json")
+    document["cancellationRequested"] = False
+    _assert_impossible_snapshot(document)
+
+
+def test_retry_of_pointing_at_the_wrong_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("02-failed-retry-succeeded.json")
+    document["attempts"][1]["retryOf"] = "attempt.other"
+    _assert_impossible_snapshot(document)
+
+
+def test_retry_chain_with_non_failed_previous_attempt_is_rejected() -> None:
+    document = _clone_valid_snapshot("02-failed-retry-succeeded.json")
+    document["attempts"][0]["status"] = "succeeded"
+    document["attempts"][0]["retryHint"] = None
+    _assert_impossible_snapshot(document)
+
+
+def test_attempt_sequence_ahead_of_run_cursor_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["attempts"][0]["lastSequence"] = document["lastSequence"] + 1
+    _assert_impossible_snapshot(document)
+
+
+def test_attempt_sequences_must_increase_by_ordinal() -> None:
+    document = _clone_valid_snapshot("02-failed-retry-succeeded.json")
+    document["attempts"][1]["lastSequence"] = document["attempts"][0]["lastSequence"]
+    _assert_impossible_snapshot(document)
+
+
+def test_heartbeat_sequence_ahead_of_attempt_cursor_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["attempts"][0]["lastHeartbeatSequence"] = document["attempts"][0]["lastSequence"] + 1
+    _assert_impossible_snapshot(document)
+
+
+def test_review_sequence_ahead_of_run_cursor_is_rejected() -> None:
+    document = _clone_valid_snapshot("01-single-attempt-succeeded-reviewed.json")
+    document["review"]["sequence"] = document["lastSequence"] + 1
+    _assert_impossible_snapshot(document)
+
+
 def _collection_lengths(snapshot: RunSnapshot) -> dict[str, int]:
     lengths: dict[str, int] = {}
     for name, value in vars(snapshot).items():
@@ -546,6 +650,34 @@ def test_payload_error_does_not_echo_secret_text() -> None:
     with pytest.raises(RunPayloadError) as exc_info:
         _fold([_event(1, "run.queued", {**_queued_payload(), "token": "sk-secret-value"})])
     assert "sk-secret-value" not in str(exc_info.value)
+    assert "token" not in str(exc_info.value)
+
+
+def test_payload_error_does_not_echo_hostile_unknown_key() -> None:
+    hostile_key = "\x1b[31msecret-field\nnext-line"
+    with pytest.raises(RunPayloadError) as exc_info:
+        _fold([_event(1, "run.queued", {**_queued_payload(), hostile_key: True})])
+    error = exc_info.value
+    rendered = "".join(str(part) for part in (str(error), *error.args, repr(error)))
+    assert hostile_key not in rendered
+    assert "\x1b" not in rendered
+    assert "\n" not in rendered
+    assert "secret-field" not in rendered
+    assert error.__cause__ is None
+    assert error.__context__ is None
+    assert "run.queued" in str(error)
+    assert "evt.run.queued.1" in str(error)
+    assert "sequence 1" in str(error)
+
+
+def test_ordinary_invalid_payload_still_raises_run_payload_error() -> None:
+    with pytest.raises(RunPayloadError) as exc_info:
+        _fold([_event(1, "run.queued", {"workflowId": "wf.train"})])
+    message = str(exc_info.value)
+    assert "run.queued" in message
+    assert "evt.run.queued.1" in message
+    assert "sequence 1" in message
+    assert "workflowId" not in message
 
 
 def test_fold_resume_none_starts_from_empty_run() -> None:

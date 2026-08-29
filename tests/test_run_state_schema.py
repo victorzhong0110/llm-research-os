@@ -87,3 +87,11 @@ def test_schema_invalid_snapshots_are_rejected_by_the_model() -> None:
         assert list(validator.iter_errors(document)), name
         with pytest.raises(ValidationError):
             validate_run_snapshot_document(document)
+
+
+def test_schema_does_not_encode_cross_field_status_invariants() -> None:
+    document = _valid_snapshot()
+    document["status"] = "failed"
+    _validator().validate(document)
+    with pytest.raises(ValidationError):
+        validate_run_snapshot_document(document)

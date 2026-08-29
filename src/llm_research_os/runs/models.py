@@ -329,6 +329,11 @@ class AttemptSnapshot(RunStateDocumentModel):
                 raise ValueError("failed attempts require retryHint")
         elif self.retry_hint is not None:
             raise ValueError("retryHint is only recorded on failed attempts")
+        if (
+            self.last_heartbeat_sequence is not None
+            and self.last_heartbeat_sequence > self.last_sequence
+        ):
+            raise ValueError("lastHeartbeatSequence must not exceed the attempt lastSequence")
         return self
 
 
@@ -365,25 +370,138 @@ class RunSnapshot(RunStateDocumentModel):
 
     @model_validator(mode="after")
     def snapshot_invariants_hold(self) -> Self:
-        ordinals = [attempt.ordinal for attempt in self.attempts]
-        if ordinals != list(range(1, len(self.attempts) + 1)):
-            raise ValueError("attempts must be stored by contiguous ordinal starting at 1")
-        attempt_ids = [attempt.attempt_id for attempt in self.attempts]
-        if len(attempt_ids) != len(set(attempt_ids)):
-            raise ValueError("attempt IDs must be unique")
-        unresolved = [
-            attempt for attempt in self.attempts if attempt.status in UNRESOLVED_ATTEMPT_STATUSES
-        ]
-        if len(unresolved) > 1:
-            raise ValueError("a run may have at most one unresolved attempt")
-        expected_active = unresolved[0].attempt_id if unresolved else None
-        if self.active_attempt_id != expected_active:
-            raise ValueError("activeAttemptId must match the unresolved attempt")
-        if self.review.reviewed and self.status not in TERMINAL_RUN_STATUSES:
-            raise ValueError("reviewed is only derived after a terminal run status")
-        if len(self.attempts) > self.max_attempts:
-            raise ValueError("attempts exceed maxAttempts")
+        assert_run_snapshot_invariants(self)
         return self
+
+
+def assert_run_snapshot_invariants(snapshot: RunSnapshot) -> None:
+    """Raise ValueError if a snapshot violates protocol semantics.
+
+    JSON Schema stays structural. These cross-field rules are enforced here so
+    that external documents, checkpoints, and reducer outputs share one check.
+    ``model_copy(update=...)`` does not re-run validators, so the reducer must
+    call this after internal updates.
+    """
+
+    ordinals = [attempt.ordinal for attempt in snapshot.attempts]
+    if ordinals != list(range(1, len(snapshot.attempts) + 1)):
+        raise ValueError("attempts must be stored by contiguous ordinal starting at 1")
+    attempt_ids = [attempt.attempt_id for attempt in snapshot.attempts]
+    if len(attempt_ids) != len(set(attempt_ids)):
+        raise ValueError("attempt IDs must be unique")
+    unresolved = [
+        attempt for attempt in snapshot.attempts if attempt.status in UNRESOLVED_ATTEMPT_STATUSES
+    ]
+    if len(unresolved) > 1:
+        raise ValueError("a run may have at most one unresolved attempt")
+    expected_active = unresolved[0].attempt_id if unresolved else None
+    if snapshot.active_attempt_id != expected_active:
+        raise ValueError("activeAttemptId must match the unresolved attempt")
+    if snapshot.review.reviewed and snapshot.status not in TERMINAL_RUN_STATUSES:
+        raise ValueError("reviewed is only derived after a terminal run status")
+    if len(snapshot.attempts) > snapshot.max_attempts:
+        raise ValueError("attempts exceed maxAttempts")
+    _assert_run_status_matches_attempts(snapshot, unresolved)
+    _assert_retry_chain(snapshot.attempts)
+    _assert_sequence_cursors(snapshot)
+
+
+def _assert_run_status_matches_attempts(
+    snapshot: RunSnapshot,
+    unresolved: list[AttemptSnapshot],
+) -> None:
+    latest = snapshot.attempts[-1] if snapshot.attempts else None
+    active = unresolved[0] if unresolved else None
+    status = snapshot.status
+    if status is RunStatus.QUEUED:
+        if snapshot.attempts:
+            raise ValueError("queued runs must not have attempts")
+        if snapshot.active_attempt_id is not None:
+            raise ValueError("queued runs must not have an active attempt")
+        return
+    if status is RunStatus.LOST:
+        if active is None or active.status is not AttemptStatus.LOST:
+            raise ValueError("lost runs require a unique active lost attempt")
+        return
+    if status is RunStatus.UNKNOWN:
+        if active is None or active.status is not AttemptStatus.UNKNOWN:
+            raise ValueError("unknown runs require a unique active unknown attempt")
+        return
+    if status is RunStatus.RETRY_PENDING:
+        if active is not None:
+            raise ValueError("retry_pending runs must not have an active attempt")
+        if latest is None or latest.status is not AttemptStatus.FAILED:
+            raise ValueError("retry_pending runs require the latest attempt to have failed")
+        return
+    if status is RunStatus.COMPLETED:
+        if active is not None:
+            raise ValueError("completed runs must not have an active attempt")
+        if latest is None or latest.status is not AttemptStatus.SUCCEEDED:
+            raise ValueError("completed runs require the latest attempt to have succeeded")
+        return
+    if status is RunStatus.FAILED:
+        if active is not None:
+            raise ValueError("failed runs must not have an active attempt")
+        if latest is None or latest.status is not AttemptStatus.FAILED:
+            raise ValueError("failed runs require the latest attempt to have failed")
+        return
+    if status is RunStatus.CANCELLED:
+        if not snapshot.cancellation_requested:
+            raise ValueError("cancelled runs require a cancellation request")
+        if active is not None:
+            raise ValueError("cancelled runs must not have an active attempt")
+        if latest is not None and latest.status is not AttemptStatus.CANCELLED:
+            raise ValueError("cancelled runs require no attempts or a latest cancelled attempt")
+        return
+    if status is RunStatus.RUNNING:
+        no_attempts = latest is None
+        active_in_progress = active is not None and active.status in {
+            AttemptStatus.QUEUED,
+            AttemptStatus.RUNNING,
+        }
+        settled_latest = (
+            active is None
+            and latest is not None
+            and latest.status in {AttemptStatus.SUCCEEDED, AttemptStatus.CANCELLED}
+        )
+        if not (no_attempts or active_in_progress or settled_latest):
+            raise ValueError("running runs only allow reachable intermediate attempt states")
+        return
+    raise ValueError("unsupported run status")
+
+
+def _assert_retry_chain(attempts: tuple[AttemptSnapshot, ...]) -> None:
+    for index, attempt in enumerate(attempts):
+        if index == 0:
+            if attempt.retry_of is not None or attempt.retry_decision_id is not None:
+                raise ValueError("the first attempt must not declare retry identity")
+            continue
+        previous = attempts[index - 1]
+        if previous.status is not AttemptStatus.FAILED:
+            raise ValueError("retry attempts require the previous attempt to have failed")
+        if attempt.retry_of != previous.attempt_id:
+            raise ValueError("retryOf must equal the previous attempt id")
+        if attempt.retry_decision_id is None:
+            raise ValueError("retry attempts require retryOf and retryDecisionId")
+
+
+def _assert_sequence_cursors(snapshot: RunSnapshot) -> None:
+    previous_sequence = 0
+    for attempt in snapshot.attempts:
+        if attempt.last_sequence > snapshot.last_sequence:
+            raise ValueError("attempt lastSequence must not exceed the run lastSequence")
+        if (
+            attempt.last_heartbeat_sequence is not None
+            and attempt.last_heartbeat_sequence > attempt.last_sequence
+        ):
+            raise ValueError("lastHeartbeatSequence must not exceed the attempt lastSequence")
+        if attempt.last_sequence <= previous_sequence:
+            raise ValueError("attempt lastSequence must strictly increase by ordinal")
+        previous_sequence = attempt.last_sequence
+    if snapshot.review.reviewed:
+        review_sequence = snapshot.review.sequence
+        if review_sequence is not None and review_sequence > snapshot.last_sequence:
+            raise ValueError("review sequence must not exceed the run lastSequence")
 
 
 def parse_lifecycle_payload(event: ResearchEvent) -> RunStateDocumentModel:
@@ -391,9 +509,13 @@ def parse_lifecycle_payload(event: ResearchEvent) -> RunStateDocumentModel:
 
     model = PAYLOAD_MODELS[event.type]
     try:
-        return model.model_validate(event.data.payload)
-    except ValidationError as exc:
-        raise RunPayloadError(_payload_error_message(event, exc)) from None
+        validated = model.model_validate(event.data.payload)
+    except ValidationError:
+        payload_error = RunPayloadError(_payload_error_message(event))
+    else:
+        return validated
+    # Raise outside the except so ValidationError is not attached as context.
+    raise payload_error
 
 
 def validate_run_snapshot_document(document: dict[str, Any]) -> RunSnapshot:
@@ -408,20 +530,8 @@ def run_snapshot_document(snapshot: RunSnapshot) -> dict[str, Any]:
     return snapshot.model_dump(mode="json", by_alias=True)
 
 
-def _payload_error_message(event: ResearchEvent, exc: ValidationError) -> str:
-    fields: list[str] = []
-    seen: set[str] = set()
-    for error in exc.errors():
-        location = error.get("loc", ())
-        if not location:
-            continue
-        name = str(location[-1])
-        if name in seen:
-            continue
-        seen.add(name)
-        fields.append(name)
-    suffix = f" (fields: {', '.join(fields)})" if fields else ""
+def _payload_error_message(event: ResearchEvent) -> str:
     return (
         f"invalid payload for lifecycle type {event.type} "
-        f"(event id {event.id}, sequence {event.sequence}){suffix}"
+        f"(event id {event.id}, sequence {event.sequence})"
     )

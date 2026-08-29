@@ -51,6 +51,7 @@ from llm_research_os.runs.models import (
     RunReviewedPayload,
     RunSnapshot,
     RunStatus,
+    assert_run_snapshot_invariants,
     parse_lifecycle_payload,
 )
 
@@ -497,13 +498,19 @@ def _transition_attempt(
 
 
 def _stamp(state: RunSnapshot, event: ResearchEvent, **updates: Any) -> RunSnapshot:
-    return state.model_copy(
+    copied = state.model_copy(
         update={
             "last_event_id": event.id,
             "last_sequence": int(event.sequence),
             **updates,
         }
     )
+    # model_copy(update=...) does not re-run validators; keep reducer output honest.
+    try:
+        assert_run_snapshot_invariants(copied)
+    except ValueError as exc:
+        raise RunTransitionError(_event_label(event, str(exc))) from None
+    return copied
 
 
 def _replace_attempt(

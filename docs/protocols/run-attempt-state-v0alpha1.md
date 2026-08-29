@@ -333,6 +333,13 @@ The committed `RunSnapshot` example:
 Retained state is bounded by `maxAttempts=32`. Snapshots MUST NOT keep an unbounded set of
 event IDs or copies of the event history.
 
+External `RunSnapshot` documents, including checkpoint/resume values, MUST satisfy the same
+Run/Attempt status consistency, retry-chain, and sequence-cursor invariants as reducer
+output. JSON Schema remains structural only. The Python semantic validator rejects
+impossible combinations such as a `failed` Run whose latest Attempt is `succeeded`, a retry
+whose `retryOf` is not the previous failed Attempt, or an Attempt/review cursor ahead of
+the Run cursor. Global `sequence` MAY contain gaps.
+
 ## 11. Fail-closed errors
 
 Illegal first lifecycle events, illegal jumps, bad payloads, Python field names, booleans used
@@ -340,9 +347,11 @@ as integers, trimmed identifiers, unknown fields, reversed or duplicate sequence
 digest binding drift, reused Attempt IDs, skipped ordinals, retry forks, missing
 `retryDecisionId`, retry during `lost`/`unknown`, exceeding `maxAttempts`, reverted
 `cancellationRequested`, cancelled without a request, rewritten terminal Attempt/Run states,
-and duplicate or non-terminal `run.reviewed` MUST fail closed.
+and duplicate or non-terminal `run.reviewed` MUST fail closed. Semantically impossible
+snapshots MUST also fail closed.
 
-Errors MUST NOT carry sensitive payload bodies. Stable types include `RunStateError`,
+Errors MUST NOT carry sensitive payload bodies, untrusted payload field names, or other
+potentially sensitive document text. Stable types include `RunStateError`,
 `RunTransitionError` and `RunPayloadError`.
 
 ## 12. Conformance
