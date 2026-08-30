@@ -13,8 +13,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from llm_research_os.blocks.models import RuntimeType
+from llm_research_os.blocks.builtins import builtin_manifests
+from llm_research_os.blocks.models import BlockManifest, RuntimeType
 from llm_research_os.blocks.registry import BlockRegistry
+from llm_research_os.canonical import content_digest
 from llm_research_os.events.models import (
     CLOUD_EVENTS_INTEGER_MAX,
     RESEARCH_EVENT_SCHEMA_ID,
@@ -315,7 +317,8 @@ def _require_supported_plan(
     ):
         raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
     if (
-        plan.resources
+        spec.resources
+        or plan.resources
         or plan.policy_requirements
         or plan.graph.edges
         or len(plan.graph.stages) != 1
@@ -336,11 +339,34 @@ def _require_supported_plan(
     ):
         raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
     registered = registry.resolve(_SUPPORTED_BLOCK_ID, _SUPPORTED_BLOCK_VERSION)
-    if planned.block.manifest_digest != registered.digest:
-        raise SimulationError("simulation plan is not bound to this spec and registry")
-    if registered.manifest.runtime.type is not RuntimeType.SIMULATED:
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
+    canonical_digest = _canonical_simulated_digest()
+    if (
+        planned.block.manifest_digest != canonical_digest
+        or registered.digest != canonical_digest
+        or registered.manifest.permissions
+        or planned.block.manifest_digest != registered.digest
+        or registered.manifest.runtime.type is not RuntimeType.SIMULATED
+    ):
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest"
+        )
     return spec_node
+
+
+def _canonical_simulated_digest() -> str:
+    matches = [
+        manifest
+        for manifest in builtin_manifests()
+        if str(manifest.metadata.id) == _SUPPORTED_BLOCK_ID
+        and str(manifest.metadata.version) == _SUPPORTED_BLOCK_VERSION
+    ]
+    if len(matches) != 1:
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest"
+        )
+    payload = matches[0].model_dump(mode="json", by_alias=True, exclude_none=True)
+    snapshot = BlockManifest.model_validate(payload)
+    return content_digest(snapshot.model_dump(mode="json", by_alias=True, exclude_none=True))
 
 
 def _require_outcome(task: TaskBlock) -> str:
@@ -418,13 +444,13 @@ def _continuation(
     full = _path_for_outcome(outcome)
     if snapshot is None:
         return full, None
-    if snapshot.cancellation_requested:
-        return (), SimulationDisposition.UNRESOLVED
     if snapshot.status is RunStatus.COMPLETED:
         return (), SimulationDisposition.COMPLETED
     if snapshot.status is RunStatus.FAILED:
         return (), SimulationDisposition.FAILED
     if snapshot.status in {RunStatus.UNKNOWN, RunStatus.LOST, RunStatus.CANCELLED}:
+        return (), SimulationDisposition.UNRESOLVED
+    if _unresolved_cancellation(snapshot):
         return (), SimulationDisposition.UNRESOLVED
     emitted = _emitted_types(snapshot)
     if emitted != full[: len(emitted)]:
@@ -433,6 +459,20 @@ def _continuation(
     if not remaining:
         return (), _disposition_for_snapshot(snapshot)
     return remaining, None
+
+
+def _unresolved_cancellation(snapshot: RunSnapshot) -> bool:
+    if snapshot.cancellation_requested:
+        return True
+    active_id = snapshot.active_attempt_id
+    if active_id is not None:
+        active = next(
+            (item for item in snapshot.attempts if item.attempt_id == active_id),
+            None,
+        )
+        if active is not None and active.cancellation_requested:
+            return True
+    return bool(snapshot.attempts and snapshot.attempts[-1].status is AttemptStatus.CANCELLED)
 
 
 def _disposition_for_snapshot(snapshot: RunSnapshot) -> SimulationDisposition:

@@ -26,7 +26,7 @@ from llm_research_os.execution import (
 )
 from llm_research_os.execution.simulated import FAILURE_PATH, SUCCESS_PATH, UNKNOWN_PATH
 from llm_research_os.projections import fold_events, replay_events
-from llm_research_os.runs import RunControl, RunStateProjection, RunStatus
+from llm_research_os.runs import AttemptStatus, RunControl, RunStateProjection, RunStatus
 from llm_research_os.spec.io import load_document, load_spec
 from llm_research_os.storage import (
     DuplicateEventError,
@@ -146,6 +146,38 @@ def _foreign_draft(event_id: str, *, streamid: str = "stream.foreign") -> dict[s
             "evidenceRefs": [],
             "runId": "run.foreign",
         },
+    }
+
+
+def _lifecycle_draft(
+    event_type: str,
+    event_id: str,
+    *,
+    payload: dict[str, Any],
+    attempt_id: str | None = None,
+) -> dict[str, Any]:
+    data: dict[str, Any] = {
+        "schemaVersion": "v0alpha1",
+        "actor": {"id": "researcher.alice"},
+        "projectId": PROJECT,
+        "experimentRevision": 1,
+        "payload": payload,
+        "evidenceRefs": [],
+        "runId": RUN,
+    }
+    if attempt_id is not None:
+        data["attemptId"] = attempt_id
+    return {
+        "specversion": "1.0",
+        "id": event_id,
+        "source": SOURCE,
+        "type": event_type,
+        "time": TIME,
+        "subject": RUN,
+        "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+        "datacontenttype": "application/json",
+        "streamid": "stream.simulated",
+        "data": data,
     }
 
 
@@ -357,6 +389,12 @@ def test_multi_task_edge_approval_loop_and_resources_write_nothing(tmp_path: Pat
             runtime.run(with_resource, _request())
         _assert_unchanged(store, 0)
 
+        unused_resource = _spec_document()
+        unused_resource["resources"] = [{"id": "cpu.unused", "kind": "cpu", "paid": False}]
+        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+            runtime.run(unused_resource, _request())
+        _assert_unchanged(store, 0)
+
         with_approval = _spec_document()
         with_approval["workflows"][0]["graph"]["nodes"] = [
             {
@@ -378,6 +416,16 @@ def test_multi_task_edge_approval_loop_and_resources_write_nothing(tmp_path: Pat
                 load_spec(EXAMPLES / "valid/bounded-loop.yaml"),
                 _request(workflow_id="workflow.iteration"),
             )
+        _assert_unchanged(store, 0)
+
+
+def test_unreferenced_spec_resources_write_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    unused = _spec_document()
+    unused["resources"] = [{"id": "cpu.unused", "kind": "cpu", "paid": False}]
+    with EventStore(database) as store:
+        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+            _runtime(store).run(unused, _request())
         _assert_unchanged(store, 0)
 
 
@@ -671,26 +719,11 @@ def test_cancellation_requested_stops_without_inferring_outcome(tmp_path: Path) 
             _runtime(store).run(spec, request)
     with EventStore(database) as store:
         RunControl(store, project_id=PROJECT, run_id=RUN).append(
-            {
-                "specversion": "1.0",
-                "id": "evt.cancel.requested",
-                "source": SOURCE,
-                "type": "run.cancel.requested",
-                "time": TIME,
-                "subject": RUN,
-                "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
-                "datacontenttype": "application/json",
-                "streamid": "stream.simulated",
-                "data": {
-                    "schemaVersion": "v0alpha1",
-                    "actor": {"id": "researcher.alice"},
-                    "projectId": PROJECT,
-                    "experimentRevision": 1,
-                    "payload": {"reasonCode": "operator.requested"},
-                    "evidenceRefs": [],
-                    "runId": RUN,
-                },
-            }
+            _lifecycle_draft(
+                "run.cancel.requested",
+                "evt.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+            )
         )
         result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.UNRESOLVED
@@ -698,6 +731,179 @@ def test_cancellation_requested_stops_without_inferring_outcome(tmp_path: Path) 
         assert store.last_sequence() == 3
         assert result.snapshot.cancellation_requested is True
         assert result.snapshot.status is RunStatus.RUNNING
+
+
+def test_attempt_cancel_requested_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    request = _request()
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        RunControl(store, project_id=PROJECT, run_id=RUN).append(
+            _lifecycle_draft(
+                "attempt.cancel.requested",
+                "evt.attempt.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+                attempt_id=ATTEMPT,
+            )
+        )
+        result = _runtime(store).run(spec, request)
+        assert result.disposition is SimulationDisposition.UNRESOLVED
+        assert result.stored == ()
+        assert store.last_sequence() == 5
+        assert result.snapshot.cancellation_requested is False
+        assert result.snapshot.attempts[0].cancellation_requested is True
+        assert result.snapshot.attempts[0].status is AttemptStatus.RUNNING
+        assert result.snapshot.status is RunStatus.RUNNING
+
+
+def test_attempt_cancelled_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    request = _request()
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        control.append(
+            _lifecycle_draft(
+                "attempt.cancel.requested",
+                "evt.attempt.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+                attempt_id=ATTEMPT,
+            )
+        )
+        control.append(
+            _lifecycle_draft(
+                "attempt.cancelled",
+                "evt.attempt.cancelled",
+                payload={},
+                attempt_id=ATTEMPT,
+            )
+        )
+        result = _runtime(store).run(spec, request)
+        assert result.disposition is SimulationDisposition.UNRESOLVED
+        assert result.stored == ()
+        assert store.last_sequence() == 6
+        assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
+        assert result.snapshot.status is RunStatus.RUNNING
+
+
+def test_completed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    request = _request()
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        control.append(
+            _lifecycle_draft(
+                "run.cancel.requested",
+                "evt.run.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+            )
+        )
+        control.append(
+            _lifecycle_draft(
+                "attempt.succeeded",
+                "evt.manual.attempt.succeeded",
+                payload={},
+                attempt_id=ATTEMPT,
+            )
+        )
+        control.append(_lifecycle_draft("run.completed", "evt.manual.run.completed", payload={}))
+        result = _runtime(store).run(spec, request)
+        assert result.disposition is SimulationDisposition.COMPLETED
+        assert result.stored == ()
+        assert store.last_sequence() == 7
+        assert result.snapshot.status is RunStatus.COMPLETED
+        assert result.snapshot.cancellation_requested is True
+
+
+def test_failed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = _spec_document(outcome="failure")
+    request = _request(FAILURE_PATH)
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        control.append(
+            _lifecycle_draft(
+                "run.cancel.requested",
+                "evt.run.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+            )
+        )
+        control.append(
+            _lifecycle_draft(
+                "attempt.failed",
+                "evt.manual.attempt.failed",
+                payload={
+                    "reasonCode": "simulation.outcome.failure",
+                    "retryHint": "not-retryable",
+                },
+                attempt_id=ATTEMPT,
+            )
+        )
+        control.append(
+            _lifecycle_draft(
+                "run.failed",
+                "evt.manual.run.failed",
+                payload={"reasonCode": "simulation.outcome.failure"},
+            )
+        )
+        result = _runtime(store).run(spec, request)
+        assert result.disposition is SimulationDisposition.FAILED
+        assert result.stored == ()
+        assert store.last_sequence() == 7
+        assert result.snapshot.status is RunStatus.FAILED
+        assert result.snapshot.cancellation_requested is True
+
+
+def _substituted_simulated_registry(payload: dict[str, Any]) -> BlockRegistry:
+    registry = BlockRegistry()
+    registry.register(BlockManifest.model_validate(payload))
+    registry.seal()
+    return registry
+
+
+def test_substituted_builtin_manifest_digest_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    payload = builtin_manifests()[0].model_dump(mode="json", by_alias=True, exclude_none=True)
+    payload["metadata"]["title"] = "Substituted simulated experiment"
+    registry = _substituted_simulated_registry(payload)
+    with EventStore(database) as store:
+        with pytest.raises(SimulationError, match="canonical"):
+            SimulatedRuntime(store, registry, project_id=PROJECT, run_id=RUN).run(
+                load_spec(EXAMPLES / "valid/minimal.yaml"),
+                _request(),
+            )
+        _assert_unchanged(store, 0)
+
+
+def test_permission_bearing_simulated_manifest_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    payload = builtin_manifests()[0].model_dump(mode="json", by_alias=True, exclude_none=True)
+    payload["permissions"] = ["network"]
+    registry = _substituted_simulated_registry(payload)
+    with EventStore(database) as store:
+        with pytest.raises(SimulationError, match="canonical"):
+            SimulatedRuntime(store, registry, project_id=PROJECT, run_id=RUN).run(
+                load_spec(EXAMPLES / "valid/minimal.yaml"),
+                _request(),
+            )
+        _assert_unchanged(store, 0)
 
 
 def test_unsealed_registry_is_rejected(tmp_path: Path) -> None:

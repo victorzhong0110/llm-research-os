@@ -61,7 +61,10 @@ with EventStore("research.db") as store:
 `projectId` and `experimentRevision` come from the frozen ResearchSpec.
 `workflowId`, `runId`, `attemptId`, `source`, `subject`, `streamid`, actor id,
 and every event `id` / `time` are supplied by the caller. The runtime does not
-generate them.
+generate them. The plan is bound to the canonical built-in
+`simulated.experiment@0.1.0` Manifest digest; a caller registry that keeps the
+same id/version but changes the Manifest, including adding permissions, is
+rejected before the first write.
 
 `examples/valid/minimal.yaml` must state `outcome` explicitly:
 
@@ -107,8 +110,10 @@ model APIs, paid actions, or ArtifactStore writes. It does not change SQLite
 schema, persist a Run table, unroll loops, pass data-edge values, authorize
 retries, or run NativeProcessRuntime / OCI / Workers.
 
-Unsupported plans — multiple tasks, edges, approval, loop, resources, policy
-requirements, other runtime types, or a missing/malformed `outcome` — fail
+Unsupported plans — multiple tasks, edges, approval, loop, any top-level
+`spec.resources` (including unreferenced entries), policy requirements, other
+runtime types, a substituted or permission-bearing
+`simulated.experiment@0.1.0` Manifest, or a missing/malformed `outcome` — fail
 closed with zero writes. Error text does not echo task config, payloads,
 unknown fields, secrets, or control characters.
 
@@ -121,8 +126,10 @@ not mean training succeeded, metrics are valid, or a hypothesis is supported.
 `run()` rebuilds from EventStore before appending. An empty store starts at
 `run.queued`. A legal prefix continues with the next event on the frozen
 outcome path. `completed` / `failed` return the existing snapshot with zero new
-facts. `unknown` / `lost` / cancelled / `cancellationRequested` return
-`unresolved` without inferring an outcome.
+facts, including when a prior Run cancellation request is still recorded.
+`unknown` / `lost` / cancelled, a nonterminal Run-level
+`cancellationRequested`, an active Attempt cancellation request, or a latest
+cancelled Attempt return `unresolved` without inferring an outcome.
 
 The six (or five) events are **not** one SQLite transaction. An interrupted
 invocation leaves the committed prefix. Reopening the database and calling

@@ -18,7 +18,8 @@ RunControl → EventStore → RunSnapshot replay.
 NativeProcessRuntime, OCI, Workers, metrics and artifacts would enlarge the
 trusted kernel before the lifecycle facts, recovery prefix and fail-closed
 unknown path were proven. This slice therefore executes only the built-in
-`simulated.experiment@0.1.0` task.
+`simulated.experiment@0.1.0` task, identified by the canonical Manifest
+digest rather than by id/version alone.
 
 Open questions that remain out of scope: `streamid` granularity, the complete
 ResearchEvent type catalog, `correlationid` / `causationid` rules,
@@ -45,10 +46,14 @@ single-task plan:
   `(specDigest, registryDigest, planDigest)` triple is bound. A blocked report
   or internally inconsistent plan/report fails with zero EventStore writes.
 - The only supported plan is one top-level `simulated.experiment@0.1.0`
-  TaskBlock, no edges, no approval/loop, no `resourceRefs` or
-  `policyRequirements`, manifest runtime `simulated`, and an explicit string
-  `outcome` of `success`, `failure`, or `unknown`. Missing `outcome` is not
-  success. `seed` is bound data only; it does not seed a PRNG.
+  TaskBlock bound to the canonical built-in Manifest fingerprint, no edges, no
+  approval/loop, no top-level `spec.resources` (including unreferenced
+  entries), no `resourceRefs` or `policyRequirements`, manifest runtime
+  `simulated` with empty permissions, and an explicit string `outcome` of
+  `success`, `failure`, or `unknown`. Missing `outcome` is not success. `seed`
+  is bound data only; it does not seed a PRNG. A sealed registry that
+  substitutes the same id/version or adds permissions fails closed with zero
+  EventStore writes.
 - Every fact is written through `RunControl.append()`. SimulatedRuntime does
   not INSERT into SQLite, persist a Run table, write ArtifactStore, or emit
   `run.reviewed`. `maxAttempts` is fixed at `1`. This slice does not retry and
@@ -65,9 +70,11 @@ single-task plan:
   prefix of this invocation.
 - `run()` resumes from a legal EventStore prefix after re-checking identity,
   revision, workflow, digests, `maxAttempts`, and Attempt id. Terminal
-  completed/failed returns the existing snapshot with zero new facts. Unknown,
-  lost, cancelled, and `cancellationRequested` return unresolved without
-  inferring an outcome.
+  `completed` / `failed` return the existing snapshot with zero new facts,
+  even if a prior Run cancellation request remains on the snapshot. Unknown,
+  lost, cancelled, a nonterminal Run-level `cancellationRequested`, an active
+  Attempt cancellation request, or a latest cancelled Attempt return
+  unresolved without inferring an outcome.
 - `EventSequenceConflictError` is not caught or retried. Duplicate, integrity,
   and schema errors keep their EventStore meanings.
 
@@ -96,12 +103,14 @@ cancel/heartbeat/lost policy, or SQLite schema changes.
 Tests cover the three event sequences and EventStore replay equality, global
 sequence assignment, non-zero `streamversion`, digest binding, missing and
 malformed `outcome` with zero writes and no secret echo, blocked dry-run,
-non-simulated runtimes, multi-task/edge/approval/loop/resource/policy rejection,
-caller and nested-container mutation after freeze, pre-write identity
-validation, resume from every legal prefix, terminal idempotence, mismatched
-existing Runs, bounded CAS with `Barrier(2, timeout=5)` and no automatic retry,
-integrity/duplicate fail-closed, side-effect tripwires, and
-`examples/valid/minimal.yaml` success.
+non-simulated runtimes, multi-task/edge/approval/loop/resource/policy rejection
+including unreferenced `spec.resources`, substituted and permission-bearing
+`simulated.experiment@0.1.0` manifests, Attempt cancel-requested and cancelled
+prefixes, completed/failed-after-cancel races, caller and nested-container
+mutation after freeze, pre-write identity validation, resume from every legal
+prefix, terminal idempotence, mismatched existing Runs, bounded CAS with
+`Barrier(2, timeout=5)` and no automatic retry, integrity/duplicate
+fail-closed, side-effect tripwires, and `examples/valid/minimal.yaml` success.
 
 ## References
 
