@@ -8,7 +8,7 @@ conflicts, persist snapshots, or execute blocks.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError
 
@@ -86,20 +86,15 @@ class RunControl:
         head = self.rebuild()
         frozen_head = head.last_sequence
         snapshot = head.snapshot
-        if type(document) is not dict:
-            raise RunControlError("event draft must be a JSON object")
-        supplied = sorted(_STORE_ASSIGNED_FIELDS.intersection(document))
+        draft = _snapshot_json_document(document)
+        supplied = sorted(_STORE_ASSIGNED_FIELDS.intersection(draft))
         if supplied:
             raise RunControlError(
                 f"RunControl does not accept store-assigned fields; caller supplied: {supplied}"
             )
-        _require_matching_aggregate(document, self._project_id, self._run_id)
-        event_type = document.get("type")
-        if event_type not in LIFECYCLE_TYPES:
-            raise RunControlError("event type is not a Run/Attempt lifecycle type")
         if frozen_head >= CLOUD_EVENTS_INTEGER_MAX:
             raise RunControlError("global event sequence is exhausted")
-        preflight_document = dict(document)
+        preflight_document = dict(draft)
         preflight_document.update(
             {
                 "sequence": str(frozen_head + 1),
@@ -108,10 +103,13 @@ class RunControl:
             }
         )
         preflight_event = _validate_preflight_event(preflight_document)
+        _require_matching_aggregate(preflight_event, self._project_id, self._run_id)
+        if preflight_event.type not in LIFECYCLE_TYPES:
+            raise RunControlError("event type is not a Run/Attempt lifecycle type")
         preflight_snapshot = self._projection.apply(snapshot, preflight_event)
         if preflight_snapshot is None:
             raise RunControlError("lifecycle preflight produced no snapshot")
-        stored = self._store.append(document, expected_last_sequence=frozen_head)
+        stored = self._store.append(draft, expected_last_sequence=frozen_head)
         committed_snapshot = self._projection.apply(snapshot, stored.event)
         if committed_snapshot is None:
             raise RunControlError("committed lifecycle event produced no snapshot")
@@ -128,11 +126,105 @@ def _require_page_size(page_size: int) -> int:
     return page_size
 
 
-def _require_matching_aggregate(document: dict[str, Any], project_id: str, run_id: str) -> None:
-    data = document.get("data")
-    if type(data) is not dict:
-        raise RunControlError("event data must be a JSON object")
-    if data.get("projectId") != project_id or data.get("runId") != run_id:
+def _is_json_atom(value: object) -> bool:
+    return (
+        value is None
+        or type(value) is bool
+        or type(value) is int
+        or type(value) is float
+        or type(value) is str
+    )
+
+
+def _snapshot_json_document(document: object) -> dict[str, Any]:
+    """Return a new JSON tree that does not alias the caller's containers."""
+
+    if type(document) is not dict:
+        raise RunControlError("event draft must be a JSON object")
+    cloned = _snapshot_json_value(document)
+    if type(cloned) is not dict:
+        raise RunControlError("event draft must be a JSON object")
+    return cloned
+
+
+def _snapshot_json_value(root: object) -> object:
+    if _is_json_atom(root):
+        return root
+    if type(root) is not dict and type(root) is not list:
+        raise RunControlError("event draft must contain only JSON values")
+
+    clones: dict[int, dict[str, Any] | list[Any]] = {}
+    ancestors: set[int] = set()
+    container = cast(dict[str, Any] | list[Any], root)
+    root_clone = _new_json_clone(container, clones)
+    stack: list[tuple[object, dict[str, Any] | list[Any], list[tuple[str | int, object]], int]] = [
+        (container, root_clone, _json_children(container), 0)
+    ]
+    ancestors.add(id(root))
+    while stack:
+        node, clone, children, index = stack[-1]
+        if index >= len(children):
+            ancestors.discard(id(node))
+            stack.pop()
+            continue
+        key, child = children[index]
+        stack[-1] = (node, clone, children, index + 1)
+        if _is_json_atom(child):
+            _assign_json_clone(clone, key, child)
+            continue
+        if type(child) is not dict and type(child) is not list:
+            raise RunControlError("event draft must contain only JSON values")
+        child_id = id(child)
+        if child_id in ancestors:
+            raise RunControlError("event draft must not contain cyclic JSON structures")
+        existing = clones.get(child_id)
+        if existing is not None:
+            _assign_json_clone(clone, key, existing)
+            continue
+        child_container = cast(dict[str, Any] | list[Any], child)
+        child_clone = _new_json_clone(child_container, clones)
+        _assign_json_clone(clone, key, child_clone)
+        ancestors.add(child_id)
+        stack.append((child_container, child_clone, _json_children(child_container), 0))
+    return root_clone
+
+
+def _new_json_clone(
+    node: dict[str, Any] | list[Any],
+    clones: dict[int, dict[str, Any] | list[Any]],
+) -> dict[str, Any] | list[Any]:
+    clone: dict[str, Any] | list[Any] = {} if type(node) is dict else [None] * len(node)
+    clones[id(node)] = clone
+    return clone
+
+
+def _json_children(node: dict[str, Any] | list[Any]) -> list[tuple[str | int, object]]:
+    children: list[tuple[str | int, object]] = []
+    if type(node) is dict:
+        for key, child in node.items():
+            if type(key) is not str:
+                raise RunControlError("event draft keys must be JSON strings")
+            children.append((key, child))
+        return children
+    items = cast(list[Any], node)
+    for index in range(len(items)):
+        children.append((index, items[index]))
+    return children
+
+
+def _assign_json_clone(
+    clone: dict[str, Any] | list[Any],
+    key: str | int,
+    value: object,
+) -> None:
+    if type(clone) is dict:
+        clone[cast(str, key)] = value
+        return
+    cast(list[Any], clone)[cast(int, key)] = value
+
+
+def _require_matching_aggregate(event: ResearchEvent, project_id: str, run_id: str) -> None:
+    if event.data.project_id != project_id or event.data.run_id != run_id:
         raise RunControlError("event projectId/runId does not match this RunControl")
 
 

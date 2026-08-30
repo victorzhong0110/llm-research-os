@@ -26,9 +26,12 @@ Run/Attempt lifecycle catalog:
 - `rebuild()` consumes `replay_events(..., freeze_high_water=True)` and folds
   only the configured `(projectId, runId)`. The returned `last_sequence` is the
   frozen global EventStore head, not a Run-local count and not `streamversion`.
-- Every `append(document)` rebuilds, rejects store-owned `sequence` /
-  `sequencetype` / `streamversion`, requires the draft to belong to the
-  configured Run, and accepts only PR #9 lifecycle types.
+- Every `append(document)` rebuilds, copies the caller draft into an isolated
+  JSON snapshot, rejects store-owned `sequence` / `sequencetype` /
+  `streamversion` on that snapshot, validates a complete ResearchEvent, requires
+  the draft to belong to the configured Run, and accepts only PR #9 lifecycle
+  types. Malformed `type` values fail ResearchEvent validation; they are not
+  tested with set membership.
 - RunControl does not generate `id`, `time`, `source`, `subject`, `streamid`,
   `correlationid`, `causationid`, actor, or payload.
 - Preflight constructs a complete ResearchEvent with `sequence = frozen_head + 1`
@@ -36,10 +39,10 @@ Run/Attempt lifecycle catalog:
   on stream identity. That zero is not a prediction of the stored stream version.
 - Illegal first events, jumps, payloads, attempts, retries, and identity drift
   fail before `EventStore.append`.
-- A successful preflight calls `store.append(original_document,
-  expected_last_sequence=frozen_head)`. `EventSequenceConflictError` is not
-  caught or retried. The caller must invoke `append` again so replay and
-  preflight run against the new head.
+- A successful preflight calls `store.append(isolated_snapshot,
+  expected_last_sequence=frozen_head)`. The caller object is not passed to
+  EventStore. `EventSequenceConflictError` is not caught or retried. The caller
+  must invoke `append` again so replay and preflight run against the new head.
 - The committed snapshot is produced by applying the store-returned event to the
   same frozen snapshot. EventStore remains the only fact source; snapshots are
   not persisted.
@@ -66,7 +69,8 @@ aggregate mismatch, non-lifecycle types, global-head sequence prediction,
 non-zero `streamversion` snapshot equality, sequence exhaustion, integrity
 fail-closed, bounded paging without retained history, concurrent CAS with
 `Barrier(2, timeout=5)`, conflict-then-replay rejection, unchanged duplicate-id
-precedence, and side-effect tripwires.
+precedence, isolated JSON snapshot TOCTOU races, malformed `type` values that
+do not leak input, and side-effect tripwires.
 
 ## References
 

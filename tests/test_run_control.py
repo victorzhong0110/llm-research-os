@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import json
 import socket
 import sqlite3
 import subprocess
+import time
+from collections import UserDict, UserList
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Barrier
+from threading import Barrier, Event
 from typing import Any, NoReturn
 
 import pytest
@@ -23,6 +26,7 @@ from llm_research_os.runs import (
     RunStatus,
     RunTransitionError,
 )
+from llm_research_os.runs.control import _snapshot_json_document
 from llm_research_os.storage import (
     DuplicateEventError,
     EventIntegrityError,
@@ -316,6 +320,41 @@ def test_non_lifecycle_event_is_rejected(tmp_path: Path) -> None:
         _assert_unchanged(store, 0)
 
 
+@pytest.mark.parametrize(
+    "event_type",
+    (
+        [],
+        {},
+        {"secret-field": "sk-secret-value"},
+        ["\x1b[31msecret-field\nnext-line"],
+    ),
+)
+def test_malformed_event_type_is_stable_run_control_error(
+    tmp_path: Path,
+    event_type: object,
+) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        draft = _queued_draft()
+        draft["type"] = event_type
+        with pytest.raises(RunControlError) as info:
+            control.append(draft)
+        error = info.value
+        assert str(error) == "event draft failed ResearchEvent validation"
+        _assert_error_hides_secrets(
+            error,
+            "secret-field",
+            "sk-secret-value",
+            "\x1b",
+            "\n",
+        )
+        assert error.__cause__ is None
+        assert error.__context__ is None
+        _assert_unchanged(store, 0)
+        assert store.read_events(limit=10) == []
+
+
 def test_predicted_sequence_uses_global_head_not_run_count(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
@@ -433,6 +472,62 @@ def _gate_append(store: EventStore, barrier: Barrier) -> None:
     store.append = gated  # type: ignore[method-assign]
 
 
+def _run_queued_toctou(database: Path) -> None:
+    caller = _queued_draft()
+    expected_payload = dict(caller["data"]["payload"])
+    expected_project = caller["data"]["projectId"]
+    expected_run = caller["data"]["runId"]
+    preflight_done = Event()
+    mutated = Event()
+    with EventStore(database) as store:
+        original_append = store.append
+
+        def gated(
+            document: dict[str, Any],
+            *,
+            expected_last_sequence: int | None = None,
+        ) -> StoredEvent:
+            assert document is not caller
+            assert document["data"] is not caller["data"]
+            assert document["data"]["payload"] is not caller["data"]["payload"]
+            preflight_done.set()
+            if not mutated.wait(timeout=5):
+                raise AssertionError("caller mutation did not run before EventStore.append")
+            return original_append(document, expected_last_sequence=expected_last_sequence)
+
+        store.append = gated  # type: ignore[method-assign]
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+
+        def mutate() -> None:
+            if not preflight_done.wait(timeout=5):
+                raise AssertionError("preflight did not reach EventStore.append")
+            caller["type"] = "run.started"
+            caller["data"]["payload"] = {}
+            caller["data"]["projectId"] = "project.mutated"
+            caller["data"]["runId"] = "run.mutated"
+            mutated.set()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(mutate)
+            result = control.append(caller)
+            future.result(timeout=5)
+
+        assert result.stored.event.type == "run.queued"
+        assert result.stored.event.data.payload == expected_payload
+        assert result.stored.event.data.project_id == expected_project
+        assert result.stored.event.data.run_id == expected_run
+        assert result.snapshot.status is RunStatus.QUEUED
+        assert caller["type"] == "run.started"
+        events = store.read_events(limit=10)
+        assert len(events) == 1
+        assert events[0].event.type == "run.queued"
+        assert events[0].event.data.payload == expected_payload
+        assert events[0].event.data.project_id == expected_project
+        assert events[0].event.data.run_id == expected_run
+        _assert_unchanged(store, 1)
+        assert store.get_event("evt.run.queued.1") is not None
+
+
 def _race_started_appends(database: Path) -> tuple[list[object], list[object], list[str]]:
     start = Barrier(2, timeout=5)
     drafts = (
@@ -488,6 +583,15 @@ def test_concurrent_cas_is_stable_across_repeated_races(tmp_path: Path) -> None:
             present = {event_id for event_id in event_ids if store.get_event(event_id) is not None}
             assert len(present) == 1, index
             assert store.verify_integrity() == 2
+
+
+def test_caller_mutation_after_preflight_cannot_change_persisted_event(tmp_path: Path) -> None:
+    _run_queued_toctou(tmp_path / "research.db")
+
+
+def test_toctou_isolation_is_stable_across_repeated_races(tmp_path: Path) -> None:
+    for index in range(30):
+        _run_queued_toctou(tmp_path / f"toctou-{index}.db")
 
 
 def test_conflict_retry_replays_and_rejects_now_illegal_transition(tmp_path: Path) -> None:
@@ -566,4 +670,174 @@ def test_non_dict_draft_is_rejected(tmp_path: Path) -> None:
         control = RunControl(store, project_id=PROJECT, run_id=RUN)
         with pytest.raises(RunControlError, match="JSON object"):
             control.append([_queued_draft()])  # type: ignore[arg-type]
+        _assert_unchanged(store, 0)
+
+
+def test_isolated_snapshot_does_not_change_when_caller_mutates_nested_containers() -> None:
+    document = _queued_draft()
+    nested_data = document["data"]
+    nested_payload = document["data"]["payload"]
+    nested_refs = document["data"]["evidenceRefs"]
+    snapshot = _snapshot_json_document(document)
+    nested_payload["workflowId"] = "wf.mutated"
+    nested_refs.append("ev.mutated")
+    nested_data["projectId"] = "project.mutated"
+    document["type"] = "run.started"
+    assert snapshot["type"] == "run.queued"
+    assert snapshot["data"]["payload"]["workflowId"] == "wf.train"
+    assert snapshot["data"]["evidenceRefs"] == []
+    assert snapshot["data"]["projectId"] == PROJECT
+    assert snapshot["data"] is not nested_data
+    assert snapshot["data"]["payload"] is not nested_payload
+    assert snapshot["data"]["evidenceRefs"] is not nested_refs
+
+
+def test_append_does_not_mutate_caller_document(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        draft = _queued_draft()
+        nested_data = draft["data"]
+        before = json.dumps(draft, sort_keys=True)
+        result = control.append(draft)
+        assert result.snapshot.status is RunStatus.QUEUED
+        assert draft["data"] is nested_data
+        assert "sequence" not in draft
+        assert "sequencetype" not in draft
+        assert "streamversion" not in draft
+        assert json.dumps(draft, sort_keys=True) == before
+
+
+def test_cyclic_json_is_rejected_quickly_without_write(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+
+        cyclic_dict = _queued_draft()
+        cyclic_dict["data"]["payload"]["loop"] = cyclic_dict["data"]
+        started = time.monotonic()
+        with pytest.raises(RunControlError, match="cyclic JSON"):
+            control.append(cyclic_dict)
+        assert time.monotonic() - started < 1
+        _assert_unchanged(store, 0)
+
+        cyclic_list: list[object] = []
+        cyclic_list.append(cyclic_list)
+        cyclic_array = _queued_draft("evt.run.queued.list")
+        cyclic_array["data"]["payload"]["loop"] = cyclic_list
+        started = time.monotonic()
+        with pytest.raises(RunControlError, match="cyclic JSON"):
+            control.append(cyclic_array)
+        assert time.monotonic() - started < 1
+        _assert_unchanged(store, 0)
+        assert store.read_events(limit=10) == []
+
+
+class _Hooked:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def __deepcopy__(self, memo: object) -> _Hooked:
+        self.calls.append("deepcopy")
+        return self
+
+    def __copy__(self) -> _Hooked:
+        self.calls.append("copy")
+        return self
+
+    def __iter__(self) -> Any:
+        self.calls.append("iter")
+        return iter(())
+
+    def items(self) -> Any:
+        self.calls.append("items")
+        return {}.items()
+
+
+class _HookedDict(dict[str, Any]):
+    def __deepcopy__(self, memo: object) -> _HookedDict:
+        raise AssertionError("dict subclass __deepcopy__ ran")
+
+    def __copy__(self) -> _HookedDict:
+        raise AssertionError("dict subclass __copy__ ran")
+
+
+class _HookedList(list[Any]):
+    def __deepcopy__(self, memo: object) -> _HookedList:
+        raise AssertionError("list subclass __deepcopy__ ran")
+
+    def __copy__(self) -> _HookedList:
+        raise AssertionError("list subclass __copy__ ran")
+
+
+@pytest.mark.parametrize(
+    "bad_value",
+    (
+        (1, 2),
+        {"set-item"},
+        b"bytes",
+        UserDict({"workflowId": "wf.train"}),
+        UserList(["a"]),
+        _HookedDict({"workflowId": "wf.train"}),
+        _HookedList(["a"]),
+    ),
+)
+def test_non_json_containers_are_rejected_without_write(
+    tmp_path: Path,
+    bad_value: object,
+) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        draft = _queued_draft()
+        draft["data"]["payload"]["extra"] = bad_value
+        with pytest.raises(RunControlError, match="JSON values"):
+            control.append(draft)
+        _assert_unchanged(store, 0)
+        assert store.read_events(limit=10) == []
+
+
+def test_copy_hooks_are_not_executed(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    hooked = _Hooked()
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        draft = _queued_draft()
+        draft["data"]["payload"]["hooked"] = hooked
+        with pytest.raises(RunControlError, match="JSON values"):
+            control.append(draft)
+        assert hooked.calls == []
+        _assert_unchanged(store, 0)
+
+
+def test_shared_acyclic_containers_are_not_treated_as_cycles() -> None:
+    shared_object = {"note": "shared"}
+    shared_array = ["shared"]
+    document = {
+        "left": shared_object,
+        "right": shared_object,
+        "items": [shared_array, shared_array],
+    }
+    snapshot = _snapshot_json_document(document)
+    assert snapshot["left"] == {"note": "shared"}
+    assert snapshot["right"] == {"note": "shared"}
+    assert snapshot["left"] is not shared_object
+    assert snapshot["right"] is not shared_object
+    assert snapshot["items"][0] is not shared_array
+    shared_object["note"] = "mutated"
+    shared_array.append("mutated")
+    assert snapshot["left"]["note"] == "shared"
+    assert snapshot["items"][0] == ["shared"]
+
+
+def test_shared_acyclic_payload_is_not_rejected_as_cyclic(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = RunControl(store, project_id=PROJECT, run_id=RUN)
+        shared = {"note": "shared"}
+        draft = _queued_draft()
+        draft["data"]["payload"]["left"] = shared
+        draft["data"]["payload"]["right"] = shared
+        with pytest.raises(RunPayloadError):
+            control.append(draft)
         _assert_unchanged(store, 0)

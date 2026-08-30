@@ -46,14 +46,18 @@ Run and is not `streamversion`. Stream identity remains undecided.
 Each `append(document)` starts over:
 
 1. Replay and fold (`rebuild()`).
-2. Reject a non-object draft and any caller-supplied `sequence`,
-   `sequencetype`, or `streamversion`.
-3. Require `data.projectId` / `data.runId` to match this `RunControl`.
-4. Accept only the frozen Run/Attempt lifecycle types.
-5. Build a non-persisted preflight ResearchEvent with
-   `sequence = str(frozen_head + 1)` and `streamversion = 0`.
-6. Validate that document and apply it to the frozen snapshot.
-7. Only then call `store.append(document, expected_last_sequence=frozen_head)`.
+2. Isolate a JSON snapshot of the caller document. Later preflight and
+   `EventStore.append` use that snapshot only; mutating the original object
+   cannot change the persisted event.
+3. Reject store-assigned `sequence`, `sequencetype`, or `streamversion` on the
+   snapshot.
+4. Reject a draft if the global sequence is exhausted.
+5. Copy the snapshot and add only `sequence = str(frozen_head + 1)`,
+   `sequencetype = Integer`, and `streamversion = 0`.
+6. Validate that complete document as a ResearchEvent. Aggregate membership and
+   lifecycle-type checks use the validated event, not the raw caller value.
+7. Apply the validated event to the frozen snapshot.
+8. Only then call `store.append(isolated_snapshot, expected_last_sequence=frozen_head)`.
 
 `streamversion = 0` exists because the reducer must not consult stream
 identity. It is not a forecast of the value the store will assign.
