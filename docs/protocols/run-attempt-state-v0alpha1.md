@@ -352,15 +352,18 @@ snapshots MUST also fail closed.
 
 Errors MUST NOT carry sensitive payload bodies, untrusted payload field names, or other
 potentially sensitive document text. Stable types include `RunStateError`,
-`RunTransitionError` and `RunPayloadError`.
+`RunTransitionError`, `RunPayloadError` and `RunControlError`.
 
 ## 12. Conformance
 
 ```bash
-uv run pytest tests/test_run_state.py tests/test_run_state_schema.py
+uv run pytest tests/test_run_state.py tests/test_run_state_schema.py tests/test_run_control.py
+uv run researchos schema --contract run-state \
+  --check schemas/run-state/v0alpha1.schema.json
 ```
 
-CLI `--contract run-state` is intentionally out of this slice.
+RunControl is the append boundary that rebuilds from EventStore, preflights this reducer, and
+CAS-writes only at the frozen global head. SimulatedRuntime remains a later slice.
 
 ## 13. Open questions
 

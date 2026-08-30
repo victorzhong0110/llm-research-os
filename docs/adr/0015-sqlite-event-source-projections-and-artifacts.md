@@ -113,8 +113,9 @@ lifecycle/GC, artifact CLI or ResearchEvent emission. The accepted `6-DBC` decis
 
 The EventStore Python API now accepts an optional global-head append precondition and exposes
 `last_sequence()`. SQLite schema v1, the migration digest, triggers and the ResearchEvent
-document contract are unchanged. This slice does not implement RunControl, a Run/Attempt state
-machine, stream-identity rules or automatic conflict retry.
+document contract are unchanged. ADR-0025 adds `RunControl`, which uses this CAS together with
+frozen high-water replay and the pure Run/Attempt reducer. Stream-identity rules and automatic
+conflict retry remain out of scope.
 
 ## References
 

@@ -57,3 +57,7 @@ jobs:
         run: >-
           uv run researchos schema --contract research-event
           --check schemas/research-event/v0alpha1.schema.json
+      - name: Verify RunSnapshot schema
+        run: >-
+          uv run researchos schema --contract run-state
+          --check schemas/run-state/v0alpha1.schema.json

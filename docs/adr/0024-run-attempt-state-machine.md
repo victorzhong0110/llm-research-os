@@ -1,6 +1,6 @@
 # ADR-0024: Pure Run and Attempt State Machine
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-29
 
 ## Context
@@ -37,8 +37,9 @@ Adopt a pure `RunStateProjection` over verified ResearchEvents:
 - `run.reviewed` is an audit record after a terminal Run status. It does not change `RunStatus`
   and does not mean a research conclusion was established.
 
-This slice does not freeze the complete ResearchEvent type catalog, persist a SQL projection,
-or implement SimulatedRuntime.
+This slice does not freeze the complete ResearchEvent type catalog or persist a SQL
+projection. SimulatedRuntime remains a later slice; ADR-0025 adds the atomic RunControl
+append boundary that applies this reducer before EventStore CAS.
 
 ## Consequences
 

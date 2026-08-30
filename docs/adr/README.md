@@ -27,5 +27,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0021 | Remote Worker transport and connection bootstrap | Deferred | M2 experiment required |
 | 0022 | First cloud-provider adapter | Provisional | M2 live verification required |
 | [0023](0023-inert-manifests-and-pure-dry-run.md) | Inert manifests and pure deterministic dry-run | Proposed | Implemented for review |
+| [0024](0024-run-attempt-state-machine.md) | Pure Run and Attempt state machine | Accepted | Implemented |
+| [0025](0025-atomic-run-control-append-boundary.md) | Atomic RunControl append boundary | Proposed | Implemented for review |
 
 “Record pending” means the decision is already accepted in the project charter but its standalone rationale has not yet been transcribed. It does not reopen the decision.
