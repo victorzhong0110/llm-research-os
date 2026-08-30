@@ -7,8 +7,9 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 ## 当前状态
 
 项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec、ResearchEvent
-协议基础、纯静态规划内核、SQLite 追加式事件事实源，以及本地内容寻址制品对象层；
-当前仍不执行任何训练任务或真实 GPU 工作负载。
+协议基础、纯静态规划内核、SQLite 追加式事件事实源、本地内容寻址制品对象层、纯
+Run/Attempt 状态机，以及在写入前预检并做全局 CAS 的 RunControl 边界；当前仍不执行
+任何训练任务或真实 GPU 工作负载。
 
 ## M0 目标
 
@@ -40,9 +41,11 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 - [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
 - [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
 - [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
+- [Run/Attempt 状态 v0alpha1](docs/protocols/run-attempt-state-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
+- [M0 RunControl 导读](docs/guides/m0-run-control.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 
@@ -58,6 +61,8 @@ uv run researchos dry-run examples/valid/minimal.yaml
 uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
 uv run researchos schema --contract research-event \
   --check schemas/research-event/v0alpha1.schema.json
+uv run researchos schema --contract run-state \
+  --check schemas/run-state/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -72,6 +77,7 @@ schemas/block-manifest/v0alpha1.schema.json
 schemas/block-command-report/v0alpha1.schema.json
 schemas/dry-run-report/v0alpha1.schema.json
 schemas/problem-report/v0alpha1.schema.json
+schemas/run-state/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
@@ -110,11 +116,18 @@ uv run researchos events verify research.db --format json
 
 `replay` 输出 JSON Lines，并在开始时冻结高水位，因此执行期间追加的新事件不会进入本次结果。
 
+## RunControl
+
+`RunControl` 在 EventStore 写入前用冻结的全局 head 回放并预检 Run/Attempt 生命周期事件，
+再用 `expected_last_sequence` 做全局 CAS。它不生成 `id`/`time`/`streamid`，不自动重试
+conflict，也不执行任何积木。CAS 失败后必须由调用者再次 `append`，以重新回放和验证。
+
 ## 当前安全边界
 
 M0 当前验证协议和差异、编译无副作用的静态计划，可向本地 SQLite 追加、查询和回放事件事实，
-并可将常规本地文件导入内容寻址制品目录。它不导入积木入口点，不执行任意训练代码、表达式、
-插件或远程 Worker，不写 SQLite 制品索引或持久化投影，也不提供制品 CLI 或网络上传。
+可将常规本地文件导入内容寻址制品目录，并可通过 RunControl 在写入前拒绝非法生命周期事件。
+它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
+或持久化投影，也不提供制品 CLI、Run CLI 或网络上传。
 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
 [安全政策](SECURITY.md)。
 

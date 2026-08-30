@@ -2,9 +2,9 @@
 
 > Status: Active M0 baseline
 >
-> Last reviewed: 2026-08-29
+> Last reviewed: 2026-08-30
 >
-> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects and planned control-plane boundaries
+> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection and planned control-plane boundaries
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -23,8 +23,10 @@ This document is intentionally updated as executable capability is added. A miti
 M0 parses local YAML/JSON, validates ResearchSpec, ResearchEvent and BlockManifest documents,
 generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report,
 can append complete events to a local SQLite fact store, can query, verify and replay those
-facts through a read-only CLI, and can import regular local files into a content-addressed
-artifact directory. It does **not** execute workflow blocks, import manifest
+facts through a read-only CLI, can import regular local files into a content-addressed
+artifact directory, and can append Run/Attempt lifecycle events through RunControl, which
+replays a frozen global head, preflights the pure reducer, and compare-and-sets the store.
+It does **not** execute workflow blocks, import manifest
 entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers,
 connect Workers, spend money, persist projections, index artifacts in SQLite or upload artifacts.
 
@@ -41,6 +43,7 @@ connect Workers, spend money, persist projections, index artifacts in SQLite or 
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
+| RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; no runtime, no auto-retry |
 | Artifact store and query projections | Integrity and confidentiality targets | Local file CAS implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
@@ -78,9 +81,10 @@ connect Workers, spend money, persist projections, index artifacts in SQLite or 
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 
-ResearchSpec, exact block resolution, pure planning, append-only event-store and local artifact
-object invariants have executable checks. SQLite artifact indexing, secret, policy-execution,
-projection and runtime-state invariants remain requirements for subsequent slices.
+ResearchSpec, exact block resolution, pure planning, append-only event-store, local artifact
+object and RunControl preflight/CAS invariants have executable checks. SQLite artifact indexing,
+secret, policy-execution, persistent projection and runtime-state invariants remain requirements
+for subsequent slices.
 
 ## 6. Threat register
 
@@ -96,9 +100,9 @@ projection and runtime-state invariants remain requirements for subsequent slice
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; root `st_dev`/`st_ino` identity; dirfd walk of `tmp`/`objects`/`sha256`/shard with `O_NOFOLLOW`; digest-derived basenames; atomic `link` plus directory fsync; existing mismatch fails closed and is not overwritten | File object layer tested, including intermediate symlink escape, root substitution and fsync-retry recovery; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
-| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers | Event source and replay fold tested; persistent projections pending |
+| TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers; RunControl does not persist snapshots | Event source, replay fold and RunControl tested; persistent projections pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
-| TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states and verifier failure gates planned | Required before SimulatedRuntime acceptance |
+| TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states; RunControl rejects illegal lifecycle jumps before write | Run/Attempt reducer and RunControl tested; SimulatedRuntime gate remains |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
 | TM-015 | Oversized documents, YAML alias amplification, configs, schemas or deeply nested loops exhaust resources | Local or service denial of service | Duplicate keys and YAML aliases are rejected; decoded documents, manifests, registries, configs and schemas have byte/depth/node/count limits; configSchema uses an allowlisted non-regex/non-combinatorial subset; planning counts iteratively and never expands iterations | Tested locally; stronger process isolation required before public service exposure |
 | TM-016 | Dependency or GitHub Action compromise runs attacker code | Maintainer/CI compromise | Locked Python dependencies; CI actions pinned to commits; read-only CI token | Review lock changes; add release provenance later |
@@ -109,7 +113,7 @@ projection and runtime-state invariants remain requirements for subsequent slice
 | TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and Python-reference content digests without host/time data; golden vectors committed | Tested inside reference implementation; cross-language canonicalization remains open |
 | TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls | Partial mitigation; typed SecretRef and general redaction still required |
 | TM-023 | A dry-run or future simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters | Tested for dry-run; SimulatedRuntime gate remains |
-| TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities | Tested with concurrent local connections |
+| TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities; RunControl CAS uses the frozen global head and does not retry | Tested with concurrent local connections |
 | TM-025 | Corrupt JSON or duplicated index columns are trusted during replay | Wrong projection or concealed event substitution | Every read revalidates canonical event JSON, content digest and extracted columns; full scans reject sequence gaps | Tested locally; no malicious-host guarantee |
 
 ## 7. M0 security gates

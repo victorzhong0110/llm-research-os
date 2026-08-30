@@ -15,3 +15,11 @@ class RunTransitionError(RunStateError):
 
 class RunPayloadError(RunStateError):
     """An identified lifecycle type carried a structurally invalid payload."""
+
+
+class RunControlError(RunStateError):
+    """Fail-closed error from the atomic RunControl append boundary.
+
+    Messages MUST NOT include payload bodies, untrusted payload field names,
+    or other potentially sensitive document text.
+    """

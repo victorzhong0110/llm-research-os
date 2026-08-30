@@ -47,6 +47,9 @@ from llm_research_os.problem_schema import canonical_schema as canonical_problem
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
 from llm_research_os.projections import replay_events
+from llm_research_os.runs.schema import canonical_schema as canonical_run_state_schema
+from llm_research_os.runs.schema import schema_matches as run_state_schema_matches
+from llm_research_os.runs.schema import write_schema as write_run_state_schema
 from llm_research_os.spec.diff import semantic_diff
 from llm_research_os.spec.io import SpecLoadError, load_spec
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
@@ -73,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
             "block-command-report",
             "dry-run-report",
             "problem-report",
+            "run-state",
         ),
         default="research-spec",
     )
@@ -266,6 +270,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_problem_schema
         matches = problem_schema_matches
         write = write_problem_schema
+    elif contract == "run-state":
+        canonical = canonical_run_state_schema
+        matches = run_state_schema_matches
+        write = write_run_state_schema
     else:
         raise AssertionError(f"unhandled schema contract: {contract}")
     if check is not None:
