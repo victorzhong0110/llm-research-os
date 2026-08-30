@@ -363,7 +363,8 @@ uv run researchos schema --contract run-state \
 ```
 
 RunControl is the append boundary that rebuilds from EventStore, preflights this reducer, and
-CAS-writes only at the frozen global head. SimulatedRuntime remains a later slice.
+CAS-writes only at the frozen global head. SimulatedRuntime is a caller of that boundary for
+one built-in simulated task; it does not change these transition rules.
 
 ## 13. Open questions
 

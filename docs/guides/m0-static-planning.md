@@ -101,8 +101,9 @@ YAML 节点排列生成同一 `planDigest`。
   或规划规模超过 M0 安全限制。
 - 计划完整，退出码 `0`：状态为 `ready`，但仍未授权、未执行。
 
-### 明确留到下一切片
+### 与 SimulatedRuntime 的边界
 
-ResearchEvent、SQLite 追加事实源、Run/Attempt 状态机、失败与 unknown 语义、取消、
-重试和真正的 SimulatedRuntime 都尚未实现。它们必须一起建立，避免把 handler 返回或
-异常错误地记成实验成功。
+Dry-run 仍然只证明计划完整。真正的生命周期事实由
+[SimulatedRuntime](m0-simulated-runtime.md) 通过 RunControl 追加；模拟
+`completed` 不是训练成功，`unknown` 也不会被降成 failure 或 success。
+NativeProcessRuntime、多节点调度、指标和制品仍未实现。

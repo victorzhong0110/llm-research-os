@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-08-30
 >
-> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection and planned control-plane boundaries
+> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection, RunControl, and deterministic SimulatedRuntime
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -26,9 +26,11 @@ can append complete events to a local SQLite fact store, can query, verify and r
 facts through a read-only CLI, can import regular local files into a content-addressed
 artifact directory, and can append Run/Attempt lifecycle events through RunControl, which
 replays a frozen global head, preflights the pure reducer, and compare-and-sets the store.
-It does **not** execute workflow blocks, import manifest
-entrypoints, evaluate `until` expressions, contact model APIs, run plugins, start containers,
-connect Workers, spend money, persist projections, index artifacts in SQLite or upload artifacts.
+SimulatedRuntime can then drive one ready `simulated.experiment@0.1.0` task through that
+boundary. It does **not** import manifest entrypoints, evaluate `until` expressions,
+contact model APIs, run plugins, start containers, connect Workers, spend money, persist
+projections, index artifacts in SQLite or upload artifacts. Simulated `completed` is a
+controlled lifecycle finish, not training success.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -43,7 +45,8 @@ connect Workers, spend money, persist projections, index artifacts in SQLite or 
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
-| RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; no runtime, no auto-retry |
+| RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; SimulatedRuntime is a caller and does not auto-retry |
+| SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented for review; no GPU, network, entrypoint, or scientific conclusion |
 | Artifact store and query projections | Integrity and confidentiality targets | Local file CAS implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
@@ -102,7 +105,7 @@ for subsequent slices.
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; root `st_dev`/`st_ino` identity; dirfd walk of `tmp`/`objects`/`sha256`/shard with `O_NOFOLLOW`; digest-derived basenames; atomic `link` plus directory fsync; existing mismatch fails closed and is not overwritten | File object layer tested, including intermediate symlink escape, root substitution and fsync-retry recovery; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
 | TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers; RunControl does not persist snapshots | Event source, replay fold and RunControl tested; persistent projections pending |
 | TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
-| TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states; RunControl rejects illegal lifecycle jumps before write | Run/Attempt reducer and RunControl tested; SimulatedRuntime gate remains |
+| TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states; RunControl rejects illegal lifecycle jumps before write; SimulatedRuntime stops on `attempt.unknown` and never degrades unknown to failure or success | Run/Attempt reducer, RunControl and SimulatedRuntime tested |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
 | TM-015 | Oversized documents, YAML alias amplification, configs, schemas or deeply nested loops exhaust resources | Local or service denial of service | Duplicate keys and YAML aliases are rejected; decoded documents, manifests, registries, configs and schemas have byte/depth/node/count limits; configSchema uses an allowlisted non-regex/non-combinatorial subset; planning counts iteratively and never expands iterations | Tested locally; stronger process isolation required before public service exposure |
 | TM-016 | Dependency or GitHub Action compromise runs attacker code | Maintainer/CI compromise | Locked Python dependencies; CI actions pinned to commits; read-only CI token | Review lock changes; add release provenance later |
@@ -112,10 +115,12 @@ for subsequent slices.
 | TM-020 | Manifest loading or dry-run imports code, evaluates text or retrieves a remote schema | Host compromise or data exfiltration | Manifests are revalidated into private inert snapshots; remote refs, expensive Schema keywords and symlinks are rejected; process/import/network/eval tripwires | Tested in M0 |
 | TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and Python-reference content digests without host/time data; golden vectors committed | Tested inside reference implementation; cross-language canonicalization remains open |
 | TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls | Partial mitigation; typed SecretRef and general redaction still required |
-| TM-023 | A dry-run or future simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters | Tested for dry-run; SimulatedRuntime gate remains |
+| TM-023 | A dry-run or simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters; SimulatedRuntime `completed` is a controlled lifecycle finish, not training success, valid metrics, or a supported hypothesis | Tested for dry-run and SimulatedRuntime |
 | TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities; RunControl CAS uses the frozen global head and does not retry | Tested with concurrent local connections |
 | TM-025 | Corrupt JSON or duplicated index columns are trusted during replay | Wrong projection or concealed event substitution | Every read revalidates canonical event JSON, content digest and extracted columns; full scans reject sequence gaps | Tested locally; no malicious-host guarantee |
 | TM-026 | A caller mutates an event draft after reducer preflight and before SQLite write | An illegal lifecycle fact is persisted under a type that never passed preflight | RunControl copies exact JSON dict/list values into a new tree before preflight and `EventStore.append`; cyclic or non-JSON containers fail closed; malformed `type` is validated as ResearchEvent, not hashed | Isolated-snapshot and malformed-type tests |
+| TM-027 | A caller mutates ResearchSpec or task config after dry-run / SimulatedRuntime freeze | Written outcome, digests or event path diverge from the reviewed plan | SimulatedRuntime isolates a JSON snapshot before dry-run and reads `outcome` only from that snapshot; nested caller containers are not retained | Freeze and nested-mutation tests |
+| TM-028 | A multi-event simulation is treated as one SQLite transaction, or an interrupted prefix is guessed to a terminal outcome | Hidden partial execution or false completed/failed | Each fact is a separate RunControl CAS append; `run()` resumes from a legal EventStore prefix; unknown/lost/`cancellationRequested` return unresolved with zero new facts | Prefix-resume, idempotent terminal, cancellation and CAS tests |
 
 ## 7. M0 security gates
 

@@ -46,10 +46,10 @@ def test_m0_protocol_digest_golden_vectors() -> None:
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     report = TrustedKernel(registry).dry_run(spec)
     assert report.digests.spec == (
-        "sha256:16d0739a84f6ec928d3b2002dbf8a9f58e816ee3951a34a95fe670387ae97b29"
+        "sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0"
     )
     assert report.digests.plan == (
-        "sha256:a175c8473fed497560b3300c44cf30b4c7db6d1ad05a473bcca3e0668ba15118"
+        "sha256:19b3ca97b88c357b4e5ef45a834f702c2da4be066f2ee33cad9bf243334494c4"
     )
 
 

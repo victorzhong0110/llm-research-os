@@ -87,4 +87,6 @@ their EventStore meanings and are not translated into success.
 - JSON Schema for `RunSnapshot` is available as
   `researchos schema --contract run-state`.
 
-The next slice is SimulatedRuntime. This boundary is not a runtime.
+This boundary is not a runtime. [SimulatedRuntime](m0-simulated-runtime.md)
+calls `append()` for one built-in simulated task; it still does not mint
+identity or retry CAS.

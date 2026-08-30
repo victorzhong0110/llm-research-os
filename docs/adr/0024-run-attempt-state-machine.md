@@ -38,8 +38,9 @@ Adopt a pure `RunStateProjection` over verified ResearchEvents:
   and does not mean a research conclusion was established.
 
 This slice does not freeze the complete ResearchEvent type catalog or persist a SQL
-projection. SimulatedRuntime remains a later slice; ADR-0025 adds the atomic RunControl
-append boundary that applies this reducer before EventStore CAS.
+projection. ADR-0025 adds the atomic RunControl append boundary that applies this
+reducer before EventStore CAS. ADR-0026 uses both to emit a single simulated
+lifecycle; it does not change these transition rules or persist snapshots.
 
 ## Consequences
 
@@ -68,3 +69,5 @@ non-inference, unrelated-type no-ops and bounded retained state.
 - [ADR-0015 SQLite Event Source](0015-sqlite-event-source-projections-and-artifacts.md)
 - [ADR-0018 Explicit Bounded Loops](0018-explicit-bounded-loops.md)
 - [ADR-0023 Inert Manifests and Pure Dry-Run](0023-inert-manifests-and-pure-dry-run.md)
+- [ADR-0025 Atomic RunControl Append Boundary](0025-atomic-run-control-append-boundary.md)
+- [ADR-0026 Deterministic SimulatedRuntime](0026-deterministic-simulated-runtime.md)
