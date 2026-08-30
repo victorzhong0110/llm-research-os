@@ -509,6 +509,7 @@ def test_dry_run_never_calls_runtime_capabilities(monkeypatch: pytest.MonkeyPatc
     document = load_document(EXAMPLES / "valid/minimal.yaml")
     task = document["workflows"][0]["graph"]["nodes"][0]  # type: ignore[index]
     task["blockType"] = "example.python"  # type: ignore[index]
+    task["config"] = {}  # type: ignore[index]
     spec = ResearchSpec.model_validate(document)
 
     def tripwire(*args: object, **kwargs: object) -> NoReturn:

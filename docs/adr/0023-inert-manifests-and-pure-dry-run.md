@@ -44,8 +44,9 @@ that a complete static plan exists.
 - Exact versions plus manifest digests expose registry substitution instead of silently
   choosing “latest”.
 - The static compiler cannot yet prove runtime success, cancellation, retry or recovery.
-- SimulatedRuntime remains blocked on ResearchEvent, an append-only sink and a tested state
-  machine that keeps failed, cancelled, lost and unknown distinct.
+- ADR-0026 implements SimulatedRuntime on top of this dry-run boundary, the
+  ADR-0024 reducer, and the ADR-0025 append gate. Simulated completion is still
+  not training success, and unknown remains distinct from failure.
 
 ## Validation
 

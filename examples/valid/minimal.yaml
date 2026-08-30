@@ -19,6 +19,9 @@ workflows:
           id: simulate
           blockType: simulated.experiment
           blockVersion: 0.1.0
+          config:
+            outcome: success
+            seed: 0
       edges: []
 evaluations: []
 resources: []

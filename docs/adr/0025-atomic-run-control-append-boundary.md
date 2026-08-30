@@ -8,10 +8,10 @@
 ADR-0015 made SQLite the append-only fact source and added a coarse global-head
 compare-and-set on `append(..., expected_last_sequence=...)`. ADR-0024 froze a
 pure `RunStateProjection` that can reject illegal Run/Attempt transitions without
-I/O. SimulatedRuntime still cannot execute: a caller who appends first and folds
-afterwards can persist an illegal lifecycle event, and a caller who folds then
-appends without CAS can commit a transition that was valid only against a stale
-head.
+I/O. A runtime still cannot execute if a caller appends first and folds
+afterwards, or folds then appends without CAS: the first path persists an
+illegal lifecycle event, and the second can commit a transition that was valid
+only against a stale head.
 
 M0 therefore needs a trusted-kernel boundary that connects frozen high-water
 replay, reducer preflight, and global CAS. Stream identity, Worker timeout,
@@ -47,8 +47,9 @@ Run/Attempt lifecycle catalog:
   same frozen snapshot. EventStore remains the only fact source; snapshots are
   not persisted.
 
-This slice does not add a run/start/stop CLI, SimulatedRuntime, a persistent
-Run table, SQLite schema v2, or automatic conflict retry.
+This slice does not add a run/start/stop CLI, a persistent Run table, SQLite
+schema v2, or automatic conflict retry. ADR-0026 adds SimulatedRuntime as a
+caller of this boundary; it does not bypass CAS or persist snapshots.
 
 ## Consequences
 
@@ -80,3 +81,4 @@ do not leak input, and side-effect tripwires.
 - [ADR-0014 CloudEvents-Compatible ResearchEvent](0014-cloudevents-compatible-research-event.md)
 - [ADR-0015 SQLite Event Source](0015-sqlite-event-source-projections-and-artifacts.md)
 - [ADR-0024 Pure Run and Attempt State Machine](0024-run-attempt-state-machine.md)
+- [ADR-0026 Deterministic SimulatedRuntime](0026-deterministic-simulated-runtime.md)
