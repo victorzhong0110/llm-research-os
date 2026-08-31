@@ -1,0 +1,51 @@
+{
+  "$id": "https://researchos.dev/schemas/artifact-object-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One successfully imported or independently verified artifact object.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Digest",
+      "type": "string"
+    },
+    "kind": {
+      "const": "ArtifactObjectReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "put",
+        "verify"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "sizeBytes": {
+      "minimum": 0,
+      "title": "Sizebytes",
+      "type": "integer"
+    },
+    "storageKey": {
+      "pattern": "^objects/sha256/[0-9a-f]{2}/[0-9a-f]{62}$",
+      "title": "Storagekey",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "operation",
+    "digest",
+    "sizeBytes",
+    "storageKey"
+  ],
+  "title": "ArtifactObjectReport",
+  "type": "object"
+}

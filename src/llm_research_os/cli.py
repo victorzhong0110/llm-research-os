@@ -11,6 +11,21 @@ from typing import NoReturn
 
 from pydantic import ValidationError
 
+from llm_research_os.artifacts import (
+    ArtifactNotFoundError,
+    ArtifactObjectReport,
+    ArtifactStoreError,
+    LocalArtifactStore,
+)
+from llm_research_os.artifacts.schema import (
+    canonical_schema as canonical_artifact_object_report_schema,
+)
+from llm_research_os.artifacts.schema import (
+    schema_matches as artifact_object_report_schema_matches,
+)
+from llm_research_os.artifacts.schema import (
+    write_schema as write_artifact_object_report_schema,
+)
 from llm_research_os.blocks.io import ManifestLoadError, load_manifest
 from llm_research_os.blocks.registry import RegistryError, UnknownBlockError, build_registry
 from llm_research_os.blocks.report_schema import canonical_schema as canonical_block_report_schema
@@ -113,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
             "run-state",
             "simulation-request",
             "run-cancellation-request",
+            "artifact-object-report",
         ),
         default="research-spec",
     )
@@ -247,6 +263,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="existing SQLite event store; missing paths are not created",
     )
     _add_event_format_argument(runs_cancel)
+
+    artifacts = subparsers.add_parser(
+        "artifacts",
+        help="import and verify immutable local artifact objects",
+    )
+    artifact_commands = artifacts.add_subparsers(dest="artifacts_command", required=True)
+    artifacts_put = artifact_commands.add_parser(
+        "put",
+        help="stream one regular file into an existing local artifact root",
+    )
+    artifacts_put.add_argument("root", type=Path, help="existing local artifact root")
+    artifacts_put.add_argument("source", type=Path, help="regular source file to import")
+    _add_event_format_argument(artifacts_put)
+    artifacts_verify = artifact_commands.add_parser(
+        "verify",
+        help="re-hash one stored object and verify its digest",
+    )
+    artifacts_verify.add_argument("root", type=Path, help="existing local artifact root")
+    artifacts_verify.add_argument("digest", help="sha256:<64 lowercase hex> object digest")
+    _add_event_format_argument(artifacts_verify)
     return parser
 
 
@@ -292,6 +328,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _events(args)
     if args.command == "runs":
         return _runs(args)
+    if args.command == "artifacts":
+        return _artifacts(args)
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -354,6 +392,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_run_cancellation_request_schema
         matches = run_cancellation_request_schema_matches
         write = write_run_cancellation_request_schema
+    elif contract == "artifact-object-report":
+        canonical = canonical_artifact_object_report_schema
+        matches = artifact_object_report_schema_matches
+        write = write_artifact_object_report_schema
     else:
         raise AssertionError(f"unhandled schema contract: {contract}")
     if check is not None:
@@ -490,6 +532,27 @@ def _runs(args: argparse.Namespace) -> int:
     if args.runs_command == "cancel":
         return _runs_cancel(args.request, args.database, args.format)
     raise AssertionError(f"unhandled runs command: {args.runs_command}")
+
+
+def _artifacts(args: argparse.Namespace) -> int:
+    try:
+        store = LocalArtifactStore(args.root)
+        if args.artifacts_command == "put":
+            record = store.put(args.source)
+            report = ArtifactObjectReport.from_record(record, operation="put")
+        elif args.artifacts_command == "verify":
+            record = store.verify(args.digest)
+            report = ArtifactObjectReport.from_record(record, operation="verify")
+        else:
+            raise AssertionError(f"unhandled artifacts command: {args.artifacts_command}")
+    except ArtifactNotFoundError as exc:
+        _print_error(exc, args.format)
+        return 1
+    except (ArtifactStoreError, OSError, ValidationError, ValueError) as exc:
+        _print_error(exc, args.format)
+        return 2
+    _print_artifact_result(report, args.format)
+    return 0
 
 
 def _runs_simulate(
@@ -696,6 +759,18 @@ def _print_cancellation_result(
     print(f"last sequence: {snapshot.last_sequence}")
     print("process signal sent: false")
     print("cancellation outcome: not observed")
+
+
+def _print_artifact_result(report: ArtifactObjectReport, output_format: str) -> None:
+    if output_format == "json":
+        payload = report.model_dump(mode="json", by_alias=True)
+        print(_dumps_json(payload))
+        return
+    print(f"artifact operation: {report.operation}")
+    print(f"digest: {report.digest}")
+    print(f"size bytes: {report.size_bytes}")
+    print(f"storage key: {report.storage_key}")
+    print("integrity verified: true")
 
 
 def _dumps_json(payload: object, *, indent: int | None = 2) -> str:

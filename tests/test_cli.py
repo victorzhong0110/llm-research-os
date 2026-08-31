@@ -21,6 +21,9 @@ SIMULATION_REQUEST_SCHEMA = (
 RUN_CANCELLATION_REQUEST_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "run-cancellation-request" / "v0alpha1.schema.json"
 )
+ARTIFACT_OBJECT_REPORT_SCHEMA = (
+    Path(__file__).parents[1] / "schemas" / "artifact-object-report" / "v0alpha1.schema.json"
+)
 
 
 def test_validate_command(capsys: object) -> None:
@@ -50,6 +53,18 @@ def test_all_contract_schema_check_commands() -> None:
                 "research-event",
                 "--check",
                 str(EVENT_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "artifact-object-report",
+                "--check",
+                str(ARTIFACT_OBJECT_REPORT_SCHEMA),
             ]
         )
         == 0

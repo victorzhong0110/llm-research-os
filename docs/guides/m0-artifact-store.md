@@ -7,8 +7,9 @@ content-addressed object directory without loading the whole file into memory,
 without trusting caller-supplied object paths, and without treating canonical
 JSON digests as file addresses.
 
-It does **not** index artifacts in SQLite, emit ResearchEvents, expose an
-artifact CLI, assign media types, or garbage-collect objects.
+It does **not** index artifacts in SQLite, emit ResearchEvents, assign media
+types, or garbage-collect objects. The same object boundary is exposed by two
+local CLI commands; they do not add those missing semantics.
 
 ## Minimal use
 
@@ -28,6 +29,28 @@ verified = store.verify(record.digest)
 with store.open(record.digest) as handle:
     first_page = handle.read(65_536)
 ```
+
+## CLI import and verification
+
+The artifact root must already exist as a real directory:
+
+```bash
+mkdir -m 700 artifacts
+uv run researchos artifacts put artifacts checkpoint.bin --format json
+uv run researchos artifacts verify artifacts \
+  sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --format json
+```
+
+The JSON result is `ArtifactObjectReport v0alpha1`; it contains only the operation, digest, byte
+size and relative storage key. It does not expose the caller's root/source paths or claim a
+project, Run, media type or public URI. Text output likewise states only object identity and
+`integrity verified: true`.
+
+`put` and a successful `verify` return `0`. Verifying a valid digest that has no object returns
+`1`. Invalid input, an unsafe path, I/O failure or corruption returns `2` with a `ProblemReport`.
+The CLI never prints stored bytes, repairs corruption, creates a missing root, deletes, uploads or
+executes an artifact.
 
 `record` is frozen and contains:
 
@@ -111,7 +134,7 @@ never widened.
 - Do not place secrets in artifact bytes if the host is untrusted; the store
   does not encrypt.
 - SQLite `artifacts` / `artifact_links` tables, media types, URIs, deletion,
-  GC, tombstones and CLI commands remain later slices.
+  GC and tombstones remain later slices.
 
 ## Residual open questions
 
