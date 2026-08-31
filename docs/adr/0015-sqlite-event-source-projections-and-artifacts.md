@@ -111,8 +111,10 @@ Operations are anchored at a recorded root inode and walk each directory compone
 dirfds, so intermediate symlinks are not followed. Existing matching objects are reused; mismatched
 objects fail closed and are not overwritten. A successful `put` fsyncs new directory entries and the
 shard after `link`; a previous link-without-fsync is repaired by the next matching `put`.
-This does **not** add `artifacts` or `artifact_links` tables, media-type/URI protocol freeze,
-lifecycle/GC, artifact CLI or ResearchEvent emission. The accepted `6-DBC` decision is unchanged.
+ADR-0029 exposes the same object boundary through explicit `artifacts put` and `artifacts verify`
+commands with a versioned output report. This still does **not** add `artifacts` or
+`artifact_links` tables, media-type/URI protocol freeze, lifecycle/GC or ResearchEvent emission.
+The accepted `6-DBC` decision is unchanged.
 
 The EventStore Python API now accepts an optional global-head append precondition and exposes
 `last_sequence()`. SQLite schema v1, the migration digest, triggers and the ResearchEvent
