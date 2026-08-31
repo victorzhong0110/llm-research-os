@@ -366,6 +366,10 @@ RunControl is the append boundary that rebuilds from EventStore, preflights this
 CAS-writes only at the frozen global head. SimulatedRuntime is a caller of that boundary for
 one built-in simulated task; it does not change these transition rules.
 
+`researchos runs cancel` is another narrow RunControl caller. It appends one explicit
+`run.cancel.requested` or `attempt.cancel.requested` fact, but never emits either cancelled
+outcome or contacts a process/runtime/Worker.
+
 ## 13. Open questions
 
 The following remain undecided and MUST NOT be filled in by adapters:

@@ -2,9 +2,9 @@
 
 > Status: Active M0 baseline
 >
-> Last reviewed: 2026-08-30
+> Last reviewed: 2026-08-31
 >
-> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, and its strict local CLI
+> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -28,7 +28,9 @@ artifact directory, and can append Run/Attempt lifecycle events through RunContr
 replays a frozen global head, preflights the pure reducer, and compare-and-sets the store.
 SimulatedRuntime can then drive one ready `simulated.experiment@0.1.0` task through that
 boundary. A strict `SimulationRequest` and `runs simulate` CLI expose that path without
-minting identity or retrying conflict. It does **not** import manifest entrypoints, evaluate `until` expressions,
+minting identity or retrying conflict. A strict `RunCancellationRequest` can append one
+cancellation-request fact to an existing store, but sends no signal and infers no outcome.
+It does **not** import manifest entrypoints, evaluate `until` expressions,
 contact model APIs, run plugins, start containers, connect Workers, spend money, persist
 projections, index artifacts in SQLite or upload artifacts. Simulated `completed` is a
 controlled lifecycle finish, not training success.
@@ -49,6 +51,7 @@ controlled lifecycle finish, not training success.
 | RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; SimulatedRuntime is a caller and does not auto-retry |
 | SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented for review; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion |
 | Simulated Run CLI | Local request-to-RunSnapshot adapter | Implemented for review; strict versioned request, explicit identity, no conflict retry, exact RunSnapshot JSON |
+| Run Cancellation CLI | Local single-fact cancellation-request adapter | Implemented for review; existing store only, explicit identity, no signal, no inferred outcome or conflict retry |
 | Artifact store and query projections | Integrity and confidentiality targets | Local file CAS implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
@@ -83,6 +86,7 @@ controlled lifecycle finish, not training success.
 - Facts are appended; corrections create new facts rather than rewriting history.
 - Artifact content is addressed and verified by digest before use.
 - Failure, disconnection and unknown are distinct terminal or recovery states.
+- A cancellation request is distinct from an observed cancelled outcome.
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 
@@ -124,6 +128,7 @@ for subsequent slices.
 | TM-027 | A caller mutates ResearchSpec or task config after dry-run / SimulatedRuntime freeze | Written outcome, digests or event path diverge from the reviewed plan | SimulatedRuntime isolates a JSON snapshot before dry-run and reads `outcome` only from that snapshot; nested caller containers are not retained | Freeze and nested-mutation tests |
 | TM-028 | A multi-event simulation is treated as one SQLite transaction, or an interrupted prefix is guessed to a terminal outcome | Hidden partial execution or false completed/failed | Each fact is a separate RunControl CAS append; `run()` resumes from a legal EventStore prefix; `completed`/`failed` win over a retained cancellation request; unknown/lost/cancelled, nonterminal Run or active Attempt `cancellationRequested`, and a latest cancelled Attempt return unresolved with zero new facts | Prefix-resume, idempotent terminal, Attempt/Run cancellation and CAS tests |
 | TM-029 | A convenience Run CLI silently mints identity, coerces hostile input, retries a conflict, or reports a negative simulated outcome as success | Irreproducible facts, duplicate execution, terminal injection, or false success | Closed alias-only SimulationRequest Schema; duplicate-key/alias/symlink rejection; caller supplies every id/time/stream; exact RunSnapshot JSON; completed=0, domain-negative=1, error/conflict=2; no retry | Schema/model corpus, CLI outcome, idempotence, invalid-input, non-echo, corrupt-store and replay tests |
+| TM-030 | A stop command creates an empty store, sends an unreviewed signal, retries stale intent, or reports requested cancellation as an observed outcome | Unintended host action, lost concurrent facts, or false audit state | Closed RunCancellationRequest Schema; existing writable store required; exactly one RunControl CAS fact; lifecycle type derived from a closed target; exact RunSnapshot output; text says no signal and no observed outcome; no conflict retry | Schema/model, missing/corrupt-store, Run/Attempt target, terminal/binding, non-echo and concurrent same-head tests |
 
 ## 7. M0 security gates
 
@@ -139,6 +144,8 @@ Before merging executable capability, the following gates apply:
 ## 8. Explicitly accepted residual risk
 
 - M0 is local pre-release software and does not yet defend a public network service.
+- Cancellation-request `actor.id` is claimed metadata, not authentication; local OS access to
+  the request and database is the current authority boundary.
 - `config` and `extensions` are structurally declared but their future consumers must perform capability-specific validation.
 - M0 has no typed `SecretRef`; users must not place credentials in ResearchSpec or manifests. Dry-run avoids echoing arbitrary values but is not a complete secret-scanning system.
 - Rights metadata can be wrong or incomplete; the validator enforces declared policy but is not a legal authority.

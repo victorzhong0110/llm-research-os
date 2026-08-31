@@ -65,3 +65,9 @@ jobs:
         run: >-
           uv run researchos schema --contract simulation-request
           --check schemas/simulation-request/v0alpha1.schema.json
+      - name: Verify RunCancellationRequest schema
+        run: >-
+          uv run researchos schema --contract run-cancellation-request
+          --check schemas/run-cancellation-request/v0alpha1.schema.json
+      - name: Build package
+        run: uv build

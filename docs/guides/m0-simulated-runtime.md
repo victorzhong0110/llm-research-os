@@ -151,9 +151,11 @@ change the outcome or digests that will be written.
 - LoopBlock expansion or `until` evaluation
 - ApprovalBlock, paid resources, metrics, artifacts
 - Automatic retry, cancel, heartbeat, or lost/recovered policy
-- Stop/cancel CLI and NativeProcessRuntime
+- Process/Worker stop adapters and NativeProcessRuntime
 - Minting `id`, `time`, `streamid`, `correlationid`, or `causationid`
 
 The follow-up [M0 Simulated Run CLI](m0-simulated-run-cli.md) now provides a
-strict `SimulationRequest` Schema and the `runs simulate` entry point. Stop and
-cancel commands remain out of scope.
+strict `SimulationRequest` Schema and the `runs simulate` entry point. A
+separate [M0 Run Cancellation CLI](m0-run-cancellation-cli.md) can append an
+auditable cancellation request, but process/Worker stopping and observed
+cancellation remain out of scope.

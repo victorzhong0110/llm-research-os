@@ -100,9 +100,22 @@ def _connect_sqlite(
     path: Path,
     *,
     create: bool,
+    require_existing: bool,
     is_new: bool,
     timeout_seconds: float,
 ) -> sqlite3.Connection:
+    if require_existing:
+        if is_new:
+            raise EventStoreSchemaError(f"database does not exist: {path}")
+        try:
+            return sqlite3.connect(
+                f"{path.as_uri()}?mode=rw",
+                timeout=timeout_seconds,
+                autocommit=True,
+                uri=True,
+            )
+        except sqlite3.OperationalError as exc:
+            raise EventStoreSchemaError(f"could not open database for writing: {path}") from exc
     if create:
         return sqlite3.connect(path, timeout=timeout_seconds, autocommit=True)
     try:
@@ -130,6 +143,8 @@ class EventStore:
     ``EventStore(path)`` creates a versioned database when the path does not exist.
     ``EventStore(path, create=False)`` opens an existing database with SQLite
     ``mode=ro`` and fails without creating a file if the path is missing.
+    ``EventStore(path, require_existing=True)`` opens an existing database with
+    SQLite ``mode=rw`` and likewise refuses to create a missing path.
     """
 
     def __init__(
@@ -137,9 +152,14 @@ class EventStore:
         path: str | Path,
         *,
         create: bool = True,
+        require_existing: bool = False,
         timeout_seconds: float = DEFAULT_BUSY_TIMEOUT_SECONDS,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
+        if type(require_existing) is not bool:
+            raise TypeError("require_existing must be a boolean")
+        if require_existing and not create:
+            raise ValueError("require_existing=True cannot be combined with create=False")
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
         self._path, is_new = _validate_database_path(path)
@@ -148,14 +168,20 @@ class EventStore:
             self._connection = _connect_sqlite(
                 self._path,
                 create=create,
+                require_existing=require_existing,
                 is_new=is_new,
                 timeout_seconds=timeout_seconds,
             )
             self._connection.row_factory = sqlite3.Row
             if create and is_new:
                 os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
-            self._configure_connection(timeout_seconds)
-            self._initialize_or_verify_schema(allow_create=create)
+            if require_existing:
+                self._configure_connection_guards(timeout_seconds)
+                self._initialize_or_verify_schema(allow_create=False)
+                self._configure_connection_durability(timeout_seconds)
+            else:
+                self._configure_connection(timeout_seconds)
+                self._initialize_or_verify_schema(allow_create=create)
         except sqlite3.Error as exc:
             connection = getattr(self, "_connection", None)
             if connection is not None:
@@ -198,11 +224,17 @@ class EventStore:
         self._connection.close()
 
     def _configure_connection(self, timeout_seconds: float) -> None:
+        self._configure_connection_guards(timeout_seconds)
+        self._configure_connection_durability(timeout_seconds)
+
+    def _configure_connection_guards(self, timeout_seconds: float) -> None:
         busy_timeout_ms = max(1, int(timeout_seconds * 1_000))
         self._connection.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
         self._connection.execute("PRAGMA foreign_keys = ON")
         self._connection.execute("PRAGMA recursive_triggers = ON")
         self._connection.execute("PRAGMA trusted_schema = OFF")
+
+    def _configure_connection_durability(self, timeout_seconds: float) -> None:
         self._connection.execute("PRAGMA synchronous = FULL")
         journal_mode = self._enable_wal(timeout_seconds)
         if journal_mode.lower() != "wal":
