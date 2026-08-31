@@ -29,7 +29,14 @@ from llm_research_os.events.models import ResearchEvent
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
-from llm_research_os.execution import PlanningInputError, TrustedKernel
+from llm_research_os.execution import (
+    PlanningInputError,
+    SimulatedRuntime,
+    SimulationDisposition,
+    SimulationError,
+    TrustedKernel,
+    load_simulation_request,
+)
 from llm_research_os.execution.models import (
     DryRunReport,
     DryRunStatus,
@@ -39,6 +46,15 @@ from llm_research_os.execution.models import (
     PlannedLoop,
     PlannedTask,
 )
+from llm_research_os.execution.request_schema import (
+    canonical_schema as canonical_simulation_request_schema,
+)
+from llm_research_os.execution.request_schema import (
+    schema_matches as simulation_request_schema_matches,
+)
+from llm_research_os.execution.request_schema import (
+    write_schema as write_simulation_request_schema,
+)
 from llm_research_os.execution.schema import canonical_schema as canonical_dry_run_schema
 from llm_research_os.execution.schema import schema_matches as dry_run_schema_matches
 from llm_research_os.execution.schema import write_schema as write_dry_run_schema
@@ -47,11 +63,13 @@ from llm_research_os.problem_schema import canonical_schema as canonical_problem
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
 from llm_research_os.projections import replay_events
+from llm_research_os.runs import RunSnapshot, RunStateError
 from llm_research_os.runs.schema import canonical_schema as canonical_run_state_schema
 from llm_research_os.runs.schema import schema_matches as run_state_schema_matches
 from llm_research_os.runs.schema import write_schema as write_run_state_schema
 from llm_research_os.spec.diff import semantic_diff
-from llm_research_os.spec.io import SpecLoadError, load_spec
+from llm_research_os.spec.io import SpecLoadError, load_document, load_spec
+from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
@@ -77,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
             "dry-run-report",
             "problem-report",
             "run-state",
+            "simulation-request",
         ),
         default="research-spec",
     )
@@ -177,6 +196,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     events_verify.add_argument("database", type=Path)
     _add_event_format_argument(events_verify)
+
+    runs = subparsers.add_parser("runs", help="execute and inspect controlled Runs")
+    run_commands = runs.add_subparsers(dest="runs_command", required=True)
+    runs_simulate = run_commands.add_parser(
+        "simulate",
+        help="append one deterministic simulated lifecycle",
+    )
+    runs_simulate.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    runs_simulate.add_argument(
+        "request",
+        type=Path,
+        help="SimulationRequest v0alpha1 YAML or JSON file",
+    )
+    runs_simulate.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create or resume",
+    )
+    _add_registry_arguments(runs_simulate)
     return parser
 
 
@@ -220,6 +258,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _blocks(args)
     if args.command == "events":
         return _events(args)
+    if args.command == "runs":
+        return _runs(args)
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -274,6 +314,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_run_state_schema
         matches = run_state_schema_matches
         write = write_run_state_schema
+    elif contract == "simulation-request":
+        canonical = canonical_simulation_request_schema
+        matches = simulation_request_schema_matches
+        write = write_simulation_request_schema
     else:
         raise AssertionError(f"unhandled schema contract: {contract}")
     if check is not None:
@@ -398,6 +442,58 @@ def _events(args: argparse.Namespace) -> int:
     raise AssertionError(f"unhandled events command: {args.events_command}")
 
 
+def _runs(args: argparse.Namespace) -> int:
+    if args.runs_command == "simulate":
+        return _runs_simulate(
+            args.spec,
+            args.request,
+            args.database,
+            args.registry,
+            args.format,
+        )
+    raise AssertionError(f"unhandled runs command: {args.runs_command}")
+
+
+def _runs_simulate(
+    spec_path: Path,
+    request_path: Path,
+    database: Path,
+    registry_paths: list[Path],
+    output_format: str,
+) -> int:
+    try:
+        spec = ResearchSpec.model_validate(load_document(spec_path, reject_symlinks=True))
+        request = load_simulation_request(request_path)
+        registry = build_registry(registry_paths)
+        with EventStore(database) as store:
+            result = SimulatedRuntime(
+                store,
+                registry,
+                project_id=str(spec.metadata.id),
+                run_id=request.run_id,
+            ).run(spec, request.runtime_request())
+    except (
+        EventStoreError,
+        ManifestLoadError,
+        OSError,
+        RegistryError,
+        RunStateError,
+        SimulationError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_simulation_result(
+        result.snapshot,
+        result.disposition,
+        len(result.stored),
+        output_format,
+    )
+    return 0 if result.disposition is SimulationDisposition.COMPLETED else 1
+
+
 def _events_get(database: Path, event_id: str, output_format: str) -> int:
     try:
         with EventStore(database, create=False) as store:
@@ -499,6 +595,26 @@ def _print_event(event: ResearchEvent, output_format: str) -> None:
 
 def _event_document(event: ResearchEvent) -> dict[str, object]:
     return event.model_dump(mode="json", by_alias=True)
+
+
+def _print_simulation_result(
+    snapshot: RunSnapshot,
+    disposition: SimulationDisposition,
+    appended_events: int,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        payload = snapshot.model_dump(mode="json", by_alias=True)
+        print(_dumps_json(payload))
+        return
+    print(f"simulation disposition: {disposition.value}")
+    print(f"project: {_safe_text(snapshot.project_id)}")
+    print(f"run: {_safe_text(snapshot.run_id)}")
+    print(f"workflow: {_safe_text(snapshot.workflow_id)}")
+    print(f"status: {snapshot.status.value}")
+    print(f"appended events: {appended_events}")
+    print(f"last sequence: {snapshot.last_sequence}")
+    print("scientific conclusion: not evaluated")
 
 
 def _dumps_json(payload: object, *, indent: int | None = 2) -> str:

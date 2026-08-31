@@ -151,5 +151,9 @@ change the outcome or digests that will be written.
 - LoopBlock expansion or `until` evaluation
 - ApprovalBlock, paid resources, metrics, artifacts
 - Automatic retry, cancel, heartbeat, or lost/recovered policy
-- Run/start/stop CLI and a SimulatedRuntime JSON Schema
+- Stop/cancel CLI and NativeProcessRuntime
 - Minting `id`, `time`, `streamid`, `correlationid`, or `causationid`
+
+The follow-up [M0 Simulated Run CLI](m0-simulated-run-cli.md) now provides a
+strict `SimulationRequest` Schema and the `runs simulate` entry point. Stop and
+cancel commands remain out of scope.

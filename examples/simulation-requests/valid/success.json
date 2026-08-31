@@ -1,0 +1,39 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "SimulationRequest",
+  "runId": "run.simulated",
+  "workflowId": "workflow.simulation",
+  "attemptId": "attempt.1",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "run.simulated",
+  "streamid": "stream.simulated",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "events": {
+    "run.queued": {
+      "id": "evt.1.run.queued",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "run.started": {
+      "id": "evt.2.run.started",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "attempt.queued": {
+      "id": "evt.3.attempt.queued",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "attempt.started": {
+      "id": "evt.4.attempt.started",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "attempt.succeeded": {
+      "id": "evt.5.attempt.succeeded",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "run.completed": {
+      "id": "evt.6.run.completed",
+      "time": "2026-08-30T12:00:00Z"
+    }
+  }
+}

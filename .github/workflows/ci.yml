@@ -61,3 +61,7 @@ jobs:
         run: >-
           uv run researchos schema --contract run-state
           --check schemas/run-state/v0alpha1.schema.json
+      - name: Verify SimulationRequest schema
+        run: >-
+          uv run researchos schema --contract simulation-request
+          --check schemas/simulation-request/v0alpha1.schema.json

@@ -15,6 +15,9 @@ BLOCK_REPORT_SCHEMA = (
 DRY_RUN_SCHEMA = Path(__file__).parents[1] / "schemas" / "dry-run-report" / "v0alpha1.schema.json"
 PROBLEM_SCHEMA = Path(__file__).parents[1] / "schemas" / "problem-report" / "v0alpha1.schema.json"
 RUN_STATE_SCHEMA = Path(__file__).parents[1] / "schemas" / "run-state" / "v0alpha1.schema.json"
+SIMULATION_REQUEST_SCHEMA = (
+    Path(__file__).parents[1] / "schemas" / "simulation-request" / "v0alpha1.schema.json"
+)
 
 
 def test_validate_command(capsys: object) -> None:
@@ -44,6 +47,18 @@ def test_all_contract_schema_check_commands() -> None:
                 "research-event",
                 "--check",
                 str(EVENT_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "simulation-request",
+                "--check",
+                str(SIMULATION_REQUEST_SCHEMA),
             ]
         )
         == 0

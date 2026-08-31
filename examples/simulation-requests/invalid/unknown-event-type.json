@@ -1,0 +1,19 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "SimulationRequest",
+  "runId": "run.simulated",
+  "workflowId": "workflow.simulation",
+  "attemptId": "attempt.1",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "run.simulated",
+  "streamid": "stream.simulated",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "events": {
+    "attempt.teleported": {
+      "id": "evt.teleported",
+      "time": "2026-08-30T12:00:00Z"
+    }
+  }
+}

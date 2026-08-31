@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-08-30
 >
-> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection, RunControl, and deterministic SimulatedRuntime
+> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, and its strict local CLI
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -27,7 +27,8 @@ facts through a read-only CLI, can import regular local files into a content-add
 artifact directory, and can append Run/Attempt lifecycle events through RunControl, which
 replays a frozen global head, preflights the pure reducer, and compare-and-sets the store.
 SimulatedRuntime can then drive one ready `simulated.experiment@0.1.0` task through that
-boundary. It does **not** import manifest entrypoints, evaluate `until` expressions,
+boundary. A strict `SimulationRequest` and `runs simulate` CLI expose that path without
+minting identity or retrying conflict. It does **not** import manifest entrypoints, evaluate `until` expressions,
 contact model APIs, run plugins, start containers, connect Workers, spend money, persist
 projections, index artifacts in SQLite or upload artifacts. Simulated `completed` is a
 controlled lifecycle finish, not training success.
@@ -47,6 +48,7 @@ controlled lifecycle finish, not training success.
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
 | RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; SimulatedRuntime is a caller and does not auto-retry |
 | SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented for review; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion |
+| Simulated Run CLI | Local request-to-RunSnapshot adapter | Implemented for review; strict versioned request, explicit identity, no conflict retry, exact RunSnapshot JSON |
 | Artifact store and query projections | Integrity and confidentiality targets | Local file CAS implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
@@ -121,6 +123,7 @@ for subsequent slices.
 | TM-026 | A caller mutates an event draft after reducer preflight and before SQLite write | An illegal lifecycle fact is persisted under a type that never passed preflight | RunControl copies exact JSON dict/list values into a new tree before preflight and `EventStore.append`; cyclic or non-JSON containers fail closed; malformed `type` is validated as ResearchEvent, not hashed | Isolated-snapshot and malformed-type tests |
 | TM-027 | A caller mutates ResearchSpec or task config after dry-run / SimulatedRuntime freeze | Written outcome, digests or event path diverge from the reviewed plan | SimulatedRuntime isolates a JSON snapshot before dry-run and reads `outcome` only from that snapshot; nested caller containers are not retained | Freeze and nested-mutation tests |
 | TM-028 | A multi-event simulation is treated as one SQLite transaction, or an interrupted prefix is guessed to a terminal outcome | Hidden partial execution or false completed/failed | Each fact is a separate RunControl CAS append; `run()` resumes from a legal EventStore prefix; `completed`/`failed` win over a retained cancellation request; unknown/lost/cancelled, nonterminal Run or active Attempt `cancellationRequested`, and a latest cancelled Attempt return unresolved with zero new facts | Prefix-resume, idempotent terminal, Attempt/Run cancellation and CAS tests |
+| TM-029 | A convenience Run CLI silently mints identity, coerces hostile input, retries a conflict, or reports a negative simulated outcome as success | Irreproducible facts, duplicate execution, terminal injection, or false success | Closed alias-only SimulationRequest Schema; duplicate-key/alias/symlink rejection; caller supplies every id/time/stream; exact RunSnapshot JSON; completed=0, domain-negative=1, error/conflict=2; no retry | Schema/model corpus, CLI outcome, idempotence, invalid-input, non-echo, corrupt-store and replay tests |
 
 ## 7. M0 security gates
 
