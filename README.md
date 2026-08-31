@@ -9,8 +9,8 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec、ResearchEvent
 协议基础、纯静态规划内核、SQLite 追加式事件事实源、本地内容寻址制品对象层、纯
 Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界，以及无需 GPU
-与网络的确定性 SimulatedRuntime 纵向闭环；当前仍不执行任何训练任务或真实 GPU
-工作负载。
+与网络的确定性 SimulatedRuntime 纵向闭环；现在也可通过严格版本化请求和 CLI 创建或
+恢复该模拟 Run。当前仍不执行任何训练任务或真实 GPU 工作负载。
 
 ## M0 目标
 
@@ -43,11 +43,13 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
 - [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
 - [Run/Attempt 状态 v0alpha1](docs/protocols/run-attempt-state-v0alpha1.md)
+- [SimulationRequest v0alpha1](docs/protocols/simulation-request-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
 - [M0 RunControl 导读](docs/guides/m0-run-control.md)
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
+- [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 
@@ -65,6 +67,8 @@ uv run researchos schema --contract research-event \
   --check schemas/research-event/v0alpha1.schema.json
 uv run researchos schema --contract run-state \
   --check schemas/run-state/v0alpha1.schema.json
+uv run researchos schema --contract simulation-request \
+  --check schemas/simulation-request/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -80,6 +84,7 @@ schemas/block-command-report/v0alpha1.schema.json
 schemas/dry-run-report/v0alpha1.schema.json
 schemas/problem-report/v0alpha1.schema.json
 schemas/run-state/v0alpha1.schema.json
+schemas/simulation-request/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
@@ -133,13 +138,27 @@ conflict，也不执行任何积木。CAS 失败后必须由调用者再次 `app
 受控生命周期结束，不表示训练成功或假设成立。最小可运行示例见
 [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)。
 
+命令行纵向闭环使用单独的显式请求文件；不会生成 `id`、`time` 或 `streamid`：
+
+```bash
+uv run researchos runs simulate \
+  examples/valid/minimal.yaml \
+  examples/simulation-requests/valid/success.json \
+  research.db --format json
+```
+
+JSON stdout 是已发布 Schema 约束的 `RunSnapshot`。退出码 `0` 仅表示模拟生命周期
+`completed`；`failed`、`unknown`、`unresolved` 返回 `1`，输入、完整性或并发错误返回
+`2`。可随后用 `events verify` / `events replay` 独立检查事实。
+
 ## 当前安全边界
 
 M0 当前验证协议和差异、编译无副作用的静态计划，可向本地 SQLite 追加、查询和回放事件事实，
 可将常规本地文件导入内容寻址制品目录，可通过 RunControl 在写入前拒绝非法生命周期事件，
 并可通过 SimulatedRuntime 对单个内置 simulated task 追加确定性生命周期事实。
+`runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
 它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
-或持久化投影，也不提供制品 CLI、Run CLI 或网络上传。
+或持久化投影，也不提供制品 CLI、停止/取消 CLI、NativeProcessRuntime 或网络上传。
 模拟 `completed` 不是科学成功；`unknown` 保持未决。
 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
 [安全政策](SECURITY.md)。

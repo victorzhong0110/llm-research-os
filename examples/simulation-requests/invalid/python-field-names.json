@@ -1,0 +1,14 @@
+{
+  "api_version": "researchos.dev/v0alpha1",
+  "kind": "SimulationRequest",
+  "run_id": "run.simulated",
+  "workflow_id": "workflow.simulation",
+  "attempt_id": "attempt.1",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "run.simulated",
+  "stream_id": "stream.simulated",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "events": {}
+}

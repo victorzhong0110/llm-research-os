@@ -85,6 +85,9 @@ This slice does not add a SimulatedRuntime JSON Schema, a run CLI,
 NativeProcessRuntime, multi-node scheduling, data-edge values, loop unrolling,
 cancel/heartbeat/lost policy, or SQLite schema changes.
 
+Implementation follow-up: ADR-0027 adds a strict external SimulationRequest
+Schema and a CLI wrapper without changing the runtime decision above.
+
 ## Consequences
 
 - Interruptions leave a legal event prefix. Reopening the database and calling

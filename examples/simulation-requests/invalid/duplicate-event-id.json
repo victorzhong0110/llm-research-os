@@ -1,0 +1,23 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "SimulationRequest",
+  "runId": "run.simulated",
+  "workflowId": "workflow.simulation",
+  "attemptId": "attempt.1",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "run.simulated",
+  "streamid": "stream.simulated",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "events": {
+    "run.queued": {
+      "id": "evt.shared",
+      "time": "2026-08-30T12:00:00Z"
+    },
+    "run.started": {
+      "id": "evt.shared",
+      "time": "2026-08-30T12:00:00Z"
+    }
+  }
+}
