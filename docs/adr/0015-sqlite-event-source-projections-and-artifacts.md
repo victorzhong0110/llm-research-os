@@ -83,6 +83,8 @@ versioned migrations and cannot become a second fact source.
   global head. Conflicts are not retried, and a stale token is invalid even across streams.
 - Correcting a fact requires a new event; the supported API cannot mutate or delete an old one.
 - Store reads are bounded and fail closed when JSON, digests or indexed columns disagree.
+- Writable commands that must target prior facts can use `require_existing=True`; this opens
+  SQLite in `mode=rw` without creating a missing database and verifies the existing schema first.
 - The digest uses the current Python reference canonicalization. It is not a stable cross-language
   signing format; a later ADR must decide normative canonicalization before external verification.
 - Triggers and digests protect against bugs and detectable corruption, not a malicious host with
@@ -98,7 +100,8 @@ concurrent connections, duplicate rollback without sequence gaps, trigger-protec
 canonical JSON and digest verification, index disagreement, missing sequence detection, bounded
 reads, symlink rejection, fail-closed handling of unrelated databases, global-head compare-and-set,
 `last_sequence()`, duplicate-id precedence over a stale head, and concurrent same-head conflicts
-across streams without schema or ResearchEvent contract changes.
+across streams without schema or ResearchEvent contract changes. Writable-existing tests cover
+missing paths, uninitialized files and successful append without a schema migration.
 
 ## Implementation status
 

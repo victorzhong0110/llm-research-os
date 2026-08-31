@@ -63,7 +63,23 @@ from llm_research_os.problem_schema import canonical_schema as canonical_problem
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
 from llm_research_os.projections import replay_events
-from llm_research_os.runs import RunSnapshot, RunStateError
+from llm_research_os.runs import (
+    AttemptCancellationTarget,
+    RunCancellationTarget,
+    RunSnapshot,
+    RunStateError,
+    load_run_cancellation_request,
+    request_cancellation,
+)
+from llm_research_os.runs.cancellation_schema import (
+    canonical_schema as canonical_run_cancellation_request_schema,
+)
+from llm_research_os.runs.cancellation_schema import (
+    schema_matches as run_cancellation_request_schema_matches,
+)
+from llm_research_os.runs.cancellation_schema import (
+    write_schema as write_run_cancellation_request_schema,
+)
 from llm_research_os.runs.schema import canonical_schema as canonical_run_state_schema
 from llm_research_os.runs.schema import schema_matches as run_state_schema_matches
 from llm_research_os.runs.schema import write_schema as write_run_state_schema
@@ -96,6 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
             "problem-report",
             "run-state",
             "simulation-request",
+            "run-cancellation-request",
         ),
         default="research-spec",
     )
@@ -215,6 +232,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="SQLite event store to create or resume",
     )
     _add_registry_arguments(runs_simulate)
+    runs_cancel = run_commands.add_parser(
+        "cancel",
+        help="append one cancellation request without claiming the target stopped",
+    )
+    runs_cancel.add_argument(
+        "request",
+        type=Path,
+        help="RunCancellationRequest v0alpha1 YAML or JSON file",
+    )
+    runs_cancel.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    _add_event_format_argument(runs_cancel)
     return parser
 
 
@@ -318,6 +350,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_simulation_request_schema
         matches = simulation_request_schema_matches
         write = write_simulation_request_schema
+    elif contract == "run-cancellation-request":
+        canonical = canonical_run_cancellation_request_schema
+        matches = run_cancellation_request_schema_matches
+        write = write_run_cancellation_request_schema
     else:
         raise AssertionError(f"unhandled schema contract: {contract}")
     if check is not None:
@@ -451,6 +487,8 @@ def _runs(args: argparse.Namespace) -> int:
             args.registry,
             args.format,
         )
+    if args.runs_command == "cancel":
+        return _runs_cancel(args.request, args.database, args.format)
     raise AssertionError(f"unhandled runs command: {args.runs_command}")
 
 
@@ -492,6 +530,25 @@ def _runs_simulate(
         output_format,
     )
     return 0 if result.disposition is SimulationDisposition.COMPLETED else 1
+
+
+def _runs_cancel(request_path: Path, database: Path, output_format: str) -> int:
+    try:
+        request = load_run_cancellation_request(request_path)
+        with EventStore(database, require_existing=True) as store:
+            result = request_cancellation(store, request)
+    except (
+        EventStoreError,
+        OSError,
+        RunStateError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_cancellation_result(result.snapshot, request.target, output_format)
+    return 0
 
 
 def _events_get(database: Path, event_id: str, output_format: str) -> int:
@@ -615,6 +672,30 @@ def _print_simulation_result(
     print(f"appended events: {appended_events}")
     print(f"last sequence: {snapshot.last_sequence}")
     print("scientific conclusion: not evaluated")
+
+
+def _print_cancellation_result(
+    snapshot: RunSnapshot,
+    target: RunCancellationTarget | AttemptCancellationTarget,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        payload = snapshot.model_dump(mode="json", by_alias=True)
+        print(_dumps_json(payload))
+        return
+    print("cancellation request: recorded")
+    print(f"project: {_safe_text(snapshot.project_id)}")
+    print(f"run: {_safe_text(snapshot.run_id)}")
+    if isinstance(target, AttemptCancellationTarget):
+        print(f"target: attempt {_safe_text(target.attempt_id)}")
+        print("attempt cancellation requested: true")
+    else:
+        print("target: run")
+    print(f"run status: {snapshot.status.value}")
+    print(f"run cancellation requested: {str(snapshot.cancellation_requested).lower()}")
+    print(f"last sequence: {snapshot.last_sequence}")
+    print("process signal sent: false")
+    print("cancellation outcome: not observed")
 
 
 def _dumps_json(payload: object, *, indent: int | None = 2) -> str:
@@ -801,14 +882,32 @@ def _safe_text(value: object) -> str:
 
 def _problem_report(exc: Exception) -> ProblemReport:
     if isinstance(exc, ValidationError):
-        errors = [
-            ProblemDetail(
-                path=_json_pointer(_source_location(error["loc"])),
-                message=error["msg"],
-                type=error["type"],
+        errors = []
+        for error in exc.errors(
+            include_url=False,
+            include_context=False,
+            include_input=False,
+        ):
+            location = error["loc"]
+            message = error["msg"]
+            if (
+                exc.title == "RunCancellationRequestDocument"
+                and error["type"] == "extra_forbidden"
+                and location
+            ):
+                location = location[:-1]
+            if (
+                exc.title == "RunCancellationRequestDocument"
+                and error["type"] == "union_tag_invalid"
+            ):
+                message = "Input should select a supported cancellation target"
+            errors.append(
+                ProblemDetail(
+                    path=_json_pointer(_source_location(location)),
+                    message=message,
+                    type=error["type"],
+                )
             )
-            for error in exc.errors(include_url=False, include_context=False, include_input=False)
-        ]
     elif isinstance(exc, PlanningInputError):
         errors = [ProblemDetail(path=exc.path, message=str(exc), type=exc.code)]
     else:
@@ -825,6 +924,7 @@ def _source_location(parts: tuple[str | int, ...]) -> tuple[str, ...]:
     """Remove Pydantic discriminated-union labels absent from source documents."""
 
     workflow_node_tags = {"task", "approval", "loop"}
+    cancellation_target_tags = {"run", "attempt"}
     cleaned: list[str | int] = []
     for index, part in enumerate(parts):
         is_workflow_branch_label = (
@@ -834,7 +934,13 @@ def _source_location(parts: tuple[str | int, ...]) -> tuple[str, ...]:
             and parts[index - 2] == "nodes"
             and isinstance(parts[index - 1], int)
         )
-        if not is_workflow_branch_label:
+        is_cancellation_target_label = (
+            isinstance(part, str)
+            and part in cancellation_target_tags
+            and index >= 1
+            and parts[index - 1] == "target"
+        )
+        if not is_workflow_branch_label and not is_cancellation_target_label:
             cleaned.append(part)
     return tuple(str(part) for part in cleaned)
 

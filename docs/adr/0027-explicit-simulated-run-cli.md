@@ -65,6 +65,10 @@ code, network, GPU, artifacts, metrics, or paid capability.
 - Stop/cancel UX and NativeProcessRuntime require separate slices and threat
   model review.
 
+Implementation follow-up: ADR-0028 adds a strict, single-fact cancellation
+request CLI. It does not implement a process/Worker stop adapter or infer a
+cancelled outcome. NativeProcessRuntime remains separately gated.
+
 ## Validation
 
 Tests cover Schema/model agreement, alias-only strictness, unknown lifecycle

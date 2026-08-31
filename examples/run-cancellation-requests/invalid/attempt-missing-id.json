@@ -1,0 +1,22 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "RunCancellationRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "runId": "run.simulated",
+  "target": {
+    "kind": "attempt"
+  },
+  "reasonCode": "researcher.requested",
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "run.simulated",
+  "streamid": "stream.simulated",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "event": {
+    "id": "evt.7.attempt.cancel.requested",
+    "time": "2026-08-30T12:00:01Z"
+  },
+  "evidenceRefs": []
+}

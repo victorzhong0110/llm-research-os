@@ -89,4 +89,6 @@ their EventStore meanings and are not translated into success.
 
 This boundary is not a runtime. [SimulatedRuntime](m0-simulated-runtime.md)
 calls `append()` for one built-in simulated task; it still does not mint
-identity or retry CAS.
+identity or retry CAS. The [Run Cancellation CLI](m0-run-cancellation-cli.md)
+is a second narrow caller that appends one request fact and never claims the
+target stopped.

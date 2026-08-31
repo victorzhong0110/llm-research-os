@@ -417,6 +417,65 @@ def test_existing_only_open_reads_an_initialized_database(tmp_path: Path) -> Non
         assert store.verify_integrity() == 1
 
 
+def test_required_existing_writable_open_does_not_create_missing_database(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "missing.db"
+    with pytest.raises(EventStoreSchemaError, match="does not exist"):
+        EventStore(database, require_existing=True, clock=_clock)
+    assert not database.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_required_existing_writable_open_appends_to_initialized_database(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock):
+        pass
+    with EventStore(database, require_existing=True, clock=_clock) as store:
+        stored = store.append(_event_draft())
+        assert stored.sequence == 1
+        assert store.verify_integrity() == 1
+
+
+def test_required_existing_enables_trusted_schema_guard_before_verification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock):
+        pass
+    observed: list[int] = []
+    original_verify = EventStore._verify_schema
+
+    def guarded_verify(store: EventStore) -> None:
+        observed.append(store._connection.execute("PRAGMA trusted_schema").fetchone()[0])
+        original_verify(store)
+
+    monkeypatch.setattr(EventStore, "_verify_schema", guarded_verify)
+    with EventStore(database, require_existing=True, clock=_clock):
+        pass
+    assert observed == [0]
+
+
+def test_required_existing_writable_open_does_not_initialize_plain_file(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "plain.db"
+    database.write_bytes(b"")
+    with pytest.raises(EventStoreSchemaError, match="not an initialized"):
+        EventStore(database, require_existing=True, clock=_clock)
+    assert database.read_bytes() == b""
+
+
+def test_required_existing_and_read_only_modes_are_mutually_exclusive(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="cannot be combined"):
+        EventStore(tmp_path / "research.db", create=False, require_existing=True)
+
+
 def test_default_constructor_still_creates_a_new_database(tmp_path: Path) -> None:
     database = tmp_path / "created.db"
     with EventStore(database, clock=_clock) as store:

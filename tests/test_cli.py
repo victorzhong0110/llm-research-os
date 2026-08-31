@@ -18,6 +18,9 @@ RUN_STATE_SCHEMA = Path(__file__).parents[1] / "schemas" / "run-state" / "v0alph
 SIMULATION_REQUEST_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "simulation-request" / "v0alpha1.schema.json"
 )
+RUN_CANCELLATION_REQUEST_SCHEMA = (
+    Path(__file__).parents[1] / "schemas" / "run-cancellation-request" / "v0alpha1.schema.json"
+)
 
 
 def test_validate_command(capsys: object) -> None:
@@ -59,6 +62,18 @@ def test_all_contract_schema_check_commands() -> None:
                 "simulation-request",
                 "--check",
                 str(SIMULATION_REQUEST_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "run-cancellation-request",
+                "--check",
+                str(RUN_CANCELLATION_REQUEST_SCHEMA),
             ]
         )
         == 0

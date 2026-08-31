@@ -76,6 +76,9 @@ returns `0`. It reads `MAX(sequence)`, not an event count, and does not replace
 `EventStore(path)` creates a versioned database when the path is missing.
 `EventStore(path, create=False)` opens an existing database with SQLite `mode=ro` and fails without
 creating a file if the path does not exist. Query commands use that existing-only mode.
+`EventStore(path, require_existing=True)` is the writable counterpart: it uses SQLite `mode=rw`,
+requires the exact initialized schema before writable connection settings are enabled, and never
+creates a missing path. Run cancellation requests use this mode.
 
 ## Query and replay CLI
 
