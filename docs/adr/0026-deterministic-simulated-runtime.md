@@ -54,6 +54,10 @@ single-task plan:
   is bound data only; it does not seed a PRNG. A sealed registry that
   substitutes the same id/version or adds permissions fails closed with zero
   EventStore writes.
+- Before reading `outcome` or appending facts, the runtime passes the ready
+  report through ADR-0030's exact three-digest authorization gate. Its fixed
+  T0 policy grants only the canonical `simulate` capability; it grants no
+  permission or approval requirement.
 - Every fact is written through `RunControl.append()`. SimulatedRuntime does
   not INSERT into SQLite, persist a Run table, write ArtifactStore, or emit
   `run.reviewed`. `maxAttempts` is fixed at `1`. This slice does not retry and
@@ -124,3 +128,4 @@ fail-closed, side-effect tripwires, and `examples/valid/minimal.yaml` success.
 - [ADR-0023 Inert Manifests and Pure Dry-Run](0023-inert-manifests-and-pure-dry-run.md)
 - [ADR-0024 Pure Run and Attempt State Machine](0024-run-attempt-state-machine.md)
 - [ADR-0025 Atomic RunControl Append Boundary](0025-atomic-run-control-append-boundary.md)
+- [ADR-0030 Deterministic Plan Authorization Gate](0030-deterministic-plan-authorization-gate.md)

@@ -17,6 +17,7 @@ from llm_research_os.blocks.builtins import builtin_manifests
 from llm_research_os.blocks.models import BlockManifest
 from llm_research_os.blocks.registry import BlockRegistry, build_registry
 from llm_research_os.execution import (
+    PlanAuthorizationError,
     SimulatedRuntime,
     SimulationDisposition,
     SimulationError,
@@ -917,6 +918,22 @@ def test_unsealed_registry_is_rejected(tmp_path: Path) -> None:
                 load_spec(EXAMPLES / "valid/minimal.yaml"),
                 _request(),
             )
+        _assert_unchanged(store, 0)
+
+
+def test_plan_authorization_failure_writes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "research.db"
+
+    def reject(*args: object, **kwargs: object) -> NoReturn:
+        raise PlanAuthorizationError("test rejection")
+
+    monkeypatch.setattr("llm_research_os.execution.simulated.authorize_plan", reject)
+    with EventStore(database) as store:
+        with pytest.raises(SimulationError, match="authorization failed"):
+            _runtime(store).run(load_spec(EXAMPLES / "valid/minimal.yaml"), _request())
         _assert_unchanged(store, 0)
 
 

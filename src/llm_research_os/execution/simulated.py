@@ -22,7 +22,8 @@ from llm_research_os.events.models import (
     RESEARCH_EVENT_SCHEMA_ID,
     validate_event_document,
 )
-from llm_research_os.execution.errors import SimulationError
+from llm_research_os.execution.authorization import PlanAuthorizationPolicy, authorize_plan
+from llm_research_os.execution.errors import PlanAuthorizationError, SimulationError
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, ExecutionPlan, PlannedTask
 from llm_research_os.execution.planner import PlanningInputError
@@ -170,6 +171,7 @@ class SimulatedRuntime:
             workflow_id=request_fields.workflow_id,
             project_id=self._project_id,
         )
+        _authorize_simulated_plan(report)
         outcome = _require_outcome(task)
         head = self._control.rebuild()
         snapshot = head.snapshot
@@ -218,6 +220,25 @@ class _FrozenRequest:
     stream_id: str
     actor_id: str
     events: dict[str, tuple[str, str]]
+
+
+def _authorize_simulated_plan(report: DryRunReport) -> None:
+    """Apply the fixed zero-side-effect T0 policy before simulated execution."""
+
+    if report.digests.plan is None:
+        raise SimulationError("simulation plan authorization failed")
+    policy = PlanAuthorizationPolicy(
+        spec_digest=report.digests.spec,
+        registry_digest=report.digests.registry,
+        plan_digest=report.digests.plan,
+        granted_capabilities=("simulate",),
+    )
+    try:
+        authorization = authorize_plan(report, policy)
+    except PlanAuthorizationError:
+        raise SimulationError("simulation plan authorization failed") from None
+    if not authorization.authorized:
+        raise SimulationError("simulation plan was not authorized")
 
 
 def _freeze_spec(spec: object) -> ResearchSpec:

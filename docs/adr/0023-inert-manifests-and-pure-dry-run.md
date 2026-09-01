@@ -47,6 +47,8 @@ that a complete static plan exists.
 - ADR-0026 implements SimulatedRuntime on top of this dry-run boundary, the
   ADR-0024 reducer, and the ADR-0025 append gate. Simulated completion is still
   not training success, and unknown remains distinct from failure.
+- ADR-0030 adds an exact three-digest authorization gate without changing the
+  meaning of `ready`; the report itself remains unapproved and inert.
 
 ## Validation
 

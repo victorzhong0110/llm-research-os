@@ -2,9 +2,9 @@
 
 > Status: Active M0 baseline
 >
-> Last reviewed: 2026-08-31
+> Last reviewed: 2026-09-01
 >
-> Scope: protocol validation, deterministic planning, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
+> Scope: protocol validation, deterministic planning and plan authorization, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -21,7 +21,8 @@ This document is intentionally updated as executable capability is added. A miti
 ## 2. Current boundary
 
 M0 parses local YAML/JSON, validates ResearchSpec, ResearchEvent and BlockManifest documents,
-generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report,
+generates JSON Schema, compares immutable revisions, compiles a deterministic dry-run report and
+evaluates exact three-digest capability/permission/requirement authorization without side effects,
 can append complete events to a local SQLite fact store, can query, verify and replay those
 facts through a read-only CLI, can import regular local files into a content-addressed
 artifact directory through Python or an explicit put/verify CLI, and can append Run/Attempt
@@ -44,6 +45,7 @@ controlled lifecycle finish, not training success.
 | Generated JSON Schema | Published external contract | Implemented |
 | BlockManifest and sealed registry | Untrusted declarations resolved as inert data | Implemented validation and digest boundary |
 | Dry-run plan/report | Trusted-kernel output, not an execution result | Implemented pure planning boundary |
+| Plan authorization gate | Trusted-kernel evaluator over one exact ready plan | Implemented for review; pure decision only, no authenticated or persistent receipt |
 | AI/model providers | Untrusted proposals and content | Not connected in M0 |
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -83,7 +85,7 @@ controlled lifecycle finish, not training success.
 - Arbitrary graph back-edges are invalid; research iteration is an explicit bounded block.
 - Paid or accelerated loops declare both cost and wall-time caps.
 - Unknown source rights cannot authorize training or redistribution.
-- AI output is a proposal until an external policy engine authorizes an action.
+- AI output is a proposal until a plan-bound trusted-kernel policy evaluation authorizes an action.
 - Secrets are referenced, never stored as ordinary protocol values.
 - Facts are appended; corrections create new facts rather than rewriting history.
 - Artifact content is addressed and verified by digest before use.
@@ -92,10 +94,10 @@ controlled lifecycle finish, not training success.
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 
-ResearchSpec, exact block resolution, pure planning, append-only event-store, local artifact
-object and RunControl preflight/CAS invariants have executable checks. SQLite artifact indexing,
-secret, policy-execution, persistent projection and runtime-state invariants remain requirements
-for subsequent slices.
+ResearchSpec, exact block resolution, pure planning, exact plan authorization, append-only
+event-store, local artifact object and RunControl preflight/CAS invariants have executable checks.
+Authenticated/persistent approval, SQLite artifact indexing, secret, budget-consumption,
+persistent projection and real-runtime invariants remain requirements for subsequent slices.
 
 ## 6. Threat register
 
@@ -112,7 +114,7 @@ for subsequent slices.
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; root `st_dev`/`st_ino` identity; dirfd walk of `tmp`/`objects`/`sha256`/shard with `O_NOFOLLOW`; digest-derived basenames; atomic `link` plus directory fsync; existing mismatch fails closed and is not overwritten | File object layer tested, including intermediate symlink escape, root substitution and fsync-retry recovery; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
 | TM-011 | Event history is edited or a projection is treated as fact | False audit and recovery state | SQLite facts reject UPDATE/DELETE/REPLACE; reads verify canonical JSON, digest and indexes; query/replay CLI and in-memory folds are rebuildable consumers; RunControl does not persist snapshots | Event source, replay fold and RunControl tested; persistent projections pending |
-| TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Policy enforcement belongs to kernel, not UI or adapter | M1 capability tests required |
+| TM-012 | AI or user bypasses approval via a low-level adapter | Governance and budget bypass | Pure trusted-kernel gate revalidates ready reports, binds all three digests and evaluates exact capabilities, permissions and requirements; SimulatedRuntime invokes it before writes | Gate and T0 integration tested; authenticated persistent approval and every future runtime still required |
 | TM-013 | Failure, timeout or disconnection is reported as success | Invalid scientific conclusion | Explicit unknown/lost states; RunControl rejects illegal lifecycle jumps before write; SimulatedRuntime stops on `attempt.unknown` and never degrades unknown to failure or success | Run/Attempt reducer, RunControl and SimulatedRuntime tested |
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
 | TM-015 | Oversized documents, YAML alias amplification, configs, schemas or deeply nested loops exhaust resources | Local or service denial of service | Duplicate keys and YAML aliases are rejected; decoded documents, manifests, registries, configs and schemas have byte/depth/node/count limits; configSchema uses an allowlisted non-regex/non-combinatorial subset; planning counts iteratively and never expands iterations | Tested locally; stronger process isolation required before public service exposure |
@@ -132,6 +134,7 @@ for subsequent slices.
 | TM-029 | A convenience Run CLI silently mints identity, coerces hostile input, retries a conflict, or reports a negative simulated outcome as success | Irreproducible facts, duplicate execution, terminal injection, or false success | Closed alias-only SimulationRequest Schema; duplicate-key/alias/symlink rejection; caller supplies every id/time/stream; exact RunSnapshot JSON; completed=0, domain-negative=1, error/conflict=2; no retry | Schema/model corpus, CLI outcome, idempotence, invalid-input, non-echo, corrupt-store and replay tests |
 | TM-030 | A stop command creates an empty store, sends an unreviewed signal, retries stale intent, or reports requested cancellation as an observed outcome | Unintended host action, lost concurrent facts, or false audit state | Closed RunCancellationRequest Schema; existing writable store required; exactly one RunControl CAS fact; lifecycle type derived from a closed target; exact RunSnapshot output; text says no signal and no observed outcome; no conflict retry | Schema/model, missing/corrupt-store, Run/Attempt target, terminal/binding, non-echo and concurrent same-head tests |
 | TM-031 | An artifact convenience command follows a caller path into another object, treats a path as a digest, emits caller paths or object bytes as successful output, repairs corruption or claims unrecorded provenance | File disclosure or overwrite, false integrity, misleading lineage | CLI delegates to the dirfd-anchored LocalArtifactStore; digest grammar derives every object key; successful put/verify output is only a closed versioned report; no object-byte stdout, repair, SQLite row, event, delete, upload or provenance claim | Report Schema/semantics, import/verify, success-path omission, symlink/traversal, missing/corrupt object and terminal-escape tests |
+| TM-032 | A stale, misspelled or over-broad policy is reused for another plan, or input ordering changes the authorization identity | Wrong-plan execution or excess capability | Policy binds spec/registry/plan digests; unused, unknown, duplicate and malformed grants fail closed; recursive declarations and requirement decisions normalize into a deterministic decision digest | Binding, nested-loop, tamper, ordering, non-echo and side-effect-tripwire tests; signatures, expiry and revocation pending |
 
 ## 7. M0 security gates
 
@@ -139,6 +142,7 @@ Before merging executable capability, the following gates apply:
 
 - **Protocol gate:** valid/invalid examples and generated schema stay synchronized.
 - **Revision gate:** a running revision cannot be mutated; revision transitions receive semantic diffs.
+- **Authorization gate:** only an exact three-digest `authorized` decision may enter a supported execution path; `ready`, `pending` and `denied` are non-executable.
 - **State gate:** success, failure, cancelled, lost and unknown have separate tested meanings.
 - **Secret gate:** typed secret references and redaction tests exist before any API credential is used.
 - **Execution gate:** no arbitrary process, plugin or expression execution is added without a new threat-model review.
@@ -147,6 +151,9 @@ Before merging executable capability, the following gates apply:
 ## 8. Explicitly accepted residual risk
 
 - M0 is local pre-release software and does not yet defend a public network service.
+- Plan authorization is an in-process deterministic decision, not an authenticated, signed,
+  expiring, revocable or durably audited approval receipt. Only the canonical zero-side-effect
+  simulated runtime consumes it in M0.
 - Cancellation-request `actor.id` is claimed metadata, not authentication; local OS access to
   the request and database is the current authority boundary.
 - `config` and `extensions` are structurally declared but their future consumers must perform capability-specific validation.
