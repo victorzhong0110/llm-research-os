@@ -1,0 +1,24 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "NativeProcessPreflightRequest",
+  "specDigest": "sha256:6246fb9842ed8f808e6d556e6a500596d5bcc5b41f11f3676e428afe0b68ffa5",
+  "registryDigest": "sha256:05cd693d9f1a195ae4408968b8da927d1eb0a1e877ebc3853dacedeb08117d3e",
+  "planDigest": "sha256:310d4aadd18c6cbd8c258853b056af3704f0e6db0eb25ecf18121e6e642a7ac7",
+  "authorizationDecisionDigest": "sha256:3ae63e85738fde08cb3705b1797ef98f3836c0dd7ae279934f70cdf2945a82b8",
+  "taskPath": [
+    "workflow",
+    "workflow.native",
+    "invoke"
+  ],
+  "runner": "researchos.python-worker/v0alpha1",
+  "shell": false,
+  "network": "denied",
+  "workspace": "isolated-temporary",
+  "environmentAllowlist": [],
+  "limits": {
+    "wallTimeSeconds": 30,
+    "stdoutBytes": 1048576,
+    "stderrBytes": 1048576,
+    "terminationGraceSeconds": 5
+  }
+}

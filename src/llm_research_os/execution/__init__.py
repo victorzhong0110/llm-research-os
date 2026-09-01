@@ -20,9 +20,45 @@ from llm_research_os.execution.authorization_documents import (
     load_plan_authorization_request,
     validate_plan_authorization_request_document,
 )
-from llm_research_os.execution.errors import PlanAuthorizationError, SimulationError
+from llm_research_os.execution.errors import (
+    NativeProcessPreflightError,
+    PlanAuthorizationError,
+    SimulationError,
+)
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport
+from llm_research_os.execution.native_preflight import (
+    MAX_NATIVE_OUTPUT_BYTES,
+    MAX_NATIVE_TASK_PATH_ITEMS,
+    MAX_NATIVE_TERMINATION_GRACE_SECONDS,
+    MAX_NATIVE_WALL_TIME_SECONDS,
+    NATIVE_PROCESS_CAPABILITY,
+    NATIVE_PROCESS_INTERPRETER_IDENTITY,
+    NATIVE_PROCESS_NETWORK,
+    NATIVE_PROCESS_PROTOCOL,
+    NATIVE_PROCESS_RUNNER,
+    NATIVE_PROCESS_TERMINATION,
+    NATIVE_PROCESS_WORKSPACE,
+    NativeProcessLimits,
+    NativeProcessPreflightPolicy,
+    NativeProcessPreflightResult,
+    native_process_preflight_payload,
+    preflight_native_process,
+)
+from llm_research_os.execution.native_preflight_documents import (
+    NATIVE_PROCESS_PREFLIGHT_API_VERSION,
+    NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA_ID,
+    NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA_ID,
+    NativeProcessLaunchConstraints,
+    NativeProcessLimitsDocument,
+    NativeProcessPreflightBinding,
+    NativeProcessPreflightReport,
+    NativeProcessPreflightRequestDocument,
+    NativeProcessPreflightSideEffects,
+    NativeProcessTaskIdentity,
+    load_native_process_preflight_request,
+    validate_native_process_preflight_request_document,
+)
 from llm_research_os.execution.planner import PlannerLimits, PlanningInputError
 from llm_research_os.execution.request import (
     SimulationEventIdentityDocument,
@@ -39,10 +75,35 @@ from llm_research_os.execution.simulated import (
 )
 
 __all__ = [
+    "MAX_NATIVE_OUTPUT_BYTES",
+    "MAX_NATIVE_TASK_PATH_ITEMS",
+    "MAX_NATIVE_TERMINATION_GRACE_SECONDS",
+    "MAX_NATIVE_WALL_TIME_SECONDS",
+    "NATIVE_PROCESS_CAPABILITY",
+    "NATIVE_PROCESS_INTERPRETER_IDENTITY",
+    "NATIVE_PROCESS_NETWORK",
+    "NATIVE_PROCESS_PREFLIGHT_API_VERSION",
+    "NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA_ID",
+    "NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA_ID",
+    "NATIVE_PROCESS_PROTOCOL",
+    "NATIVE_PROCESS_RUNNER",
+    "NATIVE_PROCESS_TERMINATION",
+    "NATIVE_PROCESS_WORKSPACE",
     "PLAN_AUTHORIZATION_API_VERSION",
     "PLAN_AUTHORIZATION_REPORT_SCHEMA_ID",
     "PLAN_AUTHORIZATION_REQUEST_SCHEMA_ID",
     "DryRunReport",
+    "NativeProcessLaunchConstraints",
+    "NativeProcessLimits",
+    "NativeProcessLimitsDocument",
+    "NativeProcessPreflightBinding",
+    "NativeProcessPreflightError",
+    "NativeProcessPreflightPolicy",
+    "NativeProcessPreflightReport",
+    "NativeProcessPreflightRequestDocument",
+    "NativeProcessPreflightResult",
+    "NativeProcessPreflightSideEffects",
+    "NativeProcessTaskIdentity",
     "PlanAuthorizationBinding",
     "PlanAuthorizationError",
     "PlanAuthorizationPolicy",
@@ -66,8 +127,12 @@ __all__ = [
     "SimulationResult",
     "TrustedKernel",
     "authorize_plan",
+    "load_native_process_preflight_request",
     "load_plan_authorization_request",
     "load_simulation_request",
+    "native_process_preflight_payload",
+    "preflight_native_process",
+    "validate_native_process_preflight_request_document",
     "validate_plan_authorization_request_document",
     "validate_simulation_request_document",
 ]
