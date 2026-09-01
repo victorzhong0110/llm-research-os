@@ -50,9 +50,10 @@ values or dynamic object keys.
 ## 4. Capabilities and permissions
 
 `capabilities` and `permissions` are declarations, not grants. Dry-run records them with
-`authorization: not-evaluated`. A later policy engine must decide what is allowed before
-any runtime handler can run. A manifest cannot override ResearchSpec invariants, approval
-rules, budgets or audit requirements.
+`authorization: not-evaluated`. The M0
+[plan authorization gate](../guides/m0-plan-authorization.md) can evaluate exact plan-bound
+grants before a supported runtime runs; persistent authenticated policy remains future work.
+A manifest cannot override ResearchSpec invariants, approval rules, budgets or audit requirements.
 
 ## 5. Registry loading boundary
 

@@ -1,4 +1,12 @@
-"""Stable fail-closed errors for SimulatedRuntime."""
+"""Stable fail-closed errors for trusted execution boundaries."""
+
+
+class PlanAuthorizationError(ValueError):
+    """Reject an invalid or internally inconsistent authorization evaluation.
+
+    Messages MUST NOT include caller-supplied capability, permission, requirement,
+    configuration, prompt, or other potentially sensitive values.
+    """
 
 
 class SimulationError(ValueError):

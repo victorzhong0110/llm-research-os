@@ -107,3 +107,7 @@ Dry-run 仍然只证明计划完整。真正的生命周期事实由
 [SimulatedRuntime](m0-simulated-runtime.md) 通过 RunControl 追加；模拟
 `completed` 不是训练成功，`unknown` 也不会被降成 failure 或 success。
 NativeProcessRuntime、多节点调度、指标和制品仍未实现。
+
+进入受支持的执行路径前，还必须通过
+[M0 确定性计划授权门](m0-plan-authorization.md)。该门同时绑定三类摘要，并逐项求值
+capability、permission 与 planner requirement；`ready` 从不自动升级为 `authorized`。

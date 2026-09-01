@@ -33,5 +33,6 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0027](0027-explicit-simulated-run-cli.md) | Explicit Simulated Run CLI | Proposed | Implemented for review |
 | [0028](0028-explicit-run-cancellation-request.md) | Explicit Run/Attempt cancellation request CLI | Proposed | Implemented for review |
 | [0029](0029-explicit-local-artifact-object-cli.md) | Explicit local artifact object CLI | Proposed | Implemented for review |
+| [0030](0030-deterministic-plan-authorization-gate.md) | Deterministic plan authorization gate | Proposed | Implemented for review |
 
 “Record pending” means the decision is already accepted in the project charter but its standalone rationale has not yet been transcribed. It does not reopen the decision.

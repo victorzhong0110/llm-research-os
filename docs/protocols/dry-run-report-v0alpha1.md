@@ -28,6 +28,11 @@ Consumers MUST bind `specDigest`, `registryDigest` and `planDigest` together for
 approval or future execution identity. See
 [Reference Content Digests v0alpha1](digest-v0alpha1.md).
 
+The reference implementation's pure
+[M0 plan authorization gate](../guides/m0-plan-authorization.md) performs that three-digest
+binding and evaluates declared capabilities, permissions and policy requirements. A ready report
+still carries no authorization by itself.
+
 ## Validation layers
 
 The committed JSON Schema validates report structure, digest shape and ready/blocked field

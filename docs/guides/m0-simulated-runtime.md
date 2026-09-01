@@ -66,6 +66,10 @@ generate them. The plan is bound to the canonical built-in
 same id/version but changes the Manifest, including adding permissions, is
 rejected before the first write.
 
+After the canonical-manifest checks, SimulatedRuntime calls the pure
+[M0 plan authorization gate](m0-plan-authorization.md) with an exact three-digest binding and the
+fixed T0 grant `simulate`. No other capability, permission or approval is implicitly granted.
+
 `examples/valid/minimal.yaml` must state `outcome` explicitly:
 
 ```yaml
