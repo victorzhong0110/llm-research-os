@@ -53,9 +53,10 @@ unsupported and produce zero writes.
   binding even when another digest happens to remain unchanged.
 - Exact grants catch stale and over-broad one-plan policy inputs. A future reusable organization
   policy may be broader, but it must compile to this exact plan-bound form before execution.
-- M0 still has no external PlanAuthorizationRequest/Receipt Schema, authenticated approver,
-  signature, expiry/revocation, persistent decision event, budget consumption ledger or CLI. Those
-  require a later protocol slice before real runtimes or remote callers rely on authorization.
+- ADR-0031 now exposes a strict PlanAuthorizationRequest/Report Schema and non-executing local CLI.
+  The report is deliberately not a receipt: M0 still has no authenticated approver, signature,
+  expiry/revocation, persistent decision event or budget consumption ledger. Those remain required
+  before real runtimes or remote callers rely on authorization.
 
 ## Validation
 
@@ -72,3 +73,4 @@ gate remains before the first EventStore write.
 - [ADR-0003 Minimal Trusted Kernel](0003-minimal-trusted-kernel.md)
 - [ADR-0023 Inert Manifests and Pure Dry-Run](0023-inert-manifests-and-pure-dry-run.md)
 - [ADR-0026 Deterministic SimulatedRuntime](0026-deterministic-simulated-runtime.md)
+- [ADR-0031 Explicit Plan Authorization CLI](0031-explicit-plan-authorization-cli.md)

@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "PlanAuthorizationRequest",
+  "specDigest": "sha256:ABC",
+  "registryDigest": "sha256:e01025755a6d814de2b78096fc9c0fe961a936a8c76701d19f4cb087470fc6da",
+  "planDigest": "sha256:19b3ca97b88c357b4e5ef45a834f702c2da4be066f2ee33cad9bf243334494c4",
+  "grantedCapabilities": [
+    "simulate"
+  ],
+  "grantedPermissions": [],
+  "requirementDecisions": []
+}

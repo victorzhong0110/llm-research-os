@@ -45,12 +45,35 @@ from llm_research_os.events.schema import canonical_schema as canonical_event_sc
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
 from llm_research_os.execution import (
+    PlanAuthorizationError,
+    PlanAuthorizationReport,
+    PlanAuthorizationStatus,
     PlanningInputError,
     SimulatedRuntime,
     SimulationDisposition,
     SimulationError,
     TrustedKernel,
+    authorize_plan,
+    load_plan_authorization_request,
     load_simulation_request,
+)
+from llm_research_os.execution.authorization_report_schema import (
+    canonical_schema as canonical_plan_authorization_report_schema,
+)
+from llm_research_os.execution.authorization_report_schema import (
+    schema_matches as plan_authorization_report_schema_matches,
+)
+from llm_research_os.execution.authorization_report_schema import (
+    write_schema as write_plan_authorization_report_schema,
+)
+from llm_research_os.execution.authorization_request_schema import (
+    canonical_schema as canonical_plan_authorization_request_schema,
+)
+from llm_research_os.execution.authorization_request_schema import (
+    schema_matches as plan_authorization_request_schema_matches,
+)
+from llm_research_os.execution.authorization_request_schema import (
+    write_schema as write_plan_authorization_request_schema,
 )
 from llm_research_os.execution.models import (
     DryRunReport,
@@ -125,6 +148,8 @@ def build_parser() -> argparse.ArgumentParser:
             "block-command-report",
             "dry-run-report",
             "problem-report",
+            "plan-authorization-request",
+            "plan-authorization-report",
             "run-state",
             "simulation-request",
             "run-cancellation-request",
@@ -163,6 +188,23 @@ def build_parser() -> argparse.ArgumentParser:
         default="text",
         help="human-readable overview or versioned complete JSON",
     )
+
+    authorize = subparsers.add_parser(
+        "authorize",
+        help="evaluate an exact plan-bound policy without executing any block",
+    )
+    authorize.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    authorize.add_argument(
+        "request",
+        type=Path,
+        help="PlanAuthorizationRequest v0alpha1 YAML or JSON file",
+    )
+    authorize.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="exact workflow ID (required when the spec contains multiple workflows)",
+    )
+    _add_registry_arguments(authorize)
 
     blocks = subparsers.add_parser("blocks", help="inspect inert BlockManifest registrations")
     block_commands = blocks.add_subparsers(dest="blocks_command", required=True)
@@ -322,6 +364,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _diff(args.old, args.new)
     if args.command == "dry-run":
         return _dry_run(args.document, args.workflow, args.registry, args.format)
+    if args.command == "authorize":
+        return _authorize(
+            args.spec,
+            args.request,
+            args.workflow,
+            args.registry,
+            args.format,
+        )
     if args.command == "blocks":
         return _blocks(args)
     if args.command == "events":
@@ -380,6 +430,14 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_problem_schema
         matches = problem_schema_matches
         write = write_problem_schema
+    elif contract == "plan-authorization-request":
+        canonical = canonical_plan_authorization_request_schema
+        matches = plan_authorization_request_schema_matches
+        write = write_plan_authorization_request_schema
+    elif contract == "plan-authorization-report":
+        canonical = canonical_plan_authorization_report_schema
+        matches = plan_authorization_report_schema_matches
+        write = write_plan_authorization_report_schema
     elif contract == "run-state":
         canonical = canonical_run_state_schema
         matches = run_state_schema_matches
@@ -457,6 +515,36 @@ def _dry_run(
         return 2
     _print_dry_run(report, output_format)
     return 0 if report.status is DryRunStatus.READY else 1
+
+
+def _authorize(
+    spec_path: Path,
+    request_path: Path,
+    workflow_id: str | None,
+    registry_paths: list[Path],
+    output_format: str,
+) -> int:
+    try:
+        spec = ResearchSpec.model_validate(load_document(spec_path, reject_symlinks=True))
+        request = load_plan_authorization_request(request_path)
+        registry = build_registry(registry_paths)
+        dry_run = TrustedKernel(registry).dry_run(spec, workflow_id=workflow_id)
+        result = authorize_plan(dry_run, request.policy())
+        report = PlanAuthorizationReport.from_result(result)
+    except (
+        ManifestLoadError,
+        OSError,
+        PlanAuthorizationError,
+        PlanningInputError,
+        RegistryError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_authorization_result(report, output_format)
+    return 0 if report.status is PlanAuthorizationStatus.AUTHORIZED else 1
 
 
 def _blocks(args: argparse.Namespace) -> int:
@@ -771,6 +859,29 @@ def _print_artifact_result(report: ArtifactObjectReport, output_format: str) -> 
     print(f"size bytes: {report.size_bytes}")
     print(f"storage key: {report.storage_key}")
     print("integrity verified: true")
+
+
+def _print_authorization_result(
+    report: PlanAuthorizationReport,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        payload = report.model_dump(mode="json", by_alias=True)
+        print(_dumps_json(payload))
+        return
+    print(f"plan authorization: {report.status.value}")
+    print(f"spec digest: {report.binding.spec_digest}")
+    print(f"registry digest: {report.binding.registry_digest}")
+    print(f"plan digest: {report.binding.plan_digest}")
+    print(f"decision digest: {report.decision_digest}")
+    print(f"missing capabilities: {len(report.missing_capabilities)}")
+    print(f"missing permissions: {len(report.missing_permissions)}")
+    print(f"pending requirements: {len(report.pending_requirements)}")
+    print(f"denied requirements: {len(report.denied_requirements)}")
+    print("approval authentication: not-authenticated")
+    print("persistent receipt: false")
+    print("execution performed: false")
+    print("side effects: 0 blocks, 0 network requests, 0 writes, 0 paid actions")
 
 
 def _dumps_json(payload: object, *, indent: int | None = 2) -> str:

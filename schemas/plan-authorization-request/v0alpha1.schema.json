@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "RequirementDecisionDocument": {
+      "additionalProperties": false,
+      "description": "One caller-asserted disposition for an exact planner requirement.",
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/RequirementDecisionValue"
+        },
+        "requirementId": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Requirementid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirementId",
+        "decision"
+      ],
+      "title": "RequirementDecisionDocument",
+      "type": "object"
+    },
+    "RequirementDecisionValue": {
+      "description": "Explicit decision for one planner-emitted policy requirement.",
+      "enum": [
+        "approved",
+        "denied"
+      ],
+      "title": "RequirementDecisionValue",
+      "type": "string"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/plan-authorization-request/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned, caller-owned policy input for one exact planned graph.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "grantedCapabilities": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 10000,
+      "title": "Grantedcapabilities",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "grantedPermissions": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 10000,
+      "title": "Grantedpermissions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "kind": {
+      "const": "PlanAuthorizationRequest",
+      "title": "Kind",
+      "type": "string"
+    },
+    "planDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plandigest",
+      "type": "string"
+    },
+    "registryDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Registrydigest",
+      "type": "string"
+    },
+    "requirementDecisions": {
+      "items": {
+        "$ref": "#/$defs/RequirementDecisionDocument"
+      },
+      "maxItems": 10000,
+      "title": "Requirementdecisions",
+      "type": "array"
+    },
+    "specDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Specdigest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "specDigest",
+    "registryDigest",
+    "planDigest",
+    "grantedCapabilities",
+    "grantedPermissions",
+    "requirementDecisions"
+  ],
+  "title": "PlanAuthorizationRequestDocument",
+  "type": "object"
+}
