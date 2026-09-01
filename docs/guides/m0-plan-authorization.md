@@ -71,5 +71,6 @@ SQLite、执行积木、读取 secret、联网、申请 GPU 或花费资金。`d
 参考摘要约定下的内容身份，不是签名 token，也不是可撤销的持久授权凭据。
 
 当前 SimulatedRuntime 在写第一条生命周期事实前调用此门，并只授予内置 T0 `simulate`
-capability。真正的 Python/OCI/Worker、外部审批请求与回执 Schema、认证、过期/撤销、预算扣减
-和审计事件仍未实现。
+capability。现在也可通过严格、版本化且明确标为非凭证的
+[M0 显式计划授权 CLI](m0-plan-authorization-cli.md) 提交调用者策略并取得标准报告。真正的
+Python/OCI/Worker、认证与持久回执、过期/撤销、预算扣减和审计事件仍未实现。

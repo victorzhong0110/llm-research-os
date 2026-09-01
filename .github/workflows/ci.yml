@@ -49,6 +49,14 @@ jobs:
         run: >-
           uv run researchos schema --contract dry-run-report
           --check schemas/dry-run-report/v0alpha1.schema.json
+      - name: Verify PlanAuthorizationRequest schema
+        run: >-
+          uv run researchos schema --contract plan-authorization-request
+          --check schemas/plan-authorization-request/v0alpha1.schema.json
+      - name: Verify PlanAuthorizationReport schema
+        run: >-
+          uv run researchos schema --contract plan-authorization-report
+          --check schemas/plan-authorization-report/v0alpha1.schema.json
       - name: Verify problem report schema
         run: >-
           uv run researchos schema --contract problem-report

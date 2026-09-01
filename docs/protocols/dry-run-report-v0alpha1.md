@@ -31,7 +31,10 @@ approval or future execution identity. See
 The reference implementation's pure
 [M0 plan authorization gate](../guides/m0-plan-authorization.md) performs that three-digest
 binding and evaluates declared capabilities, permissions and policy requirements. A ready report
-still carries no authorization by itself.
+still carries no authorization by itself. The separate
+[PlanAuthorizationRequest and PlanAuthorizationReport](plan-authorization-v0alpha1.md) contracts
+expose that evaluation without changing the meaning of `ready` or creating an authenticated
+receipt.
 
 ## Validation layers
 

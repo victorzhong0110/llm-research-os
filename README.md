@@ -10,10 +10,10 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 协议基础、纯静态规划内核、SQLite 追加式事件事实源、本地内容寻址制品对象层、纯
 Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界，以及无需 GPU
 与网络的确定性 SimulatedRuntime 纵向闭环，以及绑定三摘要、逐项能力/权限/审批的纯计划
-授权门；现在也可通过严格版本化请求和 CLI 创建或
-恢复该模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或
-完整校验本地内容寻址制品对象。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会
-把取消请求误报为已停止。
+授权门；现在也可通过严格版本化且明确非凭证的请求/报告 CLI 求值计划授权，通过另一份请求
+创建或恢复模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或完整
+校验本地内容寻址制品对象。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权报告
+冒充认证回执，或把取消请求误报为已停止。
 
 ## M0 目标
 
@@ -49,11 +49,13 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [SimulationRequest v0alpha1](docs/protocols/simulation-request-v0alpha1.md)
 - [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
 - [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
+- [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
 - [M0 RunControl 导读](docs/guides/m0-run-control.md)
 - [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)
+- [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -80,6 +82,10 @@ uv run researchos schema --contract run-cancellation-request \
   --check schemas/run-cancellation-request/v0alpha1.schema.json
 uv run researchos schema --contract artifact-object-report \
   --check schemas/artifact-object-report/v0alpha1.schema.json
+uv run researchos schema --contract plan-authorization-request \
+  --check schemas/plan-authorization-request/v0alpha1.schema.json
+uv run researchos schema --contract plan-authorization-report \
+  --check schemas/plan-authorization-report/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -98,6 +104,8 @@ schemas/run-state/v0alpha1.schema.json
 schemas/simulation-request/v0alpha1.schema.json
 schemas/run-cancellation-request/v0alpha1.schema.json
 schemas/artifact-object-report/v0alpha1.schema.json
+schemas/plan-authorization-request/v0alpha1.schema.json
+schemas/plan-authorization-report/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
@@ -130,6 +138,19 @@ uv run researchos dry-run examples/valid/bounded-loop.yaml \
 planner 产生的每个 requirement 必须显式批准；缺权限或拒绝得到 `denied`，尚缺审批得到
 `pending`，只有 `authorized` 可进入执行路径。它不认证审批者、不持久化决定，也不产生事件或
 运行时副作用。详见 [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)。
+
+外部调用者可用版本化请求对当前输入重新生成的精确计划求值：
+
+```bash
+uv run researchos authorize \
+  examples/valid/minimal.yaml \
+  examples/plan-authorization-requests/valid/minimal.json \
+  --format json
+```
+
+`authorized` 返回 `0`，有效的 `pending`/`denied` 返回 `1`，输入或摘要绑定错误返回 `2`。
+报告固定声明 `not-authenticated`、`not-persisted` 与 `not-executed`；它不是签名或可撤销的授权
+回执。详见 [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)。
 
 ## 事件查询与回放
 
@@ -204,6 +225,7 @@ M0 当前验证协议和差异、编译无副作用的静态计划，并以绑�
 capability、permission 或 approval；可向本地 SQLite 追加、查询和回放事件事实，
 可将常规本地文件导入内容寻址制品目录，可通过 RunControl 在写入前拒绝非法生命周期事件，
 并可通过 SimulatedRuntime 对单个内置 simulated task 追加确定性生命周期事实。
+`authorize` 只重新构造静态计划并输出明确非凭证的版本化求值报告，不写事件、制品或数据库。
 `runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
 `runs cancel` 同样只通过 RunControl 追加单个请求事实，要求既有数据库，且不发送信号或
 推断取消结果。

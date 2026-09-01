@@ -1,0 +1,220 @@
+{
+  "$defs": {
+    "PlanAuthorizationBinding": {
+      "additionalProperties": false,
+      "description": "Exact immutable identity of the evaluated plan.",
+      "properties": {
+        "planDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Plandigest",
+          "type": "string"
+        },
+        "registryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "specDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "specDigest",
+        "registryDigest",
+        "planDigest"
+      ],
+      "title": "PlanAuthorizationBinding",
+      "type": "object"
+    },
+    "PlanAuthorizationSideEffects": {
+      "additionalProperties": false,
+      "description": "Literal zero-effect declaration for this evaluation command.",
+      "properties": {
+        "blocksExecuted": {
+          "const": 0,
+          "title": "Blocksexecuted",
+          "type": "integer"
+        },
+        "networkRequests": {
+          "const": 0,
+          "title": "Networkrequests",
+          "type": "integer"
+        },
+        "paidActions": {
+          "const": 0,
+          "title": "Paidactions",
+          "type": "integer"
+        },
+        "persistentWrites": {
+          "const": 0,
+          "title": "Persistentwrites",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "blocksExecuted",
+        "networkRequests",
+        "persistentWrites",
+        "paidActions"
+      ],
+      "title": "PlanAuthorizationSideEffects",
+      "type": "object"
+    },
+    "PlanAuthorizationStatus": {
+      "description": "Outcome of evaluating one policy input against one exact plan.",
+      "enum": [
+        "authorized",
+        "pending",
+        "denied"
+      ],
+      "title": "PlanAuthorizationStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/plan-authorization-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normalized evaluation report that is explicitly not an authority receipt.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "approvalAuthentication": {
+      "const": "not-authenticated",
+      "title": "Approvalauthentication",
+      "type": "string"
+    },
+    "approvedRequirements": {
+      "items": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Approvedrequirements",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "authorized": {
+      "title": "Authorized",
+      "type": "boolean"
+    },
+    "binding": {
+      "$ref": "#/$defs/PlanAuthorizationBinding"
+    },
+    "decisionDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Decisiondigest",
+      "type": "string"
+    },
+    "deniedRequirements": {
+      "items": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Deniedrequirements",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "execution": {
+      "const": "not-executed",
+      "title": "Execution",
+      "type": "string"
+    },
+    "kind": {
+      "const": "PlanAuthorizationReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "missingCapabilities": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Missingcapabilities",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "missingPermissions": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Missingpermissions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "pendingRequirements": {
+      "items": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Pendingrequirements",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "persistence": {
+      "const": "not-persisted",
+      "title": "Persistence",
+      "type": "string"
+    },
+    "requiredCapabilities": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Requiredcapabilities",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "requiredPermissions": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Requiredpermissions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/PlanAuthorizationSideEffects"
+    },
+    "status": {
+      "$ref": "#/$defs/PlanAuthorizationStatus"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "status",
+    "authorized",
+    "binding",
+    "decisionDigest",
+    "requiredCapabilities",
+    "requiredPermissions",
+    "missingCapabilities",
+    "missingPermissions",
+    "approvedRequirements",
+    "pendingRequirements",
+    "deniedRequirements",
+    "approvalAuthentication",
+    "persistence",
+    "execution",
+    "sideEffects"
+  ],
+  "title": "PlanAuthorizationReport",
+  "type": "object"
+}
