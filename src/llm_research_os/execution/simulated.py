@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, NoReturn
 
 from pydantic import ValidationError
 
@@ -44,6 +44,8 @@ _SUPPORTED_OUTCOMES = frozenset({_OUTCOME_SUCCESS, _OUTCOME_FAILURE, _OUTCOME_UN
 _REASON_FAILURE = "simulation.outcome.failure"
 _REASON_UNKNOWN = "simulation.outcome.unknown"
 _RETRY_NOT_RETRYABLE = "not-retryable"
+_UNSUPPORTED_PLAN = "simulation only supports one simulated.experiment@0.1.0 task"
+_RUN_MISMATCH = "existing run does not match this simulation request"
 
 TYPE_RUN_QUEUED = "run.queued"
 TYPE_RUN_STARTED = "run.started"
@@ -302,6 +304,14 @@ def _ready_report(spec: ResearchSpec, registry: BlockRegistry, workflow_id: str)
     raise input_error
 
 
+def _reject_unsupported_plan(code: str) -> NoReturn:
+    raise SimulationError(_UNSUPPORTED_PLAN, code=code)
+
+
+def _reject_run_mismatch(code: str) -> NoReturn:
+    raise SimulationError(_RUN_MISMATCH, code=code)
+
+
 def _require_supported_plan(
     spec: ResearchSpec,
     plan: ExecutionPlan,
@@ -322,53 +332,81 @@ def _require_supported_plan(
         or report.digests.registry != plan.registry_digest
         or report.digests.registry != registry.digest()
     ):
-        raise SimulationError("simulation plan is not bound to this spec and registry")
+        raise SimulationError(
+            "simulation plan is not bound to this spec and registry",
+            code="plan-binding-mismatch",
+        )
     workflow = next((item for item in spec.workflows if str(item.id) == workflow_id), None)
     if workflow is None:
-        raise SimulationError("simulation workflow is not available")
-    if workflow.graph.edges or len(workflow.graph.nodes) != 1:
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
+        raise SimulationError("simulation workflow is not available", code="workflow-not-available")
+    if workflow.graph.edges:
+        _reject_unsupported_plan("edges-not-empty")
+    if len(workflow.graph.nodes) != 1:
+        _reject_unsupported_plan("nodes-not-single")
     spec_node = workflow.graph.nodes[0]
-    if (
-        not isinstance(spec_node, TaskBlock)
-        or spec_node.resource_refs
-        or str(spec_node.block_type) != _SUPPORTED_BLOCK_ID
-        or str(spec_node.block_version) != _SUPPORTED_BLOCK_VERSION
-    ):
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
-    if (
-        spec.resources
-        or plan.resources
-        or plan.policy_requirements
-        or plan.graph.edges
-        or len(plan.graph.stages) != 1
-        or len(plan.graph.stages[0].nodes) != 1
-        or report.summary.task_count != 1
-        or report.summary.approval_count != 0
-        or report.summary.loop_count != 0
-    ):
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
+    if not isinstance(spec_node, TaskBlock):
+        _reject_unsupported_plan("node-not-task")
+    if spec_node.resource_refs:
+        _reject_unsupported_plan("task-resource-refs-not-empty")
+    if str(spec_node.block_type) != _SUPPORTED_BLOCK_ID:
+        _reject_unsupported_plan("unsupported-block-type")
+    if str(spec_node.block_version) != _SUPPORTED_BLOCK_VERSION:
+        _reject_unsupported_plan("unsupported-block-version")
+    if spec.resources:
+        _reject_unsupported_plan("spec-resources-not-empty")
+    if plan.resources:
+        _reject_unsupported_plan("plan-resources-not-empty")
+    if plan.policy_requirements:
+        _reject_unsupported_plan("policy-requirements-not-empty")
+    if plan.graph.edges:
+        _reject_unsupported_plan("plan-edges-not-empty")
+    if len(plan.graph.stages) != 1:
+        _reject_unsupported_plan("stages-not-single")
+    if len(plan.graph.stages[0].nodes) != 1:
+        _reject_unsupported_plan("stage-nodes-not-single")
+    if report.summary.task_count != 1:
+        _reject_unsupported_plan("task-count-not-one")
+    if report.summary.approval_count != 0:
+        _reject_unsupported_plan("approval-count-not-zero")
+    if report.summary.loop_count != 0:
+        _reject_unsupported_plan("loop-count-not-zero")
     planned = plan.graph.stages[0].nodes[0]
     if not isinstance(planned, PlannedTask):
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
-    if (
-        planned.resource_refs
-        or str(planned.block.id) != _SUPPORTED_BLOCK_ID
-        or str(planned.block.version) != _SUPPORTED_BLOCK_VERSION
-        or planned.block.runtime_type is not RuntimeType.SIMULATED
-    ):
-        raise SimulationError("simulation only supports one simulated.experiment@0.1.0 task")
+        _reject_unsupported_plan("planned-node-not-task")
+    if planned.resource_refs:
+        _reject_unsupported_plan("planned-resource-refs-not-empty")
+    if str(planned.block.id) != _SUPPORTED_BLOCK_ID:
+        _reject_unsupported_plan("planned-block-id-mismatch")
+    if str(planned.block.version) != _SUPPORTED_BLOCK_VERSION:
+        _reject_unsupported_plan("planned-block-version-mismatch")
+    if planned.block.runtime_type is not RuntimeType.SIMULATED:
+        _reject_unsupported_plan("planned-runtime-not-simulated")
     registered = registry.resolve(_SUPPORTED_BLOCK_ID, _SUPPORTED_BLOCK_VERSION)
     canonical_digest = _canonical_simulated_digest()
-    if (
-        planned.block.manifest_digest != canonical_digest
-        or registered.digest != canonical_digest
-        or registered.manifest.permissions
-        or planned.block.manifest_digest != registered.digest
-        or registered.manifest.runtime.type is not RuntimeType.SIMULATED
-    ):
+    if planned.block.manifest_digest != canonical_digest:
         raise SimulationError(
-            "simulation requires the canonical simulated.experiment@0.1.0 manifest"
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="manifest-digest-mismatch",
+        )
+    if registered.digest != canonical_digest:
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="registry-manifest-digest-mismatch",
+        )
+    if registered.manifest.permissions:
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="manifest-permissions-not-empty",
+        )
+    if planned.block.manifest_digest != registered.digest:
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="planned-registry-digest-mismatch",
+        )
+    if registered.manifest.runtime.type is not RuntimeType.SIMULATED:
+        raise SimulationError(
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="registered-runtime-not-simulated",
         )
     return spec_node
 
@@ -382,7 +420,8 @@ def _canonical_simulated_digest() -> str:
     ]
     if len(matches) != 1:
         raise SimulationError(
-            "simulation requires the canonical simulated.experiment@0.1.0 manifest"
+            "simulation requires the canonical simulated.experiment@0.1.0 manifest",
+            code="canonical-manifest-missing",
         )
     payload = matches[0].model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = BlockManifest.model_validate(payload)
@@ -404,19 +443,24 @@ def _require_matching_run(
     run_id: str,
     attempt_id: str,
 ) -> None:
-    if (
-        snapshot.project_id != report.project.id
-        or snapshot.experiment_revision != report.project.revision
-        or snapshot.run_id != run_id
-        or snapshot.workflow_id != report.workflow_id
-        or snapshot.digests.spec != report.digests.spec
-        or snapshot.digests.registry != report.digests.registry
-        or snapshot.digests.plan != report.digests.plan
-        or snapshot.max_attempts != _MAX_ATTEMPTS
-    ):
-        raise SimulationError("existing run does not match this simulation request")
+    if snapshot.project_id != report.project.id:
+        _reject_run_mismatch("project-id-mismatch")
+    if snapshot.experiment_revision != report.project.revision:
+        _reject_run_mismatch("experiment-revision-mismatch")
+    if snapshot.run_id != run_id:
+        _reject_run_mismatch("run-id-mismatch")
+    if snapshot.workflow_id != report.workflow_id:
+        _reject_run_mismatch("workflow-id-mismatch")
+    if snapshot.digests.spec != report.digests.spec:
+        _reject_run_mismatch("spec-digest-mismatch")
+    if snapshot.digests.registry != report.digests.registry:
+        _reject_run_mismatch("registry-digest-mismatch")
+    if snapshot.digests.plan != report.digests.plan:
+        _reject_run_mismatch("plan-digest-mismatch")
+    if snapshot.max_attempts != _MAX_ATTEMPTS:
+        _reject_run_mismatch("max-attempts-mismatch")
     if snapshot.attempts and snapshot.attempts[0].attempt_id != attempt_id:
-        raise SimulationError("existing run does not match this simulation request")
+        _reject_run_mismatch("attempt-id-mismatch")
 
 
 def _path_for_outcome(outcome: str) -> tuple[str, ...]:
@@ -454,7 +498,7 @@ def _emitted_types(snapshot: RunSnapshot) -> tuple[str, ...]:
     if attempt.status is AttemptStatus.UNKNOWN:
         emitted.append(TYPE_ATTEMPT_UNKNOWN)
         return tuple(emitted)
-    raise SimulationError("existing run does not match this simulation request")
+    _reject_run_mismatch("unexpected-attempt-status")
 
 
 def _continuation(
@@ -474,7 +518,7 @@ def _continuation(
         return (), SimulationDisposition.UNRESOLVED
     emitted = _emitted_types(snapshot)
     if emitted != full[: len(emitted)]:
-        raise SimulationError("existing run does not match this simulation request")
+        _reject_run_mismatch("emitted-prefix-mismatch")
     remaining = full[len(emitted) :]
     if not remaining:
         return (), _disposition_for_snapshot(snapshot)

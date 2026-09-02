@@ -1,5 +1,7 @@
 """Stable fail-closed errors for the pure Run/Attempt projection."""
 
+from pydantic import ValidationError
+
 
 class RunStateError(ValueError):
     """Fail-closed error from the Run/Attempt state projection.
@@ -23,3 +25,15 @@ class RunControlError(RunStateError):
     Messages MUST NOT include payload bodies, untrusted payload field names,
     or other potentially sensitive document text.
     """
+
+
+class RunCancellationRequestError(ValueError):
+    """Invalid external RunCancellationRequest document.
+
+    Messages and JSON Pointers MUST NOT include unknown field names, hostile
+    discriminator values, or other potentially sensitive document text.
+    """
+
+    def __init__(self, error: ValidationError) -> None:
+        super().__init__("run cancellation request failed validation")
+        self.error = error

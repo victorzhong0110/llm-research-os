@@ -343,10 +343,11 @@ def test_non_simulated_runtime_writes_nothing(tmp_path: Path, runtime_type: str)
     document = _spec_document()
     document["workflows"][0]["graph"]["nodes"][0]["blockType"] = "other.experiment"
     with EventStore(database) as store:
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             SimulatedRuntime(store, registry, project_id=PROJECT, run_id=RUN).run(
                 document, _request()
             )
+        assert info.value.code == "unsupported-block-type"
         _assert_unchanged(store, 0)
 
 
@@ -364,8 +365,9 @@ def test_multi_task_edge_approval_loop_and_resources_write_nothing(tmp_path: Pat
                 "config": {"outcome": "success", "seed": 0},
             }
         )
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             runtime.run(two_tasks, _request())
+        assert info.value.code == "nodes-not-single"
         _assert_unchanged(store, 0)
 
         with_edge = _spec_document()
@@ -379,21 +381,24 @@ def test_multi_task_edge_approval_loop_and_resources_write_nothing(tmp_path: Pat
             }
         )
         with_edge["workflows"][0]["graph"]["edges"] = [{"source": "simulate", "target": "second"}]
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             runtime.run(with_edge, _request())
+        assert info.value.code == "edges-not-empty"
         _assert_unchanged(store, 0)
 
         with_resource = _spec_document()
         with_resource["resources"] = [{"id": "cpu.local", "kind": "cpu", "paid": False}]
         with_resource["workflows"][0]["graph"]["nodes"][0]["resourceRefs"] = ["cpu.local"]
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             runtime.run(with_resource, _request())
+        assert info.value.code == "task-resource-refs-not-empty"
         _assert_unchanged(store, 0)
 
         unused_resource = _spec_document()
         unused_resource["resources"] = [{"id": "cpu.unused", "kind": "cpu", "paid": False}]
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             runtime.run(unused_resource, _request())
+        assert info.value.code == "spec-resources-not-empty"
         _assert_unchanged(store, 0)
 
         with_approval = _spec_document()
@@ -405,18 +410,20 @@ def test_multi_task_edge_approval_loop_and_resources_write_nothing(tmp_path: Pat
                 "prompt": "approve the simulation",
             }
         ]
-        with pytest.raises(SimulationError):
+        with pytest.raises(SimulationError) as info:
             runtime.run(with_approval, _request())
+        assert info.value.code == "node-not-task"
         _assert_unchanged(store, 0)
 
         loop_registry = build_registry((EXAMPLES / "manifests/example-train.yaml",))
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             SimulatedRuntime(
                 store, loop_registry, project_id="example-bounded-loop", run_id=RUN
             ).run(
                 load_spec(EXAMPLES / "valid/bounded-loop.yaml"),
                 _request(workflow_id="workflow.iteration"),
             )
+        assert info.value.code == "node-not-task"
         _assert_unchanged(store, 0)
 
 
@@ -425,8 +432,9 @@ def test_unreferenced_spec_resources_write_nothing(tmp_path: Path) -> None:
     unused = _spec_document()
     unused["resources"] = [{"id": "cpu.unused", "kind": "cpu", "paid": False}]
     with EventStore(database) as store:
-        with pytest.raises(SimulationError, match=r"simulated\.experiment"):
+        with pytest.raises(SimulationError, match=r"simulated\.experiment") as info:
             _runtime(store).run(unused, _request())
+        assert info.value.code == "spec-resources-not-empty"
         _assert_unchanged(store, 0)
 
 
@@ -568,11 +576,13 @@ def test_mismatched_existing_run_writes_nothing(tmp_path: Path) -> None:
     with EventStore(database) as store:
         other = load_document(EXAMPLES / "valid/minimal.yaml")
         other["metadata"]["revision"] = 2
-        with pytest.raises(SimulationError, match="does not match"):
+        with pytest.raises(SimulationError, match="does not match") as info:
             _runtime(store).run(other, request)
+        assert info.value.code == "experiment-revision-mismatch"
         assert store.last_sequence() == 3
-        with pytest.raises(SimulationError, match="does not match"):
+        with pytest.raises(SimulationError, match="does not match") as info:
             _runtime(store).run(spec, _request(attempt_id="attempt.other"))
+        assert info.value.code == "attempt-id-mismatch"
         assert store.last_sequence() == 3
 
 
@@ -885,11 +895,12 @@ def test_substituted_builtin_manifest_digest_writes_nothing(tmp_path: Path) -> N
     payload["metadata"]["title"] = "Substituted simulated experiment"
     registry = _substituted_simulated_registry(payload)
     with EventStore(database) as store:
-        with pytest.raises(SimulationError, match="canonical"):
+        with pytest.raises(SimulationError, match="canonical") as info:
             SimulatedRuntime(store, registry, project_id=PROJECT, run_id=RUN).run(
                 load_spec(EXAMPLES / "valid/minimal.yaml"),
                 _request(),
             )
+        assert info.value.code == "manifest-digest-mismatch"
         _assert_unchanged(store, 0)
 
 
@@ -899,11 +910,12 @@ def test_permission_bearing_simulated_manifest_writes_nothing(tmp_path: Path) ->
     payload["permissions"] = ["network"]
     registry = _substituted_simulated_registry(payload)
     with EventStore(database) as store:
-        with pytest.raises(SimulationError, match="canonical"):
+        with pytest.raises(SimulationError, match="canonical") as info:
             SimulatedRuntime(store, registry, project_id=PROJECT, run_id=RUN).run(
                 load_spec(EXAMPLES / "valid/minimal.yaml"),
                 _request(),
             )
+        assert info.value.code == "manifest-digest-mismatch"
         _assert_unchanged(store, 0)
 
 

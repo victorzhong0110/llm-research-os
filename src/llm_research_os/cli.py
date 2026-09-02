@@ -160,6 +160,7 @@ from llm_research_os.problem_schema import write_schema as write_problem_schema
 from llm_research_os.projections import replay_events
 from llm_research_os.runs import (
     AttemptCancellationTarget,
+    RunCancellationRequestError,
     RunCancellationTarget,
     RunSnapshot,
     RunStateError,
@@ -983,6 +984,7 @@ def _runs_cancel(request_path: Path, database: Path, output_format: str) -> int:
     except (
         EventStoreError,
         OSError,
+        RunCancellationRequestError,
         RunStateError,
         SpecLoadError,
         ValidationError,
@@ -1423,35 +1425,14 @@ def _safe_text(value: object) -> str:
 
 
 def _problem_report(exc: Exception) -> ProblemReport:
-    if isinstance(exc, ValidationError):
-        errors = []
-        for error in exc.errors(
-            include_url=False,
-            include_context=False,
-            include_input=False,
-        ):
-            location = error["loc"]
-            message = error["msg"]
-            if (
-                exc.title == "RunCancellationRequestDocument"
-                and error["type"] == "extra_forbidden"
-                and location
-            ):
-                location = location[:-1]
-            if (
-                exc.title == "RunCancellationRequestDocument"
-                and error["type"] == "union_tag_invalid"
-            ):
-                message = "Input should select a supported cancellation target"
-            errors.append(
-                ProblemDetail(
-                    path=_json_pointer(_source_location(location)),
-                    message=message,
-                    type=error["type"],
-                )
-            )
+    if isinstance(exc, RunCancellationRequestError):
+        errors = _pydantic_problem_details(exc.error, hide_extra_field_names=True)
+    elif isinstance(exc, ValidationError):
+        errors = _pydantic_problem_details(exc, hide_extra_field_names=False)
     elif isinstance(exc, PlanningInputError):
         errors = [ProblemDetail(path=exc.path, message=str(exc), type=exc.code)]
+    elif isinstance(exc, SimulationError):
+        errors = [ProblemDetail(message=str(exc), type=exc.code)]
     else:
         errors = [ProblemDetail(message=str(exc), type=type(exc).__name__)]
     return ProblemReport(
@@ -1460,6 +1441,33 @@ def _problem_report(exc: Exception) -> ProblemReport:
         valid=False,
         errors=tuple(errors),
     )
+
+
+def _pydantic_problem_details(
+    exc: ValidationError,
+    *,
+    hide_extra_field_names: bool,
+) -> list[ProblemDetail]:
+    errors: list[ProblemDetail] = []
+    for error in exc.errors(
+        include_url=False,
+        include_context=False,
+        include_input=False,
+    ):
+        location = error["loc"]
+        message = error["msg"]
+        if hide_extra_field_names and error["type"] == "extra_forbidden" and location:
+            location = location[:-1]
+        if hide_extra_field_names and error["type"] == "union_tag_invalid":
+            message = "Input should select a supported cancellation target"
+        errors.append(
+            ProblemDetail(
+                path=_json_pointer(_source_location(location)),
+                message=message,
+                type=error["type"],
+            )
+        )
+    return errors
 
 
 def _source_location(parts: tuple[str | int, ...]) -> tuple[str, ...]:

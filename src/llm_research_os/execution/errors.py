@@ -38,4 +38,10 @@ class SimulationError(ValueError):
 
     Messages MUST NOT include task config, payload bodies, unknown field names,
     secrets, control characters, or other potentially sensitive document text.
+    ``code`` is a stable diagnostic token for the rejecting branch; it is not
+    caller-supplied document text.
     """
+
+    def __init__(self, message: str, *, code: str = "SimulationError") -> None:
+        super().__init__(message)
+        self.code = code
