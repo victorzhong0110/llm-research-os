@@ -82,6 +82,18 @@ creating a file if the path does not exist. Query commands use that existing-onl
 requires the exact initialized schema before writable connection settings are enabled, and never
 creates a missing path. Run cancellation requests use this mode.
 
+## Integrity scan cost
+
+`verify_integrity()` and every `read_events` page revalidate canonical JSON, the ResearchEvent
+contract, digest and index columns. That is the safety default: a corrupted or rewritten row
+must not become a trusted fact.
+
+`RunControl.rebuild()` therefore pays a full integrity scan **plus** a second verified replay of
+the frozen prefix. Filling a store through that boundary is Θ(N) per append and Θ(N²) to reach
+N events. The cost is documented in [M0 RunControl](m0-run-control.md#write-cost-model). M0 does
+not cache the high-water mark; `last_sequence()` is only a CAS token and is not a substitute for
+the scan.
+
 ## Query and replay CLI
 
 ```bash
