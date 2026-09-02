@@ -133,6 +133,11 @@ not JSON arrays, including tuples, are not payload containers and MUST be reject
 
 Secrets MUST NOT be placed in envelope context attributes.
 
+Individual domain protocols MAY reserve and semantically validate exact event types while the
+generic envelope remains open. `plan.authorization.evaluated` is currently defined by
+[PlanAuthorizationEventRequest v0alpha1](plan-authorization-event-v0alpha1.md); its payload is
+audit-only and is not executable authority.
+
 ## 6. Conformance commands
 
 ```bash
@@ -150,7 +155,7 @@ rejected by the committed JSON Schema MUST also be rejected by the reference val
 
 The following items remain undecided and MUST NOT be filled in by adapters:
 
-- a catalog of `type` values;
+- a complete catalog of `type` values beyond types frozen by individual domain protocols;
 - actor kind, role or display-name fields;
 - stream identity (per project, run, attempt or other);
 - charset parameters on `datacontenttype`;

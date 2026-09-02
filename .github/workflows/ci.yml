@@ -57,6 +57,10 @@ jobs:
         run: >-
           uv run researchos schema --contract plan-authorization-report
           --check schemas/plan-authorization-report/v0alpha1.schema.json
+      - name: Verify PlanAuthorizationEventRequest schema
+        run: >-
+          uv run researchos schema --contract plan-authorization-event-request
+          --check schemas/plan-authorization-event-request/v0alpha1.schema.json
       - name: Verify NativeProcessPreflightRequest schema
         run: >-
           uv run researchos schema --contract native-process-preflight-request

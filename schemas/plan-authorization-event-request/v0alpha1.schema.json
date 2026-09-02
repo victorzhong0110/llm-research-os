@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "PlanAuthorizationEventActor": {
+      "additionalProperties": false,
+      "description": "Caller-asserted actor identity; this is not authentication.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "PlanAuthorizationEventActor",
+      "type": "object"
+    },
+    "PlanAuthorizationEventBinding": {
+      "additionalProperties": false,
+      "description": "Exact plan and recomputed decision identity.",
+      "properties": {
+        "decisionDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Decisiondigest",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Plandigest",
+          "type": "string"
+        },
+        "registryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "specDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "specDigest",
+        "registryDigest",
+        "planDigest",
+        "decisionDigest"
+      ],
+      "title": "PlanAuthorizationEventBinding",
+      "type": "object"
+    },
+    "PlanAuthorizationEventIdentity": {
+      "additionalProperties": false,
+      "description": "Caller-owned CloudEvents identity for the one appended fact.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "time": {
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "title": "Time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "time"
+      ],
+      "title": "PlanAuthorizationEventIdentity",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/plan-authorization-event-request/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Caller-owned identity and exact binding for one evaluation audit fact.",
+  "properties": {
+    "actor": {
+      "$ref": "#/$defs/PlanAuthorizationEventActor"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "binding": {
+      "$ref": "#/$defs/PlanAuthorizationEventBinding"
+    },
+    "event": {
+      "$ref": "#/$defs/PlanAuthorizationEventIdentity"
+    },
+    "evidenceRefs": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 10000,
+      "title": "Evidencerefs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "experimentRevision": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Experimentrevision",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "PlanAuthorizationEventRequest",
+      "title": "Kind",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "source": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^(?:[A-Za-z][A-Za-z0-9+.-]*:(?://(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|:)*@)?(?:\\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|::(?:[0-9A-Fa-f]{1,4}:){5}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,1})?::(?:[0-9A-Fa-f]{1,4}:){3}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,2})?::(?:[0-9A-Fa-f]{1,4}:){2}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,3})?::[0-9A-Fa-f]{1,4}:(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,4})?::(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,5})?::[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?::)|v[0-9A-Fa-f]+\\.(?:[A-Za-z0-9._~-]|[!$&'()*+,;=]|:)+)\\]|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=])*)(?::[0-9]*)?(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|/(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*)?|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|)(?:\\?(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?(?:#(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?|(?://(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|:)*@)?(?:\\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|::(?:[0-9A-Fa-f]{1,4}:){5}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,1})?::(?:[0-9A-Fa-f]{1,4}:){3}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,2})?::(?:[0-9A-Fa-f]{1,4}:){2}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,3})?::[0-9A-Fa-f]{1,4}:(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,4})?::(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,5})?::[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?::)|v[0-9A-Fa-f]+\\.(?:[A-Za-z0-9._~-]|[!$&'()*+,;=]|:)+)\\]|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=])*)(?::[0-9]*)?(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|/(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*)?|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|@)+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|)(?:\\?(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?(?:#(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?)$",
+      "title": "Source",
+      "type": "string"
+    },
+    "streamid": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Streamid",
+      "type": "string"
+    },
+    "subject": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Subject",
+      "type": "string"
+    },
+    "workflowId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workflowid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "experimentRevision",
+    "workflowId",
+    "binding",
+    "source",
+    "subject",
+    "streamid",
+    "actor",
+    "event",
+    "evidenceRefs"
+  ],
+  "title": "PlanAuthorizationEventRequestDocument",
+  "type": "object"
+}

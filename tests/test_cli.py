@@ -20,6 +20,12 @@ PLAN_AUTHORIZATION_REQUEST_SCHEMA = (
 PLAN_AUTHORIZATION_REPORT_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "plan-authorization-report" / "v0alpha1.schema.json"
 )
+PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA = (
+    Path(__file__).parents[1]
+    / "schemas"
+    / "plan-authorization-event-request"
+    / "v0alpha1.schema.json"
+)
 NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA = (
     Path(__file__).parents[1]
     / "schemas"
@@ -143,6 +149,18 @@ def test_all_contract_schema_check_commands() -> None:
                 "plan-authorization-report",
                 "--check",
                 str(PLAN_AUTHORIZATION_REPORT_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "plan-authorization-event-request",
+                "--check",
+                str(PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA),
             ]
         )
         == 0
