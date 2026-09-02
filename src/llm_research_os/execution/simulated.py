@@ -27,9 +27,8 @@ from llm_research_os.execution.errors import PlanAuthorizationError, SimulationE
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, ExecutionPlan, PlannedTask
 from llm_research_os.execution.planner import PlanningInputError
+from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
 from llm_research_os.runs import RunControl, RunSnapshot, RunStateProjection, RunStatus
-from llm_research_os.runs.control import _snapshot_json_document
-from llm_research_os.runs.errors import RunControlError
 from llm_research_os.runs.models import AttemptStatus
 from llm_research_os.spec.models import ResearchSpec, TaskBlock
 from llm_research_os.storage.models import StoredEvent
@@ -247,8 +246,8 @@ def _freeze_spec(spec: object) -> ResearchSpec:
     else:
         payload = spec
     try:
-        isolated = _snapshot_json_document(payload)
-    except RunControlError:
+        isolated = snapshot_json_document(payload)
+    except JsonCloneError:
         snapshot_error = SimulationError("simulation spec must contain only JSON values")
     else:
         try:

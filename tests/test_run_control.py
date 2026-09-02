@@ -16,6 +16,7 @@ from typing import Any, NoReturn
 import pytest
 
 from llm_research_os.events.models import validate_event_document
+from llm_research_os.internal.jsonclone import snapshot_json_document
 from llm_research_os.projections import fold_events, replay_events
 from llm_research_os.runs import (
     RunControl,
@@ -26,7 +27,6 @@ from llm_research_os.runs import (
     RunStatus,
     RunTransitionError,
 )
-from llm_research_os.runs.control import _snapshot_json_document
 from llm_research_os.storage import (
     DuplicateEventError,
     EventIntegrityError,
@@ -678,7 +678,7 @@ def test_isolated_snapshot_does_not_change_when_caller_mutates_nested_containers
     nested_data = document["data"]
     nested_payload = document["data"]["payload"]
     nested_refs = document["data"]["evidenceRefs"]
-    snapshot = _snapshot_json_document(document)
+    snapshot = snapshot_json_document(document)
     nested_payload["workflowId"] = "wf.mutated"
     nested_refs.append("ev.mutated")
     nested_data["projectId"] = "project.mutated"
@@ -818,7 +818,7 @@ def test_shared_acyclic_containers_are_not_treated_as_cycles() -> None:
         "right": shared_object,
         "items": [shared_array, shared_array],
     }
-    snapshot = _snapshot_json_document(document)
+    snapshot = snapshot_json_document(document)
     assert snapshot["left"] == {"note": "shared"}
     assert snapshot["right"] == {"note": "shared"}
     assert snapshot["left"] is not shared_object
