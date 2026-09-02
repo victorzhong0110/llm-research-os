@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import legacy_content_digest
 
 APPLICATION_ID = 0x4C524F53  # ASCII "LROS"
 SCHEMA_VERSION = 1
@@ -106,7 +106,7 @@ EXPECTED_SCHEMA_DEFINITIONS = {
     _schema_object_key(statement): normalize_schema_sql(statement)
     for statement in MIGRATION_STATEMENTS
 }
-SCHEMA_DEFINITION_DIGEST = content_digest(
+SCHEMA_DEFINITION_DIGEST = legacy_content_digest(
     [normalize_schema_sql(statement) for statement in MIGRATION_STATEMENTS]
 )
 
