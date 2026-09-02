@@ -117,22 +117,22 @@
       "additionalProperties": false,
       "properties": {
         "authorizationDecisionDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Authorizationdecisiondigest",
           "type": "string"
         },
         "planDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Plandigest",
           "type": "string"
         },
         "registryDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registrydigest",
           "type": "string"
         },
         "specDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Specdigest",
           "type": "string"
         }
@@ -213,17 +213,17 @@
           "type": "string"
         },
         "configDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Configdigest",
           "type": "string"
         },
         "entrypointDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Entrypointdigest",
           "type": "string"
         },
         "manifestDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Manifestdigest",
           "type": "string"
         },
@@ -320,7 +320,7 @@
       "$ref": "#/$defs/NativeProcessLimitsDocument"
     },
     "preflightDigest": {
-      "pattern": "^sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
       "title": "Preflightdigest",
       "type": "string"
     },

@@ -113,7 +113,7 @@ def test_exact_no_requirement_policy_authorizes_ready_plan() -> None:
     assert result.required_permissions == ()
     assert result.missing_capabilities == ()
     assert result.pending_requirements == ()
-    assert result.decision_digest.startswith("sha256:")
+    assert result.decision_digest.startswith("jcs-sha256:")
 
 
 def test_missing_capability_denies_without_throwing() -> None:
@@ -205,6 +205,25 @@ def test_every_digest_must_match(field: str) -> None:
     values[field] = "sha256:" + "0" * 64
     with pytest.raises(PlanAuthorizationError, match="does not match"):
         authorize_plan(report, PlanAuthorizationPolicy(**values))
+
+
+def test_legacy_sha256_label_does_not_bind_to_recomputed_jcs_digest() -> None:
+    report = _minimal_report()
+    policy = _policy(report, capabilities=("simulate",))
+    assert policy.spec_digest.startswith("jcs-sha256:")
+    relabeled = "sha256:" + policy.spec_digest.removeprefix("jcs-sha256:")
+    with pytest.raises(PlanAuthorizationError, match="does not match"):
+        authorize_plan(
+            report,
+            PlanAuthorizationPolicy(
+                spec_digest=relabeled,
+                registry_digest=policy.registry_digest,
+                plan_digest=policy.plan_digest,
+                granted_capabilities=policy.granted_capabilities,
+                granted_permissions=policy.granted_permissions,
+                requirement_decisions=policy.requirement_decisions,
+            ),
+        )
 
 
 def test_blocked_report_is_rejected() -> None:

@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from llm_research_os.blocks.registry import build_registry
 from llm_research_os.execution import (
@@ -21,6 +21,7 @@ from llm_research_os.execution import (
     load_plan_authorization_request,
     validate_plan_authorization_request_document,
 )
+from llm_research_os.execution.authorization_documents import AuthorizationDigest
 from llm_research_os.execution.authorization_report_schema import (
     build_schema as build_report_schema,
 )
@@ -34,6 +35,8 @@ from llm_research_os.execution.authorization_request_schema import (
     canonical_schema as canonical_request_schema,
 )
 from llm_research_os.spec.io import SpecLoadError, load_document, load_spec
+
+AUTHORIZATION_DIGEST = TypeAdapter(AuthorizationDigest)
 
 ROOT = Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples" / "plan-authorization-requests"
@@ -198,7 +201,7 @@ def test_authorized_report_is_schema_valid_normalized_and_explicitly_noncredenti
     assert payload["status"] == "authorized"
     assert payload["authorized"] is True
     assert payload["decisionDigest"] == (
-        "sha256:9900f7cbc15b99839d33734a32d791e7264225111a3efaf036c79518375376f6"
+        "jcs-sha256:4d298b128a047cfb6d2498126d1821fca254ed1d482a71f9a538f858c4b8f82c"
     )
     assert payload["approvalAuthentication"] == "not-authenticated"
     assert payload["persistence"] == "not-persisted"
@@ -233,3 +236,28 @@ def test_report_is_frozen() -> None:
     report = _authorized_report()
     with pytest.raises((FrozenInstanceError, ValidationError)):
         report.status = PlanAuthorizationStatus.DENIED  # type: ignore[misc]
+
+
+def test_authorization_digest_accepts_new_and_legacy_labels() -> None:
+    payload = "a" * 64
+    assert AUTHORIZATION_DIGEST.validate_python(f"jcs-sha256:{payload}") == f"jcs-sha256:{payload}"
+    assert AUTHORIZATION_DIGEST.validate_python(f"sha256:{payload}") == f"sha256:{payload}"
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        f"  jcs-sha256:{'a' * 64}  ",
+        f"jcs-sha256:{'A' * 64}",
+        f"sha256:{'A' * 64}",
+        f"SHA256:{'a' * 64}",
+        f"jcs-sha256:{'a' * 63}",
+        f"sha256:{'a' * 65}",
+        f"sha512:{'a' * 64}",
+        "sha256:ABC",
+        "not-a-digest",
+    ),
+)
+def test_authorization_digest_rejects_whitespace_case_and_malformed_labels(value: str) -> None:
+    with pytest.raises(ValidationError):
+        AUTHORIZATION_DIGEST.validate_python(value)

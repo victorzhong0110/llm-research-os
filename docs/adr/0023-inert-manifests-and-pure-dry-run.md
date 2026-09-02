@@ -39,8 +39,9 @@ that a complete static plan exists.
   experimental v0alpha1 contract. Existing examples migrate by adding an exact semantic
   version; no persisted Run or released compatibility promise exists yet.
 - Plans are reviewable and content-addressed before execution exists.
-- v0alpha1 digests remain a Python reference convention; a normative cross-language
-  canonicalization ADR is required before stable multi-language verification.
+- v0alpha1 semantic digests now follow ADR-0033 (RFC 8785 JCS, tagged
+  `jcs-sha256:`). SQLite schema v1 event rows and raw artifact bytes remain
+  separate `sha256:` preimages and are not covered by this dry-run contract.
 - Exact versions plus manifest digests expose registry substitution instead of silently
   choosing “latest”.
 - The static compiler cannot yet prove runtime success, cancellation, retry or recovery.

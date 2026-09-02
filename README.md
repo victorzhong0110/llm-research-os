@@ -45,7 +45,7 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
 - [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
-- [参考摘要约定 v0alpha1](docs/protocols/digest-v0alpha1.md)
+- [语义内容摘要 v0alpha1](docs/protocols/digest-v0alpha1.md)
 - [Run/Attempt 状态 v0alpha1](docs/protocols/run-attempt-state-v0alpha1.md)
 - [SimulationRequest v0alpha1](docs/protocols/simulation-request-v0alpha1.md)
 - [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
@@ -98,6 +98,7 @@ uv run researchos schema --contract native-process-preflight-report \
 uv run ruff check .
 uv run mypy src
 uv run pytest
+node conformance/digest/verify.mjs
 ```
 
 生成的 JSON Schema 是第三方实现使用的语言中立契约：

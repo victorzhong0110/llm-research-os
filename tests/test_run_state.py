@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from llm_research_os.events.models import ResearchEvent, validate_event_document
 from llm_research_os.projections import fold_events, replay_events
@@ -23,8 +23,15 @@ from llm_research_os.runs import (
     RunTransitionError,
     validate_run_snapshot_document,
 )
-from llm_research_os.runs.models import LIFECYCLE_TYPES, PAYLOAD_MODELS, run_snapshot_document
+from llm_research_os.runs.models import (
+    LIFECYCLE_TYPES,
+    PAYLOAD_MODELS,
+    StrictDigest,
+    run_snapshot_document,
+)
 from llm_research_os.storage import EventStore
+
+STRICT_DIGEST = TypeAdapter(StrictDigest)
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "run-state"
 SPEC = "sha256:" + "11" * 32
@@ -685,3 +692,33 @@ def test_fold_resume_none_starts_from_empty_run() -> None:
     projection = RunStateProjection(project_id="project.example", run_id="run.example")
     parsed = _events(events)
     assert fold_events(parsed, projection, resume=None) == fold_events(parsed, projection)
+
+
+def test_strict_digest_accepts_new_and_legacy_labels() -> None:
+    payload = "a" * 64
+    current = f"jcs-sha256:{payload}"
+    legacy = f"sha256:{payload}"
+    assert len(legacy) == 71
+    assert len(current) == 75
+    assert STRICT_DIGEST.validate_python(current) == current
+    assert STRICT_DIGEST.validate_python(legacy) == legacy
+    assert STRICT_DIGEST.validate_python(SPEC) == SPEC
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        f"  jcs-sha256:{'a' * 64}  ",
+        f"jcs-sha256:{'A' * 64}",
+        f"sha256:{'A' * 64}",
+        f"SHA256:{'a' * 64}",
+        f"jcs-sha256:{'a' * 63}",
+        f"sha256:{'a' * 65}",
+        f"sha512:{'a' * 64}",
+        "sha256:" + "a" * 60,
+        "not-a-digest",
+    ),
+)
+def test_strict_digest_rejects_whitespace_case_length_and_malformed_labels(value: str) -> None:
+    with pytest.raises(ValidationError):
+        STRICT_DIGEST.validate_python(value)

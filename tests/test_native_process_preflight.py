@@ -89,13 +89,13 @@ def test_exact_authorized_python_task_produces_deterministic_nonlaunchable_revie
     second = preflight_native_process(report, registry, authorization, policy)
     assert first == second
     assert first.preflight_digest == (
-        "sha256:99d966f354f3b4dc0071225c7bb33f62c2dc9259f4f8b285f7a3742b9a72d0c8"
+        "jcs-sha256:040f5679d7ac79cf47c805f960e0d5a568812ef6cf5d2e3465314be138f708e5"
     )
     assert first.authorization_decision_digest == (
-        "sha256:3ae63e85738fde08cb3705b1797ef98f3836c0dd7ae279934f70cdf2945a82b8"
+        "jcs-sha256:c2300636d18d76bd04f65ad9ef77584357bf841a90cfb50beb18c11af64283d9"
     )
     assert first.entrypoint_digest == (
-        "sha256:8f822a565015929babf03c87864bb35df11ebe6206567211c15967673efa7501"
+        "jcs-sha256:8f822a565015929babf03c87864bb35df11ebe6206567211c15967673efa7501"
     )
     assert "example_native_worker:run" not in repr(first)
 
@@ -302,4 +302,4 @@ def test_preflight_never_imports_executes_or_performs_io(
     monkeypatch.setattr(Path, "write_text", tripwire)
 
     result = preflight_native_process(report, registry, authorization, policy)
-    assert result.preflight_digest.startswith("sha256:")
+    assert result.preflight_digest.startswith("jcs-sha256:")

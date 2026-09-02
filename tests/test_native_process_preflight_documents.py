@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from llm_research_os.blocks.registry import build_registry
 from llm_research_os.execution import (
@@ -21,6 +21,7 @@ from llm_research_os.execution import (
     preflight_native_process,
     validate_native_process_preflight_request_document,
 )
+from llm_research_os.execution.native_preflight_documents import PreflightDigest
 from llm_research_os.execution.native_preflight_report_schema import (
     build_schema as build_report_schema,
 )
@@ -34,6 +35,8 @@ from llm_research_os.execution.native_preflight_request_schema import (
     canonical_schema as canonical_request_schema,
 )
 from llm_research_os.spec.io import SpecLoadError, load_document, load_spec
+
+PREFLIGHT_DIGEST = TypeAdapter(PreflightDigest)
 
 ROOT = Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples" / "native-process-preflight"
@@ -191,9 +194,9 @@ def test_report_is_schema_valid_normalized_self_verifying_and_nonlaunchable() ->
     assert payload["status"] == "reviewable"
     assert payload["launchAllowed"] is False
     assert payload["preflightDigest"] == (
-        "sha256:99d966f354f3b4dc0071225c7bb33f62c2dc9259f4f8b285f7a3742b9a72d0c8"
+        "jcs-sha256:040f5679d7ac79cf47c805f960e0d5a568812ef6cf5d2e3465314be138f708e5"
     )
-    assert payload["task"]["entrypointDigest"].startswith("sha256:")
+    assert payload["task"]["entrypointDigest"].startswith("jcs-sha256:")
     assert "entrypoint" not in payload["task"]
     assert payload["authorizationAuthentication"] == "not-authenticated"
     assert payload["authorizationPersistence"] == "not-persisted"
@@ -247,3 +250,28 @@ def test_report_is_frozen() -> None:
     report = _report()
     with pytest.raises((FrozenInstanceError, ValidationError)):
         report.launch_allowed = True  # type: ignore[misc]
+
+
+def test_preflight_digest_accepts_new_and_legacy_labels() -> None:
+    payload = "a" * 64
+    assert PREFLIGHT_DIGEST.validate_python(f"jcs-sha256:{payload}") == f"jcs-sha256:{payload}"
+    assert PREFLIGHT_DIGEST.validate_python(f"sha256:{payload}") == f"sha256:{payload}"
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        f"  jcs-sha256:{'a' * 64}  ",
+        f"jcs-sha256:{'A' * 64}",
+        f"sha256:{'A' * 64}",
+        f"SHA256:{'a' * 64}",
+        f"jcs-sha256:{'a' * 63}",
+        f"sha256:{'a' * 65}",
+        f"sha512:{'a' * 64}",
+        "sha256:ABC",
+        "not-a-digest",
+    ),
+)
+def test_preflight_digest_rejects_whitespace_case_and_malformed_labels(value: str) -> None:
+    with pytest.raises(ValidationError):
+        PREFLIGHT_DIGEST.validate_python(value)

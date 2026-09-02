@@ -30,8 +30,10 @@ repairs a store, retries a conflict, changes the decision, or mints caller-owned
 
 ## Request document
 
-The request is alias-only, closed to unknown properties and strict about JSON types. Digests use
-lowercase `sha256:<64 lowercase hex>` syntax. `evidenceRefs` is an explicit duplicate-free JSON
+The request is alias-only, closed to unknown properties and strict about JSON types. Semantic
+digests use `jcs-sha256:<64 lowercase hex>` from current producers; protocol models also accept
+historical `sha256:<64 lowercase hex>` on input and MUST fail closed if that legacy tag is
+compared with a recomputed JCS digest. `evidenceRefs` is an explicit duplicate-free JSON
 array.
 
 Normative example:
@@ -44,10 +46,10 @@ Normative example:
   "experimentRevision": 1,
   "workflowId": "workflow.simulation",
   "binding": {
-    "specDigest": "sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
-    "registryDigest": "sha256:e01025755a6d814de2b78096fc9c0fe961a936a8c76701d19f4cb087470fc6da",
-    "planDigest": "sha256:19b3ca97b88c357b4e5ef45a834f702c2da4be066f2ee33cad9bf243334494c4",
-    "decisionDigest": "sha256:9900f7cbc15b99839d33734a32d791e7264225111a3efaf036c79518375376f6"
+    "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+    "registryDigest": "jcs-sha256:d97eed822c9897500e581f5014bb04e7adb985f7d03aa184d0f0a3ecacec741a",
+    "planDigest": "jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b",
+    "decisionDigest": "jcs-sha256:4d298b128a047cfb6d2498126d1821fca254ed1d482a71f9a538f858c4b8f82c"
   },
   "source": "https://researchos.dev/projects/example-minimal",
   "subject": "authorization.example-minimal.revision-1",

@@ -67,8 +67,9 @@ capability 与 permission 会递归收集符号循环体中的任务，但循环
 ## 安全边界
 
 授权门只计算一个不可变结果。它不会验证“谁”批准、生成时间或身份、保存批准、发事件、读写
-SQLite、执行积木、读取 secret、联网、申请 GPU 或花费资金。`decision_digest` 只是当前 Python
-参考摘要约定下的内容身份，不是签名 token，也不是可撤销的持久授权凭据。
+SQLite、执行积木、读取 secret、联网、申请 GPU 或花费资金。`decision_digest` 是 ADR-0033
+规定的 RFC 8785 JCS 语义摘要（`jcs-sha256:`），不是签名 token，也不是可撤销的持久授权凭据。
+旧的 `sha256:` 标签可以被解析，但不得当作 JCS，也不得只比较 hex。
 
 当前 SimulatedRuntime 在写第一条生命周期事实前调用此门，并只授予内置 T0 `simulate`
 capability。现在也可通过严格、版本化且明确标为非凭证的

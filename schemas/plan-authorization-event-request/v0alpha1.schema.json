@@ -23,22 +23,22 @@
       "description": "Exact plan and recomputed decision identity.",
       "properties": {
         "decisionDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Decisiondigest",
           "type": "string"
         },
         "planDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Plandigest",
           "type": "string"
         },
         "registryDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registrydigest",
           "type": "string"
         },
         "specDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Specdigest",
           "type": "string"
         }

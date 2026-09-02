@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, content_digest
 from llm_research_os.execution.native_preflight import (
     MAX_NATIVE_OUTPUT_BYTES,
     MAX_NATIVE_TASK_PATH_ITEMS,
@@ -46,7 +46,7 @@ PreflightDigest = Annotated[
     StringConstraints(
         strict=True,
         strip_whitespace=False,
-        pattern=r"^sha256:[0-9a-f]{64}$",
+        pattern=SEMANTIC_DIGEST_PATTERN,
     ),
 ]
 PreflightIdentifier = Annotated[

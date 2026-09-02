@@ -16,7 +16,7 @@ from typing import Any, Self, cast
 
 from pydantic import ValidationError
 
-from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.canonical import legacy_canonical_json, legacy_content_digest
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX, validate_event_document
 from llm_research_os.storage.errors import (
     DuplicateEventError,
@@ -458,8 +458,8 @@ class EventStore:
                 raise EventAppendError("allocated event failed ResearchEvent validation") from exc
 
             stored_document = complete_document
-            event_json = canonical_json(stored_document)
-            digest = content_digest(stored_document)
+            event_json = legacy_canonical_json(stored_document)
+            digest = legacy_content_digest(stored_document)
             recorded_at = _recorded_timestamp(self._clock())
             try:
                 self._connection.execute(
@@ -575,13 +575,13 @@ class EventStore:
             if not isinstance(decoded, dict):
                 raise ValueError("stored event JSON root is not an object")
             document = cast(dict[str, Any], decoded)
-            if canonical_json(document) != event_json:
+            if legacy_canonical_json(document) != event_json:
                 raise ValueError("stored event JSON is not canonical")
             event = validate_event_document(document)
         except (UnicodeError, ValueError, ValidationError, json.JSONDecodeError) as exc:
             raise EventIntegrityError("stored event JSON is invalid") from exc
 
-        digest = content_digest(document)
+        digest = legacy_content_digest(document)
         stored_digest = cast(str, row["event_digest"])
         if digest != stored_digest:
             raise EventIntegrityError(f"event digest mismatch: {event.id}")

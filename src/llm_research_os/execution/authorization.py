@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, content_digest
 from llm_research_os.execution.errors import PlanAuthorizationError
 from llm_research_os.execution.models import (
     DryRunReport,
@@ -23,7 +23,7 @@ from llm_research_os.execution.models import (
     PlannedTask,
 )
 
-_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_DIGEST_PATTERN = re.compile(SEMANTIC_DIGEST_PATTERN)
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
@@ -167,7 +167,7 @@ def authorize_plan(
         status = PlanAuthorizationStatus.AUTHORIZED
 
     decision_payload: dict[str, Any] = {
-        "status": status,
+        "status": status.value,
         "digests": {
             "spec": snapshot.digests.spec,
             "registry": snapshot.digests.registry,
@@ -190,7 +190,9 @@ def authorize_plan(
         "requirements": [
             {
                 "id": requirement_id,
-                "decision": decisions.get(requirement_id, "pending"),
+                "decision": (
+                    decisions[requirement_id].value if requirement_id in decisions else "pending"
+                ),
             }
             for requirement_id in sorted(requirement_ids)
         ],
