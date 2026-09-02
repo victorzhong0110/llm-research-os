@@ -1,0 +1,161 @@
+{
+  "algorithm": "jcs-sha256",
+  "prefix": "jcs-sha256:",
+  "canonicalization": "RFC 8785 JSON Canonicalization Scheme",
+  "hash": "SHA-256",
+  "vectors": [
+    {
+      "id": "empty-object",
+      "input": {},
+      "canonicalUtf8": "{}",
+      "digest": "jcs-sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "id": "empty-array",
+      "input": [],
+      "canonicalUtf8": "[]",
+      "digest": "jcs-sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "id": "null",
+      "input": null,
+      "canonicalUtf8": "null",
+      "digest": "jcs-sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "id": "true",
+      "input": true,
+      "canonicalUtf8": "true",
+      "digest": "jcs-sha256:b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+    },
+    {
+      "id": "false",
+      "input": false,
+      "canonicalUtf8": "false",
+      "digest": "jcs-sha256:fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+    },
+    {
+      "id": "rfc8785-primitives",
+      "input": {
+        "numbers": [
+          333333333.3333333,
+          1e+30,
+          4.5,
+          0.002,
+          1e-27
+        ],
+        "string": "€$\u000f\nA'B\"\\\\\"/",
+        "literals": [
+          null,
+          true,
+          false
+        ]
+      },
+      "canonicalUtf8": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}",
+      "digest": "jcs-sha256:2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+    },
+    {
+      "id": "rfc8785-utf16-sort",
+      "input": {
+        "1": "One",
+        "€": "Euro Sign",
+        "\r": "Carriage Return",
+        "דּ": "Hebrew Letter Dalet With Dagesh",
+        "😀": "Emoji: Grinning Face",
+        "": "Control",
+        "ö": "Latin Small Letter O With Diaeresis"
+      },
+      "canonicalUtf8": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "digest": "jcs-sha256:5e321556d22018a9656991a9e94f77ec175fa193e52a2429d312f8419ec8b08c"
+    },
+    {
+      "id": "astral-before-bmp",
+      "input": {
+        "�": "replacement",
+        "𝄞": "g-clef"
+      },
+      "canonicalUtf8": "{\"𝄞\":\"g-clef\",\"�\":\"replacement\"}",
+      "digest": "jcs-sha256:b9a539eef312beca97b1c32cbb5f1e79a1897c65c1eb82acefdf6db6442cd0ed"
+    },
+    {
+      "id": "unicode-preservation",
+      "input": {
+        "nfc": "é",
+        "nfd": "é",
+        "cjk": "研究"
+      },
+      "canonicalUtf8": "{\"cjk\":\"研究\",\"nfc\":\"é\",\"nfd\":\"é\"}",
+      "digest": "jcs-sha256:9754a677e4badd5ddba914840c8ad2ec222cca4c9cbd77d614152c62b46c913c"
+    },
+    {
+      "id": "nested-objects",
+      "input": {
+        "z": {
+          "b": 1,
+          "a": {
+            "y": 2,
+            "x": 3
+          }
+        },
+        "a": [
+          {
+            "k": 1,
+            "j": 0
+          }
+        ]
+      },
+      "canonicalUtf8": "{\"a\":[{\"j\":0,\"k\":1}],\"z\":{\"a\":{\"x\":3,\"y\":2},\"b\":1}}",
+      "digest": "jcs-sha256:649cb07c1b1431065288caf90b22b54db4c7069a97c99fc4bdcb637e53a13921"
+    },
+    {
+      "id": "number-boundaries",
+      "input": {
+        "minusZero": -0.0,
+        "small6": 0.000001,
+        "small7": 1e-7,
+        "int20": 100000000000000000000.0,
+        "sci21": 1e+21,
+        "maxSafeInteger": 9007199254740991
+      },
+      "canonicalUtf8": "{\"int20\":100000000000000000000,\"maxSafeInteger\":9007199254740991,\"minusZero\":0,\"sci21\":1e+21,\"small6\":0.000001,\"small7\":1e-7}",
+      "digest": "jcs-sha256:176162e2ec9c0c985cd302282953693b6af08b8935a25ade0163e1a201355e11"
+    },
+    {
+      "id": "rfc8785-appendix-b",
+      "input": [
+        0,
+        -0.0,
+        5e-324,
+        -5e-324,
+        1.7976931348623157e+308,
+        -1.7976931348623157e+308,
+        9007199254740992.0,
+        -9007199254740992.0,
+        295147905179352830000.0,
+        9.999999999999997e+22,
+        1e+23,
+        1.0000000000000001e+23,
+        999999999999999700000.0,
+        999999999999999900000.0,
+        1e+21,
+        9.999999999999997e-7,
+        0.000001,
+        333333333.3333332,
+        333333333.33333325,
+        333333333.3333333,
+        333333333.3333334,
+        333333333.33333343,
+        -0.0000033333333333333333,
+        1424953923781206.2
+      ],
+      "canonicalUtf8": "[0,0,5e-324,-5e-324,1.7976931348623157e+308,-1.7976931348623157e+308,9007199254740992,-9007199254740992,295147905179352830000,9.999999999999997e+22,1e+23,1.0000000000000001e+23,999999999999999700000,999999999999999900000,1e+21,9.999999999999997e-7,0.000001,333333333.3333332,333333333.33333325,333333333.3333333,333333333.3333334,333333333.33333343,-0.0000033333333333333333,1424953923781206.2]",
+      "digest": "jcs-sha256:2bb871d729d2db80eda1ae2b3e7a9bc5028979103235ab3682063191b3cb52c3"
+    },
+    {
+      "id": "string-escapes",
+      "input": "\u0000\u0001\u0007\b\t\n\u000b\f\r\u000e\u000f\"\\/",
+      "canonicalUtf8": "\"\\u0000\\u0001\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\\"\\\\/\"",
+      "digest": "jcs-sha256:1829313b473caa9d07119030c18ff85e1525cbb8543b1ac344d14c3ec528dfa0"
+    }
+  ]
+}

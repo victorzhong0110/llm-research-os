@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.canonical import legacy_canonical_json, legacy_content_digest
 from llm_research_os.spec.io import load_document
 from llm_research_os.storage import (
     DuplicateEventError,
@@ -35,6 +35,9 @@ from llm_research_os.storage.schema import (
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "events"
 FIXED_TIME = datetime(2026, 8, 28, 6, 0, 0, 123456, tzinfo=UTC)
+FROZEN_SCHEMA_DEFINITION_DIGEST = (
+    "sha256:dfdfe1bc8233723bfd164f488779428eeae72e4d4b0efa7128abf25e333bd1f1"
+)
 
 
 def _clock() -> datetime:
@@ -77,6 +80,9 @@ def test_store_initializes_versioned_wal_database_and_reopens(tmp_path: Path) ->
             "SELECT version, name, schema_digest FROM schema_migrations"
         ).fetchone()
         assert migration == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        assert SCHEMA_DEFINITION_DIGEST == FROZEN_SCHEMA_DEFINITION_DIGEST
+        assert SCHEMA_DEFINITION_DIGEST.startswith("sha256:")
+        assert not SCHEMA_DEFINITION_DIGEST.startswith("jcs-sha256:")
 
     with EventStore(database, clock=_clock) as reopened:
         assert reopened.verify_integrity() == 0
@@ -96,7 +102,7 @@ def test_append_assigns_global_sequence_and_per_stream_version(tmp_path: Path) -
         assert first.event.sequence == "1"
         assert first.event.sequencetype == "Integer"
         assert first.recorded_at == "2026-08-28T06:00:00.123456Z"
-        assert first.digest == content_digest(
+        assert first.digest == legacy_content_digest(
             first.event.model_dump(mode="json", by_alias=True, exclude_none=True)
         )
         assert store.verify_integrity() == 3
@@ -226,7 +232,7 @@ def test_read_detects_tampered_digest_and_index_columns(tmp_path: Path) -> None:
         document.update({"sequence": "1", "sequencetype": "Integer", "streamversion": 0})
         connection.execute(
             "UPDATE events SET event_digest = ?, event_type = ? WHERE sequence = 1",
-            (content_digest(document), "rewritten.type"),
+            (legacy_content_digest(document), "rewritten.type"),
         )
         connection.execute(_trigger_statement("events_reject_update"))
 
@@ -375,8 +381,8 @@ def test_persisted_json_is_canonical_and_indexed(tmp_path: Path) -> None:
     assert row is not None
     document = stored.event.model_dump(mode="json", by_alias=True, exclude_none=True)
     assert row == (
-        canonical_json(document),
-        content_digest(document),
+        legacy_canonical_json(document),
+        legacy_content_digest(document),
         stored.event.id,
         stored.event.streamid,
         stored.event.streamversion,
@@ -743,6 +749,7 @@ def test_cas_precondition_does_not_change_schema_or_event_contract(tmp_path: Pat
             "SELECT version, name, schema_digest FROM schema_migrations"
         ).fetchone()
         assert tuple(migration) == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        assert SCHEMA_DEFINITION_DIGEST == FROZEN_SCHEMA_DEFINITION_DIGEST
         columns = [
             row[1] for row in store._connection.execute("PRAGMA table_info(events)").fetchall()
         ]

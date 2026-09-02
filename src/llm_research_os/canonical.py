@@ -13,7 +13,18 @@ JCS_SHA256_PREFIX = "jcs-sha256:"
 LEGACY_SHA256_PREFIX = "sha256:"
 SEMANTIC_DIGEST_PATTERN = r"^(?:jcs-sha256|sha256):[0-9a-f]{64}$"
 
+# IEEE 754 binary64 exact-integer range from RFC 7493 / RFC 8785 Appendix B note 1.
 _IJSON_SAFE_INTEGER = (1 << 53) - 1
+
+_STRING_ESCAPES = {
+    "\b": "\\b",
+    "\t": "\\t",
+    "\n": "\\n",
+    "\f": "\\f",
+    "\r": "\\r",
+    '"': '\\"',
+    "\\": "\\\\",
+}
 
 ContentDigest = Annotated[
     str,
@@ -113,8 +124,22 @@ def _serialize_object(value: dict[Any, Any], active_containers: set[int]) -> str
 
 
 def _quote_string(value: str) -> str:
+    """Quote a string per RFC 8785 §3.2.2.2 / ECMA-262 JSON String serialization."""
+
     _validate_unicode(value)
-    return json.dumps(value, ensure_ascii=False)
+    parts = ['"']
+    for char in value:
+        escape = _STRING_ESCAPES.get(char)
+        if escape is not None:
+            parts.append(escape)
+            continue
+        code_point = ord(char)
+        if code_point < 0x20:
+            parts.append(f"\\u{code_point:04x}")
+        else:
+            parts.append(char)
+    parts.append('"')
+    return "".join(parts)
 
 
 def _validate_unicode(value: str) -> None:
@@ -128,7 +153,8 @@ def _serialize_binary64(value: float) -> str:
     """Render a finite binary64 using ECMAScript's shortest number syntax.
 
     The textual exponent normalization follows the Apache-2.0 WebPKI JCS
-    reference implementation's ``NumberToJson.py`` algorithm.
+    reference implementation's ``NumberToJson.py`` algorithm:
+    https://github.com/cyberphone/json-canonicalization
     """
 
     if not math.isfinite(value):
@@ -137,19 +163,33 @@ def _serialize_binary64(value: float) -> str:
         return "0"
 
     rendered = str(value)
+    if "n" in rendered:
+        raise ValueError("JCS numbers must be finite")
+
     sign = ""
-    if rendered.startswith("-"):
+    if rendered[0] == "-":
         sign = "-"
         rendered = rendered[1:]
 
     exponent_text = ""
     exponent = 0
-    if "e" in rendered:
-        rendered, raw_exponent = rendered.split("e", maxsplit=1)
-        exponent = int(raw_exponent)
-        exponent_text = f"e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
+    exponent_at = rendered.find("e")
+    if exponent_at > 0:
+        exponent_text = rendered[exponent_at:]
+        if len(exponent_text) > 2 and exponent_text[2] == "0":
+            exponent_text = exponent_text[:2] + exponent_text[3:]
+        rendered = rendered[:exponent_at]
+        exponent = int(exponent_text[1:])
 
-    first, separator, last = rendered.partition(".")
+    first = rendered
+    separator = ""
+    last = ""
+    dot_at = rendered.find(".")
+    if dot_at > 0:
+        separator = "."
+        first = rendered[:dot_at]
+        last = rendered[dot_at + 1 :]
+
     if last == "0":
         separator = ""
         last = ""
@@ -159,11 +199,18 @@ def _serialize_binary64(value: float) -> str:
         last = ""
         separator = ""
         exponent_text = ""
-        first += "0" * (exponent - len(first) + 1)
+        pad = exponent - len(first)
+        while pad >= 0:
+            pad -= 1
+            first += "0"
     elif -7 < exponent < 0:
-        last = "0" * (-exponent - 1) + first + last
+        last = first + last
         first = "0"
         separator = "."
         exponent_text = ""
+        pad = exponent
+        while pad < -1:
+            pad += 1
+            last = "0" + last
 
     return sign + first + separator + last + exponent_text
