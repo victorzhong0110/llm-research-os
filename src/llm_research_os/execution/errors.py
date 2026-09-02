@@ -9,6 +9,14 @@ class PlanAuthorizationError(ValueError):
     """
 
 
+class PlanAuthorizationRecordError(ValueError):
+    """Reject an invalid authorization-evaluation fact before persistence.
+
+    Messages MUST NOT include caller-supplied grants, requirements, prompts,
+    configuration, evidence identifiers, or other potentially sensitive values.
+    """
+
+
 class NativeProcessPreflightError(ValueError):
     """Reject an unsafe or inconsistent native-process launch review.
 

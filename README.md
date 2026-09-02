@@ -51,6 +51,7 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
 - [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
 - [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
+- [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
@@ -58,6 +59,7 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [M0 RunControl 导读](docs/guides/m0-run-control.md)
 - [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)
 - [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)
+- [M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
@@ -161,6 +163,22 @@ uv run researchos authorize \
 报告固定声明 `not-authenticated`、`not-persisted` 与 `not-executed`；它不是签名或可撤销的授权
 回执。详见 [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)。
 
+需要追加式审计时，可用另一份严格请求把重新计算的结果记录到已经存在的 EventStore：
+
+```bash
+uv run researchos authorizations record \
+  examples/valid/minimal.yaml \
+  examples/plan-authorization-requests/valid/minimal.json \
+  examples/plan-authorization-events/valid/minimal.json \
+  research.db --format json
+```
+
+该命令先完整验证事件库，再以全局 head CAS 追加一个
+`plan.authorization.evaluated`；`authorized` 返回 `0`，已记录的 `pending`/`denied` 返回 `1`，
+输入、完整性或并发错误返回 `2`。事件明确声明 `not-authenticated`、`audit-only` 与
+`not-executed`，因此是可回放的审计事实而不是 runtime 凭证。详见
+[M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)。
+
 ## 原生进程预检
 
 单个、已授权的 Python task 可进入纯预检，但不能进入进程执行：
@@ -255,6 +273,8 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 可将常规本地文件导入内容寻址制品目录，可通过 RunControl 在写入前拒绝非法生命周期事件，
 并可通过 SimulatedRuntime 对单个内置 simulated task 追加确定性生命周期事实。
 `authorize` 只重新构造静态计划并输出明确非凭证的版本化求值报告，不写事件、制品或数据库。
+`authorizations record` 可向既有事件库追加精确四摘要绑定的求值事实，但 actor 仍未认证，事件
+只具有审计意义，任何 runtime 都不能据此启动。
 `native preflight` 只冻结单 task 的固定进程审查形状，明确禁止启动且不实施所声明的隔离。
 `runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
 `runs cancel` 同样只通过 RunControl 追加单个请求事实，要求既有数据库，且不发送信号或

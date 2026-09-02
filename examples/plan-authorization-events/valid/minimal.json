@@ -1,0 +1,24 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "PlanAuthorizationEventRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "workflowId": "workflow.simulation",
+  "binding": {
+    "specDigest": "sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+    "registryDigest": "sha256:e01025755a6d814de2b78096fc9c0fe961a936a8c76701d19f4cb087470fc6da",
+    "planDigest": "sha256:19b3ca97b88c357b4e5ef45a834f702c2da4be066f2ee33cad9bf243334494c4",
+    "decisionDigest": "sha256:9900f7cbc15b99839d33734a32d791e7264225111a3efaf036c79518375376f6"
+  },
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "authorization.example-minimal.revision-1",
+  "streamid": "authorization.example-minimal",
+  "actor": {
+    "id": "researcher.alice"
+  },
+  "event": {
+    "id": "evt.authorization.example-minimal.1",
+    "time": "2026-09-02T05:00:00Z"
+  },
+  "evidenceRefs": []
+}

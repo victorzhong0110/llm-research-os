@@ -48,6 +48,8 @@ from llm_research_os.execution import (
     NativeProcessPreflightError,
     NativeProcessPreflightReport,
     PlanAuthorizationError,
+    PlanAuthorizationEventRecordResult,
+    PlanAuthorizationRecordError,
     PlanAuthorizationReport,
     PlanAuthorizationStatus,
     PlanningInputError,
@@ -57,9 +59,20 @@ from llm_research_os.execution import (
     TrustedKernel,
     authorize_plan,
     load_native_process_preflight_request,
+    load_plan_authorization_event_request,
     load_plan_authorization_request,
     load_simulation_request,
     preflight_native_process,
+    record_plan_authorization_event,
+)
+from llm_research_os.execution.authorization_event_request_schema import (
+    canonical_schema as canonical_plan_authorization_event_request_schema,
+)
+from llm_research_os.execution.authorization_event_request_schema import (
+    schema_matches as plan_authorization_event_request_schema_matches,
+)
+from llm_research_os.execution.authorization_event_request_schema import (
+    write_schema as write_plan_authorization_event_request_schema,
 )
 from llm_research_os.execution.authorization_report_schema import (
     canonical_schema as canonical_plan_authorization_report_schema,
@@ -172,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
             "problem-report",
             "plan-authorization-request",
             "plan-authorization-report",
+            "plan-authorization-event-request",
             "native-process-preflight-request",
             "native-process-preflight-report",
             "run-state",
@@ -229,6 +243,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="exact workflow ID (required when the spec contains multiple workflows)",
     )
     _add_registry_arguments(authorize)
+
+    authorizations = subparsers.add_parser(
+        "authorizations",
+        help="record auditable authorization evaluation facts",
+    )
+    authorization_commands = authorizations.add_subparsers(
+        dest="authorizations_command",
+        required=True,
+    )
+    authorization_record = authorization_commands.add_parser(
+        "record",
+        help="recompute and append one audit-only authorization fact",
+    )
+    authorization_record.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    authorization_record.add_argument(
+        "authorization_request",
+        type=Path,
+        help="PlanAuthorizationRequest v0alpha1 YAML or JSON file",
+    )
+    authorization_record.add_argument(
+        "event_request",
+        type=Path,
+        help="PlanAuthorizationEventRequest v0alpha1 YAML or JSON file",
+    )
+    authorization_record.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    authorization_record.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="exact workflow ID (required when the spec contains multiple workflows)",
+    )
+    _add_registry_arguments(authorization_record)
 
     native = subparsers.add_parser(
         "native",
@@ -423,6 +472,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.registry,
             args.format,
         )
+    if args.command == "authorizations":
+        return _authorizations(args)
     if args.command == "native":
         return _native(args)
     if args.command == "blocks":
@@ -491,6 +542,10 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_plan_authorization_report_schema
         matches = plan_authorization_report_schema_matches
         write = write_plan_authorization_report_schema
+    elif contract == "plan-authorization-event-request":
+        canonical = canonical_plan_authorization_event_request_schema
+        matches = plan_authorization_event_request_schema_matches
+        write = write_plan_authorization_event_request_schema
     elif contract == "native-process-preflight-request":
         canonical = canonical_native_process_preflight_request_schema
         matches = native_process_preflight_request_schema_matches
@@ -606,6 +661,60 @@ def _authorize(
         return 2
     _print_authorization_result(report, output_format)
     return 0 if report.status is PlanAuthorizationStatus.AUTHORIZED else 1
+
+
+def _authorizations(args: argparse.Namespace) -> int:
+    if args.authorizations_command == "record":
+        return _record_authorization_event(
+            args.spec,
+            args.authorization_request,
+            args.event_request,
+            args.database,
+            args.workflow,
+            args.registry,
+            args.format,
+        )
+    raise AssertionError(f"unhandled authorizations command: {args.authorizations_command}")
+
+
+def _record_authorization_event(
+    spec_path: Path,
+    authorization_request_path: Path,
+    event_request_path: Path,
+    database: Path,
+    workflow_id: str | None,
+    registry_paths: list[Path],
+    output_format: str,
+) -> int:
+    try:
+        spec = ResearchSpec.model_validate(load_document(spec_path, reject_symlinks=True))
+        authorization_request = load_plan_authorization_request(authorization_request_path)
+        event_request = load_plan_authorization_event_request(event_request_path)
+        registry = build_registry(registry_paths)
+        dry_run = TrustedKernel(registry).dry_run(spec, workflow_id=workflow_id)
+        with EventStore(database, require_existing=True) as store:
+            result = record_plan_authorization_event(
+                store,
+                dry_run,
+                authorization_request.policy(),
+                event_request,
+            )
+    except (
+        EventStoreError,
+        ManifestLoadError,
+        OSError,
+        PlanAuthorizationError,
+        PlanAuthorizationRecordError,
+        PlanningInputError,
+        RegistryError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_authorization_event_result(result, output_format)
+    return 0 if result.authorization.status is PlanAuthorizationStatus.AUTHORIZED else 1
 
 
 def _native(args: argparse.Namespace) -> int:
@@ -993,6 +1102,24 @@ def _print_authorization_result(
     print("persistent receipt: false")
     print("execution performed: false")
     print("side effects: 0 blocks, 0 network requests, 0 writes, 0 paid actions")
+
+
+def _print_authorization_event_result(
+    result: PlanAuthorizationEventRecordResult,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        _print_event(result.stored.event, "json")
+        return
+    print("authorization event: recorded")
+    print(f"event id: {_safe_text(result.stored.event.id)}")
+    print(f"sequence: {result.stored.event.sequence}")
+    print(f"event digest: {result.stored.digest}")
+    print(f"plan authorization: {result.authorization.status.value}")
+    print(f"decision digest: {result.authorization.decision_digest}")
+    print("approval authentication: not-authenticated")
+    print("event authority: audit-only")
+    print("execution performed: false")
 
 
 def _print_native_process_preflight(
