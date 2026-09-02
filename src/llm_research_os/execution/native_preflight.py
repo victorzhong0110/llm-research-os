@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 from llm_research_os.blocks.models import RuntimeType
 from llm_research_os.blocks.registry import BlockRegistry, RegistryError
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, content_digest
 from llm_research_os.execution.authorization import PlanAuthorizationPolicy, authorize_plan
 from llm_research_os.execution.errors import (
     NativeProcessPreflightError,
@@ -38,7 +38,7 @@ MAX_NATIVE_OUTPUT_BYTES = 16_777_216
 MAX_NATIVE_TERMINATION_GRACE_SECONDS = 60
 MAX_NATIVE_TASK_PATH_ITEMS = 128
 
-_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_DIGEST_PATTERN = re.compile(SEMANTIC_DIGEST_PATTERN)
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _ENTRYPOINT_PATTERN = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*"
@@ -182,7 +182,7 @@ def preflight_native_process(
 
     entrypoint_digest = content_digest(
         {
-            "runtimeType": RuntimeType.PYTHON,
+            "runtimeType": RuntimeType.PYTHON.value,
             "runner": NATIVE_PROCESS_RUNNER,
             "protocol": NATIVE_PROCESS_PROTOCOL,
             "entrypoint": entrypoint,
@@ -263,7 +263,7 @@ def _preflight_payload(
             "manifestDigest": manifest_digest,
             "configDigest": config_digest,
             "entrypointDigest": entrypoint_digest,
-            "runtimeType": RuntimeType.PYTHON,
+            "runtimeType": RuntimeType.PYTHON.value,
             "runner": NATIVE_PROCESS_RUNNER,
             "protocol": NATIVE_PROCESS_PROTOCOL,
         },

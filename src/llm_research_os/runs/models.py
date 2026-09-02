@@ -18,6 +18,11 @@ from pydantic import (
     model_validator,
 )
 
+from llm_research_os.canonical import (
+    SEMANTIC_DIGEST_MAX_LENGTH,
+    SEMANTIC_DIGEST_MIN_LENGTH,
+    SEMANTIC_DIGEST_PATTERN,
+)
 from llm_research_os.events.models import (
     CLOUD_EVENTS_INTEGER_MAX,
     CloudEventsString,
@@ -79,10 +84,10 @@ LIFECYCLE_TYPES = RUN_LIFECYCLE_TYPES | ATTEMPT_LIFECYCLE_TYPES
 StrictDigest = Annotated[
     str,
     StringConstraints(
-        min_length=71,
-        max_length=71,
+        min_length=SEMANTIC_DIGEST_MIN_LENGTH,
+        max_length=SEMANTIC_DIGEST_MAX_LENGTH,
         strip_whitespace=False,
-        pattern=r"^sha256:[0-9a-f]{64}$",
+        pattern=SEMANTIC_DIGEST_PATTERN,
     ),
 ]
 MaxAttempts = Annotated[int, Field(ge=1, le=MAX_ATTEMPTS)]

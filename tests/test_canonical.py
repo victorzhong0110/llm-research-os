@@ -261,3 +261,33 @@ def test_content_digest_type_accepts_new_and_legacy_forms() -> None:
 def test_content_digest_type_rejects_other_algorithms_case_and_length(value: str) -> None:
     with pytest.raises(ValidationError):
         CONTENT_DIGEST.validate_python(value)
+
+
+def test_content_digest_strips_surrounding_whitespace() -> None:
+    payload = "a" * 64
+    current = f"{JCS_SHA256_PREFIX}{payload}"
+    legacy = f"{LEGACY_SHA256_PREFIX}{payload}"
+    assert CONTENT_DIGEST.validate_python(f"  {current}  ") == current
+    assert CONTENT_DIGEST.validate_python(f"\n{legacy}\t") == legacy
+
+
+def test_legacy_and_jcs_digests_are_not_interchangeable_by_hex() -> None:
+    value = {"z": 1, "a": True}
+    current = content_digest(value)
+    legacy = legacy_content_digest(value)
+    assert current.startswith(JCS_SHA256_PREFIX)
+    assert legacy.startswith(LEGACY_SHA256_PREFIX)
+    assert current != legacy
+    relabeled = f"{LEGACY_SHA256_PREFIX}{current.removeprefix(JCS_SHA256_PREFIX)}"
+    assert relabeled != current
+    assert CONTENT_DIGEST.validate_python(relabeled) == relabeled
+
+
+def test_out_of_range_integers_must_be_json_strings() -> None:
+    with pytest.raises(ValueError, match="IEEE 754 binary64"):
+        content_digest({"maxIterations": 10**100})
+    with pytest.raises(ValueError, match="IEEE 754 binary64"):
+        canonical_json(10**100)
+    digest = content_digest({"amount": "1" + "0" * 100})
+    assert digest.startswith(JCS_SHA256_PREFIX)
+    assert digest == content_digest({"amount": "1" + "0" * 100})

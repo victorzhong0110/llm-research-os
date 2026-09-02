@@ -30,7 +30,11 @@ A request MUST contain all of the following fields:
 | `requirementDecisions` | Explicit `approved` or `denied` decisions keyed by planner requirement ID |
 
 Every collection is an explicit JSON array. Capability and permission values must be unique.
-Requirement IDs must also be unique even when their decision values differ. The request cannot
+Requirement IDs must also be unique even when their decision values differ. Semantic digest
+fields are produced as `jcs-sha256:<64 lowercase hex>` per
+[Semantic Content Digests v0alpha1](digest-v0alpha1.md). Models also accept historical
+`sha256:<64 lowercase hex>` on input; a legacy tag MUST fail closed against a recomputed JCS
+digest. The request cannot
 contain an actor, timestamp, signature or reusable organization-wide grant. It is not a receipt.
 
 The normative minimal request is:
@@ -39,9 +43,9 @@ The normative minimal request is:
 {
   "apiVersion": "researchos.dev/v0alpha1",
   "kind": "PlanAuthorizationRequest",
-  "specDigest": "sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
-  "registryDigest": "sha256:e01025755a6d814de2b78096fc9c0fe961a936a8c76701d19f4cb087470fc6da",
-  "planDigest": "sha256:19b3ca97b88c357b4e5ef45a834f702c2da4be066f2ee33cad9bf243334494c4",
+  "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+  "registryDigest": "jcs-sha256:d97eed822c9897500e581f5014bb04e7adb985f7d03aa184d0f0a3ecacec741a",
+  "planDigest": "jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b",
   "grantedCapabilities": [
     "simulate"
   ],
@@ -114,5 +118,5 @@ artifact, contacts a network, performs a paid action or persists the evaluation.
 
 The request represents caller-asserted input. The report is not authenticated, signed, timestamped,
 expiring, revocable, persisted or anchored in the event log. Its `decisionDigest` detects semantic
-changes inside this reference convention but does not prove who approved anything. A real process,
+changes under the JCS `jcs-sha256:` algorithm but does not prove who approved anything. A real process,
 remote Worker or paid runtime must not treat this report alone as a durable approval receipt.

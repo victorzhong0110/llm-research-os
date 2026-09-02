@@ -85,8 +85,10 @@ versioned migrations and cannot become a second fact source.
 - Store reads are bounded and fail closed when JSON, digests or indexed columns disagree.
 - Writable commands that must target prior facts can use `require_existing=True`; this opens
   SQLite in `mode=rw` without creating a missing database and verifies the existing schema first.
-- The digest uses the current Python reference canonicalization. It is not a stable cross-language
-  signing format; a later ADR must decide normative canonicalization before external verification.
+- The on-disk event digest uses the frozen SQLite schema v1 Python-canonical
+  encoding (`legacy_content_digest()`, tagged `sha256:`). It is not the
+  ADR-0033 JCS semantic-digest algorithm; a later store version would be
+  required before event rows could change encoding.
 - Triggers and digests protect against bugs and detectable corruption, not a malicious host with
   arbitrary database-file access. There is no signature, external anchor or deletion-proof hash
   chain in this slice.

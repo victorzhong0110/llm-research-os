@@ -71,12 +71,12 @@
       "type": "string"
     },
     "planDigest": {
-      "pattern": "^sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
       "title": "Plandigest",
       "type": "string"
     },
     "registryDigest": {
-      "pattern": "^sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
       "title": "Registrydigest",
       "type": "string"
     },
@@ -89,7 +89,7 @@
       "type": "array"
     },
     "specDigest": {
-      "pattern": "^sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
       "title": "Specdigest",
       "type": "string"
     }

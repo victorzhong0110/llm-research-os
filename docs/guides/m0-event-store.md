@@ -65,9 +65,11 @@ with EventStore("research.db") as store:
     head = store.last_sequence()
 ```
 
-Every read revalidates canonical JSON, the ResearchEvent contract, its SHA-256 digest and indexed
-columns. `read_events` is a bounded storage primitive. Query and replay CLI commands consume it
-through paged reads and never load the whole store into memory.
+Every read revalidates the frozen SQLite schema v1 canonical JSON (`legacy_canonical_json()`),
+the ResearchEvent contract, its `sha256:` event digest and indexed columns. That on-disk encoding
+is not the ADR-0033 JCS semantic-digest algorithm. `read_events` is a bounded storage primitive.
+Query and replay CLI commands consume it through paged reads and never load the whole store into
+memory.
 
 `last_sequence()` returns the current global event head as a concurrency token. An empty store
 returns `0`. It reads `MAX(sequence)`, not an event count, and does not replace

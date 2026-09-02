@@ -286,6 +286,12 @@ Attempt outcome is **not** Run outcome. `attempt.succeeded` does not complete th
 
 ## 10. Snapshot
 
+`RunSnapshot.digests` are semantic JSON identifiers. Current producers emit
+`jcs-sha256:<64 lowercase hex>` per [Semantic Content Digests v0alpha1](digest-v0alpha1.md).
+The projection also accepts historical `sha256:<64 lowercase hex>` so committed
+compatibility examples can be read. Those placeholders are not live-bound to a
+recomputed plan. Raw artifact `sha256:` byte digests are a different preimage.
+
 The committed `RunSnapshot` example:
 
 ```json

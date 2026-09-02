@@ -128,23 +128,23 @@
       "additionalProperties": false,
       "properties": {
         "plan": {
-          "maxLength": 71,
+          "maxLength": 75,
           "minLength": 71,
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Plan",
           "type": "string"
         },
         "registry": {
-          "maxLength": 71,
+          "maxLength": 75,
           "minLength": 71,
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registry",
           "type": "string"
         },
         "spec": {
-          "maxLength": 71,
+          "maxLength": 75,
           "minLength": 71,
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Spec",
           "type": "string"
         }

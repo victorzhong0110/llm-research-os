@@ -115,7 +115,7 @@
           "type": "string"
         },
         "manifestDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Manifestdigest",
           "type": "string"
         },
@@ -262,7 +262,7 @@
           ]
         },
         "manifestDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Manifestdigest",
           "type": "string"
         },
@@ -382,7 +382,7 @@
           "type": "string"
         },
         "registryDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registrydigest",
           "type": "string"
         }

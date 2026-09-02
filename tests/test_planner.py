@@ -153,7 +153,9 @@ def test_invalid_config_blocks_without_echoing_secret() -> None:
 def test_bounded_loop_is_symbolic_and_until_is_never_exposed_or_evaluated() -> None:
     document = load_document(EXAMPLES / "valid/bounded-loop.yaml")
     loop = document["workflows"][0]["graph"]["nodes"][0]  # type: ignore[index]
-    loop["maxIterations"] = 10**100  # type: ignore[index]
+    # I-JSON/JCS cannot serialize integers outside ±(2^53-1). Keep this loop bound
+    # as a JSON number that is still too large to iterate, not a Python bigint.
+    loop["maxIterations"] = 9007199254740991  # type: ignore[index]
     expression = "__import__('os').system('TOP-SECRET-SENTINEL')"
     loop["until"]["expression"] = expression  # type: ignore[index]
     registry = build_registry([EXAMPLES / "manifests/example-train.yaml"])
@@ -164,7 +166,7 @@ def test_bounded_loop_is_symbolic_and_until_is_never_exposed_or_evaluated() -> N
     assert report.plan is not None
     planned_loop = report.plan.graph.stages[0].nodes[0]
     assert isinstance(planned_loop, PlannedLoop)
-    assert planned_loop.max_iterations == 10**100
+    assert planned_loop.max_iterations == 9007199254740991
     assert planned_loop.until is not None
     assert planned_loop.until.evaluated is False
     assert expression not in report.model_dump_json(by_alias=True)

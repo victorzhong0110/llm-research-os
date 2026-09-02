@@ -5,17 +5,17 @@
       "description": "Exact immutable identity of the evaluated plan.",
       "properties": {
         "planDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Plandigest",
           "type": "string"
         },
         "registryDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registrydigest",
           "type": "string"
         },
         "specDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Specdigest",
           "type": "string"
         }
@@ -106,7 +106,7 @@
       "$ref": "#/$defs/PlanAuthorizationBinding"
     },
     "decisionDigest": {
-      "pattern": "^sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
       "title": "Decisiondigest",
       "type": "string"
     },

@@ -22,11 +22,11 @@ was scientifically sound, was approved or was executed.
 - `specDigest` identifies the exact normalized specification. `planDigest` identifies the
   normalized semantic plan, so meaningless node-list reordering does not change it.
 
-The current content-digest encoding is a Python reference convention, not yet a
-cross-language canonicalization standard. `planDigest` also deliberately omits `specDigest`.
+The current content-digest encoding is the normative RFC 8785 JCS algorithm
+tagged `jcs-sha256:`. `planDigest` also deliberately omits `specDigest`.
 Consumers MUST bind `specDigest`, `registryDigest` and `planDigest` together for cache,
 approval or future execution identity. See
-[Reference Content Digests v0alpha1](digest-v0alpha1.md).
+[Semantic Content Digests v0alpha1](digest-v0alpha1.md).
 
 The reference implementation's pure
 [M0 plan authorization gate](../guides/m0-plan-authorization.md) performs that three-digest

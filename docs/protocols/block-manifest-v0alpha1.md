@@ -16,8 +16,8 @@ order never selects a winner and callers cannot replace an entry in a sealed reg
 
 The registry and each manifest receive reference content digests. A dry-run plan records the
 exact version and digest it resolved. Paths, timestamps and host information do not
-participate. The current digest convention is Python-reference-only and is specified in
-[Reference Content Digests v0alpha1](digest-v0alpha1.md).
+participate. Semantic JSON digests follow RFC 8785 JCS and are specified in
+[Semantic Content Digests v0alpha1](digest-v0alpha1.md).
 
 ## 2. Runtime declaration
 

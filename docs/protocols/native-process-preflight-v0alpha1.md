@@ -39,8 +39,10 @@ not silently discard a field or narrow a caller's request.
 
 ## Request document
 
-The request is closed to unknown properties. All four digests use lowercase
-`sha256:<64 lowercase hex>` syntax. `taskPath` must be a JSON array with 1–128 identifiers.
+The request is closed to unknown properties. All four semantic digests use
+`jcs-sha256:<64 lowercase hex>` from current producers; models also accept historical
+`sha256:<64 lowercase hex>` on input and MUST fail closed against a recomputed JCS digest.
+`taskPath` must be a JSON array with 1–128 identifiers.
 `environmentAllowlist` is an explicit empty JSON array in this profile.
 
 Normative example:
@@ -49,10 +51,10 @@ Normative example:
 {
   "apiVersion": "researchos.dev/v0alpha1",
   "kind": "NativeProcessPreflightRequest",
-  "specDigest": "sha256:6246fb9842ed8f808e6d556e6a500596d5bcc5b41f11f3676e428afe0b68ffa5",
-  "registryDigest": "sha256:05cd693d9f1a195ae4408968b8da927d1eb0a1e877ebc3853dacedeb08117d3e",
-  "planDigest": "sha256:310d4aadd18c6cbd8c258853b056af3704f0e6db0eb25ecf18121e6e642a7ac7",
-  "authorizationDecisionDigest": "sha256:3ae63e85738fde08cb3705b1797ef98f3836c0dd7ae279934f70cdf2945a82b8",
+  "specDigest": "jcs-sha256:6246fb9842ed8f808e6d556e6a500596d5bcc5b41f11f3676e428afe0b68ffa5",
+  "registryDigest": "jcs-sha256:4fc6c65cf7fb084058dfe0be0a35b3b6fb423f28f39e6c4e62ddb0286e2269b4",
+  "planDigest": "jcs-sha256:167ab4b987fd8467c7f4f31fec82054c62662a279ec3759e7274bb468a783bcd",
+  "authorizationDecisionDigest": "jcs-sha256:c2300636d18d76bd04f65ad9ef77584357bf841a90cfb50beb18c11af64283d9",
   "taskPath": [
     "workflow",
     "workflow.native",
@@ -78,9 +80,9 @@ The separately validated authorization input used by the example is:
 {
   "apiVersion": "researchos.dev/v0alpha1",
   "kind": "PlanAuthorizationRequest",
-  "specDigest": "sha256:6246fb9842ed8f808e6d556e6a500596d5bcc5b41f11f3676e428afe0b68ffa5",
-  "registryDigest": "sha256:05cd693d9f1a195ae4408968b8da927d1eb0a1e877ebc3853dacedeb08117d3e",
-  "planDigest": "sha256:310d4aadd18c6cbd8c258853b056af3704f0e6db0eb25ecf18121e6e642a7ac7",
+  "specDigest": "jcs-sha256:6246fb9842ed8f808e6d556e6a500596d5bcc5b41f11f3676e428afe0b68ffa5",
+  "registryDigest": "jcs-sha256:4fc6c65cf7fb084058dfe0be0a35b3b6fb423f28f39e6c4e62ddb0286e2269b4",
+  "planDigest": "jcs-sha256:167ab4b987fd8467c7f4f31fec82054c62662a279ec3759e7274bb468a783bcd",
   "grantedCapabilities": [
     "process.native"
   ],
@@ -173,8 +175,9 @@ The report model recomputes this digest. Its other literal claims require `statu
 `execution=not-executed`, and zero blocks, entrypoint imports, processes, signals, network requests,
 persistent writes and paid actions.
 
-As with the other v0alpha1 reference digests, cross-language producers must not claim byte-for-byte
-compatibility until the project adopts a normative canonical encoding.
+Semantic JSON digests on this report follow [Semantic Content Digests v0alpha1](digest-v0alpha1.md):
+producers emit `jcs-sha256:`, and a legacy `sha256:` binding MUST fail closed against a recomputed
+JCS digest. These values are not signatures or launch credentials.
 
 ## CLI behavior
 

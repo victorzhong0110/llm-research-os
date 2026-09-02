@@ -14,7 +14,7 @@ from pydantic import (
     model_validator,
 )
 
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, content_digest
 from llm_research_os.execution.authorization import (
     PlanAuthorizationPolicy,
     PlanAuthorizationResult,
@@ -39,7 +39,7 @@ AuthorizationDigest = Annotated[
     StringConstraints(
         strict=True,
         strip_whitespace=False,
-        pattern=r"^sha256:[0-9a-f]{64}$",
+        pattern=SEMANTIC_DIGEST_PATTERN,
     ),
 ]
 AuthorizationIdentifier = Annotated[
@@ -289,7 +289,7 @@ class PlanAuthorizationReport(PlanAuthorizationDocumentModel):
             **{value: "denied" for value in self.denied_requirements},
         }
         return {
-            "status": self.status,
+            "status": self.status.value,
             "digests": {
                 "spec": self.binding.spec_digest,
                 "registry": self.binding.registry_digest,

@@ -131,7 +131,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-018 | Semantic diff hides meaningful list changes through reordering | Unreviewed experiment change | ID-aware diff reports object additions/removals/changes and ignores only pure reordering | Tested in M0; expand conformance corpus |
 | TM-019 | Registry shadowing or version confusion changes a block silently | Wrong or malicious implementation | Exact id/version lookup, duplicate rejection, sealed registry and manifest digest binding; SimulatedRuntime additionally requires the canonical built-in `simulated.experiment@0.1.0` digest and empty permissions | Tested in M0, including substituted and permission-bearing same-coordinate manifests |
 | TM-020 | Manifest loading or dry-run imports code, evaluates text or retrieves a remote schema | Host compromise or data exfiltration | Manifests are revalidated into private inert snapshots; remote refs, expensive Schema keywords and symlinks are rejected; process/import/network/eval tripwires | Tested in M0 |
-| TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and Python-reference content digests without host/time data; golden vectors committed | Tested inside reference implementation; cross-language canonicalization remains open |
+| TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and RFC 8785 JCS semantic digests (`jcs-sha256:`) without host/time data; Python and Node golden corpus committed | Adopted JCS with Python + Node golden conformance; residual risk is I-JSON profile (high-precision values MUST be strings) and that tags are part of identity |
 | TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls | Partial mitigation; typed SecretRef and general redaction still required |
 | TM-023 | A dry-run or simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters; SimulatedRuntime `completed` is a controlled lifecycle finish, not training success, valid metrics, or a supported hypothesis | Tested for dry-run and SimulatedRuntime |
 | TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities; RunControl CAS uses the frozen global head and does not retry | Tested with concurrent local connections |
@@ -176,8 +176,14 @@ Before merging executable capability, the following gates apply:
 - Rights metadata can be wrong or incomplete; the validator enforces declared policy but is not a legal authority.
 - Cost caps in this slice are protocol declarations, not runtime enforcement.
 - JSON Schema consumers still need the normative semantic tests for cross-object references and acyclicity.
-- v0alpha1 digests are opaque Python-reference identifiers, not independently verifiable
-  cross-language canonical hashes; stable protocol work must adopt a normative encoding.
+- Semantic JSON digests are RFC 8785 JCS SHA-256 tagged `jcs-sha256:`, with a
+  committed Python + Node golden corpus. They are not signatures, authenticators
+  or a defense against a malicious host. Input MUST satisfy the I-JSON profile;
+  high-precision integers and amounts MUST be JSON strings. Legacy `sha256:`
+  semantic identifiers may be parsed for compatibility but are not an algorithm
+  upgrade and MUST fail closed against a recomputed `jcs-sha256:` digest.
+  SQLite schema v1 event rows and raw artifact bytes remain separate `sha256:`
+  preimages.
 - A host administrator can disable SQLite triggers, rewrite the file and recompute unkeyed
   digests. M0 has no signature, external anchor or deletion-proof hash chain.
 - Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a

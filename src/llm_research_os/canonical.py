@@ -12,6 +12,8 @@ from pydantic import StringConstraints
 JCS_SHA256_PREFIX = "jcs-sha256:"
 LEGACY_SHA256_PREFIX = "sha256:"
 SEMANTIC_DIGEST_PATTERN = r"^(?:jcs-sha256|sha256):[0-9a-f]{64}$"
+SEMANTIC_DIGEST_MIN_LENGTH = len(LEGACY_SHA256_PREFIX) + 64
+SEMANTIC_DIGEST_MAX_LENGTH = len(JCS_SHA256_PREFIX) + 64
 
 # IEEE 754 binary64 exact-integer range from RFC 7493 / RFC 8785 Appendix B note 1.
 _IJSON_SAFE_INTEGER = (1 << 53) - 1

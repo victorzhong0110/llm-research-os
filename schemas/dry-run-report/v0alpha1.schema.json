@@ -38,7 +38,7 @@
           "$ref": "#/$defs/ProjectRef"
         },
         "registryDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registrydigest",
           "type": "string"
         },
@@ -50,7 +50,7 @@
           "type": "array"
         },
         "specDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Specdigest",
           "type": "string"
         },
@@ -112,7 +112,7 @@
         "plan": {
           "anyOf": [
             {
-              "pattern": "^sha256:[0-9a-f]{64}$",
+              "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -123,12 +123,12 @@
           "title": "Plan"
         },
         "registry": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Registry",
           "type": "string"
         },
         "spec": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Spec",
           "type": "string"
         }
@@ -264,7 +264,7 @@
           "type": "array"
         },
         "promptDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Promptdigest",
           "type": "string"
         },
@@ -292,7 +292,7 @@
           "type": "boolean"
         },
         "expressionDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Expressiondigest",
           "type": "string"
         },
@@ -639,7 +639,7 @@
           "$ref": "#/$defs/ResolvedBlock"
         },
         "configDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Configdigest",
           "type": "string"
         },
@@ -782,7 +782,7 @@
           "type": "string"
         },
         "manifestDigest": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
           "title": "Manifestdigest",
           "type": "string"
         },
