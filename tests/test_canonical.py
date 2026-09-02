@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import struct
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -197,6 +198,16 @@ def test_non_string_keys_tuples_cycles_and_unknown_types_are_rejected() -> None:
     cyclic_object["self"] = cyclic_object
     with pytest.raises(ValueError, match="circular reference"):
         canonical_json(cyclic_object)
+
+
+def test_str_enum_members_are_rejected() -> None:
+    class _DecisionValue(StrEnum):
+        APPROVED = "approved"
+
+    with pytest.raises(TypeError, match="unsupported type: _DecisionValue"):
+        canonical_json({"decision": _DecisionValue.APPROVED})
+    with pytest.raises(TypeError, match="unsupported type: _DecisionValue"):
+        content_digest([_DecisionValue.APPROVED])
 
 
 def test_safe_integer_bounds() -> None:
