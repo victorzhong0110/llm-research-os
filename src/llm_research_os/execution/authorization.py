@@ -190,7 +190,9 @@ def authorize_plan(
         "requirements": [
             {
                 "id": requirement_id,
-                "decision": decisions.get(requirement_id, "pending"),
+                "decision": (
+                    decisions[requirement_id].value if requirement_id in decisions else "pending"
+                ),
             }
             for requirement_id in sorted(requirement_ids)
         ],
