@@ -140,7 +140,9 @@ invocation leaves the committed prefix. Reopening the database and calling
 `run()` again continues from replay, using the same caller-owned identities for
 events that have not yet been written.
 
-Each write still goes through RunControl replay, preflight, and global CAS.
+Each write still goes through RunControl replay, preflight, and global CAS,
+so each of the six (or five) facts re-verifies the whole frozen prefix. See
+[M0 RunControl](m0-run-control.md#write-cost-model).
 `EventSequenceConflictError` is not caught, slept, or retried, and a conflict
 is not success. `DuplicateEventError`, `EventIntegrityError`, and schema errors
 keep their EventStore meanings.

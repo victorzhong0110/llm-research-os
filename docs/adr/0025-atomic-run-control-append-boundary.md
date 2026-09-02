@@ -60,6 +60,13 @@ caller of this boundary; it does not bypass CAS or persist snapshots.
   before write.
 - `streamversion` can be non-zero on the committed event while the preflight
   snapshot still matches, because the reducer ignores stream identity.
+- Every `append` rebuilds from a full `verify_integrity` plus a second verified
+  high-water replay. One append against N global events is Θ(N) verification
+  work; filling a store of N events through this boundary is Θ(N²). Cost tracks
+  the global sequence, not this Run. M0 keeps that model and does not cache
+  high-water marks. A later ADR may add a verified checkpoint only with
+  tamper/stale fallback tests. The operational limit is recorded in
+  [M0 RunControl](../guides/m0-run-control.md#write-cost-model).
 
 ## Validation
 

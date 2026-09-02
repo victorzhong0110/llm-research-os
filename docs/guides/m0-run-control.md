@@ -41,6 +41,72 @@ configured `(projectId, runId)`. An empty store returns head `0` and snapshot
 `last_sequence` is the global CAS token. It is not the number of events in this
 Run and is not `streamversion`. Stream identity remains undecided.
 
+## Write cost model
+
+M0 prefers fail-closed integrity over incremental speed. That choice is
+deliberate and has a known cost.
+
+Each `rebuild()`, including the one at the start of every `append()`, does two
+verified passes over the **global** log, then folds only this Run:
+
+1. `replay_events(..., freeze_high_water=True)` first calls
+   `EventStore.verify_integrity()`. That scan runs `PRAGMA integrity_check`,
+   reads every stored event in sequence order, re-parses canonical JSON,
+   re-validates the ResearchEvent contract, recomputes the `sha256:` digest, and
+   checks index columns. The returned count is the frozen high-water mark.
+2. The iterator then pages `read_events` up to that mark. Each page verifies
+   every row again through the same decoder. `page_size` bounds **memory**, not
+   CPU or I/O: the second pass is still Θ(N) in the global event count.
+3. `RunStateProjection.apply` folds only events for the configured
+   `(projectId, runId)`. Folding is linear in this Run, but it happens after
+   the two global verification passes.
+
+Therefore:
+
+- One `append` against a store of N events costs Θ(N) verification work.
+- Filling a store from empty to N events exclusively through `RunControl.append`
+  costs Θ(N²) verification work: the *k*-th append re-verifies the previous
+  *k* − 1 facts.
+- A CAS conflict retry pays the same full rebuild against the new head.
+- Cost tracks the **global** sequence, not this Run's event count. Events for
+  other projects, Runs, or authorization audits still sit on the scanned prefix.
+
+This is the correct M0 default for a local, single-host control plane. It is
+not a SQLite write-path defect. If append latency grows with store size, start
+here, not with WAL settings.
+
+### Applicable scale
+
+- Intended for local development, tests, and small research logs: tens to low
+  thousands of events. A SimulatedRuntime success path writes six lifecycle
+  facts; each of those six rebuilds the whole prefix.
+- Do not use M0 RunControl as a high-throughput ingest path. Around 10⁵ events,
+  every append re-verifies the entire history twice. That slowdown is this
+  cost model, and it will keep growing with N.
+- `events verify` is the same full `verify_integrity` scan.
+  `events replay` freezes a high-water mark the same way. Neither is a cheaper
+  substitute for `rebuild()`.
+
+### What this slice does not add
+
+M0 does **not** remember a verified `(sequence, last digest)` checkpoint, skip
+`verify_integrity` on a later rebuild, or persist a Run projection table.
+Charter decision `6-DBC` and [ADR-0015](../adr/0015-sqlite-event-source-projections-and-artifacts.md)
+still treat persistent projections as rebuildable consumers, not as a second
+fact source.
+
+A later slice may introduce a verified high-water cache or a projection table.
+If it does, that work needs its own ADR and must:
+
+- treat any remembered head as untrusted until revalidated;
+- fall back to a full `verify_integrity` when the remembered sequence, last
+  digest, or schema disagrees;
+- ship adversarial tests for tampered, truncated, and stale checkpoints;
+- keep EventStore as the only authority.
+
+See [M0 Event Store](m0-event-store.md#integrity-scan-cost) for the shared scan
+primitive.
+
 ## Append algorithm
 
 Each `append(document)` starts over:
