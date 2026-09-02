@@ -49,6 +49,8 @@ from llm_research_os.execution import (
     NativeProcessPreflightReport,
     PlanAuthorizationError,
     PlanAuthorizationEventRecordResult,
+    PlanAuthorizationLineageError,
+    PlanAuthorizationLineageReport,
     PlanAuthorizationRecordError,
     PlanAuthorizationReport,
     PlanAuthorizationStatus,
@@ -60,9 +62,11 @@ from llm_research_os.execution import (
     authorize_plan,
     load_native_process_preflight_request,
     load_plan_authorization_event_request,
+    load_plan_authorization_lineage_query,
     load_plan_authorization_request,
     load_simulation_request,
     preflight_native_process,
+    query_plan_authorization_lineage,
     record_plan_authorization_event,
 )
 from llm_research_os.execution.authorization_event_request_schema import (
@@ -73,6 +77,24 @@ from llm_research_os.execution.authorization_event_request_schema import (
 )
 from llm_research_os.execution.authorization_event_request_schema import (
     write_schema as write_plan_authorization_event_request_schema,
+)
+from llm_research_os.execution.authorization_lineage_query_schema import (
+    canonical_schema as canonical_plan_authorization_lineage_query_schema,
+)
+from llm_research_os.execution.authorization_lineage_query_schema import (
+    schema_matches as plan_authorization_lineage_query_schema_matches,
+)
+from llm_research_os.execution.authorization_lineage_query_schema import (
+    write_schema as write_plan_authorization_lineage_query_schema,
+)
+from llm_research_os.execution.authorization_lineage_report_schema import (
+    canonical_schema as canonical_plan_authorization_lineage_report_schema,
+)
+from llm_research_os.execution.authorization_lineage_report_schema import (
+    schema_matches as plan_authorization_lineage_report_schema_matches,
+)
+from llm_research_os.execution.authorization_lineage_report_schema import (
+    write_schema as write_plan_authorization_lineage_report_schema,
 )
 from llm_research_os.execution.authorization_report_schema import (
     canonical_schema as canonical_plan_authorization_report_schema,
@@ -186,6 +208,8 @@ def build_parser() -> argparse.ArgumentParser:
             "plan-authorization-request",
             "plan-authorization-report",
             "plan-authorization-event-request",
+            "plan-authorization-lineage-query",
+            "plan-authorization-lineage-report",
             "native-process-preflight-request",
             "native-process-preflight-report",
             "run-state",
@@ -246,7 +270,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     authorizations = subparsers.add_parser(
         "authorizations",
-        help="record auditable authorization evaluation facts",
+        help="record and reconstruct auditable authorization evaluation facts",
     )
     authorization_commands = authorizations.add_subparsers(
         dest="authorizations_command",
@@ -278,6 +302,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="exact workflow ID (required when the spec contains multiple workflows)",
     )
     _add_registry_arguments(authorization_record)
+    authorization_find = authorization_commands.add_parser(
+        "find",
+        help="reconstruct audit-only authorization facts for one plan identity",
+    )
+    authorization_find.add_argument(
+        "query",
+        type=Path,
+        help="PlanAuthorizationLineageQuery v0alpha1 YAML or JSON file",
+    )
+    authorization_find.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    _add_event_format_argument(authorization_find)
 
     native = subparsers.add_parser(
         "native",
@@ -546,6 +585,14 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_plan_authorization_event_request_schema
         matches = plan_authorization_event_request_schema_matches
         write = write_plan_authorization_event_request_schema
+    elif contract == "plan-authorization-lineage-query":
+        canonical = canonical_plan_authorization_lineage_query_schema
+        matches = plan_authorization_lineage_query_schema_matches
+        write = write_plan_authorization_lineage_query_schema
+    elif contract == "plan-authorization-lineage-report":
+        canonical = canonical_plan_authorization_lineage_report_schema
+        matches = plan_authorization_lineage_report_schema_matches
+        write = write_plan_authorization_lineage_report_schema
     elif contract == "native-process-preflight-request":
         canonical = canonical_native_process_preflight_request_schema
         matches = native_process_preflight_request_schema_matches
@@ -674,6 +721,8 @@ def _authorizations(args: argparse.Namespace) -> int:
             args.registry,
             args.format,
         )
+    if args.authorizations_command == "find":
+        return _find_authorization_lineage(args.query, args.database, args.format)
     raise AssertionError(f"unhandled authorizations command: {args.authorizations_command}")
 
 
@@ -715,6 +764,29 @@ def _record_authorization_event(
         return 2
     _print_authorization_event_result(result, output_format)
     return 0 if result.authorization.status is PlanAuthorizationStatus.AUTHORIZED else 1
+
+
+def _find_authorization_lineage(
+    query_path: Path,
+    database: Path,
+    output_format: str,
+) -> int:
+    try:
+        query = load_plan_authorization_lineage_query(query_path)
+        with EventStore(database, create=False) as store:
+            report = query_plan_authorization_lineage(store, query)
+    except (
+        EventStoreError,
+        OSError,
+        PlanAuthorizationLineageError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_authorization_lineage_result(report, output_format)
+    return 0
 
 
 def _native(args: argparse.Namespace) -> int:
@@ -1120,6 +1192,29 @@ def _print_authorization_event_result(
     print("approval authentication: not-authenticated")
     print("event authority: audit-only")
     print("execution performed: false")
+
+
+def _print_authorization_lineage_result(
+    report: PlanAuthorizationLineageReport,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        payload = report.model_dump(mode="json", by_alias=True, exclude_none=True)
+        print(_dumps_json(payload))
+        return
+    print("authorization lineage: reconstructed")
+    print(f"matches: {report.match_count}")
+    print(f"high-water sequence: {report.high_water_sequence}")
+    print("approval authentication: not-authenticated")
+    print("event authority: audit-only")
+    print("execution performed: false")
+    print("runtime consumption: not-consumed")
+    print("persistent writes: false")
+    for match in report.matches:
+        print(
+            f"match sequence {match.sequence}: {_safe_text(match.event_id)} "
+            f"status={match.status.value}"
+        )
 
 
 def _print_native_process_preflight(

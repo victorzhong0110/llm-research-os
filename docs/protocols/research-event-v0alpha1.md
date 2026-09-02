@@ -136,7 +136,9 @@ Secrets MUST NOT be placed in envelope context attributes.
 Individual domain protocols MAY reserve and semantically validate exact event types while the
 generic envelope remains open. `plan.authorization.evaluated` is currently defined by
 [PlanAuthorizationEventRequest v0alpha1](plan-authorization-event-v0alpha1.md); its payload is
-audit-only and is not executable authority.
+audit-only and is not executable authority. Locating those facts by plan identity is defined by
+[PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md) and likewise is not
+executable authority.
 
 ## 6. Conformance commands
 

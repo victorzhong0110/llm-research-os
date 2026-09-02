@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "PlanAuthorizationLineageBinding": {
+      "additionalProperties": false,
+      "description": "Plan identity used to locate recorded evaluation facts.\n\n``specDigest``, ``registryDigest`` and ``planDigest`` are required. They are\nthe fields a current RunSnapshot already carries. ``decisionDigest`` is\noptional: omit it to return every recorded evaluation of that plan identity;\nsupply it to restrict the candidate set to one exact decision.",
+      "properties": {
+        "decisionDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Plandigest",
+          "type": "string"
+        },
+        "registryDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "specDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "specDigest",
+        "registryDigest",
+        "planDigest"
+      ],
+      "title": "PlanAuthorizationLineageBinding",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/plan-authorization-lineage-query/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Caller-owned identity used to reconstruct authorization audit facts.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "binding": {
+      "$ref": "#/$defs/PlanAuthorizationLineageBinding"
+    },
+    "experimentRevision": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Experimentrevision",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "PlanAuthorizationLineageQuery",
+      "title": "Kind",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "workflowId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workflowid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "experimentRevision",
+    "workflowId",
+    "binding"
+  ],
+  "title": "PlanAuthorizationLineageQueryDocument",
+  "type": "object"
+}

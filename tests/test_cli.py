@@ -26,6 +26,18 @@ PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA = (
     / "plan-authorization-event-request"
     / "v0alpha1.schema.json"
 )
+PLAN_AUTHORIZATION_LINEAGE_QUERY_SCHEMA = (
+    Path(__file__).parents[1]
+    / "schemas"
+    / "plan-authorization-lineage-query"
+    / "v0alpha1.schema.json"
+)
+PLAN_AUTHORIZATION_LINEAGE_REPORT_SCHEMA = (
+    Path(__file__).parents[1]
+    / "schemas"
+    / "plan-authorization-lineage-report"
+    / "v0alpha1.schema.json"
+)
 NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA = (
     Path(__file__).parents[1]
     / "schemas"
@@ -161,6 +173,30 @@ def test_all_contract_schema_check_commands() -> None:
                 "plan-authorization-event-request",
                 "--check",
                 str(PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "plan-authorization-lineage-query",
+                "--check",
+                str(PLAN_AUTHORIZATION_LINEAGE_QUERY_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "plan-authorization-lineage-report",
+                "--check",
+                str(PLAN_AUTHORIZATION_LINEAGE_REPORT_SCHEMA),
             ]
         )
         == 0

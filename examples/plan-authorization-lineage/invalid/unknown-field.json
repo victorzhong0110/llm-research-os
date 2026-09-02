@@ -1,0 +1,14 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "PlanAuthorizationLineageQuery",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "workflowId": "workflow.simulation",
+  "binding": {
+    "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+    "registryDigest": "jcs-sha256:d97eed822c9897500e581f5014bb04e7adb985f7d03aa184d0f0a3ecacec741a",
+    "planDigest": "jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b",
+    "decisionDigest": "jcs-sha256:4d298b128a047cfb6d2498126d1821fca254ed1d482a71f9a538f858c4b8f82c"
+  },
+  "launchAllowed": true
+}

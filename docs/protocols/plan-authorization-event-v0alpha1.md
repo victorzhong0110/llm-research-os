@@ -111,5 +111,7 @@ ResearchEvent Schema. It can be retrieved independently with `events get` or `ev
 This protocol does not authenticate an actor, sign, expire or revoke a decision, create a missing
 database, persist a Run projection, link a Run to the event, import a block entrypoint, execute a
 runtime, send a signal, access a network, upload an artifact, retry a conflict or reach a scientific
-conclusion. A future executable runtime must add and review an authenticated authorization
-consumption rule; mere event existence is insufficient.
+conclusion. Locating recorded evaluations by plan identity is a separate read-only contract,
+[PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md). A future executable
+runtime must add and review an authenticated authorization consumption rule; mere event existence
+or a non-empty lineage candidate set is insufficient.

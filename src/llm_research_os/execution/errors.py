@@ -17,6 +17,14 @@ class PlanAuthorizationRecordError(ValueError):
     """
 
 
+class PlanAuthorizationLineageError(ValueError):
+    """Reject an invalid authorization-lineage reconstruction.
+
+    Messages MUST NOT include caller-supplied digests, identifiers, prompts,
+    configuration, or other potentially sensitive values.
+    """
+
+
 class NativeProcessPreflightError(ValueError):
     """Reject an unsafe or inconsistent native-process launch review.
 
