@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "NativeProcessLimitsDocument": {
+      "additionalProperties": false,
+      "description": "Bounded resource ceilings for a future process invocation.",
+      "properties": {
+        "stderrBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stderrbytes",
+          "type": "integer"
+        },
+        "stdoutBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stdoutbytes",
+          "type": "integer"
+        },
+        "terminationGraceSeconds": {
+          "maximum": 60,
+          "minimum": 0,
+          "title": "Terminationgraceseconds",
+          "type": "integer"
+        },
+        "wallTimeSeconds": {
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Walltimeseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wallTimeSeconds",
+        "stdoutBytes",
+        "stderrBytes",
+        "terminationGraceSeconds"
+      ],
+      "title": "NativeProcessLimitsDocument",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-process-preflight-request/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Caller-owned review request for one exact authorized static plan.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "authorizationDecisionDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Authorizationdecisiondigest",
+      "type": "string"
+    },
+    "environmentAllowlist": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 0,
+      "title": "Environmentallowlist",
+      "type": "array"
+    },
+    "kind": {
+      "const": "NativeProcessPreflightRequest",
+      "title": "Kind",
+      "type": "string"
+    },
+    "limits": {
+      "$ref": "#/$defs/NativeProcessLimitsDocument"
+    },
+    "network": {
+      "const": "denied",
+      "title": "Network",
+      "type": "string"
+    },
+    "planDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plandigest",
+      "type": "string"
+    },
+    "registryDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Registrydigest",
+      "type": "string"
+    },
+    "runner": {
+      "const": "researchos.python-worker/v0alpha1",
+      "title": "Runner",
+      "type": "string"
+    },
+    "shell": {
+      "const": false,
+      "title": "Shell",
+      "type": "boolean"
+    },
+    "specDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Specdigest",
+      "type": "string"
+    },
+    "taskPath": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 128,
+      "minItems": 1,
+      "title": "Taskpath",
+      "type": "array"
+    },
+    "workspace": {
+      "const": "isolated-temporary",
+      "title": "Workspace",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "specDigest",
+    "registryDigest",
+    "planDigest",
+    "authorizationDecisionDigest",
+    "taskPath",
+    "runner",
+    "shell",
+    "network",
+    "workspace",
+    "environmentAllowlist",
+    "limits"
+  ],
+  "title": "NativeProcessPreflightRequestDocument",
+  "type": "object"
+}

@@ -9,6 +9,14 @@ class PlanAuthorizationError(ValueError):
     """
 
 
+class NativeProcessPreflightError(ValueError):
+    """Reject an unsafe or inconsistent native-process launch review.
+
+    Messages MUST NOT include entrypoints, task configuration, rejected policy
+    values, environment names, or other potentially sensitive caller data.
+    """
+
+
 class SimulationError(ValueError):
     """Fail-closed error from the deterministic simulated vertical slice.
 

@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-01
 >
-> Scope: protocol validation, deterministic planning and plan authorization, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
+> Scope: protocol validation, deterministic planning and plan authorization, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -32,6 +32,9 @@ SimulatedRuntime can then drive one ready `simulated.experiment@0.1.0` task thro
 boundary. A strict `SimulationRequest` and `runs simulate` CLI expose that path without
 minting identity or retrying conflict. A strict `RunCancellationRequest` can append one
 cancellation-request fact to an existing store, but sends no signal and infers no outcome.
+A strict `NativeProcessPreflightRequest` can freeze the requested launch shape for one exact
+authorized Python task into a report that denies launch, declares isolation unenforced and records
+zero entrypoint imports, processes, signals, network calls and writes.
 It does **not** import manifest entrypoints, evaluate `until` expressions,
 contact model APIs, run plugins, start containers, connect Workers, spend money, persist
 projections, index artifacts in SQLite or upload artifacts. Simulated `completed` is a
@@ -46,6 +49,7 @@ controlled lifecycle finish, not training success.
 | BlockManifest and sealed registry | Untrusted declarations resolved as inert data | Implemented validation and digest boundary |
 | Dry-run plan/report | Trusted-kernel output, not an execution result | Implemented pure planning boundary |
 | Plan authorization gate | Trusted-kernel evaluator over one exact ready plan | Implemented for review; pure decision only, no authenticated or persistent receipt |
+| Native process preflight | Pure reviewer for one exact authorized Python task | Implemented for review; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
 | AI/model providers | Untrusted proposals and content | Not connected in M0 |
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -93,6 +97,7 @@ controlled lifecycle finish, not training success.
 - A cancellation request is distinct from an observed cancelled outcome.
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
+- Native-process preflight cannot import an entrypoint, enforce isolation or authorize a launch.
 
 ResearchSpec, exact block resolution, pure planning, exact plan authorization, append-only
 event-store, local artifact object and RunControl preflight/CAS invariants have executable checks.
@@ -119,7 +124,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-014 | Cross-project cache, retrieval or artifact lookup leaks data | Confidentiality loss | Planned project-scoped authorization and cache namespaces | Required before multi-project operation |
 | TM-015 | Oversized documents, YAML alias amplification, configs, schemas or deeply nested loops exhaust resources | Local or service denial of service | Duplicate keys and YAML aliases are rejected; decoded documents, manifests, registries, configs and schemas have byte/depth/node/count limits; configSchema uses an allowlisted non-regex/non-combinatorial subset; planning counts iteratively and never expands iterations | Tested locally; stronger process isolation required before public service exposure |
 | TM-016 | Dependency or GitHub Action compromise runs attacker code | Maintainer/CI compromise | Locked Python dependencies; CI actions pinned to commits; read-only CI token | Review lock changes; add release provenance later |
-| TM-017 | Backend `config` is interpreted as a shell command without review | Arbitrary code execution | Config is validated against an offline manifest schema and represented only by digest; dry-run never executes it | Runtime isolation remains a blocker before NativeProcessRuntime |
+| TM-017 | Backend `config` is interpreted as a shell command without review | Arbitrary code execution | Config is validated against an offline manifest schema and represented only by digest; dry-run never executes it; native preflight requires `shell=false`, fixed trusted-runner argv semantics and a fixed JSON-stdio protocol | Enforceable isolation and trusted argv construction remain blockers before NativeProcessRuntime |
 | TM-018 | Semantic diff hides meaningful list changes through reordering | Unreviewed experiment change | ID-aware diff reports object additions/removals/changes and ignores only pure reordering | Tested in M0; expand conformance corpus |
 | TM-019 | Registry shadowing or version confusion changes a block silently | Wrong or malicious implementation | Exact id/version lookup, duplicate rejection, sealed registry and manifest digest binding; SimulatedRuntime additionally requires the canonical built-in `simulated.experiment@0.1.0` digest and empty permissions | Tested in M0, including substituted and permission-bearing same-coordinate manifests |
 | TM-020 | Manifest loading or dry-run imports code, evaluates text or retrieves a remote schema | Host compromise or data exfiltration | Manifests are revalidated into private inert snapshots; remote refs, expensive Schema keywords and symlinks are rejected; process/import/network/eval tripwires | Tested in M0 |
@@ -135,6 +140,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-030 | A stop command creates an empty store, sends an unreviewed signal, retries stale intent, or reports requested cancellation as an observed outcome | Unintended host action, lost concurrent facts, or false audit state | Closed RunCancellationRequest Schema; existing writable store required; exactly one RunControl CAS fact; lifecycle type derived from a closed target; exact RunSnapshot output; text says no signal and no observed outcome; no conflict retry | Schema/model, missing/corrupt-store, Run/Attempt target, terminal/binding, non-echo and concurrent same-head tests |
 | TM-031 | An artifact convenience command follows a caller path into another object, treats a path as a digest, emits caller paths or object bytes as successful output, repairs corruption or claims unrecorded provenance | File disclosure or overwrite, false integrity, misleading lineage | CLI delegates to the dirfd-anchored LocalArtifactStore; digest grammar derives every object key; successful put/verify output is only a closed versioned report; no object-byte stdout, repair, SQLite row, event, delete, upload or provenance claim | Report Schema/semantics, import/verify, success-path omission, symlink/traversal, missing/corrupt object and terminal-escape tests |
 | TM-032 | A stale, misspelled or over-broad policy is reused for another plan, or input ordering changes the authorization identity | Wrong-plan execution or excess capability | Policy binds spec/registry/plan digests; unused, unknown, duplicate and malformed grants fail closed; recursive declarations and requirement decisions normalize into a deterministic decision digest | Binding, nested-loop, tamper, ordering, non-echo and side-effect-tripwire tests; signatures, expiry and revocation pending |
+| TM-033 | A review report is treated as a launch token, or a manifest expands native-process access after authorization | Host code execution, data exposure or false audit state | Preflight recomputes authorization, binds spec/registry/plan/decision digests, requires one exact sealed-registry Python task and a closed capability/permission/runtime profile; report literals say launch false, isolation unenforced, execution absent and all side effects zero | Schema/model/core/CLI binding, profile, tamper, non-echo and process/import/signal/network/persistence tripwires; actual executor remains blocked |
 
 ## 7. M0 security gates
 
@@ -142,7 +148,7 @@ Before merging executable capability, the following gates apply:
 
 - **Protocol gate:** valid/invalid examples and generated schema stay synchronized.
 - **Revision gate:** a running revision cannot be mutated; revision transitions receive semantic diffs.
-- **Authorization gate:** only an exact three-digest `authorized` decision may enter a supported execution path; `ready`, `pending` and `denied` are non-executable.
+- **Authorization gate:** only an exact three-digest `authorized` decision may enter a supported execution path; `ready`, `pending` and `denied` are non-executable, and a native preflight report is review data rather than a supported execution path.
 - **State gate:** success, failure, cancelled, lost and unknown have separate tested meanings.
 - **Secret gate:** typed secret references and redaction tests exist before any API credential is used.
 - **Execution gate:** no arbitrary process, plugin or expression execution is added without a new threat-model review.
@@ -153,7 +159,11 @@ Before merging executable capability, the following gates apply:
 - M0 is local pre-release software and does not yet defend a public network service.
 - Plan authorization is an in-process deterministic decision, not an authenticated, signed,
   expiring, revocable or durably audited approval receipt. Only the canonical zero-side-effect
-  simulated runtime consumes it in M0.
+  simulated runtime consumes it for an executable path in M0; native preflight consumes it only
+  to produce a report that forbids launch.
+- Native-process preflight does not bind an interpreter, enforce its requested workspace/network/
+  environment/limit constraints, create or supervise a child, or persist a receipt. Its digest is
+  neither a credential nor evidence that an operating-system control was applied.
 - Cancellation-request `actor.id` is claimed metadata, not authentication; local OS access to
   the request and database is the current authority boundary.
 - `config` and `extensions` are structurally declared but their future consumers must perform capability-specific validation.

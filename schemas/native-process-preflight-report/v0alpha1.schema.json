@@ -1,0 +1,357 @@
+{
+  "$defs": {
+    "NativeProcessLaunchConstraints": {
+      "additionalProperties": false,
+      "properties": {
+        "argvMode": {
+          "const": "trusted-runner-fixed",
+          "title": "Argvmode",
+          "type": "string"
+        },
+        "environmentAllowlist": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 0,
+          "title": "Environmentallowlist",
+          "type": "array"
+        },
+        "interpreterIdentity": {
+          "const": "not-bound",
+          "title": "Interpreteridentity",
+          "type": "string"
+        },
+        "network": {
+          "const": "denied",
+          "title": "Network",
+          "type": "string"
+        },
+        "shell": {
+          "const": false,
+          "title": "Shell",
+          "type": "boolean"
+        },
+        "stderr": {
+          "const": "bounded-capture",
+          "title": "Stderr",
+          "type": "string"
+        },
+        "stdin": {
+          "const": "json-object",
+          "title": "Stdin",
+          "type": "string"
+        },
+        "stdout": {
+          "const": "bounded-capture",
+          "title": "Stdout",
+          "type": "string"
+        },
+        "termination": {
+          "const": "terminate-then-kill",
+          "title": "Termination",
+          "type": "string"
+        },
+        "workspace": {
+          "const": "isolated-temporary",
+          "title": "Workspace",
+          "type": "string"
+        }
+      },
+      "required": [
+        "shell",
+        "network",
+        "workspace",
+        "environmentAllowlist",
+        "argvMode",
+        "stdin",
+        "stdout",
+        "stderr",
+        "termination",
+        "interpreterIdentity"
+      ],
+      "title": "NativeProcessLaunchConstraints",
+      "type": "object"
+    },
+    "NativeProcessLimitsDocument": {
+      "additionalProperties": false,
+      "description": "Bounded resource ceilings for a future process invocation.",
+      "properties": {
+        "stderrBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stderrbytes",
+          "type": "integer"
+        },
+        "stdoutBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stdoutbytes",
+          "type": "integer"
+        },
+        "terminationGraceSeconds": {
+          "maximum": 60,
+          "minimum": 0,
+          "title": "Terminationgraceseconds",
+          "type": "integer"
+        },
+        "wallTimeSeconds": {
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Walltimeseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wallTimeSeconds",
+        "stdoutBytes",
+        "stderrBytes",
+        "terminationGraceSeconds"
+      ],
+      "title": "NativeProcessLimitsDocument",
+      "type": "object"
+    },
+    "NativeProcessPreflightBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "authorizationDecisionDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Authorizationdecisiondigest",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Plandigest",
+          "type": "string"
+        },
+        "registryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "specDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "specDigest",
+        "registryDigest",
+        "planDigest",
+        "authorizationDecisionDigest"
+      ],
+      "title": "NativeProcessPreflightBinding",
+      "type": "object"
+    },
+    "NativeProcessPreflightSideEffects": {
+      "additionalProperties": false,
+      "properties": {
+        "blocksExecuted": {
+          "const": 0,
+          "title": "Blocksexecuted",
+          "type": "integer"
+        },
+        "entrypointsImported": {
+          "const": 0,
+          "title": "Entrypointsimported",
+          "type": "integer"
+        },
+        "networkRequests": {
+          "const": 0,
+          "title": "Networkrequests",
+          "type": "integer"
+        },
+        "paidActions": {
+          "const": 0,
+          "title": "Paidactions",
+          "type": "integer"
+        },
+        "persistentWrites": {
+          "const": 0,
+          "title": "Persistentwrites",
+          "type": "integer"
+        },
+        "processesSpawned": {
+          "const": 0,
+          "title": "Processesspawned",
+          "type": "integer"
+        },
+        "signalsSent": {
+          "const": 0,
+          "title": "Signalssent",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "blocksExecuted",
+        "entrypointsImported",
+        "processesSpawned",
+        "signalsSent",
+        "networkRequests",
+        "persistentWrites",
+        "paidActions"
+      ],
+      "title": "NativeProcessPreflightSideEffects",
+      "type": "object"
+    },
+    "NativeProcessTaskIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "blockId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Blockid",
+          "type": "string"
+        },
+        "blockVersion": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "title": "Blockversion",
+          "type": "string"
+        },
+        "configDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Configdigest",
+          "type": "string"
+        },
+        "entrypointDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Entrypointdigest",
+          "type": "string"
+        },
+        "manifestDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "protocol": {
+          "const": "researchos.python-json-stdio/v0alpha1",
+          "title": "Protocol",
+          "type": "string"
+        },
+        "runner": {
+          "const": "researchos.python-worker/v0alpha1",
+          "title": "Runner",
+          "type": "string"
+        },
+        "runtimeType": {
+          "const": "python",
+          "title": "Runtimetype",
+          "type": "string"
+        },
+        "taskPath": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "title": "Taskpath",
+          "type": "array"
+        }
+      },
+      "required": [
+        "taskPath",
+        "blockId",
+        "blockVersion",
+        "manifestDigest",
+        "configDigest",
+        "entrypointDigest",
+        "runtimeType",
+        "runner",
+        "protocol"
+      ],
+      "title": "NativeProcessTaskIdentity",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-process-preflight-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normalized review report that can never authorize a process launch.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "authorizationAuthentication": {
+      "const": "not-authenticated",
+      "title": "Authorizationauthentication",
+      "type": "string"
+    },
+    "authorizationPersistence": {
+      "const": "not-persisted",
+      "title": "Authorizationpersistence",
+      "type": "string"
+    },
+    "binding": {
+      "$ref": "#/$defs/NativeProcessPreflightBinding"
+    },
+    "constraints": {
+      "$ref": "#/$defs/NativeProcessLaunchConstraints"
+    },
+    "execution": {
+      "const": "not-executed",
+      "title": "Execution",
+      "type": "string"
+    },
+    "isolation": {
+      "const": "not-enforced",
+      "title": "Isolation",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeProcessPreflightReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "launchAllowed": {
+      "const": false,
+      "title": "Launchallowed",
+      "type": "boolean"
+    },
+    "limits": {
+      "$ref": "#/$defs/NativeProcessLimitsDocument"
+    },
+    "preflightDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Preflightdigest",
+      "type": "string"
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/NativeProcessPreflightSideEffects"
+    },
+    "status": {
+      "const": "reviewable",
+      "title": "Status",
+      "type": "string"
+    },
+    "task": {
+      "$ref": "#/$defs/NativeProcessTaskIdentity"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "status",
+    "launchAllowed",
+    "preflightDigest",
+    "binding",
+    "task",
+    "constraints",
+    "limits",
+    "authorizationAuthentication",
+    "authorizationPersistence",
+    "isolation",
+    "execution",
+    "sideEffects"
+  ],
+  "title": "NativeProcessPreflightReport",
+  "type": "object"
+}

@@ -1,0 +1,29 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-native-process-preflight
+  revision: 1
+  title: Native process preflight example
+questions: []
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+workflows:
+  - id: workflow.native
+    graph:
+      nodes:
+        - kind: task
+          id: invoke
+          blockType: example.native-process
+          blockVersion: 0.1.0
+          config:
+            operation: noop
+      edges: []
+evaluations: []
+resources: []
+policies:
+  paidActionsRequireApproval: true
+  destructiveActionsRequireApproval: true
+  preserveAiDissent: true
+  unknownEvidenceMayTrain: false

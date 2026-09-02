@@ -12,8 +12,9 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 与网络的确定性 SimulatedRuntime 纵向闭环，以及绑定三摘要、逐项能力/权限/审批的纯计划
 授权门；现在也可通过严格版本化且明确非凭证的请求/报告 CLI 求值计划授权，通过另一份请求
 创建或恢复模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或完整
-校验本地内容寻址制品对象。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权报告
-冒充认证回执，或把取消请求误报为已停止。
+校验本地内容寻址制品对象；还可为单个已授权 Python task 生成固定、非启动型的原生进程预检
+报告。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权或预检报告冒充认证回执、
+启动许可，或把取消请求误报为已停止。
 
 ## M0 目标
 
@@ -50,12 +51,14 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 - [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
 - [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
 - [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
+- [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
 - [M0 RunControl 导读](docs/guides/m0-run-control.md)
 - [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)
 - [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)
+- [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -86,6 +89,10 @@ uv run researchos schema --contract plan-authorization-request \
   --check schemas/plan-authorization-request/v0alpha1.schema.json
 uv run researchos schema --contract plan-authorization-report \
   --check schemas/plan-authorization-report/v0alpha1.schema.json
+uv run researchos schema --contract native-process-preflight-request \
+  --check schemas/native-process-preflight-request/v0alpha1.schema.json
+uv run researchos schema --contract native-process-preflight-report \
+  --check schemas/native-process-preflight-report/v0alpha1.schema.json
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -106,6 +113,8 @@ schemas/run-cancellation-request/v0alpha1.schema.json
 schemas/artifact-object-report/v0alpha1.schema.json
 schemas/plan-authorization-request/v0alpha1.schema.json
 schemas/plan-authorization-report/v0alpha1.schema.json
+schemas/native-process-preflight-request/v0alpha1.schema.json
+schemas/native-process-preflight-report/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
@@ -151,6 +160,26 @@ uv run researchos authorize \
 `authorized` 返回 `0`，有效的 `pending`/`denied` 返回 `1`，输入或摘要绑定错误返回 `2`。
 报告固定声明 `not-authenticated`、`not-persisted` 与 `not-executed`；它不是签名或可撤销的授权
 回执。详见 [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)。
+
+## 原生进程预检
+
+单个、已授权的 Python task 可进入纯预检，但不能进入进程执行：
+
+```bash
+uv run researchos native preflight \
+  examples/native-process-preflight/spec.yaml \
+  examples/native-process-preflight/authorization-request.json \
+  examples/native-process-preflight/preflight-request.json \
+  --registry examples/native-process-preflight/manifest.yaml \
+  --format json
+```
+
+预检重新验证 ready plan、密封 registry、三摘要授权和授权决定摘要，只接受固定 JSON-stdio
+runner、`shell=false`、network denied、空环境 allowlist、隔离临时 workspace 请求及有界输出/超时。
+成功退出 `0` 只表示报告可复核；报告固定为 `launchAllowed=false`、
+`isolation=not-enforced`、`execution=not-executed`，入口点仅以摘要出现。命令不解析解释器、导入
+模块、创建 workspace、启动进程、发信号或写入持久存储。详见
+[M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)。
 
 ## 事件查询与回放
 
@@ -226,12 +255,13 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 可将常规本地文件导入内容寻址制品目录，可通过 RunControl 在写入前拒绝非法生命周期事件，
 并可通过 SimulatedRuntime 对单个内置 simulated task 追加确定性生命周期事实。
 `authorize` 只重新构造静态计划并输出明确非凭证的版本化求值报告，不写事件、制品或数据库。
+`native preflight` 只冻结单 task 的固定进程审查形状，明确禁止启动且不实施所声明的隔离。
 `runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
 `runs cancel` 同样只通过 RunControl 追加单个请求事实，要求既有数据库，且不发送信号或
 推断取消结果。
 `artifacts put` / `verify` 只复用本地对象层，既不输出对象正文，也不建立索引或血缘。
 它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
-或持久化投影，也不提供对象导出/删除、实际停止适配器、NativeProcessRuntime 或网络上传。
+或持久化投影，也不提供对象导出/删除、实际停止适配器、可执行的 NativeProcessRuntime 或网络上传。
 模拟 `completed` 不是科学成功；`unknown` 保持未决。
 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
 [安全政策](SECURITY.md)。

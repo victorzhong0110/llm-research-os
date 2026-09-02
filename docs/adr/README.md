@@ -11,7 +11,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0005 | Researcher final decision and preserved AI dissent | Accepted | Record pending |
 | 0006 | Capability-, budget-, and approval-based autonomy | Accepted | Record pending |
 | 0007 | Append-only facts and rebuildable projections | Accepted | Record pending |
-| 0008 | Native process and OCI runtimes | Accepted | Record pending |
+| [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; non-executing native preflight implemented, native/OCI executors pending |
 | 0009 | Worker semantics independent of transport | Accepted | Record pending |
 | 0010 | ms-swift as provisional first real backend | Direction accepted | M2 validation pending |
 | [0011](0011-apache-2-license.md) | Apache-2.0 project license | Accepted | Written; contribution mechanics follow up |

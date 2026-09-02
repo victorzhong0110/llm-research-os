@@ -20,6 +20,18 @@ PLAN_AUTHORIZATION_REQUEST_SCHEMA = (
 PLAN_AUTHORIZATION_REPORT_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "plan-authorization-report" / "v0alpha1.schema.json"
 )
+NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA = (
+    Path(__file__).parents[1]
+    / "schemas"
+    / "native-process-preflight-request"
+    / "v0alpha1.schema.json"
+)
+NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA = (
+    Path(__file__).parents[1]
+    / "schemas"
+    / "native-process-preflight-report"
+    / "v0alpha1.schema.json"
+)
 RUN_STATE_SCHEMA = Path(__file__).parents[1] / "schemas" / "run-state" / "v0alpha1.schema.json"
 SIMULATION_REQUEST_SCHEMA = (
     Path(__file__).parents[1] / "schemas" / "simulation-request" / "v0alpha1.schema.json"
@@ -131,6 +143,30 @@ def test_all_contract_schema_check_commands() -> None:
                 "plan-authorization-report",
                 "--check",
                 str(PLAN_AUTHORIZATION_REPORT_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "native-process-preflight-request",
+                "--check",
+                str(NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "schema",
+                "--contract",
+                "native-process-preflight-report",
+                "--check",
+                str(NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA),
             ]
         )
         == 0

@@ -1,0 +1,30 @@
+apiVersion: researchos.dev/v0alpha1
+kind: Block
+metadata:
+  id: example.native-process
+  version: 0.1.0
+  title: Inert native Python preflight declaration
+runtime:
+  type: python
+  entrypoint: example_native_worker:run
+  config:
+    protocol: researchos.python-json-stdio/v0alpha1
+inputs: []
+outputs: []
+configSchema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    operation:
+      const: noop
+  required:
+    - operation
+  additionalProperties: false
+resources: {}
+capabilities:
+  - process.native
+permissions: []
+telemetry: []
+reproducibility:
+  deterministic: true
+extensions: {}

@@ -45,6 +45,8 @@ from llm_research_os.events.schema import canonical_schema as canonical_event_sc
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
 from llm_research_os.execution import (
+    NativeProcessPreflightError,
+    NativeProcessPreflightReport,
     PlanAuthorizationError,
     PlanAuthorizationReport,
     PlanAuthorizationStatus,
@@ -54,8 +56,10 @@ from llm_research_os.execution import (
     SimulationError,
     TrustedKernel,
     authorize_plan,
+    load_native_process_preflight_request,
     load_plan_authorization_request,
     load_simulation_request,
+    preflight_native_process,
 )
 from llm_research_os.execution.authorization_report_schema import (
     canonical_schema as canonical_plan_authorization_report_schema,
@@ -83,6 +87,24 @@ from llm_research_os.execution.models import (
     PlannedGraph,
     PlannedLoop,
     PlannedTask,
+)
+from llm_research_os.execution.native_preflight_report_schema import (
+    canonical_schema as canonical_native_process_preflight_report_schema,
+)
+from llm_research_os.execution.native_preflight_report_schema import (
+    schema_matches as native_process_preflight_report_schema_matches,
+)
+from llm_research_os.execution.native_preflight_report_schema import (
+    write_schema as write_native_process_preflight_report_schema,
+)
+from llm_research_os.execution.native_preflight_request_schema import (
+    canonical_schema as canonical_native_process_preflight_request_schema,
+)
+from llm_research_os.execution.native_preflight_request_schema import (
+    schema_matches as native_process_preflight_request_schema_matches,
+)
+from llm_research_os.execution.native_preflight_request_schema import (
+    write_schema as write_native_process_preflight_request_schema,
 )
 from llm_research_os.execution.request_schema import (
     canonical_schema as canonical_simulation_request_schema,
@@ -150,6 +172,8 @@ def build_parser() -> argparse.ArgumentParser:
             "problem-report",
             "plan-authorization-request",
             "plan-authorization-report",
+            "native-process-preflight-request",
+            "native-process-preflight-report",
             "run-state",
             "simulation-request",
             "run-cancellation-request",
@@ -205,6 +229,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="exact workflow ID (required when the spec contains multiple workflows)",
     )
     _add_registry_arguments(authorize)
+
+    native = subparsers.add_parser(
+        "native",
+        help="review native-process launch contracts without executing them",
+    )
+    native_commands = native.add_subparsers(dest="native_command", required=True)
+    native_preflight = native_commands.add_parser(
+        "preflight",
+        help="freeze one non-launchable native Python process review",
+    )
+    native_preflight.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    native_preflight.add_argument(
+        "authorization_request",
+        type=Path,
+        help="PlanAuthorizationRequest v0alpha1 YAML or JSON file",
+    )
+    native_preflight.add_argument(
+        "preflight_request",
+        type=Path,
+        help="NativeProcessPreflightRequest v0alpha1 YAML or JSON file",
+    )
+    native_preflight.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="exact workflow ID (required when the spec contains multiple workflows)",
+    )
+    _add_registry_arguments(native_preflight)
 
     blocks = subparsers.add_parser("blocks", help="inspect inert BlockManifest registrations")
     block_commands = blocks.add_subparsers(dest="blocks_command", required=True)
@@ -372,6 +423,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.registry,
             args.format,
         )
+    if args.command == "native":
+        return _native(args)
     if args.command == "blocks":
         return _blocks(args)
     if args.command == "events":
@@ -438,6 +491,14 @@ def _schema(output: Path | None, check: Path | None, contract: str) -> int:
         canonical = canonical_plan_authorization_report_schema
         matches = plan_authorization_report_schema_matches
         write = write_plan_authorization_report_schema
+    elif contract == "native-process-preflight-request":
+        canonical = canonical_native_process_preflight_request_schema
+        matches = native_process_preflight_request_schema_matches
+        write = write_native_process_preflight_request_schema
+    elif contract == "native-process-preflight-report":
+        canonical = canonical_native_process_preflight_report_schema
+        matches = native_process_preflight_report_schema_matches
+        write = write_native_process_preflight_report_schema
     elif contract == "run-state":
         canonical = canonical_run_state_schema
         matches = run_state_schema_matches
@@ -545,6 +606,56 @@ def _authorize(
         return 2
     _print_authorization_result(report, output_format)
     return 0 if report.status is PlanAuthorizationStatus.AUTHORIZED else 1
+
+
+def _native(args: argparse.Namespace) -> int:
+    if args.native_command == "preflight":
+        return _native_preflight(
+            args.spec,
+            args.authorization_request,
+            args.preflight_request,
+            args.workflow,
+            args.registry,
+            args.format,
+        )
+    raise AssertionError(f"unhandled native command: {args.native_command}")
+
+
+def _native_preflight(
+    spec_path: Path,
+    authorization_request_path: Path,
+    preflight_request_path: Path,
+    workflow_id: str | None,
+    registry_paths: list[Path],
+    output_format: str,
+) -> int:
+    try:
+        spec = ResearchSpec.model_validate(load_document(spec_path, reject_symlinks=True))
+        authorization_request = load_plan_authorization_request(authorization_request_path)
+        preflight_request = load_native_process_preflight_request(preflight_request_path)
+        registry = build_registry(registry_paths)
+        dry_run = TrustedKernel(registry).dry_run(spec, workflow_id=workflow_id)
+        result = preflight_native_process(
+            dry_run,
+            registry,
+            authorization_request.policy(),
+            preflight_request.policy(),
+        )
+        report = NativeProcessPreflightReport.from_result(result)
+    except (
+        ManifestLoadError,
+        NativeProcessPreflightError,
+        OSError,
+        PlanningInputError,
+        RegistryError,
+        SpecLoadError,
+        ValidationError,
+        ValueError,
+    ) as exc:
+        _print_error(exc, output_format)
+        return 2
+    _print_native_process_preflight(report, output_format)
+    return 0
 
 
 def _blocks(args: argparse.Namespace) -> int:
@@ -882,6 +993,29 @@ def _print_authorization_result(
     print("persistent receipt: false")
     print("execution performed: false")
     print("side effects: 0 blocks, 0 network requests, 0 writes, 0 paid actions")
+
+
+def _print_native_process_preflight(
+    report: NativeProcessPreflightReport,
+    output_format: str,
+) -> None:
+    if output_format == "json":
+        payload = report.model_dump(mode="json", by_alias=True)
+        print(_dumps_json(payload))
+        return
+    print(f"native process preflight: {report.status}")
+    print(f"preflight digest: {report.preflight_digest}")
+    print(f"task path: /{'/'.join(report.task.task_path)}")
+    print(f"entrypoint digest: {report.task.entrypoint_digest}")
+    print("launch allowed: false")
+    print("authorization authentication: not-authenticated")
+    print("authorization persistence: not-persisted")
+    print("process isolation enforced: false")
+    print("execution performed: false")
+    print(
+        "side effects: 0 blocks, 0 entrypoint imports, 0 processes, 0 signals, "
+        "0 network requests, 0 writes, 0 paid actions"
+    )
 
 
 def _dumps_json(payload: object, *, indent: int | None = 2) -> str:
