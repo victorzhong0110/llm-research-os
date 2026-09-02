@@ -16,6 +16,9 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 报告。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权或预检报告冒充认证回执、
 启动许可，或把取消请求误报为已停止。
 
+M0 原生进程范围止于不可启动的 NativeProcessPreflight，真实 NativeProcessRuntime 不属于
+M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。
+
 ## M0 目标
 
 1. 编写短版 ADR 与持续更新的威胁模型；

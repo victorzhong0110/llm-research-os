@@ -47,7 +47,9 @@ M0 implements only a pure `NativeProcessPreflight` for that profile. Its report 
 interpreter, create a workspace, import a module, open an artifact, spawn a process, send a signal,
 persist a receipt or enforce the requested constraints. The actual native executor requires a
 separate reviewed slice. OCI execution remains an M2 capability and is not approximated by the
-native preflight.
+native preflight. Charter §14.2 originally listed `NativeProcessRuntime` as an M0 deliverable;
+[ADR-0034](0034-m0-scope-clarification.md) records that milestone assignment as superseded by
+this preflight boundary. The dual-runtime architecture in this ADR is unchanged.
 
 ## Consequences
 
@@ -75,3 +77,4 @@ tripwires for imports, processes, signals, network and persistence.
 - [M0 Native Process Preflight guide](../guides/m0-native-process-preflight.md)
 - [ADR-0003 Minimal Trusted Kernel](0003-minimal-trusted-kernel.md)
 - [ADR-0030 Deterministic Plan Authorization Gate](0030-deterministic-plan-authorization-gate.md)
+- [ADR-0034 M0 Scope Clarification for Native Process Execution](0034-m0-scope-clarification.md)

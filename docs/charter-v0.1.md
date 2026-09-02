@@ -710,6 +710,19 @@ stateDiagram-v2
 - 失败、重试、取消和unknown路径测试；
 - 一个无需LLM的确定性提案/审批样例。
 
+#### 范围勘误（§14.2，2026-09-02，[ADR-0034](adr/0034-m0-scope-clarification.md)）
+
+上述清单中的 `NativeProcessRuntime` 是 2026-08-21 接受的历史基线，不得静默删除。
+
+对 **M0 里程碑归属** 而言，该条目已由纯、不可启动的 `NativeProcessPreflight` 取代。这是一次安全范围修正，不是取消 ADR-0008 的长期双 runtime 方向。真实 `NativeProcessRuntime` 延后到 M0 之后，最早只能作为 M1 的独立安全审查切片，本勘误不承诺交付日期。`OCIContainerRuntime` 仍属于 §14.4 的 M2 方向。
+
+可核验的 M0 收口：
+
+- 原生进程表面只有 `NativeProcessPreflight`；成功报告保持 `launchAllowed=false`、`isolation=not-enforced`、`execution=not-executed`；
+- M0 不解析或启动解释器、不导入任务模块、不创建或监督子进程、不发送信号，也不为原生任务执行网络、secret、GPU 或付费操作；
+- 预检报告和 `plan.authorization.evaluated` 审计事件都不是启动凭证；M0 唯一写入生命周期事实的可执行路径仍是零副作用的 `SimulatedRuntime`；
+- 真实 `NativeProcessRuntime` 与 `OCIContainerRuntime` 均不在 M0 已交付能力中。
+
 ### 14.3 内部里程碑 M1：研究助手闭环（已决定）
 
 - 一个OpenAI兼容模型适配器；
