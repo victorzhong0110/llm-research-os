@@ -11,7 +11,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0005 | Researcher final decision and preserved AI dissent | Accepted | Record pending |
 | 0006 | Capability-, budget-, and approval-based autonomy | Accepted | Record pending |
 | 0007 | Append-only facts and rebuildable projections | Accepted | Record pending |
-| [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; non-executing native preflight implemented, native/OCI executors pending |
+| [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; M0 milestone scope clarified by ADR-0034; non-executing native preflight implemented, native/OCI executors pending |
 | 0009 | Worker semantics independent of transport | Accepted | Record pending |
 | 0010 | ms-swift as provisional first real backend | Direction accepted | M2 validation pending |
 | [0011](0011-apache-2-license.md) | Apache-2.0 project license | Accepted | Written; contribution mechanics follow up |
@@ -37,5 +37,6 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0031](0031-explicit-plan-authorization-cli.md) | Explicit non-credential plan authorization CLI | Proposed | Implemented for review |
 | [0032](0032-audit-only-plan-authorization-events.md) | Audit-only plan authorization evaluation events | Proposed | Implemented for review |
 | [0033](0033-normative-jcs-semantic-digests.md) | Normative RFC 8785 JCS semantic digests | Proposed | Implemented for review |
+| [0034](0034-m0-scope-clarification.md) | M0 native-process milestone is NativeProcessPreflight, not NativeProcessRuntime | Accepted | Written |
 
 “Record pending” means the decision is already accepted in the project charter but its standalone rationale has not yet been transcribed. It does not reopen the decision.
