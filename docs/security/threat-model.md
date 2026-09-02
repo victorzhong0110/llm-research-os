@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-02
 >
-> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
+> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -25,6 +25,8 @@ generates JSON Schema, compares immutable revisions, compiles a deterministic dr
 evaluates exact three-digest capability/permission/requirement authorization without side effects,
 can recompute and record one four-digest-bound authorization evaluation as an unauthenticated,
 audit-only project/revision fact in an existing verified event store,
+can reconstruct the matching authorization facts for one exact plan identity as a read-only
+candidate set that is not a Run citation or launch token,
 can append complete events to a local SQLite fact store, can query, verify and replay those
 facts through a read-only CLI, can import regular local files into a content-addressed
 artifact directory through Python or an explicit put/verify CLI, and can append Run/Attempt
@@ -52,6 +54,7 @@ controlled lifecycle finish, not training success.
 | Dry-run plan/report | Trusted-kernel output, not an execution result | Implemented pure planning boundary |
 | Plan authorization gate | Trusted-kernel evaluator over one exact ready plan | Implemented for review; pure decision, no authenticated receipt |
 | Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented for review; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
+| Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented for review; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented for review; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
 | AI/model providers | Untrusted proposals and content | Not connected in M0 |
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
@@ -145,6 +148,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-032 | A stale, misspelled or over-broad policy is reused for another plan, or input ordering changes the authorization identity | Wrong-plan execution or excess capability | Policy binds spec/registry/plan digests; unused, unknown, duplicate and malformed grants fail closed; recursive declarations and requirement decisions normalize into a deterministic decision digest | Binding, nested-loop, tamper, ordering, non-echo and side-effect-tripwire tests; signatures, expiry and revocation pending |
 | TM-033 | A review report is treated as a launch token, or a manifest expands native-process access after authorization | Host code execution, data exposure or false audit state | Preflight recomputes authorization, binds spec/registry/plan/decision digests, requires one exact sealed-registry Python task and a closed capability/permission/runtime profile; report literals say launch false, isolation unenforced, execution absent and all side effects zero | Schema/model/core/CLI binding, profile, tamper, non-echo and process/import/signal/network/persistence tripwires; actual executor remains blocked |
 | TM-034 | An unauthenticated caller records a stale or negative decision, a corrupt history is extended, or a durable audit event is mistaken for launch authority | False approval lineage, concealed corruption or unauthorized execution | Closed event request binds project/revision/workflow and four digests; recorder recomputes the decision, verifies the full existing store and CAS-appends one fixed event; payload says unauthenticated, audit-only and not-executed; all dispositions remain explicit | Schema/model/core/CLI binding, corrupt-store, duplicate identity, negative decision, replay, non-echo and concurrent-append tests; authenticated runtime consumption remains blocked |
+| TM-035 | A lineage reconstruction is treated as the authorization a Run used, a latest-authorized match is selected as a credential, or a corrupt authorization event is skipped | False execution authority or concealed invalid audit history | Closed query binds project/revision/workflow and plan identity; optional decision digest is exact tagged identity; reconstruction is read-only over a frozen verified prefix; invalid authorization events fail closed; report lists every match in sequence order and does not choose one; literals say unauthenticated, audit-only, not-executed and not-consumed; RunSnapshot is unchanged | Schema/model/core/CLI match, miss, mixed-type skip, digest-tag mismatch, empty-store, corrupt-auth-event, non-echo and side-effect-tripwire tests; Run citation and runtime consumption remain blocked |
 
 ## 7. M0 security gates
 
@@ -163,7 +167,9 @@ Before merging executable capability, the following gates apply:
 - M0 is local pre-release software and does not yet defend a public network service.
 - Plan authorization is not authenticated, signed, expiring or revocable. The optional event
   recorder makes a recomputed evaluation durable and replayable, but its actor remains
-  caller-asserted and the event is audit-only rather than an approval receipt. Only the canonical
+  caller-asserted and the event is audit-only rather than an approval receipt. The optional
+  lineage query reconstructs a candidate set of those facts for one plan identity; it does
+  not cite the fact a Run used and is not consumed by any runtime. Only the canonical
   zero-side-effect simulated runtime consumes the in-process gate for an executable path in M0;
   native preflight only produces a report that forbids launch.
 - Native-process preflight does not bind an interpreter, enforce its requested workspace/network/

@@ -59,5 +59,7 @@ therefore fixes:
 - `authority: audit-only`;
 - `execution: not-executed`.
 
-No NativeProcessRuntime, Worker or paid adapter may treat the event as a launch token. Linking a Run
-to an authenticated, expiring and revocable authorization fact remains future work.
+Linking a Run to an authenticated, expiring and revocable authorization fact remains future
+work. A read-only candidate-set reconstruction now exists as
+[M0 plan authorization lineage](m0-plan-authorization-lineage.md); it does not add a
+RunSnapshot citation or grant runtime consumption.

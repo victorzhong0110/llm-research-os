@@ -13,8 +13,9 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 授权门；现在也可通过严格版本化且明确非凭证的请求/报告 CLI 求值计划授权，通过另一份请求
 创建或恢复模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或完整
 校验本地内容寻址制品对象；还可为单个已授权 Python task 生成固定、非启动型的原生进程预检
-报告。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权或预检报告冒充认证回执、
-启动许可，或把取消请求误报为已停止。
+报告；并可通过只读 lineage 查询重建与某一计划身份匹配的 `plan.authorization.evaluated`
+候选事实。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告或
+lineage 重建冒充认证回执、启动许可、Run 所依据的那一次授权，或把取消请求误报为已停止。
 
 M0 原生进程范围止于不可启动的 NativeProcessPreflight，真实 NativeProcessRuntime 不属于
 M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。
@@ -55,6 +56,7 @@ M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-cla
 - [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
 - [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
 - [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
+- [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
@@ -63,6 +65,7 @@ M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-cla
 - [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)
 - [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)
 - [M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)
+- [M0 计划授权血缘查询](docs/guides/m0-plan-authorization-lineage.md)
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
@@ -182,6 +185,18 @@ uv run researchos authorizations record \
 输入、完整性或并发错误返回 `2`。事件明确声明 `not-authenticated`、`audit-only` 与
 `not-executed`，因此是可回放的审计事实而不是 runtime 凭证。详见
 [M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)。
+
+同一份计划身份可再通过只读查询重建匹配的审计事实，而不把它们升格为 Run 引用或启动凭证：
+
+```bash
+uv run researchos authorizations find \
+  examples/plan-authorization-lineage/valid/minimal.json \
+  research.db --format json
+```
+
+成功退出 `0` 只表示已冻结的事件前缀被重建；`matchCount` 可以为 `0`。报告固定声明
+`not-authenticated`、`audit-only`、`not-executed` 与 `not-consumed`。详见
+[M0 计划授权血缘查询](docs/guides/m0-plan-authorization-lineage.md)。
 
 ## 原生进程预检
 
