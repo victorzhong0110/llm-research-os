@@ -38,7 +38,7 @@ CI 在 Ubuntu 与 macOS 上、Python 3.12 与 3.13 要求全部通过；3.14 是
 ## 提交要求
 
 - 提交信息使用 Conventional Commits 前缀（`feat:`、`fix:`、`docs:`、`refactor:`、`ci:`、`chore:`）。
-- 提交作者是你本人的身份与常用邮箱；不接受编辑器或 agent 注入的 `Co-authored-by` 机器身份。维护者可执行一次 `git config core.hooksPath scripts/git-hooks` 自动剥离。
+- 提交作者是你本人的身份与常用邮箱；不接受编辑器或 agent 注入的 `Co-authored-by` 机器身份。每个 clone 执行一次 `./scripts/install-git-hooks.sh` 可在本地剥离；CI 对每条 PR 都会拒绝这类 trailer。
 - 仓库内容以英文为主要语言（代码、注释、CLI 文案、ADR、协议、导读、威胁模型、模板）；README 与 CONTRIBUTING 维护中文版；宪章 v0.1 与第 18 章以中文原文为准。Issue 与 PR 中英文皆可。
 - 来自 fork 的 PR：每个提交须带 [Developer Certificate of Origin 1.1](https://developercertificate.org/) 签署，即 `git commit -s` 产生的 `Signed-off-by: 姓名 <邮箱>` 行。CI 只对 fork PR 强制这一项。本项目不要求 CLA。
 - 保持 `uv.lock` 与 `pyproject.toml` 一致；锁文件变更需要在 PR 里说明原因。

@@ -64,8 +64,9 @@ forward-compat job. Coverage below 85% of `llm_research_os` fails the build.
 - Commit messages use Conventional Commits prefixes (`feat:`, `fix:`, `docs:`,
   `refactor:`, `ci:`, `chore:`).
 - The author is your own identity and usual email. Editor-injected
-  `Co-authored-by` machine identities are not accepted. Maintainers can run
-  `git config core.hooksPath scripts/git-hooks` once per clone to strip them.
+  `Co-authored-by` machine identities are not accepted. Run
+  `./scripts/install-git-hooks.sh` once per clone to strip them locally; CI
+  rejects the same trailers on every pull request.
 - Pull requests from forks: every commit carries a
   [Developer Certificate of Origin 1.1](https://developercertificate.org/)
   sign-off (`git commit -s` → `Signed-off-by: Name <email>`). CI enforces this

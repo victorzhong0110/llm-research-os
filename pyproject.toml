@@ -38,7 +38,7 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["B", "E", "F", "I", "RUF", "S", "SIM", "UP"]
+select = ["B", "E", "F", "I", "PT011", "PT012", "RUF", "S", "SIM", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 # Tests deliberately use asserts, "secret"-named fixtures for non-echo checks

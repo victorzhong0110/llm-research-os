@@ -45,10 +45,10 @@ comment above the Pydantic model.
 
 - CI coverage floor is 85% of `llm_research_os` (`--cov-fail-under=85`). The M0
   tree sits in the high 80s with branch coverage; do not treat 90% as a gate.
-- Prefer a property or a table of fixtures over a story-shaped test. Hypothesis is
-  already a dev dependency; first use it on `canonical.py`, the Run/Attempt reducer,
-  and schema round-trips when those files next change. Do not add unused Hypothesis
-  tests for coverage theatre.
+- Prefer a property or a table of fixtures over a story-shaped test. Hypothesis
+  covers JCS stability, Run/Attempt folds that ignore foreign runs, and Pydantic
+  round-trips of valid spec/event examples. Add properties when those modules
+  change; do not add unused Hypothesis tests for coverage theatre.
 - Do not wrap an expected exception in a bare `pytest.raises(ValueError)` when a
   narrower type or `match=` would pin the contract (`PT011`).
 - `assert` in tests is fine. `assert` in `src/` is not: it disappears under
@@ -63,12 +63,14 @@ Activate the hook once per clone (this is a local git setting, not a repository
 config checked in):
 
 ```bash
-git config core.hooksPath scripts/git-hooks
+./scripts/install-git-hooks.sh
 ```
 
-The hook in `scripts/git-hooks/commit-msg` drops matching trailers. Maintainers
-also set squash-merge on GitHub to `PR_TITLE` / `PR_BODY` so historical commit
-bodies do not become the squash message.
+The hook in `scripts/git-hooks/commit-msg` drops matching trailers. CI job
+`Human authorship` rejects the same trailers on every pull request, so a missing
+local hook cannot land a machine identity. Maintainers also set squash-merge on
+GitHub to `PR_TITLE` / `PR_BODY` so historical commit bodies do not become the
+squash message.
 
 Fork pull requests additionally carry a DCO 1.1 `Signed-off-by` on every commit
 (`git commit -s`). CI enforces that only for forks. There is no CLA.
@@ -92,10 +94,12 @@ launch credentials or scientific conclusions.
 ## Packaging and typing
 
 - `src/llm_research_os/py.typed` marks the package as typed for downstream mypy.
-- Version stays `0.0.0` until M1 closes; the first tag is then `v0.1.0-m1` with a
-  `CHANGELOG` entry. Do not invent a version bump in an engineering-standards PR.
+- Version stays `0.0.0` until M1 closes; the first tag is then `v0.1.0-m1`.
+  [CHANGELOG.md](../CHANGELOG.md) records Unreleased work; do not invent a
+  version bump in an engineering-standards pull request.
 - Ruff `S` (bandit) runs on `src/`. Tests and `conformance/` ignore it because they
   contain intentional `assert`, secret-named fixtures, and `shell=True` tripwires.
+- Ruff `PT011` / `PT012` pin pytest.raises contracts.
 
 ## Required checks
 

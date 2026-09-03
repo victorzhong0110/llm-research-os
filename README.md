@@ -75,6 +75,7 @@ acceptance checklist of that milestone.
 - [Project charter and minimal kernel spec v0.1](docs/charter-v0.1.md) (Chinese original)
 - [Chapter 18 decision guide v0.1](docs/chapter-18-decision-guide-v0.1.md) (Chinese original)
 - [Engineering standards](docs/engineering-standards.md)
+- [Changelog](CHANGELOG.md)
 - [ResearchSpec v0alpha1](docs/protocols/research-spec-v0alpha1.md)
 - [ResearchEvent v0alpha1](docs/protocols/research-event-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)

@@ -159,15 +159,25 @@ def test_bounded_reads_verify_and_preserve_global_order(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("after_sequence", "limit"),
-    [(-1, 10), (True, 10), (0, 0), (0, 1_001), (0, True)],
+    ("after_sequence", "limit", "match"),
+    [
+        (-1, 10, "after_sequence is outside the supported sequence range"),
+        (True, 10, "after_sequence must be an integer"),
+        (0, 0, r"limit must be an integer in 1\.\."),
+        (0, 1_001, r"limit must be an integer in 1\.\."),
+        (0, True, r"limit must be an integer in 1\.\."),
+    ],
 )
 def test_reads_reject_invalid_bounds(
     tmp_path: Path,
     after_sequence: int,
     limit: int,
+    match: str,
 ) -> None:
-    with EventStore(tmp_path / "research.db", clock=_clock) as store, pytest.raises(ValueError):
+    with (
+        EventStore(tmp_path / "research.db", clock=_clock) as store,
+        pytest.raises(ValueError, match=match),
+    ):
         store.read_events(after_sequence=after_sequence, limit=limit)
 
 

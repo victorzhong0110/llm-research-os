@@ -57,10 +57,14 @@ stays in `docs/protocols/` and `docs/guides/`.
 - `src/llm_research_os/py.typed` is present.
 - CI fails the tree below 85% coverage of `llm_research_os`. That is a floor, not
   a 90% target.
+- Hypothesis properties cover JCS stability, foreign-run folds, and spec/event
+  round-trips.
 - `scripts/git-hooks/commit-msg` strips Cursor/bot `Co-authored-by` trailers.
-  Activating it is a local `git config core.hooksPath` per clone; this repository
-  does not check in a git config.
+  `scripts/install-git-hooks.sh` is the one-shot local setup. CI job `Human
+  authorship` rejects the same trailers on every pull request.
 - `.github/dependabot.yml` updates GitHub Actions pins and the uv lock weekly.
+- `.github/CODEOWNERS` names `victorzhong0110`. Code-owner review is not a
+  required check (solo maintainer).
 
 ## Consequences
 
@@ -68,8 +72,8 @@ stays in `docs/protocols/` and `docs/guides/`.
 - Chinese-speaking contributors still have README, CONTRIBUTING, and the charter.
 - Comment-only pull requests that inflate ratio without adding an invariant are
   out of scope.
-- Hypothesis is available but unused until a slice that owns `canonical.py`, the
-  reducer, or schema round-trips chooses to add property tests.
+- Hypothesis is used on JCS, the Run/Attempt fold, and spec/event round-trips.
+  Further properties land with the slice that owns the module.
 - Version remains `0.0.0` until M1 close (`v0.1.0-m1`).
 
 ## Validation
@@ -81,9 +85,10 @@ stays in `docs/protocols/` and `docs/guides/`.
 3. Charter §23 has row E16; §16.2 has a one-line pointer.
 4. `src/llm_research_os/py.typed` is in the tree; `uv build` still produces a
    wheel that contains it.
-5. `.github/workflows/ci.yml` passes `--cov-fail-under=85`.
-6. ruff (including `S` on `src/`), mypy, pytest, schema `--check-all`, and
-   `uv build` still pass.
+5. `.github/workflows/ci.yml` passes `--cov-fail-under=85` and has a Human
+   authorship job on pull requests.
+6. ruff (including `S` on `src/` and `PT011`/`PT012`), mypy, pytest, schema
+   `--check-all`, and `uv build` still pass.
 
 ## References
 

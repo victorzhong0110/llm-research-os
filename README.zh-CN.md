@@ -83,6 +83,7 @@ SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/At
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 - [工程规范](docs/engineering-standards.md)（英文）
+- [Changelog](CHANGELOG.md)
 - [参与贡献](CONTRIBUTING.zh-CN.md)
 
 ## 本地开发
