@@ -74,10 +74,11 @@ Normative plan-identity query:
 }
 ```
 
-A current `RunSnapshot` already names the required join key. It does not name a
-`decisionDigest` or authorization event. Using the plan-identity query against
-that snapshot therefore returns a candidate set, not proof that the Run used
-one of those facts.
+A current `RunSnapshot` already names the required join key. SimulatedRuntime
+snapshots also name the in-process `decisionDigest`. That snapshot field is the
+gate identity, not an authorization event. Using it as this query's optional
+filter returns matching audit facts; it does not prove the Run consumed one of
+them. A plan-identity query (no `decisionDigest`) still returns a candidate set.
 
 ## Reconstruction
 

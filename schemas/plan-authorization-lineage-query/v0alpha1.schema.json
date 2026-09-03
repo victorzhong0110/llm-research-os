@@ -2,7 +2,7 @@
   "$defs": {
     "PlanAuthorizationLineageBinding": {
       "additionalProperties": false,
-      "description": "Plan identity used to locate recorded evaluation facts.\n\n``specDigest``, ``registryDigest`` and ``planDigest`` are required. They are\nthe fields a current RunSnapshot already carries. ``decisionDigest`` is\noptional: omit it to return every recorded evaluation of that plan identity;\nsupply it to restrict the candidate set to one exact decision.",
+      "description": "Plan identity used to locate recorded evaluation facts.\n\n``specDigest``, ``registryDigest`` and ``planDigest`` are required. They are\nthe fields every RunSnapshot carries. Optional ``decisionDigest`` on a\nRunSnapshot is an in-process gate identity, not an audit-event citation.\nOn this query, ``decisionDigest`` is optional: omit it to return every\nrecorded evaluation of that plan identity; supply it to restrict the\ncandidate set to one exact decision.",
       "properties": {
         "decisionDigest": {
           "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",

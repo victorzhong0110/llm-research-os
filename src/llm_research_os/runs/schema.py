@@ -27,7 +27,32 @@ def build_schema() -> dict[str, Any]:
         ordinal = attempt_properties.get("ordinal")
         if isinstance(ordinal, dict):
             ordinal["maximum"] = MAX_ATTEMPTS
-    return {"$schema": SCHEMA_DIALECT, "$id": SCHEMA_ID, **generated}
+    schema = {"$schema": SCHEMA_DIALECT, "$id": SCHEMA_ID, **generated}
+    _forbid_null_optional_digest(schema, "RunDigests", "decisionDigest")
+    return schema
+
+
+def _forbid_null_optional_digest(schema: dict[str, Any], definition: str, field: str) -> None:
+    """Keep optional digest fields as tagged strings; JSON null is not allowed."""
+
+    binding = schema.get("$defs", {}).get(definition)
+    if type(binding) is not dict:
+        return
+    properties = binding.get("properties")
+    if type(properties) is not dict:
+        return
+    digest = properties.get(field)
+    if type(digest) is not dict:
+        return
+    alternatives = digest.get("anyOf")
+    if type(alternatives) is not list:
+        return
+    typed = next(
+        (item for item in alternatives if type(item) is dict and item.get("type") == "string"),
+        None,
+    )
+    if typed is not None:
+        properties[field] = typed
 
 
 def canonical_schema() -> str:

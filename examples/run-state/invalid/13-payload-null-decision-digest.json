@@ -1,0 +1,36 @@
+{
+  "events": [
+    {
+      "specversion": "1.0",
+      "id": "evt.run.queued.1",
+      "source": "https://researchos.dev/projects/example",
+      "type": "run.queued",
+      "time": "2026-08-29T12:00:00Z",
+      "subject": "run.example",
+      "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+      "datacontenttype": "application/json",
+      "sequence": "1",
+      "sequencetype": "Integer",
+      "streamid": "stream.not-the-run-id",
+      "streamversion": 0,
+      "data": {
+        "schemaVersion": "v0alpha1",
+        "actor": {
+          "id": "researcher.alice"
+        },
+        "projectId": "project.example",
+        "experimentRevision": 1,
+        "payload": {
+          "workflowId": "wf.train",
+          "specDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "registryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "planDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "maxAttempts": 2,
+          "decisionDigest": null
+        },
+        "evidenceRefs": [],
+        "runId": "run.example"
+      }
+    }
+  ]
+}

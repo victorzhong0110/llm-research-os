@@ -69,6 +69,9 @@ rejected before the first write.
 After the canonical-manifest checks, SimulatedRuntime calls the pure
 [M0 plan authorization gate](m0-plan-authorization.md) with an exact three-digest binding and the
 fixed T0 grant `simulate`. No other capability, permission or approval is implicitly granted.
+The gate `decisionDigest` is written on `run.queued` and rebuilt onto `RunSnapshot.digests`.
+That snapshot field is the in-process evaluation identity. It is not a recorded
+`plan.authorization.evaluated` citation and not a launch token.
 
 `examples/valid/minimal.yaml` must state `outcome` explicitly:
 
@@ -85,7 +88,7 @@ seed.
 
 Success (`outcome: success`), exactly six facts:
 
-1. `run.queued` — `workflowId`, three digests, `maxAttempts: 1`
+1. `run.queued` — `workflowId`, three plan digests, in-process `decisionDigest`, `maxAttempts: 1`
 2. `run.started`
 3. `attempt.queued` — `ordinal: 1`, `retryOf: null`, `retryDecisionId: null`
 4. `attempt.started`

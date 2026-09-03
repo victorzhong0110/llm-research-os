@@ -96,9 +96,11 @@ class PlanAuthorizationLineageBinding(PlanAuthorizationLineageDocumentModel):
     """Plan identity used to locate recorded evaluation facts.
 
     ``specDigest``, ``registryDigest`` and ``planDigest`` are required. They are
-    the fields a current RunSnapshot already carries. ``decisionDigest`` is
-    optional: omit it to return every recorded evaluation of that plan identity;
-    supply it to restrict the candidate set to one exact decision.
+    the fields every RunSnapshot carries. Optional ``decisionDigest`` on a
+    RunSnapshot is an in-process gate identity, not an audit-event citation.
+    On this query, ``decisionDigest`` is optional: omit it to return every
+    recorded evaluation of that plan identity; supply it to restrict the
+    candidate set to one exact decision.
     """
 
     spec_digest: AuthorizationDigest = Field(alias="specDigest")

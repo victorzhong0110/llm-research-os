@@ -23,6 +23,7 @@ from llm_research_os.runs import (
     RunStateError,
     load_run_cancellation_request,
     request_cancellation,
+    run_snapshot_document,
 )
 from llm_research_os.spec.io import SpecLoadError, load_document
 from llm_research_os.spec.models import ResearchSpec
@@ -109,7 +110,7 @@ def _print_simulation_result(
     output_format: str,
 ) -> None:
     if output_format == "json":
-        payload = snapshot.model_dump(mode="json", by_alias=True)
+        payload = run_snapshot_document(snapshot)
         print(dumps_json(payload))
         return
     print(f"simulation disposition: {disposition.value}")
@@ -128,7 +129,7 @@ def _print_cancellation_result(
     output_format: str,
 ) -> None:
     if output_format == "json":
-        payload = snapshot.model_dump(mode="json", by_alias=True)
+        payload = run_snapshot_document(snapshot)
         print(dumps_json(payload))
         return
     print("cancellation request: recorded")
