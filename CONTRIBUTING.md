@@ -1,51 +1,85 @@
-# 参与贡献
+# Contributing
 
-> Summary in English: one command sets up the environment (`uv sync --locked --all-groups`); run the same checks CI runs before opening a pull request; one slice per pull request; ADRs record constraints only; pull requests from forks must carry a DCO 1.1 `Signed-off-by` on every commit (`git commit -s`). Security issues go through [SECURITY.md](SECURITY.md), not public issues.
+> 中文摘要与完整中文版见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。工程细则见
+> [engineering standards](docs/engineering-standards.md)（English）。
 
-本项目是预发布的研究控制面。M0 内核证明已收口（[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)），当前阶段是 M1 研究助手闭环，切片顺序、安全门与检查点见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) 与宪章 §23。开始之前先看开放的 issue；每个 M1 切片都有对应的 issue。
+This repository is a pre-release research control plane. The M0 kernel proof is
+closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)). The current phase
+is the M1 research-assistant loop; slice order, security gates, and the checkpoint
+are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23. Read
+the open issues before starting; every M1 slice has one.
 
-## 开发环境
+## Development environment
 
-需要 Python 3.12+ 与 [uv](https://docs.astral.sh/uv/)。训练后端不安装到控制面环境。
+Python 3.12+ and [uv](https://docs.astral.sh/uv/). Training backends are not
+installed into the control-plane environment.
 
 ```bash
 uv sync --locked --all-groups
 ```
 
-提交前跑与 CI 相同的检查：
+Run the same checks CI runs before opening a pull request:
 
 ```bash
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy src
-uv run pytest
+uv run pytest --cov=llm_research_os --cov-fail-under=85
 uv run researchos schema --check-all
 node conformance/digest/verify.mjs
 uv build
 ```
 
-CI 在 Python 3.12 与 3.13 上要求全部通过；3.14 是允许失败的前瞻作业。
+CI requires Python 3.12 and 3.13 on Ubuntu and macOS. 3.14 is an allowed-to-fail
+forward-compat job. Coverage below 85% of `llm_research_os` fails the build.
 
-## 切片方式
+## How to slice
 
-- 一条 PR 一个切片。切片有明确的“做什么”和“不做什么”；后者写进 PR 描述与对应的导读。
-- 引入新的约束或取舍才写 ADR（宪章 §23 E10）。新增命令、报告或 CLI 表面写协议文档（`docs/protocols/`）与导读（`docs/guides/`），不单独立 ADR。
-- 已发布的 JSON Schema 是对外契约，不要手工编辑 `schemas/`。修改 Pydantic 模型后用 `researchos schema --output ...` 重新生成，并把 schema 差异当作协议变更审查；新增契约在 `src/llm_research_os/cli/contracts.py` 登记一处。
-- 每个协议对象带正反例语料（`examples/`），无效样例必须说明为什么无效。
-- 任何新增的可执行能力（进程、插件、网络、模型调用、付费动作）在合并前需要更新[活威胁模型](docs/security/threat-model.md)并通过其安全门。标为“planned”的缓解不是当前代码的安全属性。
-- `ready`、`authorized`、预检成功、模拟 `completed` 都不是启动凭证或科学结论；不要在文档或代码里把它们写成那样。
+- One pull request, one slice. The slice names what it does and what it does not
+  do; the non-goal list goes in the pull request body and the matching guide.
+- Write an ADR only when the change introduces a constraint or a trade-off
+  (charter §23 E10). A new command, report, or CLI surface is a protocol document
+  (`docs/protocols/`) plus a guide (`docs/guides/`).
+- Published JSON Schema is the external contract. Do not edit `schemas/` by hand.
+  After changing a Pydantic model, regenerate with `researchos schema --output ...`
+  and review the schema diff as a protocol change. Register new contracts in
+  `src/llm_research_os/cli/contracts.py`.
+- Every protocol object ships with valid and invalid examples under `examples/`.
+  Invalid examples must say why they are invalid.
+- Any new executable capability (process, plugin, network, model call, paid
+  action) updates the [living threat model](docs/security/threat-model.md) and
+  passes its gate before merge. Rows marked `planned` are not current security
+  properties.
+- `ready`, `authorized`, a successful preflight, and a simulated `completed` are
+  not launch credentials or scientific conclusions. Do not write them as such.
 
-## 提交要求
+## Language, comments, authorship
 
-- 提交信息使用 Conventional Commits 前缀（`feat:`、`fix:`、`docs:`、`refactor:`、`ci:`、`chore:`）。
-- 提交作者是你本人的身份与常用邮箱。
-- 来自 fork 的 PR：每个提交须带 [Developer Certificate of Origin 1.1](https://developercertificate.org/) 签署，即 `git commit -s` 产生的 `Signed-off-by: 姓名 <邮箱>` 行。CI 只对 fork PR 强制这一项。本项目不要求 CLA。
-- 保持 `uv.lock` 与 `pyproject.toml` 一致；锁文件变更需要在 PR 里说明原因。
+- English is the working language (code, comments, CLI copy, ADRs, protocols,
+  guides, threat model, templates). README and CONTRIBUTING keep a Chinese
+  translation. Charter v0.1 stays Chinese until v0.2. See
+  [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md).
+- There is no comment-ratio target. Comments record fail-closed invariants and
+  non-local couplings; they do not restate the next line.
+- Commit messages use Conventional Commits prefixes (`feat:`, `fix:`, `docs:`,
+  `refactor:`, `ci:`, `chore:`).
+- The author is your own identity and usual email. Editor-injected
+  `Co-authored-by` machine identities are not accepted. Maintainers can run
+  `git config core.hooksPath scripts/git-hooks` once per clone to strip them.
+- Pull requests from forks: every commit carries a
+  [Developer Certificate of Origin 1.1](https://developercertificate.org/)
+  sign-off (`git commit -s` → `Signed-off-by: Name <email>`). CI enforces this
+  only on fork pull requests. There is no CLA.
+- Keep `uv.lock` in sync with `pyproject.toml`. Explain lockfile diffs in the
+  pull request.
 
-## 许可
+## License
 
-代码与原创文档按 [Apache-2.0](LICENSE) 发布；提交贡献即表示同意按该许可证第 5 条提交。数据集、论文、模型权重与第三方笔记不因此获得同一许可证，来源与权利须单独记录（宪章 §10、ADR-0019）。
+Code and original documentation are released under [Apache-2.0](LICENSE).
+Submitting a contribution is agreement to submit under section 5 of that license.
+Datasets, papers, model weights, and third-party notes do not inherit that
+license; origin and rights are recorded separately (charter §10, ADR-0019).
 
-## 安全
+## Security
 
-漏洞不要放在公开 issue。按 [SECURITY.md](SECURITY.md) 走私密渠道。
+Do not file vulnerabilities as public issues. Follow [SECURITY.md](SECURITY.md).

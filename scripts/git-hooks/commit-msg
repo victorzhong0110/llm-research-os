@@ -1,0 +1,12 @@
+#!/bin/sh
+# Strip agent co-author trailers that editor integrations inject into commit
+# messages. The repository records human authorship only (see
+# docs/engineering-standards.md, "Authorship").
+#
+# Activate once per clone:
+#   git config core.hooksPath scripts/git-hooks
+set -eu
+msg_file="$1"
+tmp_file="$(mktemp)"
+grep -Eiv '^Co-authored-by: .*(cursor|cursoragent@cursor\.com|\[bot\])' "$msg_file" > "$tmp_file" || true
+mv "$tmp_file" "$msg_file"

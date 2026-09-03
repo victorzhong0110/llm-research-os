@@ -64,8 +64,9 @@ class TrustedKernel:
                 limits=self._limits,
             )
         except PlanningBlocked as exc:
-            assert selected_workflow_id is not None
-            assert selected_graph is not None
+            if selected_workflow_id is None or selected_graph is None:
+                # compile_plan only raises PlanningBlocked after resolving the workflow.
+                raise RuntimeError("PlanningBlocked without a resolved workflow") from exc
             task_count, approval_count, loop_count, truncated = _source_counts(
                 selected_graph,
                 max_nodes=self._limits.max_nodes,

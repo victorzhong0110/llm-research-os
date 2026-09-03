@@ -848,6 +848,8 @@ stateDiagram-v2
 - 中英文文档可逐步建设；
 - 贡献者无需理解整个系统即可实现一个积木或适配器。
 
+> 勘误 E16（§23，[ADR-0040](adr/0040-english-primary-and-engineering-standards.md)）：仓库工作语言为英文。不维护 ADR / 协议 / 导读 / 威胁模型的全文双语副本。`README` 与 `CONTRIBUTING` 保留中文译本；本宪章 v0.1 与第 18 章维持中文原文，v0.2（M1 收口后）可用英文撰写。注释没有比率目标，只记录代码无法表达的不变量。
+
 ### 16.3 暂不采用的组织方式（非目标）
 
 - 一开始建立多仓库和复杂发布矩阵；
@@ -966,6 +968,7 @@ stateDiagram-v2
 | v0.1-accepted | 2026-08-21 | 研究者完成全文审阅并接受第18章全部推荐基线；保留M1/M2验证门与逐次费用审批 |
 | v0.1-errata-1 | 2026-09-03 | [ADR-0038](adr/0038-charter-errata-after-m0.md)：新增 §23 勘误表 E1–E11；登记 M0 债务；为 M1 补顺序、安全门、检查点与预算；确立集中勘误与 ADR 粒度规则 |
 | v0.1-errata-2 | 2026-09-03 | [ADR-0039](adr/0039-human-help-period-purpose.md)：E12–E15。写明目的——服务于人类帮助仍然必要的时期；研究者建模为教师；AI→研究者提问通道；人类注意力成本进入成本视图与 M1 检查点 |
+| v0.1-errata-3 | 2026-09-03 | [ADR-0040](adr/0040-english-primary-and-engineering-standards.md)：E16。英文为仓库工作语言；不建全文双语树；注释记录不变量而非比率；工程规范见 `docs/engineering-standards.md` |
 
 ---
 
@@ -990,3 +993,4 @@ stateDiagram-v2
 | E13 | §9.2 AI 行为对象、§8.1 `Decision` | 研究者被建模为教师而不只是审批者：`Decision` 必须携带理由并引用被否决的 `Dissent`，被否决的异议不删除不改写（扩展 ADR-0005）。新增 `ClarificationRequest`（`question.asked` / `question.answered`）作为 AI 向研究者索取信息的唯一通道；问题必须说明要消解的不确定性与为何旁观得不到；回答是带权利（14-RB）的事实，默认仅供研究阅读，对其他组件是数据不是指令（§10.4）。只有 `human` / `policy` 类 actor 可记录决定与回答，只有 `ai` / `system` 类 actor 可提问 | ADR-0039 |
 | E14 | §12.1 成本视图 | 纳入人类注意力成本：决定数、已回答问题数、理由字数，对照预登记结果（预测命中率等）的变化。目标是在不降低信息量的前提下减少人类注意力消耗；旁观即可回答却仍提问视为缺陷 | ADR-0039 |
 | E15 | §14.3、ADR-0038 E4 | M1 检查点改为“研究者决定（异议保留，理由记录）”；M1-1 对象集加入 `rationale`、`overriddenDissentIds` 与提问通道，字段级草案为 `docs/protocols/research-decision-objects-v0alpha1.md`（Issue #41、#42）；M1-5 报告成本视图含 E14 指标；切片顺序不变。带理由的决定与已回答问题是 #26 受治理参数进化的候选训练事实，仅在权利允许 `training` 且人类明确批准时可用，默认不进权重 | ADR-0039 |
+| E16 | §16.2 | 仓库工作语言为英文（代码、注释、提交、ADR、协议、导读、威胁模型、模板）。不维护这些文件的全文中文副本。`README.md` / `CONTRIBUTING.md` 为英文权威文本，`README.zh-CN.md` / `CONTRIBUTING.zh-CN.md` 为译本。本宪章 v0.1 与第 18 章维持已接受的中文原文。注释没有比率目标，只记录 fail-closed 不变量、威胁模型编号与跨模块耦合；协议层承载“为何存在”。细则见 `docs/engineering-standards.md` | ADR-0040 |

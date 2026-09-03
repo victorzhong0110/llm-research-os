@@ -4,9 +4,7 @@ LLM Research OS is pre-release research software. No released version is current
 
 ## Reporting a vulnerability
 
-Use this repository's private GitHub vulnerability-reporting or security-advisory channel when available. Do not place exploit details, credentials, private data, or unpublished vulnerabilities in a public issue.
-
-If no private channel is visible, open a minimal public issue requesting a private contact method without including sensitive details.
+Use this repository's [private vulnerability reporting](https://github.com/victorzhong0110/llm-research-os/security/advisories/new) channel. Do not place exploit details, credentials, private data, or unpublished vulnerabilities in a public issue.
 
 ## Scope
 

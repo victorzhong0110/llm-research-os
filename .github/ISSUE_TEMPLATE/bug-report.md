@@ -1,26 +1,28 @@
 ---
-name: 缺陷 / Bug report
-about: 现有命令、协议校验或事实源行为与文档不一致
+name: Bug report
+about: A command, protocol check, or fact-store behaviour disagrees with the docs
 title: "[bug] "
 labels: []
 ---
 
-## 现象
+<!-- Chinese is welcome in the body. The title prefix stays `[bug]`. -->
 
-<!-- 实际输出与预期输出。粘贴 ProblemReport JSON 或退出码；不要粘贴凭据、私有资料或完整事件库。 -->
+## What happened
 
-## 复现
+<!-- Actual vs expected. Paste a ProblemReport JSON or an exit code. Do not paste credentials, private evidence, or a full event store. -->
+
+## Reproduce
 
 ```bash
-# 最小命令序列，尽量使用 examples/ 下的文件
+# Minimal command sequence. Prefer files under examples/
 ```
 
-## 环境
+## Environment
 
-- 提交：`git rev-parse --short HEAD`
-- Python / uv：
-- 操作系统：
+- Commit: `git rev-parse --short HEAD`
+- Python / uv:
+- OS:
 
-## 违反的边界
+## Boundary broken
 
-<!-- 对应宪章原则、协议文档条款或威胁模型 TM-编号（若适用）。 -->
+<!-- Charter principle, protocol clause, or threat-model TM-id, if applicable. -->

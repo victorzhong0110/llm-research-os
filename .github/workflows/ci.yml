@@ -8,20 +8,30 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   protocol:
-    name: Python ${{ matrix.python-version }}${{ matrix.experimental && ' (forward-compat, allowed to fail)' || '' }}
-    runs-on: ubuntu-latest
-    # 3.12 and 3.13 are required (charter §18 decision 2). 3.14 is the
-    # forward-compatibility job from chapter 18 §2.2 / ADR-0038 E9 and may fail.
+    # Required checks (branch ruleset): Python 3.12 / 3.13 on ubuntu-latest and
+    # macos-latest. macOS is the primary development platform and the artifact
+    # store relies on dirfd / O_NOFOLLOW / link / fsync semantics that differ by OS.
+    # Python 3.14 is the forward-compatibility job (chapter 18 §2.2, ADR-0038 E9)
+    # and may fail.
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})${{ matrix.experimental && ' forward-compat, allowed to fail' || '' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.12", "3.13"]
         experimental: [false]
         include:
-          - python-version: "3.14"
+          - os: ubuntu-latest
+            python-version: "3.14"
             experimental: true
     steps:
       - name: Check out source
@@ -42,8 +52,8 @@ jobs:
         run: uv run mypy src
       - name: Verify RFC 8785 digest conformance
         run: node conformance/digest/verify.mjs
-      - name: Test
-        run: uv run pytest
+      - name: Test with coverage report
+        run: uv run pytest --cov=llm_research_os --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
       - name: Build package
@@ -56,6 +66,7 @@ jobs:
     # whose head repository is a fork.
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

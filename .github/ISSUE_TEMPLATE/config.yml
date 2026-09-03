@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 安全问题 / Security report
+  - name: Security report
     url: https://github.com/victorzhong0110/llm-research-os/blob/main/SECURITY.md
-    about: 漏洞与凭据泄露不要放在公开 issue，按 SECURITY.md 走私密渠道。
+    about: Vulnerabilities and credential leaks do not belong in public issues. Follow SECURITY.md.

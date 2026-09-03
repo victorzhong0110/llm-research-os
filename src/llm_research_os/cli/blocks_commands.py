@@ -85,7 +85,8 @@ def _print_registry_result(report: BlockRegistryReport, output_format: str) -> N
     for block in report.blocks:
         print(f"{block.id}@{block.version} ({block.runtime_type.value}, {block.manifest_digest})")
         if report.operation == "show":
-            assert block.manifest is not None
+            if block.manifest is None:
+                raise RuntimeError("show reports always carry the resolved manifest")
             manifest = block.manifest.model_dump(mode="json", by_alias=True, exclude_none=True)
             print("manifest:")
             print(

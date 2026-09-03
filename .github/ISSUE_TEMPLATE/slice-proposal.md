@@ -1,26 +1,28 @@
 ---
-name: 切片提案 / Slice proposal
-about: 提出一个新的实现切片、协议变更或勘误
+name: Slice proposal
+about: Propose an implementation slice, protocol change, or charter erratum
 title: "[M1-n] "
 labels: []
 ---
 
-## 目标
+<!-- Chinese is welcome in the body. Keep the title prefix `[M1-n]` or `[docs]`. -->
 
-<!-- 一句话。对应 ADR-0038 E4 的哪个切片，或宪章哪一条。 -->
+## Goal
 
-## 交付
+<!-- One sentence. Which ADR-0038 E4 slice, or which charter clause. -->
 
--
-
-## 明确不做
+## Deliver
 
 -
 
-## 门与依赖
+## Explicitly out of scope
 
-<!-- 威胁模型的哪一行、哪个 ADR、哪个前置切片。是否需要新 ADR（只有引入新约束时才需要）。 -->
+-
 
-## 验收
+## Gates and dependencies
 
-<!-- 可独立复核的检查：测试、语料、CLI 退出码、文档位置。 -->
+<!-- Which threat-model row, which ADR, which earlier slice. A new ADR is needed only when the change introduces a constraint. -->
+
+## Acceptance
+
+<!-- Independently reviewable checks: tests, fixtures, CLI exit codes, document paths. -->

@@ -1,25 +1,26 @@
-## 切片
+## Slice
 
-<!-- 一条 PR 一个切片。引用对应的 issue，或 ADR-0038 E4 中的 M1-n。 -->
+<!-- One pull request, one slice. Cite the matching issue or the M1-n from ADR-0038 E4. -->
 
-## 变更
+## Changes
 
 -
 
-## 边界
+## Non-goals
 
 <!--
-这条切片明确不做什么。
-是否新增可执行能力（进程、插件、网络、模型调用、付费动作）？若是，威胁模型的哪一行已更新？
-是否改动已发布 schema？若是，协议差异是什么？
+What this slice explicitly does not do.
+Does it add an executable capability (process, plugin, network, model call, paid action)? If so, which threat-model row was updated?
+Does it change a published schema? If so, what is the protocol diff?
 -->
 
-## 检查
+## Checks
 
 - [ ] `uv run ruff check . && uv run ruff format --check .`
 - [ ] `uv run mypy src`
-- [ ] `uv run pytest`
+- [ ] `uv run pytest --cov=llm_research_os --cov-fail-under=85`
 - [ ] `uv run researchos schema --check-all`
-- [ ] `node conformance/digest/verify.mjs`（改动 digest 相关时）
-- [ ] 协议文档 / 导读 / 威胁模型 / ADR 索引已按需同步
-- [ ] 来自 fork 的 PR：每个提交已 `git commit -s`（DCO 1.1）
+- [ ] `node conformance/digest/verify.mjs` (when digest code changed)
+- [ ] Protocol docs / guides / threat model / ADR index updated as needed
+- [ ] English README / CONTRIBUTING stay in sync with `.zh-CN` translations when either changed
+- [ ] Fork pull requests: every commit is `git commit -s` (DCO 1.1)
