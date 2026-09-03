@@ -1,6 +1,6 @@
 # ADR-0027: Explicit Simulated Run CLI
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-30
 
 ## Context

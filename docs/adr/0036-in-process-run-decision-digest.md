@@ -1,6 +1,6 @@
 # ADR-0036: In-process Plan Authorization Decision Digest on RunSnapshot
 
-- Status: Proposed
+- Status: Accepted
 - Implemented for review: 2026-09-03
 
 ## Context

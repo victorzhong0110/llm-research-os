@@ -1,6 +1,6 @@
 # ADR-0030: Deterministic Plan Authorization Gate
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-01
 
 ## Context

@@ -1,6 +1,6 @@
 # ADR-0035: Read-only Plan Authorization Lineage Query
 
-- Status: Proposed
+- Status: Accepted
 - Implemented for review: 2026-09-02
 
 ## Context

@@ -1,10 +1,10 @@
 # Living Threat Model
 
-> Status: Active M0 baseline
+> Status: Active M0 baseline; kernel-proof closed 2026-09-03 ([ADR-0037](../adr/0037-m0-kernel-proof-closure.md))
 >
-> Last reviewed: 2026-09-02
+> Last reviewed: 2026-09-03
 >
-> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
+> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, and explicit Run/Attempt cancellation requests
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -52,20 +52,20 @@ controlled lifecycle finish, not training success.
 | Generated JSON Schema | Published external contract | Implemented |
 | BlockManifest and sealed registry | Untrusted declarations resolved as inert data | Implemented validation and digest boundary |
 | Dry-run plan/report | Trusted-kernel output, not an execution result | Implemented pure planning boundary |
-| Plan authorization gate | Trusted-kernel evaluator over one exact ready plan | Implemented for review; pure decision, no authenticated receipt |
-| Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented for review; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
-| Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented for review; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
-| Native process preflight | Pure reviewer for one exact authorized Python task | Implemented for review; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
+| Plan authorization gate | Trusted-kernel evaluator over one exact ready plan | Implemented; pure decision, no authenticated receipt |
+| Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
+| Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
+| Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
 | AI/model providers | Untrusted proposals and content | Not connected in M0 |
 | Evidence connectors | Untrusted content and metadata | Not connected in M0 |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
-| Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented for review |
-| RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented for review; SimulatedRuntime is a caller and does not auto-retry |
-| SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented for review; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion |
-| Simulated Run CLI | Local request-to-RunSnapshot adapter | Implemented for review; strict versioned request, explicit identity, no conflict retry, exact RunSnapshot JSON |
-| Run Cancellation CLI | Local single-fact cancellation-request adapter | Implemented for review; existing store only, explicit identity, no signal, no inferred outcome or conflict retry |
-| Artifact Object CLI | Local object import and full verification adapter | Implemented for review; existing root only, no byte output, SQLite row, event, delete or upload |
+| Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented |
+| RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented; SimulatedRuntime is a caller and does not auto-retry |
+| SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion |
+| Simulated Run CLI | Local request-to-RunSnapshot adapter | Implemented; strict versioned request, explicit identity, no conflict retry, exact RunSnapshot JSON |
+| Run Cancellation CLI | Local single-fact cancellation-request adapter | Implemented; existing store only, explicit identity, no signal, no inferred outcome or conflict retry |
+| Artifact Object CLI | Local object import and full verification adapter | Implemented; existing root only, no byte output, SQLite row, event, delete or upload |
 | Artifact store and query projections | Integrity and confidentiality targets | Local file CAS and CLI implemented; SQLite artifact index and persistent projections planned |
 
 ## 3. Protected assets
@@ -165,6 +165,10 @@ Before merging executable capability, the following gates apply:
 
 ## 8. Explicitly accepted residual risk
 
+- M0 kernel-proof executable and protocol gates in this document are closed
+  (ADR-0037). Remaining planned mitigations, authenticated authorization, Workers,
+  native execution and public-network defense are M1 or later. Closure does not
+  retire the residual risks below.
 - M0 is local pre-release software and does not yet defend a public network service.
 - Plan authorization is not authenticated, signed, expiring or revocable. The optional event
   recorder makes a recomputed evaluation durable and replayable, but its actor remains

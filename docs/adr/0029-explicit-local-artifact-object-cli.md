@@ -1,6 +1,6 @@
 # ADR-0029: Explicit Local Artifact Object CLI
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-31
 
 ## Context
