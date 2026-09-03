@@ -12,7 +12,13 @@ from llm_research_os.runs.models import (
     RUN_SNAPSHOT_SCHEMA_ID,
     validate_run_snapshot_document,
 )
-from llm_research_os.runs.schema import SCHEMA_DIALECT, SCHEMA_ID, build_schema, schema_matches
+from llm_research_os.runs.schema import (
+    SCHEMA_DIALECT,
+    SCHEMA_ID,
+    _forbid_null_optional_digest,
+    build_schema,
+    schema_matches,
+)
 from llm_research_os.spec.io import load_document
 
 SCHEMA = Path(__file__).parents[1] / "schemas" / "run-state" / "v0alpha1.schema.json"
@@ -47,6 +53,17 @@ def test_run_state_schema_declares_external_contract() -> None:
 
 def test_committed_run_state_schema_is_current() -> None:
     assert schema_matches(SCHEMA)
+
+
+def test_forbid_null_optional_digest_fails_closed_on_unexpected_shape() -> None:
+    with pytest.raises(ValueError, match="missing"):
+        _forbid_null_optional_digest({}, "RunDigests", "decisionDigest")
+    with pytest.raises(ValueError, match="anyOf"):
+        _forbid_null_optional_digest(
+            {"$defs": {"RunDigests": {"properties": {"decisionDigest": {"type": "string"}}}}},
+            "RunDigests",
+            "decisionDigest",
+        )
 
 
 def test_committed_run_state_schema_is_valid_draft_2020_12() -> None:
