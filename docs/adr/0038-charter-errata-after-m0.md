@@ -92,7 +92,14 @@ change revision state.
 | 本地 SQLite 元数据存储 (`6-DBC`) | Event source only | Partial. Rebuildable projections, artifact index and a verified high-water cache for `RunControl` are M1-0 (ADR-0015 remainder). |
 | 重试 / 取消路径测试 | Reducer and RunControl corpora | Partial at runtime level. Runtime-driven retry and cancel outcomes arrive with M1-0. |
 
-Each row is tracked by a GitHub issue. None of them reopen ADR-0037.
+Each row is tracked by a GitHub issue with a fixed title so later slices can cite it:
+
+- `[M1-0] SQLite 可重建投影、制品索引与 RunControl 已校验高水位缓存（ADR-0015 剩余，6-DBC）`
+- `[M1-0] SimulatedRuntime 消费取消请求并产出 attempt.cancelled / run.cancelled（闭合“CLI 停止”）`
+- `[M1-1] Proposal / Dissent / Decision 事件对象（§14.2 提案样例重新解释）`
+
+The M1 order in E4 is tracked by `[M1] 研究助手闭环：切片顺序、安全门与检查点（ADR-0038 E4）`.
+None of them reopen ADR-0037.
 
 ### E4 — §14.3 M1 receives order, gates, checkpoint and budget
 
@@ -185,7 +192,7 @@ introduced. Authorship stays with the human contributor’s own identity.
    and a `dco` job gated on `github.event.pull_request.head.repo.fork`.
 3. `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md` and
    `.github/ISSUE_TEMPLATE/` exist.
-4. The E3 debts and the E4 order are open GitHub issues.
+4. Four open GitHub issues carry the titles fixed in E3.
 5. ruff, mypy, pytest, `researchos schema --check-all` and `uv build` still pass.
 
 ## References

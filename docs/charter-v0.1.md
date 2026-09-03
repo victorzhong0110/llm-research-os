@@ -745,7 +745,7 @@ stateDiagram-v2
 - 把 `plan.authorization.evaluated` 当作启动凭证；签名、过期、撤销、`{eventId,sequence}` 引用，以及 runtime 消费该审计事实（Issue #19 剩余项，属 M1）；
 - 类型化 `SecretRef`、SQLite 制品索引/GC/持久投影、已校验前缀缓存、事件 payload 体积/深度上限、DCO/CLA、L3 参数进化（Issue #26）。
 
-> 勘误 E3（§23）：对照原始清单，“提案/审批样例”为重新解释，“CLI 停止”“SQLite 元数据存储”“重试/取消路径”为部分交付；四项债务已登记为 M1-0 / M1-1 的 issue。
+> 勘误 E3（§23）：对照原始清单，“提案/审批样例”为重新解释，“CLI 停止”“SQLite 元数据存储”“重试/取消路径”为部分交付；四项债务以 ADR-0038 E3 固定的标题登记为 M1-0 / M1-1 的 issue。
 
 ### 14.3 内部里程碑 M1：研究助手闭环（已决定）
 
@@ -969,7 +969,7 @@ stateDiagram-v2
 |---|---|---|---|
 | E1 | §8.1 核心实体 | 表拆为两类：声明式 spec 实体（`ResearchQuestion` 至 `PolicySpec`）与事件聚合（`Proposal`、`Dissent`、`Decision`、`Run`、`Artifact`）。后者只以 ResearchEvent 事实和可重建投影存在，符合 P8 与 ADR-0007 | ADR-0038 |
 | E2 | §13.1 状态图 | 拆为运行状态机（ADR-0024，已实现）与修订状态机（Draft → Proposed → Validated → Accepted / Rejected → Superseded，暂定，M1-1 冻结）。`Accepted` 是对不可变修订的 Decision 事实，不是修订的可变字段 | ADR-0038 |
-| E3 | §14.2 M0 清单 | “确定性提案/审批样例”交付为能力授权门 + T0 `simulate`，属重新解释，`Proposal` 对象归 M1-1；“CLI 停止”只有取消请求事实、无消费者，M1-0 让 SimulatedRuntime 消费；“SQLite 元数据存储”只交付事件源，投影、制品索引与已校验高水位缓存归 M1-0（ADR-0015 剩余）；重试/取消结果路径仅在 reducer 层测试。四项均已登记 issue，不重开 ADR-0037 | ADR-0038 |
+| E3 | §14.2 M0 清单 | “确定性提案/审批样例”交付为能力授权门 + T0 `simulate`，属重新解释，`Proposal` 对象归 M1-1；“CLI 停止”只有取消请求事实、无消费者，M1-0 让 SimulatedRuntime 消费；“SQLite 元数据存储”只交付事件源，投影、制品索引与已校验高水位缓存归 M1-0（ADR-0015 剩余）；重试/取消结果路径仅在 reducer 层测试。四项以 ADR-0038 E3 固定的标题登记 issue，不重开 ADR-0037 | ADR-0038 |
 | E4 | §14.3 M1 清单 | 切片顺序 M1-0 债务与门 → M1-1 研究事实对象 → M1-2 模型接口（先 Mock）→ M1-3 资料导入 → M1-4 真实适配器与预算事件 → M1-5 模拟指标与静态报告 → M1-6 收口；每个切片对应威胁模型门。检查点：一条命令，spec → Mock 提案 → 反方异议 → 研究者决定（异议保留）→ 模拟运行 → 带 eventId 链接的报告，全程 ¥0 无外网。预算：默认 ¥0，最多一次 ≤ ¥30 的远端冒烟且需单次批准；¥1000 留给 M2。“最小Web页面”由静态报告满足，React Flow 延后 | ADR-0038 |
 | E5 | 第 18 章 `7-PLD` | M1 的内置 Mock 与 OpenAI 兼容适配器为核心维护代码，按 T0/T1 进程内运行；T2 子进程边界在接受首个社区适配器之前实现，而非之前。ADR-0016 成文时不得放宽 | ADR-0038 |
 | E6 | §9.4 能力名 | M1 建立可信内核能力注册表，初始成员 `simulate`、`read.local_evidence`、`read.external_api`、`write.experiment_draft`；`authorize_plan` 仍精确匹配，未知名失败关闭 | ADR-0038 |
