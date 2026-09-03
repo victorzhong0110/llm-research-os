@@ -33,26 +33,36 @@ def build_schema() -> dict[str, Any]:
 
 
 def _forbid_null_optional_digest(schema: dict[str, Any], definition: str, field: str) -> None:
-    """Keep optional digest fields as tagged strings; JSON null is not allowed."""
+    """Replace Pydantic's ``anyOf: [string, null]`` with a tagged string.
 
-    binding = schema.get("$defs", {}).get(definition)
+    Optional digests may be omitted, but JSON ``null`` is not a legal value.
+    The generator shape is fail-closed: a missing definition, field, or string
+    alternative raises so a Pydantic change cannot republish a nullable contract.
+    """
+
+    location = f"$defs.{definition}.properties.{field}"
+    definitions = schema.get("$defs")
+    if type(definitions) is not dict:
+        raise ValueError(f"schema is missing $defs while forbidding null on {location}")
+    binding = definitions.get(definition)
     if type(binding) is not dict:
-        return
+        raise ValueError(f"schema is missing {location} definition")
     properties = binding.get("properties")
     if type(properties) is not dict:
-        return
+        raise ValueError(f"schema is missing {location} properties")
     digest = properties.get(field)
     if type(digest) is not dict:
-        return
+        raise ValueError(f"schema is missing {location}")
     alternatives = digest.get("anyOf")
     if type(alternatives) is not list:
-        return
+        raise ValueError(f"schema {location} is not an anyOf union")
     typed = next(
         (item for item in alternatives if type(item) is dict and item.get("type") == "string"),
         None,
     )
-    if typed is not None:
-        properties[field] = typed
+    if typed is None:
+        raise ValueError(f"schema {location} anyOf has no string alternative")
+    properties[field] = typed
 
 
 def canonical_schema() -> str:

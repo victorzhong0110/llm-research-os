@@ -29,6 +29,9 @@ from llm_research_os.execution import (
     validate_plan_authorization_lineage_query_document,
     validate_plan_authorization_lineage_report_document,
 )
+from llm_research_os.execution.authorization_lineage import (
+    forbid_null_optional_digest,
+)
 from llm_research_os.execution.authorization_lineage_query_schema import (
     build_schema,
     canonical_schema,
@@ -131,8 +134,56 @@ def test_query_schema_is_closed_strict_versioned_and_current() -> None:
         "binding",
     }
     assert "decisionDigest" not in schema["$defs"]["PlanAuthorizationLineageBinding"]["required"]
+    digest = schema["$defs"]["PlanAuthorizationLineageBinding"]["properties"]["decisionDigest"]
+    assert digest["type"] == "string"
+    assert "anyOf" not in digest
     assert QUERY_SCHEMA.read_text(encoding="utf-8") == canonical_schema()
     Draft202012Validator.check_schema(schema)
+
+
+def test_forbid_null_optional_digest_fails_closed_on_unexpected_shape() -> None:
+    with pytest.raises(ValueError, match="missing"):
+        forbid_null_optional_digest({}, "PlanAuthorizationLineageBinding", "decisionDigest")
+    with pytest.raises(ValueError, match="anyOf"):
+        forbid_null_optional_digest(
+            {
+                "$defs": {
+                    "PlanAuthorizationLineageBinding": {
+                        "properties": {"decisionDigest": {"type": "string"}},
+                    }
+                }
+            },
+            "PlanAuthorizationLineageBinding",
+            "decisionDigest",
+        )
+    with pytest.raises(ValueError, match="string alternative"):
+        forbid_null_optional_digest(
+            {
+                "$defs": {
+                    "PlanAuthorizationLineageBinding": {
+                        "properties": {"decisionDigest": {"anyOf": [{"type": "null"}]}},
+                    }
+                }
+            },
+            "PlanAuthorizationLineageBinding",
+            "decisionDigest",
+        )
+    schema = {
+        "$defs": {
+            "PlanAuthorizationLineageBinding": {
+                "properties": {
+                    "decisionDigest": {
+                        "anyOf": [{"type": "string", "pattern": "x"}, {"type": "null"}],
+                    }
+                }
+            }
+        }
+    }
+    forbid_null_optional_digest(schema, "PlanAuthorizationLineageBinding", "decisionDigest")
+    assert schema["$defs"]["PlanAuthorizationLineageBinding"]["properties"]["decisionDigest"] == {
+        "type": "string",
+        "pattern": "x",
+    }
 
 
 def test_report_schema_is_closed_strict_versioned_and_current() -> None:
@@ -142,6 +193,9 @@ def test_report_schema_is_closed_strict_versioned_and_current() -> None:
     assert schema["properties"]["authority"]["const"] == "audit-only"
     assert schema["properties"]["runtimeConsumption"]["const"] == "not-consumed"
     assert schema["properties"]["execution"]["const"] == "not-executed"
+    digest = schema["$defs"]["PlanAuthorizationLineageBinding"]["properties"]["decisionDigest"]
+    assert digest["type"] == "string"
+    assert "anyOf" not in digest
     assert REPORT_SCHEMA.read_text(encoding="utf-8") == canonical_report_schema()
     Draft202012Validator.check_schema(schema)
 
