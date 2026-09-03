@@ -22,7 +22,7 @@ researchos = "llm_research_os.cli:entrypoint"
 [dependency-groups]
 dev = [
   "hypothesis>=6.167,<7",
-  "mypy>=1.13,<2",
+  "mypy>=1.13,<3",
   "pytest>=8,<10",
   "pytest-cov>=7.1,<8",
   "ruff>=0.9,<1",
