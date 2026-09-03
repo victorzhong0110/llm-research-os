@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # CI actions are pinned to commit SHAs (threat model TM-016); Dependabot is
+  # what moves the pins.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+    groups:
+      dev-tooling:
+        dependency-type: development

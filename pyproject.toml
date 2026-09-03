@@ -21,8 +21,10 @@ researchos = "llm_research_os.cli:entrypoint"
 
 [dependency-groups]
 dev = [
+  "hypothesis>=6.167,<7",
   "mypy>=1.13,<2",
   "pytest>=8,<10",
+  "pytest-cov>=7.1,<8",
   "ruff>=0.9,<1",
   "types-jsonschema>=4.23,<5",
   "types-pyyaml>=6.0.12",
@@ -36,7 +38,13 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+select = ["B", "E", "F", "I", "PT011", "PT012", "RUF", "S", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests deliberately use asserts, "secret"-named fixtures for non-echo checks
+# and shell=True tripwires that assert rejection.
+"tests/**" = ["S"]
+"conformance/**" = ["S"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -46,3 +54,13 @@ packages = ["llm_research_os"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source_pkgs = ["llm_research_os"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+]

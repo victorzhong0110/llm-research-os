@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from pydantic import TypeAdapter, ValidationError
 
 from llm_research_os.canonical import (
@@ -302,3 +304,37 @@ def test_out_of_range_integers_must_be_json_strings() -> None:
     digest = content_digest({"amount": "1" + "0" * 100})
     assert digest.startswith(JCS_SHA256_PREFIX)
     assert digest == content_digest({"amount": "1" + "0" * 100})
+
+
+def _unicode_scalar(text: str) -> bool:
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+_JSON_ATOMS = st.one_of(
+    st.none(),
+    st.booleans(),
+    st.integers(min_value=-(2**53) + 1, max_value=(2**53) - 1),
+    st.floats(allow_nan=False, allow_infinity=False).filter(lambda value: abs(value) < 2**53),
+    st.text().filter(_unicode_scalar),
+)
+_JSON_VALUES = st.recursive(
+    _JSON_ATOMS,
+    lambda children: st.one_of(
+        st.lists(children, max_size=6),
+        st.dictionaries(st.text().filter(_unicode_scalar), children, max_size=6),
+    ),
+    max_leaves=16,
+)
+
+
+@given(_JSON_VALUES)
+@settings(max_examples=80, deadline=200)
+def test_jcs_is_stable_under_json_parse(value: Any) -> None:
+    rendered = canonical_json(value)
+    parsed = json.loads(rendered)
+    assert canonical_json(parsed) == rendered
+    assert content_digest(parsed) == content_digest(value)

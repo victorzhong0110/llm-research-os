@@ -147,8 +147,7 @@ def test_replay_rejects_gaps_before_yielding(tmp_path: Path) -> None:
 
     yielded: list[int] = []
     with EventStore(database) as store, pytest.raises(EventIntegrityError, match="not contiguous"):
-        for item in replay_events(store, page_size=1):
-            yielded.append(item.sequence)
+        yielded.append(next(iter(replay_events(store, page_size=1))).sequence)
     assert yielded == []
 
 

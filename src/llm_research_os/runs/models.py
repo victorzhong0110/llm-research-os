@@ -280,7 +280,9 @@ PAYLOAD_MODELS: dict[str, type[RunStateDocumentModel]] = {
     TYPE_ATTEMPT_CANCELLED: EmptyPayload,
 }
 
-assert set(PAYLOAD_MODELS) == LIFECYCLE_TYPES
+if set(PAYLOAD_MODELS) != LIFECYCLE_TYPES:
+    # Kept as a hard check rather than `assert` so it survives `python -O`.
+    raise RuntimeError("PAYLOAD_MODELS must cover exactly the frozen lifecycle catalog")
 
 
 class RunDigests(RunStateDocumentModel):

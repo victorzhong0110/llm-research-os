@@ -8,14 +8,31 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   protocol:
-    name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    # Required checks (branch ruleset): Python 3.12 / 3.13 on ubuntu-latest and
+    # macos-latest. macOS is the primary development platform and the artifact
+    # store relies on dirfd / O_NOFOLLOW / link / fsync semantics that differ by OS.
+    # Python 3.14 is the forward-compatibility job (chapter 18 §2.2, ADR-0038 E9)
+    # and may fail.
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})${{ matrix.experimental && ' forward-compat, allowed to fail' || '' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.12", "3.13"]
+        experimental: [false]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.14"
+            experimental: true
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,9 +52,84 @@ jobs:
         run: uv run mypy src
       - name: Verify RFC 8785 digest conformance
         run: node conformance/digest/verify.mjs
-      - name: Test
-        run: uv run pytest
+      - name: Test with coverage report
+        run: uv run pytest --cov=llm_research_os --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
       - name: Build package
         run: uv build
+
+  authorship:
+    name: Human authorship
+    # ADR-0040: editor-injected Cursor / bot Co-authored-by trailers are not
+    # accepted. Enforced on every pull request so a missing local hook cannot
+    # land a machine identity on Insights → Contributors.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reject agent Co-authored-by trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head"
+          fi
+          polluted=0
+          for sha in $(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}"); do
+            if git log -1 --format=%B "$sha" | grep -Eiq '^Co-authored-by: .*(cursor|cursoragent@cursor\.com|\[bot\])'; then
+              echo "::error::commit ${sha} carries a forbidden Co-authored-by trailer"
+              git log -1 --format=%B "$sha"
+              polluted=1
+            fi
+          done
+          if [ "$polluted" -ne 0 ]; then
+            echo "Strip the trailer and rewrite the commit. See docs/engineering-standards.md."
+            exit 1
+          fi
+          echo "No agent Co-authored-by trailers."
+
+  dco:
+    name: DCO sign-off (fork pull requests)
+    # ADR-0038 E11: external contributions carry a Developer Certificate of
+    # Origin 1.1 sign-off on every commit. Enforced only for pull requests
+    # whose head repository is a fork.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require Signed-off-by on every commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head"
+          fi
+          missing=0
+          for sha in $(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}"); do
+            if ! git log -1 --format=%B "$sha" | grep -Eq '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::commit ${sha} lacks a Signed-off-by trailer (Developer Certificate of Origin 1.1)"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Sign each commit with 'git commit -s'. See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "All commits carry a DCO sign-off."

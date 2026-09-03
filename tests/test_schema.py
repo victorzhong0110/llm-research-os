@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
@@ -12,6 +14,7 @@ from llm_research_os.blocks.report_schema import schema_matches as block_report_
 from llm_research_os.blocks.reports import BlockRegistryEntry, BlockRegistryReport
 from llm_research_os.blocks.schema import build_schema as build_block_schema
 from llm_research_os.blocks.schema import schema_matches as block_schema_matches
+from llm_research_os.events.models import validate_event_document
 from llm_research_os.execution import TrustedKernel
 from llm_research_os.execution.schema import build_schema as build_dry_run_schema
 from llm_research_os.execution.schema import schema_matches as dry_run_schema_matches
@@ -162,3 +165,27 @@ def test_problem_report_schema_is_current_valid_and_accepts_diagnostics() -> Non
     )
     with pytest.raises(ValidationError, match="string_pattern_mismatch"):
         ProblemDetail(path="/invalid~2escape", message="invalid", type="invalid")
+
+
+def _valid_spec_paths() -> list[Path]:
+    return sorted((EXAMPLES / "valid").glob("*.yaml"))
+
+
+def _valid_event_paths() -> list[Path]:
+    return sorted((EXAMPLES / "events" / "valid").glob("*.json"))
+
+
+@given(st.sampled_from(_valid_spec_paths()))
+@settings(max_examples=max(1, len(_valid_spec_paths())), deadline=200)
+def test_valid_specs_round_trip_through_pydantic(path: Path) -> None:
+    spec = load_spec(path)
+    dumped = spec.model_dump(mode="json", by_alias=True, exclude_none=True)
+    assert type(spec).model_validate(dumped) == spec
+
+
+@given(st.sampled_from(_valid_event_paths()))
+@settings(max_examples=max(1, len(_valid_event_paths())), deadline=200)
+def test_valid_events_round_trip_through_pydantic(path: Path) -> None:
+    event = validate_event_document(json.loads(path.read_text(encoding="utf-8")))
+    dumped = event.model_dump(mode="json", by_alias=True, exclude_none=True)
+    assert validate_event_document(dumped) == event

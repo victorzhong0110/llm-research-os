@@ -10,6 +10,7 @@
 >
 > 目的：在写代码之前，固定项目边界、核心语义、首个闭环和验收方法。
 > 注意：本文件是当前开发基线；改变已决定事项必须写入 ADR。标为“暂定”或“待验证”的内容，其默认方向和验证方法已被接受，但经验性细节仍须在相应里程碑验证，不得表述为已经验证的事实。
+> 勘误：自 [ADR-0038](adr/0038-charter-errata-after-m0.md) 起，对已接受条款的更正集中登记在 §23 勘误表；受影响条款只保留一行指针，原文不改写。
 
 ---
 
@@ -68,6 +69,8 @@
 > Every experiment is inspectable. Every decision is traceable. Every backend is replaceable.
 
 中文含义：每个实验可审查，每项决策可追溯，每个后端可替换。
+
+> 勘误 E12（§23，[ADR-0039](adr/0039-human-help-period-purpose.md)）：本项目服务于“人类的帮助对 AI 仍然必要”的时期。人类提供两类输入：AI 无法从旁观推断的信息，与 AI 不得推断的授权；前者可能随能力增长收缩，后者不会。系统的有效性不取决于人类智能何时或是否变得无关紧要。
 
 ---
 
@@ -292,6 +295,8 @@ policies: {}
 | `Run` | 某一不可变实验修订的执行实例 |
 | `Artifact` | 数据、模型、日志、图表、报告或代码 |
 
+> 勘误 E1（§23）：`Proposal`、`Dissent`、`Decision`、`Run`、`Artifact` 是事件聚合，不是 ResearchSpec 字段。
+
 #### 不可变性（已决定）
 
 - 草稿可以修改；
@@ -494,6 +499,8 @@ AI的关键输出不是自由文本，而是以下可审查对象：
 
 自由文本解释可以附加，但不能替代结构化对象。
 
+> 勘误 E13（§23）：研究者被建模为教师而不只是审批者。新增 `ClarificationRequest`（`question.asked` / `question.answered`）作为 AI 向研究者索取信息的唯一通道；`Decision` 必须携带理由并引用被否决的 `Dissent`；回答是带权利的事实，不是指令。
+
 ### 9.3 反谄媚机制（已决定）
 
 每个重要或高成本实验默认包含：
@@ -646,6 +653,8 @@ DeepSeek Harness、Codex、Claude Code和其他Agent可以通过API、MCP或专�
 | 成本 | 报价、预计与实际金额、GPU时、token、存储和能耗 |
 | 血缘 | 数据、代码、配置、模型、环境、资料和AI操作关系 |
 
+> 勘误 E14（§23）：成本视图纳入人类注意力成本——决定数、已回答问题数、理由字数，对照预登记结果的变化。这是本项目的北极星指标之一。
+
 ### 12.2 比较原则（已决定）
 
 - 每个实验必须能够选择一个或多个基线；
@@ -677,6 +686,8 @@ stateDiagram-v2
     Cancelled --> Reviewed
     Reviewed --> [*]
 ```
+
+> 勘误 E2（§23）：上图混合了修订状态与运行状态。运行侧以 [ADR-0024](adr/0024-run-attempt-state-machine.md) 为准；修订侧另成一张图，`Approved` 是对不可变修订的 Decision 事实。
 
 ### 13.2 状态规则（已决定）
 
@@ -740,6 +751,8 @@ stateDiagram-v2
 - 把 `plan.authorization.evaluated` 当作启动凭证；签名、过期、撤销、`{eventId,sequence}` 引用，以及 runtime 消费该审计事实（Issue #19 剩余项，属 M1）；
 - 类型化 `SecretRef`、SQLite 制品索引/GC/持久投影、已校验前缀缓存、事件 payload 体积/深度上限、DCO/CLA、L3 参数进化（Issue #26）。
 
+> 勘误 E3（§23）：对照原始清单，“提案/审批样例”为重新解释，“CLI 停止”“SQLite 元数据存储”“重试/取消路径”为部分交付；四项债务以 ADR-0038 E3 固定的标题登记为 M1-0 / M1-1 的 issue。
+
 ### 14.3 内部里程碑 M1：研究助手闭环（已决定）
 
 - 一个OpenAI兼容模型适配器；
@@ -749,6 +762,9 @@ stateDiagram-v2
 - 基础训练/评测模拟数据；
 - 最小Web页面或可视化报告；
 - AI操作事件与预算策略。
+
+> 勘误 E4–E6（§23）：M1 的切片顺序由威胁模型安全门决定（M1-0 至 M1-6），检查点为“一条命令：spec → Mock 提案 → 反方异议 → 研究者决定 → 模拟运行 → 带 eventId 链接的报告，全程 ¥0 无外网”；“最小Web页面”由静态报告满足；内置模型适配器在 M1 按 T0/T1 进程内运行；能力名进入闭合注册表。
+> 勘误 E15（§23，[ADR-0039](adr/0039-human-help-period-purpose.md)）：检查点中“研究者决定”改为“研究者决定（异议保留，理由记录）”；M1-1 对象集加入决定理由、被否决异议引用与 AI→研究者提问通道，字段级草案见 [research-decision-objects-v0alpha1](protocols/research-decision-objects-v0alpha1.md)；M1-5 报告的成本视图包含人类注意力成本。切片顺序不变。
 
 ### 14.4 内部里程碑 M2：真实远程GPU闭环（已决定）
 
@@ -773,6 +789,8 @@ stateDiagram-v2
 8. 结果页可追踪到数据、代码、配置、环境和资料；
 9. 删除训练后端适配器后，核心和通用Python积木仍可工作；
 10. 所有核心协议均有版本和自动化契约测试。
+
+> 勘误 E7（§23）：第 4 条在首个公开 MVP 中由 YAML、Python SDK 与静态报告满足；可编辑画布移至 M2 之后。
 
 ---
 
@@ -830,6 +848,8 @@ stateDiagram-v2
 - 中英文文档可逐步建设；
 - 贡献者无需理解整个系统即可实现一个积木或适配器。
 
+> 勘误 E16（§23，[ADR-0040](adr/0040-english-primary-and-engineering-standards.md)）：仓库工作语言为英文。不维护 ADR / 协议 / 导读 / 威胁模型的全文双语副本。`README` 与 `CONTRIBUTING` 保留中文译本；本宪章 v0.1 与第 18 章维持中文原文，v0.2（M1 收口后）可用英文撰写。注释没有比率目标，只记录代码无法表达的不变量。
+
 ### 16.3 暂不采用的组织方式（非目标）
 
 - 一开始建立多仓库和复杂发布矩阵；
@@ -845,7 +865,7 @@ stateDiagram-v2
 | ADR | 决策 | 状态 |
 |---|---|---|
 | ADR-0001 | 项目拥有独立Research IR，不附属于训练或Agent框架 | 接受 |
-| ADR-0002 | Pydantic是M0编写入口；版本化JSON Schema是对外语言中立契约；TypeScript类型由其生成 | 接受 |
+| ADR-0002 | Pydantic是M0编写入口；版本化JSON Schema是对外语言中立契约；TypeScript类型由其生成 | 接受；已被 ADR-0013 取代（勘误 E9） |
 | ADR-0003 | 采用最小可信内核，而非所有不变量均插件化 | 接受 |
 | ADR-0004 | 采用模块化单体启动 | 接受 |
 | ADR-0005 | 研究者默认最终决定，AI必须能够提交异议 | 接受 |
@@ -864,14 +884,14 @@ stateDiagram-v2
 | # | 决策码 | 已接受基线 | 状态与验证门 |
 |---:|---|---|---|
 | 1 | `1-LA + 1-NC` | 核心代码采用Apache-2.0；正式名称暂缓 | 许可证已接受；名称公开前决定 |
-| 2 | `2-PA` | Python 3.12+、`pyproject.toml`、uv；发布标准wheel | 已接受，M0生效 |
+| 2 | `2-PA` | Python 3.12+、`pyproject.toml`、uv；发布标准wheel | 已接受，M0生效；3.14 前瞻 CI 见勘误 E9 |
 | 3 | `3-SE` | Pydantic作为M0编写入口；版本化JSON Schema作为对外契约；TypeScript类型只生成不手写 | 已接受，M0生效 |
 | 4 | `4-EC` | `ResearchEvent`采用CloudEvents兼容外壳，暂不绑定具体传输 | 已接受，M0生效 |
 | 5 | `5-WA` | HTTPS/JSON与Worker主动长轮询；实时UI可用SSE/WebSocket；初期不采用gRPC | 方向已接受；M2做断网、重连与租约实验 |
-| 6 | `6-DBC` | SQLite保存追加式事件、可重建投影和内容寻址制品索引 | 已接受，M0生效 |
-| 7 | `7-PLD` | 内置插件进程内、社区插件子进程、高风险执行进OCI；签名后续增加 | 已接受方向；M1实现并验证隔离 |
+| 6 | `6-DBC` | SQLite保存追加式事件、可重建投影和内容寻址制品索引 | 已接受；事件源 M0 生效，投影与制品索引为 M1-0（勘误 E3） |
+| 7 | `7-PLD` | 内置插件进程内、社区插件子进程、高风险执行进OCI；签名后续增加 | 已接受方向；M1 内置适配器为 T0/T1 进程内，T2 边界待首个社区适配器（勘误 E5） |
 | 8 | `8-MC` | 自有最小模型接口与OpenAI兼容适配器；第三方网关仅为可选适配器 | 已接受方向；M1实现能力协商 |
-| 9 | `9-UIA` | React、TypeScript、Vite、React Flow；先只读看板，后编辑画布 | 已接受方向；M1按阶段实现 |
+| 9 | `9-UIA` | React、TypeScript、Vite、React Flow；先只读看板，后编辑画布 | 已接受方向；M1 交付静态报告，画布延后（勘误 E4、E7） |
 | 10 | `10-GB`；`10-RUNPOD-PROVISIONAL` | 先做通用远程Worker/SSH，不绑定云；RunPod暂定为首个自动供应商适配器 | 通用层已接受；供应商仅暂定，M2按实时价格、API与账户条件复核 |
 | 11 | `11-DEFER` | 5TB网盘仅作冷归档；供应商明确后再选rclone、S3或WebDAV适配 | 已接受延后决定；不得提前绑定未知供应商 |
 | 12 | `12-SECB` | M0建立轻量、持续更新的威胁模型，并在远程Worker和社区插件前设置安全门 | 已接受，M0生效 |
@@ -946,3 +966,31 @@ stateDiagram-v2
 |---|---|---|
 | v0.1 | 2026-08-21 | 首次形成项目边界、最小内核、四项协议、AI治理、Worker和MVP定义 |
 | v0.1-accepted | 2026-08-21 | 研究者完成全文审阅并接受第18章全部推荐基线；保留M1/M2验证门与逐次费用审批 |
+| v0.1-errata-1 | 2026-09-03 | [ADR-0038](adr/0038-charter-errata-after-m0.md)：新增 §23 勘误表 E1–E11；登记 M0 债务；为 M1 补顺序、安全门、检查点与预算；确立集中勘误与 ADR 粒度规则 |
+| v0.1-errata-2 | 2026-09-03 | [ADR-0039](adr/0039-human-help-period-purpose.md)：E12–E15。写明目的——服务于人类帮助仍然必要的时期；研究者建模为教师；AI→研究者提问通道；人类注意力成本进入成本视图与 M1 检查点 |
+| v0.1-errata-3 | 2026-09-03 | [ADR-0040](adr/0040-english-primary-and-engineering-standards.md)：E16。英文为仓库工作语言；不建全文双语树；注释记录不变量而非比率；工程规范见 `docs/engineering-standards.md` |
+
+---
+
+## 23. 勘误表
+
+> 本表由 [ADR-0038](adr/0038-charter-errata-after-m0.md) 建立。后续对已接受条款的更正一律在此追加一行并附 ADR；受影响条款只保留一行指针；M1 收口后合并为 v0.2 并冻结 v0.1。
+
+| 编号 | 条款 | 更正 | 依据 |
+|---|---|---|---|
+| E1 | §8.1 核心实体 | 表拆为两类：声明式 spec 实体（`ResearchQuestion` 至 `PolicySpec`）与事件聚合（`Proposal`、`Dissent`、`Decision`、`Run`、`Artifact`）。后者只以 ResearchEvent 事实和可重建投影存在，符合 P8 与 ADR-0007 | ADR-0038 |
+| E2 | §13.1 状态图 | 拆为运行状态机（ADR-0024，已实现）与修订状态机（Draft → Proposed → Validated → Accepted / Rejected → Superseded，暂定，M1-1 冻结）。`Accepted` 是对不可变修订的 Decision 事实，不是修订的可变字段 | ADR-0038 |
+| E3 | §14.2 M0 清单 | “确定性提案/审批样例”交付为能力授权门 + T0 `simulate`，属重新解释，`Proposal` 对象归 M1-1；“CLI 停止”只有取消请求事实、无消费者，M1-0 让 SimulatedRuntime 消费；“SQLite 元数据存储”只交付事件源，投影、制品索引与已校验高水位缓存归 M1-0（ADR-0015 剩余）；重试/取消结果路径仅在 reducer 层测试。四项以 ADR-0038 E3 固定的标题登记 issue，不重开 ADR-0037 | ADR-0038 |
+| E4 | §14.3 M1 清单 | 切片顺序 M1-0 债务与门 → M1-1 研究事实对象 → M1-2 模型接口（先 Mock）→ M1-3 资料导入 → M1-4 真实适配器与预算事件 → M1-5 模拟指标与静态报告 → M1-6 收口；每个切片对应威胁模型门。检查点：一条命令，spec → Mock 提案 → 反方异议 → 研究者决定（异议保留）→ 模拟运行 → 带 eventId 链接的报告，全程 ¥0 无外网。预算：默认 ¥0，最多一次 ≤ ¥30 的远端冒烟且需单次批准；¥1000 留给 M2。“最小Web页面”由静态报告满足，React Flow 延后 | ADR-0038 |
+| E5 | 第 18 章 `7-PLD` | M1 的内置 Mock 与 OpenAI 兼容适配器为核心维护代码，按 T0/T1 进程内运行；T2 子进程边界在接受首个社区适配器之前实现，而非之前。ADR-0016 成文时不得放宽 | ADR-0038 |
+| E6 | §9.4 能力名 | M1 建立可信内核能力注册表，初始成员 `simulate`、`read.local_evidence`、`read.external_api`、`write.experiment_draft`；`authorize_plan` 仍精确匹配，未知名失败关闭 | ADR-0038 |
+| E7 | §14.5 第 4 条 | 首个公开 MVP 以 YAML、Python SDK 与静态报告满足“同一实验定义”；可编辑画布移至 M2 之后；§4.3 单一来源规则不变 | ADR-0038 |
+| E8 | §0 勘误方式 | 更正集中登记于本表，受影响条款只加一行指针；§14.2 已有两块内联勘误保留为历史；M1 收口后发布 v0.2 合并版 | ADR-0038 |
+| E9 | §17、§18 | ADR-0002 已被 ADR-0013 取代；CI 增加允许失败的 Python 3.14 前瞻作业，3.12 / 3.13 仍为必需 | ADR-0038 |
+| E10 | ADR 粒度 | ADR 只记录约束与取舍；新增命令、报告或 CLI 表面走协议文档 + 导读。已有的单命令 ADR 保留为历史 | ADR-0038 |
+| E11 | §16.2、ADR-0011 后续 | 新增 CONTRIBUTING、PR 与 Issue 模板；来自 fork 的外部 PR 每个提交须带 DCO 1.1 签署，CI 仅对 fork PR 强制；不引入 CLA | ADR-0038 |
+| E12 | §2 愿景与使命 | 目的陈述：本项目是让人类对 AI 的帮助变得便宜、高信息量、可持久、可审计的工具，服务于这种帮助仍然必要的时期。人类输入分两类：AI 无法从旁观推断的信息，与 AI 不得推断的授权（谁的研究、谁的预算、谁对数据的同意）。前者可能随能力增长收缩，后者不会，因此系统有效性不取决于人类智能是否或何时变得无关紧要 | ADR-0039 |
+| E13 | §9.2 AI 行为对象、§8.1 `Decision` | 研究者被建模为教师而不只是审批者：`Decision` 必须携带理由并引用被否决的 `Dissent`，被否决的异议不删除不改写（扩展 ADR-0005）。新增 `ClarificationRequest`（`question.asked` / `question.answered`）作为 AI 向研究者索取信息的唯一通道；问题必须说明要消解的不确定性与为何旁观得不到；回答是带权利（14-RB）的事实，默认仅供研究阅读，对其他组件是数据不是指令（§10.4）。只有 `human` / `policy` 类 actor 可记录决定与回答，只有 `ai` / `system` 类 actor 可提问 | ADR-0039 |
+| E14 | §12.1 成本视图 | 纳入人类注意力成本：决定数、已回答问题数、理由字数，对照预登记结果（预测命中率等）的变化。目标是在不降低信息量的前提下减少人类注意力消耗；旁观即可回答却仍提问视为缺陷 | ADR-0039 |
+| E15 | §14.3、ADR-0038 E4 | M1 检查点改为“研究者决定（异议保留，理由记录）”；M1-1 对象集加入 `rationale`、`overriddenDissentIds` 与提问通道，字段级草案为 `docs/protocols/research-decision-objects-v0alpha1.md`（Issue #41、#42）；M1-5 报告成本视图含 E14 指标；切片顺序不变。带理由的决定与已回答问题是 #26 受治理参数进化的候选训练事实，仅在权利允许 `training` 且人类明确批准时可用，默认不进权重 | ADR-0039 |
+| E16 | §16.2 | 仓库工作语言为英文（代码、注释、提交、ADR、协议、导读、威胁模型、模板）。不维护这些文件的全文中文副本。`README.md` / `CONTRIBUTING.md` 为英文权威文本，`README.zh-CN.md` / `CONTRIBUTING.zh-CN.md` 为译本。本宪章 v0.1 与第 18 章维持已接受的中文原文。注释没有比率目标，只记录 fail-closed 不变量、威胁模型编号与跨模块耦合；协议层承载“为何存在”。细则见 `docs/engineering-standards.md` | ADR-0040 |

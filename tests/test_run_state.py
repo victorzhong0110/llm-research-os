@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from pydantic import TypeAdapter, ValidationError
 
 from llm_research_os.events.models import ResearchEvent, validate_event_document
@@ -746,3 +748,26 @@ def test_strict_digest_accepts_new_and_legacy_labels() -> None:
 def test_strict_digest_rejects_whitespace_case_length_and_malformed_labels(value: str) -> None:
     with pytest.raises(ValidationError):
         STRICT_DIGEST.validate_python(value)
+
+
+@given(st.lists(st.integers(min_value=0, max_value=32), min_size=0, max_size=6))
+@settings(max_examples=40, deadline=400)
+def test_fold_ignores_foreign_run_events(insert_at: list[int]) -> None:
+    documents = _load_trace(EXAMPLES / "valid" / "01-single-attempt-succeeded-reviewed.json")[
+        "events"
+    ]
+    expected = _fold(documents)
+    mixed = list(documents)
+    for offset, position in enumerate(insert_at):
+        index = position % (len(mixed) + 1)
+        mixed.insert(
+            index,
+            _event(
+                10_000 + offset,
+                "run.queued",
+                _queued_payload(),
+                run="run.foreign",
+                event_id=f"evt.foreign.{offset}",
+            ),
+        )
+    assert _fold(mixed) == expected
