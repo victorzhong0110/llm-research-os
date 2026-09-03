@@ -11,7 +11,7 @@ from typing import Any, NoReturn
 import pytest
 from jsonschema import Draft202012Validator
 
-import llm_research_os.cli as cli_module
+import llm_research_os.cli.authz_commands as cli_module
 from llm_research_os.blocks.registry import build_registry
 from llm_research_os.cli import main
 from llm_research_os.execution import TrustedKernel
@@ -293,8 +293,8 @@ def test_authorize_cli_never_invokes_runtime_network_process_or_persistent_store
     def tripwire(*args: object, **kwargs: object) -> NoReturn:
         raise AssertionError(f"side effect called: {args!r} {kwargs!r}")
 
-    monkeypatch.setattr(cli_module, "EventStore", tripwire)
-    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire)
+    monkeypatch.setattr(cli_module, "EventStore", tripwire, raising=False)
+    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire, raising=False)
     monkeypatch.setattr(subprocess, "run", tripwire)
     monkeypatch.setattr(socket, "create_connection", tripwire)
     monkeypatch.setattr(importlib, "import_module", tripwire)

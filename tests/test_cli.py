@@ -1,65 +1,15 @@
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from llm_research_os.cli import main
+from llm_research_os.cli.contracts import DEFAULT_SCHEMA_CONTRACT, SCHEMA_CONTRACTS
+from llm_research_os.cli.parser import build_parser
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
 SCHEMA = Path(__file__).parents[1] / "schemas" / "research-spec" / "v0alpha1.schema.json"
-EVENT_SCHEMA = Path(__file__).parents[1] / "schemas" / "research-event" / "v0alpha1.schema.json"
-BLOCK_SCHEMA = Path(__file__).parents[1] / "schemas" / "block-manifest" / "v0alpha1.schema.json"
-BLOCK_REPORT_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "block-command-report" / "v0alpha1.schema.json"
-)
-DRY_RUN_SCHEMA = Path(__file__).parents[1] / "schemas" / "dry-run-report" / "v0alpha1.schema.json"
-PROBLEM_SCHEMA = Path(__file__).parents[1] / "schemas" / "problem-report" / "v0alpha1.schema.json"
-PLAN_AUTHORIZATION_REQUEST_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "plan-authorization-request" / "v0alpha1.schema.json"
-)
-PLAN_AUTHORIZATION_REPORT_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "plan-authorization-report" / "v0alpha1.schema.json"
-)
-PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA = (
-    Path(__file__).parents[1]
-    / "schemas"
-    / "plan-authorization-event-request"
-    / "v0alpha1.schema.json"
-)
-PLAN_AUTHORIZATION_LINEAGE_QUERY_SCHEMA = (
-    Path(__file__).parents[1]
-    / "schemas"
-    / "plan-authorization-lineage-query"
-    / "v0alpha1.schema.json"
-)
-PLAN_AUTHORIZATION_LINEAGE_REPORT_SCHEMA = (
-    Path(__file__).parents[1]
-    / "schemas"
-    / "plan-authorization-lineage-report"
-    / "v0alpha1.schema.json"
-)
-NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA = (
-    Path(__file__).parents[1]
-    / "schemas"
-    / "native-process-preflight-request"
-    / "v0alpha1.schema.json"
-)
-NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA = (
-    Path(__file__).parents[1]
-    / "schemas"
-    / "native-process-preflight-report"
-    / "v0alpha1.schema.json"
-)
-RUN_STATE_SCHEMA = Path(__file__).parents[1] / "schemas" / "run-state" / "v0alpha1.schema.json"
-SIMULATION_REQUEST_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "simulation-request" / "v0alpha1.schema.json"
-)
-RUN_CANCELLATION_REQUEST_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "run-cancellation-request" / "v0alpha1.schema.json"
-)
-ARTIFACT_OBJECT_REPORT_SCHEMA = (
-    Path(__file__).parents[1] / "schemas" / "artifact-object-report" / "v0alpha1.schema.json"
-)
 
 
 def test_validate_command(capsys: object) -> None:
@@ -80,199 +30,35 @@ def test_schema_check_command() -> None:
     assert main(["schema", "--check", str(SCHEMA)]) == 0
 
 
-def test_all_contract_schema_check_commands() -> None:
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "research-event",
-                "--check",
-                str(EVENT_SCHEMA),
-            ]
+def test_schema_parser_choices_come_from_the_registry() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["schema"])
+    assert args.contract == DEFAULT_SCHEMA_CONTRACT
+    assert args.check_all is False
+    with pytest.raises(SystemExit):
+        parser.parse_args(["schema", "--contract", "not-a-registered-contract"])
+    for name in SCHEMA_CONTRACTS:
+        parsed = parser.parse_args(["schema", "--contract", name])
+        assert parsed.contract == name
+
+
+def test_all_registered_schema_contracts_are_current() -> None:
+    for name, contract in SCHEMA_CONTRACTS.items():
+        assert main(["schema", "--contract", name, "--check", str(contract.committed_path)]) == 0, (
+            name
         )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "artifact-object-report",
-                "--check",
-                str(ARTIFACT_OBJECT_REPORT_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "simulation-request",
-                "--check",
-                str(SIMULATION_REQUEST_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "run-cancellation-request",
-                "--check",
-                str(RUN_CANCELLATION_REQUEST_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "block-manifest",
-                "--check",
-                str(BLOCK_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "plan-authorization-request",
-                "--check",
-                str(PLAN_AUTHORIZATION_REQUEST_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "plan-authorization-report",
-                "--check",
-                str(PLAN_AUTHORIZATION_REPORT_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "plan-authorization-event-request",
-                "--check",
-                str(PLAN_AUTHORIZATION_EVENT_REQUEST_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "plan-authorization-lineage-query",
-                "--check",
-                str(PLAN_AUTHORIZATION_LINEAGE_QUERY_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "plan-authorization-lineage-report",
-                "--check",
-                str(PLAN_AUTHORIZATION_LINEAGE_REPORT_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "native-process-preflight-request",
-                "--check",
-                str(NATIVE_PROCESS_PREFLIGHT_REQUEST_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "native-process-preflight-report",
-                "--check",
-                str(NATIVE_PROCESS_PREFLIGHT_REPORT_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "problem-report",
-                "--check",
-                str(PROBLEM_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "block-command-report",
-                "--check",
-                str(BLOCK_REPORT_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "dry-run-report",
-                "--check",
-                str(DRY_RUN_SCHEMA),
-            ]
-        )
-        == 0
-    )
-    assert (
-        main(
-            [
-                "schema",
-                "--contract",
-                "run-state",
-                "--check",
-                str(RUN_STATE_SCHEMA),
-            ]
-        )
-        == 0
-    )
+
+
+def test_schema_check_all_verifies_every_registered_contract(capsys: object) -> None:
+    assert main(["schema", "--check-all"]) == 0
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    for contract in SCHEMA_CONTRACTS.values():
+        assert f"schema is current: {contract.committed_path}" in output.out
+
+
+def test_unknown_schema_contract_is_rejected() -> None:
+    with pytest.raises(SystemExit):
+        main(["schema", "--contract", "not-a-registered-contract"])
 
 
 def test_dry_run_json_command_is_ready(capsys: object) -> None:

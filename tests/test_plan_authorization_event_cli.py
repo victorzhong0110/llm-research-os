@@ -10,7 +10,7 @@ from typing import Any, NoReturn
 import pytest
 from jsonschema import Draft202012Validator
 
-import llm_research_os.cli as cli_module
+import llm_research_os.cli.authz_commands as cli_module
 from llm_research_os.blocks.registry import build_registry
 from llm_research_os.cli import main
 from llm_research_os.execution import TrustedKernel, authorize_plan
@@ -209,8 +209,8 @@ def test_record_command_never_invokes_runtime_process_network_or_artifacts(
     def tripwire(*args: object, **kwargs: object) -> NoReturn:
         raise AssertionError(f"unexpected side effect: {args!r} {kwargs!r}")
 
-    monkeypatch.setattr(cli_module, "SimulatedRuntime", tripwire)
-    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire)
+    monkeypatch.setattr(cli_module, "SimulatedRuntime", tripwire, raising=False)
+    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire, raising=False)
     monkeypatch.setattr(subprocess, "run", tripwire)
     monkeypatch.setattr(subprocess, "Popen", tripwire)
     monkeypatch.setattr(socket, "create_connection", tripwire)
