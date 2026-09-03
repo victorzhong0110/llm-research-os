@@ -1,6 +1,6 @@
 # ADR-0033: Normative JCS Semantic Digests
 
-- Status: Proposed
+- Status: Accepted
 - Implemented for review: 2026-09-02
 
 ## Context

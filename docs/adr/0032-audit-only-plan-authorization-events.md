@@ -1,6 +1,6 @@
 # ADR-0032: Audit-only Plan Authorization Events
 
-- Status: Proposed
+- Status: Accepted
 - Implemented for review: 2026-09-02
 
 ## Context

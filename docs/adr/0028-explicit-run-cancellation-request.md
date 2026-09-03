@@ -1,6 +1,6 @@
 # ADR-0028: Explicit Run Cancellation Request
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-31
 
 ## Context

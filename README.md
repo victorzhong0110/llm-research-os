@@ -6,23 +6,23 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 
 ## 当前状态
 
-项目宪章 v0.1 及第 18 章技术基线已经接受。M0 已完成 ResearchSpec、ResearchEvent
-协议基础、纯静态规划内核、SQLite 追加式事件事实源、本地内容寻址制品对象层、纯
-Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界，以及无需 GPU
-与网络的确定性 SimulatedRuntime 纵向闭环，以及绑定三摘要、逐项能力/权限/审批的纯计划
-授权门；现在也可通过严格版本化且明确非凭证的请求/报告 CLI 求值计划授权，通过另一份请求
-创建或恢复模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或完整
-校验本地内容寻址制品对象；还可为单个已授权 Python task 生成固定、非启动型的原生进程预检
-报告；并可通过只读 lineage 查询重建与某一计划身份匹配的 `plan.authorization.evaluated`
-候选事实。SimulatedRuntime 会把进程内授权门的 `decisionDigest` 写入 `run.queued` 与
-`RunSnapshot.digests`，便于重建该 Run 通过了哪一次门求值；该字段不是审计事件引用、
-认证回执或启动许可。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告或
-lineage 重建冒充认证回执、启动许可、Run 所消费的那一条授权事件，或把取消请求误报为已停止。
+项目宪章 v0.1 及第 18 章技术基线已经接受。**M0 内核证明已于 2026-09-03 收口**，范围见
+[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)；原生进程里程碑勘误见
+[ADR-0034](docs/adr/0034-m0-scope-clarification.md)。
 
-M0 原生进程范围止于不可启动的 NativeProcessPreflight，真实 NativeProcessRuntime 不属于
-M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。
+已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
+SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
+全局 CAS 的 RunControl、无需 GPU 与网络的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
+非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、显式模拟 Run /
+取消请求 / 制品对象 CLI，以及不可启动的 NativeProcessPreflight。
+
+当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告、lineage 重建或
+`decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实，或把取消请求误报为已停止。
+真实 NativeProcessRuntime、远程 Worker、SQLite 制品索引与认证启动凭证均不属于 M0 已交付能力。
 
 ## M0 目标
+
+下列历史目标已由 [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md) 收口；条目保留为当时的验收清单。
 
 1. 编写短版 ADR 与持续更新的威胁模型；
 2. 定义 `ResearchSpec v0alpha1` 的 Pydantic 模型；
@@ -272,6 +272,8 @@ uv run researchos artifacts verify artifacts \
 SQLite、不发 ResearchEvent，也不赋予对象 project/Run、media type 或 URI 语义。
 
 ## 当前安全边界
+
+M0 内核证明已收口（[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)）。下列边界仍是当前代码的安全事实，不因收口而消失。
 
 M0 当前验证协议和差异、编译无副作用的静态计划，并以绑定三摘要的纯授权门逐项拒绝未授予的
 capability、permission 或 approval；可向本地 SQLite 追加、查询和回放事件事实，

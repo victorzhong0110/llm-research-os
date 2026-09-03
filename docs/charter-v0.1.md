@@ -723,6 +723,23 @@ stateDiagram-v2
 - 预检报告和 `plan.authorization.evaluated` 审计事件都不是启动凭证；M0 唯一写入生命周期事实的可执行路径仍是零副作用的 `SimulatedRuntime`；
 - 真实 `NativeProcessRuntime` 与 `OCIContainerRuntime` 均不在 M0 已交付能力中。
 
+#### M0 内核证明收口（§14.2，2026-09-03，[ADR-0037](adr/0037-m0-kernel-proof-closure.md)）
+
+在 ADR-0034 勘误后的范围内，M0 内核证明已收口。这不是取消 M1/M2，也不是把 ADR-0015 尚未交付的 SQLite 制品索引/持久投影，或真实 `NativeProcessRuntime`，记入本次收口。
+
+已交付且可核验：
+
+- `ResearchSpec` / `BlockManifest` / `ResearchEvent` v0alpha1、纯 dry-run、SQLite 追加式事件、本地文件内容寻址制品、Run/Attempt、RunControl、`SimulatedRuntime` 及其 CLI、取消请求 CLI、制品对象 CLI；
+- 绑定三摘要的计划授权门、非凭证授权 CLI、仅审计的 `plan.authorization.evaluated`、只读 lineage，以及 SimulatedRuntime 写入的进程内 `decisionDigest`；
+- 原生进程表面只有 `NativeProcessPreflight`；
+- 失败、重试、取消与 unknown 路径有测试；无需 LLM 的确定性提案/审批样例由授权门与 T0 simulate 承担。
+
+明确不在本次收口、不得表述为 M0 已完成：
+
+- `NativeProcessRuntime`、`OCIContainerRuntime`、远程 Worker、付费 GPU；
+- 把 `plan.authorization.evaluated` 当作启动凭证；签名、过期、撤销、`{eventId,sequence}` 引用，以及 runtime 消费该审计事实（Issue #19 剩余项，属 M1）；
+- 类型化 `SecretRef`、SQLite 制品索引/GC/持久投影、已校验前缀缓存、事件 payload 体积/深度上限、DCO/CLA、L3 参数进化（Issue #26）。
+
 ### 14.3 内部里程碑 M1：研究助手闭环（已决定）
 
 - 一个OpenAI兼容模型适配器；
@@ -867,6 +884,8 @@ stateDiagram-v2
 ---
 
 ## 19. v0.1之后的立即工作
+
+> 收口标注（2026-09-03，[ADR-0037](adr/0037-m0-kernel-proof-closure.md)）：下列清单是 2026-08-21 的立即工作。属于 M0 内核证明的条目已完成。ADR-0010、0016、0017、0020 仍为方向记录；ADR-0021 与 ADR-0022 仍待 M2。下一阶段见 §14.3。
 
 按以下顺序推进：
 

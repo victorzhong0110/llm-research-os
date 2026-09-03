@@ -1,6 +1,6 @@
 # ADR-0031: Explicit Non-Credential Plan Authorization CLI
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-01
 
 ## Context

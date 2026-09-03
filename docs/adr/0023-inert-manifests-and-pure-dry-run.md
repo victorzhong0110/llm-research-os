@@ -1,6 +1,6 @@
 # ADR-0023: Inert Manifests and Pure Deterministic Dry-Run
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-22
 
 ## Context
