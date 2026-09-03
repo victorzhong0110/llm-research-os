@@ -8,7 +8,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0002 | Pydantic/JSON Schema authority | Superseded by ADR-0013 | Historical shorthand |
 | [0003](0003-minimal-trusted-kernel.md) | Minimal trusted kernel | Accepted | Written |
 | [0004](0004-modular-monolith.md) | Modular monolith first | Accepted | Written |
-| [0005](0005-researcher-final-decision.md) | Researcher final decision and preserved AI dissent | Accepted | Written |
+| [0005](0005-researcher-final-decision.md) | Researcher final decision and preserved AI dissent | Accepted | Written; ADR-0039 D2 adds required decision rationale and overridden-dissent references |
 | [0006](0006-capability-budget-approval-autonomy.md) | Capability-, budget-, and approval-based autonomy | Accepted | Written |
 | [0007](0007-append-only-facts-rebuildable-projections.md) | Append-only facts and rebuildable projections | Accepted | Written |
 | [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; M0 milestone scope clarified by ADR-0034; non-executing native preflight implemented, native/OCI executors pending |
@@ -42,6 +42,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0036](0036-in-process-run-decision-digest.md) | In-process plan-authorization decisionDigest on RunSnapshot | Accepted | Implemented |
 | [0037](0037-m0-kernel-proof-closure.md) | M0 kernel-proof closure | Accepted | Written |
 | [0038](0038-charter-errata-after-m0.md) | Charter v0.1 errata after M0; M0 debts, M1 order, checkpoint and budget; errata method and ADR granularity | Accepted | Written |
+| [0039](0039-human-help-period-purpose.md) | The OS serves the period in which human help remains necessary; researcher modeled as teacher; sanctioned AI→researcher question channel; human-attention metric; gated persistence into parameters | Accepted | Written; M1-1 draft protocol `research-decision-objects-v0alpha1` pending implementation |
 
 M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are not part of that closure and are registered as M1-0 by ADR-0038.
 

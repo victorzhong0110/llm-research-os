@@ -4,13 +4,17 @@
 
 LLM Research OS 是一个独立、开源、模型无关、训练后端无关、算力供应商无关的 LLM 研究操作系统。它用于表达研究问题、组合实验、让 AI 提出并反驳方案、在本地或远程 Worker 上执行，并记录训练、评测、系统、成本、血缘与 AI 决策。
 
+它服务于人类的帮助对 AI 仍然必要的时期：把研究者提供的信息与授权做成便宜、高信息量、可持久、可审计的事实，研究者是教师而不只是审批者（[ADR-0039](docs/adr/0039-human-help-period-purpose.md)）。
+
 ## 当前状态
 
 项目宪章 v0.1 及第 18 章技术基线已经接受。**M0 内核证明已于 2026-09-03 收口**，范围见
 [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)；原生进程里程碑勘误见
 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。收口后的宪章勘误、M0 债务登记，以及
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
-与宪章 §23 勘误表。M1 尚未开始交付代码。
+与宪章 §23 勘误表；M1-1 研究决定对象的字段级草案见
+[research-decision-objects-v0alpha1（草案）](docs/protocols/research-decision-objects-v0alpha1.md)。
+M1 尚未开始交付代码。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
