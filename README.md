@@ -82,25 +82,7 @@ uv sync --locked --all-groups
 uv run researchos validate examples/valid/minimal.yaml
 uv run researchos blocks list
 uv run researchos dry-run examples/valid/minimal.yaml
-uv run researchos schema --check schemas/research-spec/v0alpha1.schema.json
-uv run researchos schema --contract research-event \
-  --check schemas/research-event/v0alpha1.schema.json
-uv run researchos schema --contract run-state \
-  --check schemas/run-state/v0alpha1.schema.json
-uv run researchos schema --contract simulation-request \
-  --check schemas/simulation-request/v0alpha1.schema.json
-uv run researchos schema --contract run-cancellation-request \
-  --check schemas/run-cancellation-request/v0alpha1.schema.json
-uv run researchos schema --contract artifact-object-report \
-  --check schemas/artifact-object-report/v0alpha1.schema.json
-uv run researchos schema --contract plan-authorization-request \
-  --check schemas/plan-authorization-request/v0alpha1.schema.json
-uv run researchos schema --contract plan-authorization-report \
-  --check schemas/plan-authorization-report/v0alpha1.schema.json
-uv run researchos schema --contract native-process-preflight-request \
-  --check schemas/native-process-preflight-request/v0alpha1.schema.json
-uv run researchos schema --contract native-process-preflight-report \
-  --check schemas/native-process-preflight-report/v0alpha1.schema.json
+uv run researchos schema --check-all
 uv run ruff check .
 uv run mypy src
 uv run pytest
@@ -126,7 +108,9 @@ schemas/native-process-preflight-request/v0alpha1.schema.json
 schemas/native-process-preflight-report/v0alpha1.schema.json
 ```
 
-不要手工编辑这些文件。修改 Pydantic 编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
+不要手工编辑这些文件。`researchos schema --check-all` 按 CLI 契约注册表校验全部已提交
+schema；新增契约只需在 `src/llm_research_os/cli/contracts.py` 登记一处。修改 Pydantic
+编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
 
 ```bash
 uv run researchos schema --output schemas/research-spec/v0alpha1.schema.json

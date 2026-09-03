@@ -10,7 +10,7 @@ from typing import Any, NoReturn
 import pytest
 from jsonschema import Draft202012Validator
 
-import llm_research_os.cli as cli_module
+import llm_research_os.cli.authz_commands as cli_module
 from llm_research_os.cli import main
 from llm_research_os.storage import EventStore
 
@@ -205,8 +205,8 @@ def test_find_command_never_invokes_runtime_process_network_or_artifacts(
     def tripwire(*args: object, **kwargs: object) -> NoReturn:
         raise AssertionError(f"unexpected side effect: {args!r} {kwargs!r}")
 
-    monkeypatch.setattr(cli_module, "SimulatedRuntime", tripwire)
-    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire)
+    monkeypatch.setattr(cli_module, "SimulatedRuntime", tripwire, raising=False)
+    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire, raising=False)
     monkeypatch.setattr(cli_module, "record_plan_authorization_event", tripwire)
     monkeypatch.setattr(subprocess, "run", tripwire)
     monkeypatch.setattr(subprocess, "Popen", tripwire)

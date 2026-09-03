@@ -12,7 +12,7 @@ from typing import Any, NoReturn
 import pytest
 from jsonschema import Draft202012Validator
 
-import llm_research_os.cli as cli_module
+import llm_research_os.cli.native_commands as cli_module
 from llm_research_os.cli import main
 from llm_research_os.spec.io import load_document
 
@@ -159,8 +159,8 @@ def test_cli_never_imports_spawns_signals_networks_or_persists(
     def tripwire(*args: object, **kwargs: object) -> NoReturn:
         raise AssertionError(f"side effect called: {args!r} {kwargs!r}")
 
-    monkeypatch.setattr(cli_module, "EventStore", tripwire)
-    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire)
+    monkeypatch.setattr(cli_module, "EventStore", tripwire, raising=False)
+    monkeypatch.setattr(cli_module, "LocalArtifactStore", tripwire, raising=False)
     monkeypatch.setattr(subprocess, "run", tripwire)
     monkeypatch.setattr(subprocess, "Popen", tripwire)
     monkeypatch.setattr(os, "system", tripwire)
