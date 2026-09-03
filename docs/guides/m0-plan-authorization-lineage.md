@@ -48,9 +48,10 @@ The report and every match fix:
 - `runtimeConsumption: not-consumed`;
 - `persistence: read-only`.
 
-The projection never selects a latest-authorized fact and does not update
-`RunSnapshot`. No NativeProcessRuntime, Worker or paid adapter may treat a
-non-empty candidate set as a launch token.
+The projection never selects a latest-authorized fact. SimulatedRuntime may record the
+in-process `decisionDigest` on `RunSnapshot`; this query still does not write that field
+or treat a match as the fact the Run used. No NativeProcessRuntime, Worker or paid adapter
+may treat a non-empty candidate set as a launch token.
 
-Linking a Run to one authenticated, expiring and revocable authorization fact
+Linking a Run to one authenticated, expiring and revocable authorization event
 remains future work.

@@ -142,7 +142,7 @@ fields.
 
 | Type | Payload |
 |---|---|
-| `run.queued` | `{ workflowId, specDigest, registryDigest, planDigest, maxAttempts }` |
+| `run.queued` | `{ workflowId, specDigest, registryDigest, planDigest, decisionDigest?, maxAttempts }` |
 | `run.started` | `{}` |
 | `run.cancel.requested` | `{ reasonCode }` |
 | `run.completed` | `{}` |
@@ -185,10 +185,16 @@ ordinals and reused Attempt IDs are illegal.
 - `specDigest`
 - `registryDigest`
 - `planDigest`
+- optional `decisionDigest` (in-process plan-authorization gate identity)
 - `maxAttempts`
 
 `planDigest` MUST NOT be treated as Run identity by itself. After `run.queued`, those bound
 values MUST NOT change. Every Attempt belongs to that immutable Run binding.
+
+`decisionDigest` MAY be omitted on generic traces that never passed the authorization gate.
+When present, it MUST be a tagged semantic digest and MUST equal the in-process
+`authorize_plan` result that allowed the Run to start. JSON `null` is invalid. The field is
+not an audit-event citation, signature, or launch token. SimulatedRuntime always writes it.
 
 ## 8. Attempt transitions
 
@@ -292,6 +298,12 @@ The projection also accepts historical `sha256:<64 lowercase hex>` so committed
 compatibility examples can be read. Those placeholders are not live-bound to a
 recomputed plan. Raw artifact `sha256:` byte digests are a different preimage.
 
+`digests.decisionDigest` is optional. Omit it when the trace has no gate identity.
+When present, EventStore replay MUST rebuild the same value from `run.queued`.
+A SimulatedRuntime snapshot always includes the in-process gate digest. That value
+MUST NOT be read as proof that a `plan.authorization.evaluated` fact exists, or as
+permission to launch a process.
+
 The committed `RunSnapshot` example:
 
 ```json
@@ -385,4 +397,5 @@ The following remain undecided and MUST NOT be filled in by adapters:
 - who may issue `retryDecisionId` and how that authority is proved;
 - Worker timeout policy that emits `attempt.unknown` / `attempt.lost`;
 - whether exhausting `maxAttempts` should auto-emit `run.failed` (it does not here);
-- artifact, cost and block-level projections.
+- artifact, cost and block-level projections;
+- citing a `plan.authorization.evaluated` `{eventId, sequence}` from RunSnapshot.

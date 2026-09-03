@@ -39,5 +39,6 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0033](0033-normative-jcs-semantic-digests.md) | Normative RFC 8785 JCS semantic digests | Proposed | Implemented for review |
 | [0034](0034-m0-scope-clarification.md) | M0 native-process milestone is NativeProcessPreflight, not NativeProcessRuntime | Accepted | Written |
 | [0035](0035-read-only-plan-authorization-lineage.md) | Read-only plan authorization lineage query | Proposed | Implemented for review |
+| [0036](0036-in-process-run-decision-digest.md) | In-process plan-authorization decisionDigest on RunSnapshot | Proposed | Implemented for review |
 
 “Record pending” means the decision is already accepted in the project charter but its standalone rationale has not yet been transcribed. It does not reopen the decision.

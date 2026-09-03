@@ -38,6 +38,11 @@ def test_run_state_schema_declares_external_contract() -> None:
     assert schema["additionalProperties"] is False
     assert schema["properties"]["attempts"]["maxItems"] == MAX_ATTEMPTS
     assert schema["properties"]["maxAttempts"]["maximum"] == MAX_ATTEMPTS
+    digests = schema["$defs"]["RunDigests"]
+    assert set(digests["required"]) == {"plan", "registry", "spec"}
+    assert "decisionDigest" not in digests["required"]
+    assert digests["properties"]["decisionDigest"]["type"] == "string"
+    assert "anyOf" not in digests["properties"]["decisionDigest"]
 
 
 def test_committed_run_state_schema_is_current() -> None:
@@ -82,6 +87,10 @@ def test_schema_invalid_snapshots_are_rejected_by_the_model() -> None:
     trimmed = _valid_snapshot()
     trimmed["runId"] = " run.example"
     cases.append(("trimmed runId", trimmed))
+
+    null_decision = _valid_snapshot()
+    null_decision["digests"]["decisionDigest"] = None
+    cases.append(("null decisionDigest", null_decision))
 
     for name, document in cases:
         assert list(validator.iter_errors(document)), name

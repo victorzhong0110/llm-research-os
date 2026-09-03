@@ -22,7 +22,11 @@ from llm_research_os.events.models import (
     RESEARCH_EVENT_SCHEMA_ID,
     validate_event_document,
 )
-from llm_research_os.execution.authorization import PlanAuthorizationPolicy, authorize_plan
+from llm_research_os.execution.authorization import (
+    PlanAuthorizationPolicy,
+    PlanAuthorizationResult,
+    authorize_plan,
+)
 from llm_research_os.execution.errors import PlanAuthorizationError, SimulationError
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, ExecutionPlan, PlannedTask
@@ -172,12 +176,18 @@ class SimulatedRuntime:
             workflow_id=request_fields.workflow_id,
             project_id=self._project_id,
         )
-        _authorize_simulated_plan(report)
+        authorization = _authorize_simulated_plan(report)
         outcome = _require_outcome(task)
         head = self._control.rebuild()
         snapshot = head.snapshot
         if snapshot is not None:
-            _require_matching_run(snapshot, report, self._run_id, request_fields.attempt_id)
+            _require_matching_run(
+                snapshot,
+                report,
+                self._run_id,
+                request_fields.attempt_id,
+                authorization.decision_digest,
+            )
         remaining, stop_disposition = _continuation(snapshot, outcome)
         if stop_disposition is not None:
             return SimulationResult(
@@ -190,6 +200,7 @@ class SimulatedRuntime:
             remaining,
             request_fields,
             report=report,
+            decision_digest=authorization.decision_digest,
             project_id=self._project_id,
             run_id=self._run_id,
             revision=frozen_spec.metadata.revision,
@@ -223,7 +234,7 @@ class _FrozenRequest:
     events: dict[str, tuple[str, str]]
 
 
-def _authorize_simulated_plan(report: DryRunReport) -> None:
+def _authorize_simulated_plan(report: DryRunReport) -> PlanAuthorizationResult:
     """Apply the fixed zero-side-effect T0 policy before simulated execution."""
 
     if report.digests.plan is None:
@@ -240,6 +251,7 @@ def _authorize_simulated_plan(report: DryRunReport) -> None:
         raise SimulationError("simulation plan authorization failed") from None
     if not authorization.authorized:
         raise SimulationError("simulation plan was not authorized")
+    return authorization
 
 
 def _freeze_spec(spec: object) -> ResearchSpec:
@@ -442,6 +454,7 @@ def _require_matching_run(
     report: DryRunReport,
     run_id: str,
     attempt_id: str,
+    decision_digest: str,
 ) -> None:
     if snapshot.project_id != report.project.id:
         _reject_run_mismatch("project-id-mismatch")
@@ -457,6 +470,8 @@ def _require_matching_run(
         _reject_run_mismatch("registry-digest-mismatch")
     if snapshot.digests.plan != report.digests.plan:
         _reject_run_mismatch("plan-digest-mismatch")
+    if snapshot.digests.decision_digest != decision_digest:
+        _reject_run_mismatch("decision-digest-mismatch")
     if snapshot.max_attempts != _MAX_ATTEMPTS:
         _reject_run_mismatch("max-attempts-mismatch")
     if snapshot.attempts and snapshot.attempts[0].attempt_id != attempt_id:
@@ -560,6 +575,7 @@ def _remaining_drafts(
     request: _FrozenRequest,
     *,
     report: DryRunReport,
+    decision_digest: str,
     project_id: str,
     run_id: str,
     revision: int,
@@ -576,7 +592,7 @@ def _remaining_drafts(
         if identity is None:
             raise SimulationError("simulation event identities are incomplete")
         event_id, event_time = identity
-        payload = _payload_for(event_type, report)
+        payload = _payload_for(event_type, report, decision_digest)
         data: dict[str, Any] = {
             "schemaVersion": "v0alpha1",
             "actor": {"id": request.actor_id},
@@ -605,13 +621,14 @@ def _remaining_drafts(
     return drafts
 
 
-def _payload_for(event_type: str, report: DryRunReport) -> dict[str, Any]:
+def _payload_for(event_type: str, report: DryRunReport, decision_digest: str) -> dict[str, Any]:
     if event_type == TYPE_RUN_QUEUED:
         return {
             "workflowId": report.workflow_id,
             "specDigest": report.digests.spec,
             "registryDigest": report.digests.registry,
             "planDigest": report.digests.plan,
+            "decisionDigest": decision_digest,
             "maxAttempts": _MAX_ATTEMPTS,
         }
     if event_type == TYPE_ATTEMPT_QUEUED:

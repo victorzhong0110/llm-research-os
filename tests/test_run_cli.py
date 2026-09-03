@@ -7,8 +7,10 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from llm_research_os.blocks.registry import build_registry
 from llm_research_os.cli import main
-from llm_research_os.spec.io import load_document
+from llm_research_os.execution import PlanAuthorizationPolicy, TrustedKernel, authorize_plan
+from llm_research_os.spec.io import load_document, load_spec
 from llm_research_os.storage import EventStore
 
 ROOT = Path(__file__).parents[1]
@@ -90,6 +92,18 @@ def test_simulate_command_creates_completed_run_and_emits_run_snapshot(
     assert snapshot["lastSequence"] == 6
     assert snapshot["activeAttemptId"] is None
     assert "disposition" not in snapshot
+    report = TrustedKernel(build_registry()).dry_run(load_spec(SPEC))
+    assert report.digests.plan is not None
+    expected_decision = authorize_plan(
+        report,
+        PlanAuthorizationPolicy(
+            spec_digest=report.digests.spec,
+            registry_digest=report.digests.registry,
+            plan_digest=report.digests.plan,
+            granted_capabilities=("simulate",),
+        ),
+    ).decision_digest
+    assert snapshot["digests"]["decisionDigest"] == expected_decision
     Draft202012Validator(json.loads(RUN_STATE_SCHEMA.read_text(encoding="utf-8"))).validate(
         snapshot
     )

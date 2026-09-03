@@ -220,12 +220,24 @@ class ReasonCodePayload(RunStateDocumentModel):
     reason_code: EventIdentifier = Field(alias="reasonCode")
 
 
+def _reject_null_optional_digest(value: object, field: str) -> object:
+    if type(value) is dict and value.get(field, "omitted") is None:
+        raise ValueError(f"{field} must be omitted or a semantic digest")
+    return value
+
+
 class RunQueuedPayload(RunStateDocumentModel):
     workflow_id: EventIdentifier = Field(alias="workflowId")
     spec_digest: StrictDigest = Field(alias="specDigest")
     registry_digest: StrictDigest = Field(alias="registryDigest")
     plan_digest: StrictDigest = Field(alias="planDigest")
+    decision_digest: StrictDigest | None = Field(default=None, alias="decisionDigest")
     max_attempts: MaxAttempts = Field(alias="maxAttempts")
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_decision_digest(cls, value: object) -> object:
+        return _reject_null_optional_digest(value, "decisionDigest")
 
 
 class RunReviewedPayload(RunStateDocumentModel):
@@ -275,6 +287,12 @@ class RunDigests(RunStateDocumentModel):
     spec: StrictDigest
     registry: StrictDigest
     plan: StrictDigest
+    decision_digest: StrictDigest | None = Field(default=None, alias="decisionDigest")
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_decision_digest(cls, value: object) -> object:
+        return _reject_null_optional_digest(value, "decisionDigest")
 
 
 class RunReview(RunStateDocumentModel):
@@ -532,7 +550,11 @@ def validate_run_snapshot_document(document: dict[str, Any]) -> RunSnapshot:
 def run_snapshot_document(snapshot: RunSnapshot) -> dict[str, Any]:
     """Return the deterministic alias-keyed JSON object for a snapshot."""
 
-    return snapshot.model_dump(mode="json", by_alias=True)
+    payload = snapshot.model_dump(mode="json", by_alias=True)
+    digests = payload.get("digests")
+    if type(digests) is dict and digests.get("decisionDigest") is None:
+        digests.pop("decisionDigest", None)
+    return payload
 
 
 def _payload_error_message(event: ResearchEvent) -> str:

@@ -18,12 +18,14 @@ from llm_research_os.blocks.models import BlockManifest
 from llm_research_os.blocks.registry import BlockRegistry, build_registry
 from llm_research_os.execution import (
     PlanAuthorizationError,
+    PlanAuthorizationPolicy,
     SimulatedRuntime,
     SimulationDisposition,
     SimulationError,
     SimulationEventIdentity,
     SimulationRequest,
     TrustedKernel,
+    authorize_plan,
 )
 from llm_research_os.execution.simulated import FAILURE_PATH, SUCCESS_PATH, UNKNOWN_PATH
 from llm_research_os.projections import fold_events, replay_events
@@ -200,6 +202,20 @@ def _limit_appends(store: EventStore, limit: int) -> None:
     store.append = limited  # type: ignore[method-assign]
 
 
+def _t0_decision_digest(report: Any) -> str:
+    plan = report.digests.plan
+    assert plan is not None
+    return authorize_plan(
+        report,
+        PlanAuthorizationPolicy(
+            spec_digest=report.digests.spec,
+            registry_digest=report.digests.registry,
+            plan_digest=plan,
+            granted_capabilities=("simulate",),
+        ),
+    ).decision_digest
+
+
 def test_success_path_emits_six_events_and_matches_replay(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     registry = build_registry()
@@ -219,8 +235,10 @@ def test_success_path_emits_six_events_and_matches_replay(tmp_path: Path) -> Non
             "specDigest": report.digests.spec,
             "registryDigest": report.digests.registry,
             "planDigest": report.digests.plan,
+            "decisionDigest": _t0_decision_digest(report),
             "maxAttempts": 1,
         }
+        assert result.snapshot.digests.decision_digest == _t0_decision_digest(report)
         sequences = [item.sequence for item in result.stored]
         assert sequences == [1, 2, 3, 4, 5, 6]
 
@@ -586,6 +604,57 @@ def test_mismatched_existing_run_writes_nothing(tmp_path: Path) -> None:
         assert store.last_sequence() == 3
 
 
+def test_omitted_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    registry = build_registry()
+    report = TrustedKernel(registry).dry_run(spec, workflow_id=WORKFLOW)
+    with EventStore(database) as store:
+        store.append(
+            _lifecycle_draft(
+                "run.queued",
+                "evt.seed.run.queued",
+                payload={
+                    "workflowId": WORKFLOW,
+                    "specDigest": report.digests.spec,
+                    "registryDigest": report.digests.registry,
+                    "planDigest": report.digests.plan,
+                    "maxAttempts": 1,
+                },
+            )
+        )
+        with pytest.raises(SimulationError, match="does not match"):
+            _runtime(store, registry).run(spec, _request())
+        assert store.last_sequence() == 1
+
+
+def test_stale_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    registry = build_registry()
+    report = TrustedKernel(registry).dry_run(spec, workflow_id=WORKFLOW)
+    stale = "jcs-sha256:" + "00" * 32
+    assert stale != _t0_decision_digest(report)
+    with EventStore(database) as store:
+        store.append(
+            _lifecycle_draft(
+                "run.queued",
+                "evt.seed.run.queued",
+                payload={
+                    "workflowId": WORKFLOW,
+                    "specDigest": report.digests.spec,
+                    "registryDigest": report.digests.registry,
+                    "planDigest": report.digests.plan,
+                    "decisionDigest": stale,
+                    "maxAttempts": 1,
+                },
+            )
+        )
+        with pytest.raises(SimulationError, match="does not match"):
+            _runtime(store, registry).run(spec, _request())
+        assert store.last_sequence() == 1
+
+
 def _race_simulations(database: Path) -> tuple[list[object], list[object]]:
     start = Barrier(2, timeout=5)
 
@@ -716,6 +785,9 @@ def test_simulated_runtime_module_has_no_clock_or_io_imports() -> None:
         "cuda",
         "mps",
         "ArtifactStore",
+        "record_plan_authorization_event",
+        "authorization_events",
+        "query_plan_authorization_lineage",
     ):
         assert forbidden not in source
 

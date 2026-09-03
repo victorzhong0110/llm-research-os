@@ -127,6 +127,12 @@
     "RunDigests": {
       "additionalProperties": false,
       "properties": {
+        "decisionDigest": {
+          "maxLength": 75,
+          "minLength": 71,
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "type": "string"
+        },
         "plan": {
           "maxLength": 75,
           "minLength": 71,

@@ -140,6 +140,30 @@ def test_valid_traces_fold_to_committed_snapshots(path: Path) -> None:
     assert validate_run_snapshot_document(trace["snapshot"]) == snapshot
 
 
+def test_omitted_decision_digest_is_absent_from_snapshot_document() -> None:
+    snapshot = _fold([_event(1, "run.queued", _queued_payload())])
+    assert snapshot is not None
+    assert snapshot.digests.decision_digest is None
+    dumped = run_snapshot_document(snapshot)
+    assert "decisionDigest" not in dumped["digests"]
+
+
+def test_queued_decision_digest_is_copied_immutably() -> None:
+    decision = "jcs-sha256:" + "44" * 32
+    snapshot = _fold(
+        [
+            _event(1, "run.queued", {**_queued_payload(), "decisionDigest": decision}),
+            _event(2, "run.started", {}),
+            _event(3, "metric.recorded", {"loss": 0.1}),
+        ]
+    )
+    assert snapshot is not None
+    assert snapshot.digests.decision_digest == decision
+    dumped = run_snapshot_document(snapshot)
+    assert dumped["digests"]["decisionDigest"] == decision
+    assert snapshot.last_sequence == 3
+
+
 @pytest.mark.parametrize(
     "path", sorted((EXAMPLES / "invalid").glob("*.json")), ids=lambda p: p.name
 )

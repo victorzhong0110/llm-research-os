@@ -57,7 +57,9 @@ single-task plan:
 - Before reading `outcome` or appending facts, the runtime passes the ready
   report through ADR-0030's exact three-digest authorization gate. Its fixed
   T0 policy grants only the canonical `simulate` capability; it grants no
-  permission or approval requirement.
+  permission or approval requirement. The returned `decisionDigest` is written
+  on `run.queued` and rebuilt onto `RunSnapshot.digests`. The runtime does not
+  read `plan.authorization.evaluated` events.
 - Every fact is written through `RunControl.append()`. SimulatedRuntime does
   not INSERT into SQLite, persist a Run table, write ArtifactStore, or emit
   `run.reviewed`. `maxAttempts` is fixed at `1`. This slice does not retry and

@@ -14,8 +14,10 @@ Run/Attempt 状态机、在写入前预检并做全局 CAS 的 RunControl 边界
 创建或恢复模拟 Run，为既有 Run 或 active Attempt 追加显式取消请求，并通过 CLI 导入或完整
 校验本地内容寻址制品对象；还可为单个已授权 Python task 生成固定、非启动型的原生进程预检
 报告；并可通过只读 lineage 查询重建与某一计划身份匹配的 `plan.authorization.evaluated`
-候选事实。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告或
-lineage 重建冒充认证回执、启动许可、Run 所依据的那一次授权，或把取消请求误报为已停止。
+候选事实。SimulatedRuntime 会把进程内授权门的 `decisionDigest` 写入 `run.queued` 与
+`RunSnapshot.digests`，便于重建该 Run 通过了哪一次门求值；该字段不是审计事件引用、
+认证回执或启动许可。当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告或
+lineage 重建冒充认证回执、启动许可、Run 所消费的那一条授权事件，或把取消请求误报为已停止。
 
 M0 原生进程范围止于不可启动的 NativeProcessPreflight，真实 NativeProcessRuntime 不属于
 M0 已交付能力。该里程碑勘误见 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。

@@ -161,11 +161,7 @@ def _apply_first(event: ResearchEvent, payload: object) -> RunSnapshot:
             "experimentRevision": event.data.experiment_revision,
             "runId": run_id,
             "workflowId": payload.workflow_id,
-            "digests": {
-                "spec": payload.spec_digest,
-                "registry": payload.registry_digest,
-                "plan": payload.plan_digest,
-            },
+            "digests": _queued_digests(payload),
             "maxAttempts": payload.max_attempts,
             "status": RunStatus.QUEUED,
             "cancellationRequested": False,
@@ -181,6 +177,17 @@ def _apply_first(event: ResearchEvent, payload: object) -> RunSnapshot:
             },
         }
     )
+
+
+def _queued_digests(payload: RunQueuedPayload) -> dict[str, str]:
+    digests = {
+        "spec": payload.spec_digest,
+        "registry": payload.registry_digest,
+        "plan": payload.plan_digest,
+    }
+    if payload.decision_digest is not None:
+        digests["decisionDigest"] = payload.decision_digest
+    return digests
 
 
 def _apply_run_event(state: RunSnapshot, event: ResearchEvent, payload: object) -> RunSnapshot:

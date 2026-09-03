@@ -38,9 +38,11 @@ normative example are in [SimulationRequest v0alpha1](../protocols/simulation-re
 ## Output and exit codes
 
 With `--format json`, stdout is exactly a versioned `RunSnapshot`, already
-covered by `schemas/run-state/v0alpha1.schema.json`. With `--format text`, the
-command prints disposition, project, Run, workflow, status, append count, and
-last global sequence; terminal-control characters are escaped.
+covered by `schemas/run-state/v0alpha1.schema.json`. Simulated runs include the
+in-process `digests.decisionDigest`. That field is the gate identity, not an
+audit-event citation. With `--format text`, the command prints disposition,
+project, Run, workflow, status, append count, and last global sequence;
+terminal-control characters are escaped.
 
 - `0`: controlled simulation completed;
 - `1`: simulation produced or retained failed, unknown, or unresolved state;
