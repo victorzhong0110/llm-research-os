@@ -456,6 +456,18 @@ def _require_matching_run(
     attempt_id: str,
     decision_digest: str,
 ) -> None:
+    if snapshot.project_id != report.project.id:
+        _reject_run_mismatch("project-id-mismatch")
+    if snapshot.experiment_revision != report.project.revision:
+        _reject_run_mismatch("experiment-revision-mismatch")
+    if snapshot.run_id != run_id:
+        _reject_run_mismatch("run-id-mismatch")
+    if snapshot.workflow_id != report.workflow_id:
+        _reject_run_mismatch("workflow-id-mismatch")
+    if snapshot.digests.spec != report.digests.spec:
+        _reject_run_mismatch("spec-digest-mismatch")
+    if snapshot.digests.registry != report.digests.registry:
+        _reject_run_mismatch("registry-digest-mismatch")
     if snapshot.digests.plan != report.digests.plan:
         _reject_run_mismatch("plan-digest-mismatch")
     if snapshot.digests.decision_digest != decision_digest:
