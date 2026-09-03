@@ -10,6 +10,7 @@ from llm_research_os.runs.cancellation import (
 )
 from llm_research_os.runs.control import RunControl, RunControlHead, RunControlResult
 from llm_research_os.runs.errors import (
+    RunCancellationRequestError,
     RunControlError,
     RunPayloadError,
     RunStateError,
@@ -31,6 +32,7 @@ __all__ = [
     "AttemptStatus",
     "RetryHint",
     "RunCancellationRequestDocument",
+    "RunCancellationRequestError",
     "RunCancellationTarget",
     "RunControl",
     "RunControlError",

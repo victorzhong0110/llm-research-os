@@ -6,12 +6,12 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
-from pydantic import ValidationError
 
 from llm_research_os.events.models import validate_event_document
 from llm_research_os.runs import (
     AttemptCancellationTarget,
     RunCancellationRequestDocument,
+    RunCancellationRequestError,
     RunCancellationTarget,
     load_run_cancellation_request,
     validate_run_cancellation_request_document,
@@ -49,7 +49,7 @@ def test_invalid_examples_are_rejected_by_model_and_schema() -> None:
     validator = _schema_validator()
     for path in sorted((EXAMPLES / "invalid").glob("*.json")):
         document = load_document(path)
-        with pytest.raises(ValidationError):
+        with pytest.raises(RunCancellationRequestError):
             validate_run_cancellation_request_document(document)
         assert list(validator.iter_errors(document)), path.name
 
@@ -77,21 +77,21 @@ def test_generated_schema_is_deterministic_and_current() -> None:
 def test_python_field_names_are_rejected(alias: str, python_name: str) -> None:
     document = _document()
     document[python_name] = document.pop(alias)
-    with pytest.raises(ValidationError):
+    with pytest.raises(RunCancellationRequestError):
         validate_run_cancellation_request_document(document)
 
 
 def test_nested_python_field_name_and_explicit_null_are_rejected() -> None:
     attempt = _document("attempt.json")
     attempt["target"]["attempt_id"] = attempt["target"].pop("attemptId")
-    with pytest.raises(ValidationError):
+    with pytest.raises(RunCancellationRequestError):
         validate_run_cancellation_request_document(attempt)
 
     for path in (("event", "id"), ("actor", "id"), (None, "reasonCode")):
         document = _document()
         parent = document if path[0] is None else document[path[0]]
         parent[path[1]] = None
-        with pytest.raises(ValidationError):
+        with pytest.raises(RunCancellationRequestError):
             validate_run_cancellation_request_document(document)
 
 
@@ -108,7 +108,7 @@ def test_nested_python_field_name_and_explicit_null_are_rejected() -> None:
 def test_scalar_coercion_is_rejected(field: str, value: object) -> None:
     document = _document()
     document[field] = value
-    with pytest.raises(ValidationError):
+    with pytest.raises(RunCancellationRequestError):
         validate_run_cancellation_request_document(document)
 
 
@@ -123,7 +123,7 @@ def test_scalar_coercion_is_rejected(field: str, value: object) -> None:
 def test_invalid_uri_reference_is_rejected(field: str, value: str) -> None:
     document = _document()
     document[field] = value
-    with pytest.raises(ValidationError):
+    with pytest.raises(RunCancellationRequestError):
         validate_run_cancellation_request_document(document)
 
 
@@ -138,7 +138,7 @@ def test_invalid_uri_reference_is_rejected(field: str, value: str) -> None:
 def test_invalid_rfc3339_event_time_is_rejected(value: str) -> None:
     document = _document()
     document["event"]["time"] = value
-    with pytest.raises(ValidationError):
+    with pytest.raises(RunCancellationRequestError):
         validate_run_cancellation_request_document(document)
 
 
@@ -164,8 +164,9 @@ def test_request_isolated_from_mutable_input_and_builds_valid_run_draft() -> Non
 def test_non_json_evidence_container_is_rejected() -> None:
     document = _document()
     document["evidenceRefs"] = ("evidence.note.1",)
-    with pytest.raises(ValidationError, match="JSON array"):
+    with pytest.raises(RunCancellationRequestError) as info:
         validate_run_cancellation_request_document(document)
+    assert "JSON array" in str(info.value.error)
 
 
 def test_attempt_target_builds_only_attempt_cancel_request() -> None:

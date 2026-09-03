@@ -229,6 +229,32 @@ def test_unexpected_request_field_does_not_echo_value(
     assert not database.exists()
 
 
+def test_unsupported_plan_problem_type_is_the_stable_reason_code(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    document = load_document(SPEC)
+    document["workflows"][0]["graph"]["nodes"].append(
+        {
+            "kind": "task",
+            "id": "second",
+            "blockType": "simulated.experiment",
+            "blockVersion": "0.1.0",
+            "config": {"outcome": "success", "seed": 0},
+        }
+    )
+    spec = _write_json(tmp_path / "two-tasks.json", document)
+    database = tmp_path / "research.db"
+    assert _run(spec, REQUEST, database) == 2
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    problem = json.loads(output.err)
+    assert output.out == ""
+    assert problem["errors"][0]["type"] == "nodes-not-single"
+    assert "simulated.experiment" in problem["errors"][0]["message"]
+    with EventStore(database, create=False) as store:
+        assert store.verify_integrity() == 0
+
+
 def test_database_integrity_is_preserved_after_cli_run(tmp_path: Path, capsys: object) -> None:
     database = tmp_path / "research.db"
     assert _run(SPEC, REQUEST, database) == 0

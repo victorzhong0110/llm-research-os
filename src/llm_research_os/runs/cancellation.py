@@ -5,7 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from llm_research_os.events.models import (
     RESEARCH_EVENT_SCHEMA_ID,
@@ -17,6 +24,7 @@ from llm_research_os.events.models import (
     Rfc3339Timestamp,
 )
 from llm_research_os.runs.control import RunControl, RunControlResult
+from llm_research_os.runs.errors import RunCancellationRequestError
 from llm_research_os.spec.io import load_document
 from llm_research_os.storage.store import EventStore
 
@@ -148,7 +156,10 @@ def validate_run_cancellation_request_document(
 ) -> RunCancellationRequestDocument:
     """Validate an already-decoded external cancellation request."""
 
-    return RunCancellationRequestDocument.model_validate(document)
+    try:
+        return RunCancellationRequestDocument.model_validate(document)
+    except ValidationError as exc:
+        raise RunCancellationRequestError(exc) from None
 
 
 def load_run_cancellation_request(path: str | Path) -> RunCancellationRequestDocument:
