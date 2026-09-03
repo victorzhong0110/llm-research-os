@@ -8,7 +8,9 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 
 项目宪章 v0.1 及第 18 章技术基线已经接受。**M0 内核证明已于 2026-09-03 收口**，范围见
 [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)；原生进程里程碑勘误见
-[ADR-0034](docs/adr/0034-m0-scope-clarification.md)。
+[ADR-0034](docs/adr/0034-m0-scope-clarification.md)。收口后的宪章勘误、M0 债务登记，以及
+M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
+与宪章 §23 勘误表。M1 尚未开始交付代码。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
@@ -74,6 +76,7 @@ SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/At
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
+- [参与贡献](CONTRIBUTING.md)
 
 ## 本地开发
 
