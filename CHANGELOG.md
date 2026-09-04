@@ -77,3 +77,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-5: `researchos report` folds research, budget, and lineage from one frozen
   prefix. Synthetic metric resume compares the canonical caller document, not
   only id+type. Markdown/HTML fragment ids percent-encode event ids.
+- M1-6: `SimulationRequest` requires `authorization: {eventId, sequence}`.
+  Committed M0 request files without that field no longer validate.
+  SimulatedRuntime resume of a Run that omitted the citation fails closed
+  (`authorization-citation-missing`).

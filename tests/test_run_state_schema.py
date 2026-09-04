@@ -68,6 +68,25 @@ def test_forbid_null_optional_digest_fails_closed_on_unexpected_shape() -> None:
             "RunDigests",
             "decisionDigest",
         )
+    with pytest.raises(ValueError, match="string alternative"):
+        _forbid_null_optional_digest(
+            {
+                "$defs": {
+                    "RunDigests": {
+                        "properties": {
+                            "decisionDigest": {
+                                "anyOf": [
+                                    {"$ref": "#/$defs/ConsumedAuthorization"},
+                                    {"type": "null"},
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "RunDigests",
+            "decisionDigest",
+        )
 
 
 def test_committed_run_state_schema_is_valid_draft_2020_12() -> None:

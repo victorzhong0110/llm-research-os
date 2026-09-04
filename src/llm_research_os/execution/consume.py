@@ -66,6 +66,7 @@ def consume_local_authorization(
             code="authorization-event-invalid",
         ) from None
     if event.data.actor.kind is not ActorKind.HUMAN:
+        # Caller-asserted kind on this store; not cryptographic authentication.
         raise SimulationError(
             "authorization actor is not a local human operator",
             code="authorization-actor-not-human",

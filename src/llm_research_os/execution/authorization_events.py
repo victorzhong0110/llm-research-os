@@ -286,7 +286,7 @@ class PlanAuthorizationEventRequestDocument(PlanAuthorizationEventDocumentModel)
             "streamid": self.stream_id,
             "data": {
                 "schemaVersion": "v0alpha1",
-                "actor": {"id": self.actor.id, "kind": "human"},
+                "actor": {"id": self.actor.id, "kind": "human"},  # asserted, not authenticated
                 "projectId": self.project_id,
                 "experimentRevision": self.experiment_revision,
                 "payload": payload.model_dump(mode="json", by_alias=True),

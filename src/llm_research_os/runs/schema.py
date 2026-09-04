@@ -41,11 +41,22 @@ def _forbid_null_optional_digest(schema: dict[str, Any], definition: str, field:
     alternative raises so a Pydantic change cannot republish a nullable contract.
     """
 
-    _forbid_null_union(schema, definition, field)
-
-
-def _forbid_null_union(schema: dict[str, Any], definition: str, field: str) -> None:
     location = f"$defs.{definition}.properties.{field}"
+    properties = _definition_properties(schema, definition, location)
+    properties[field] = _require_string_alternative(properties.get(field), location)
+
+
+def _forbid_null_root_union(schema: dict[str, Any], field: str) -> None:
+    location = f"properties.{field}"
+    properties = schema.get("properties")
+    if type(properties) is not dict:
+        raise ValueError(f"schema is missing {location}")
+    properties[field] = _non_null_alternative(properties.get(field), location)
+
+
+def _definition_properties(
+    schema: dict[str, Any], definition: str, location: str
+) -> dict[str, Any]:
     definitions = schema.get("$defs")
     if type(definitions) is not dict:
         raise ValueError(f"schema is missing $defs while forbidding null on {location}")
@@ -55,15 +66,14 @@ def _forbid_null_union(schema: dict[str, Any], definition: str, field: str) -> N
     properties = binding.get("properties")
     if type(properties) is not dict:
         raise ValueError(f"schema is missing {location} properties")
-    properties[field] = _non_null_alternative(properties.get(field), location)
+    return properties
 
 
-def _forbid_null_root_union(schema: dict[str, Any], field: str) -> None:
-    location = f"properties.{field}"
-    properties = schema.get("properties")
-    if type(properties) is not dict:
-        raise ValueError(f"schema is missing {location}")
-    properties[field] = _non_null_alternative(properties.get(field), location)
+def _require_string_alternative(node: object, location: str) -> dict[str, Any]:
+    kept = _non_null_alternative(node, location)
+    if kept.get("type") != "string":
+        raise ValueError(f"schema {location} anyOf has no string alternative")
+    return kept
 
 
 def _non_null_alternative(node: object, location: str) -> dict[str, Any]:
