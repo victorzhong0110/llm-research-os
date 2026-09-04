@@ -13,16 +13,29 @@ event identity in the request file.
 
 ## Run the committed example
 
+Create the store, record the cited authorization fact, then simulate. Canonical
+success requests cite `evt.authorization.example-minimal.1` as sequence `"1"`.
+
 ```bash
+python -c 'from llm_research_os.storage import EventStore
+with EventStore("research.db"):
+    pass'
+
+uv run researchos authorizations record \
+  examples/valid/minimal.yaml \
+  examples/plan-authorization-requests/valid/minimal.json \
+  examples/plan-authorization-events/valid/minimal.json \
+  research.db --format json
+
 uv run researchos runs simulate \
   examples/valid/minimal.yaml \
   examples/simulation-requests/valid/success.json \
   research.db --format json
 ```
 
-The first invocation appends the six success-path lifecycle facts. Running the
-same command again rebuilds the terminal Run, appends zero facts, and returns
-the same completed snapshot.
+The first simulate appends six success-path lifecycle facts (global sequences 2–7
+after the authorization row). Running the same command again rebuilds the terminal
+Run, appends zero facts, and returns the same completed snapshot.
 
 Inspect the facts independently:
 
@@ -39,8 +52,9 @@ normative example are in [SimulationRequest v0alpha1](../protocols/simulation-re
 
 With `--format json`, stdout is exactly a versioned `RunSnapshot`, already
 covered by `schemas/run-state/v0alpha1.schema.json`. Simulated runs include the
-in-process `digests.decisionDigest`. That field is the gate identity, not an
-audit-event citation. With `--format text`, the command prints disposition,
+in-process `digests.decisionDigest` and `consumedAuthorization`. The digest is the
+gate identity. The citation is the local `{eventId, sequence}` row SimulatedRuntime
+consumed. Neither is a launch JWT. With `--format text`, the command prints disposition,
 project, Run, workflow, status, append count, and last global sequence;
 terminal-control characters are escaped.
 

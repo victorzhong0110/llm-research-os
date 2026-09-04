@@ -76,6 +76,9 @@ that prefix. Facts appended after `H` are omitted.
 
 A resumed synthetic metric with the same event id MUST match the canonical
 caller document (type, Run, payload). Id+type agreement is not enough.
+Lineage also cites the consumed authorization row when
+`RunSnapshot.consumedAuthorization` is present; that event has a null
+`runId` so it is not in the Run-scoped lineage list.
 
 | Exit code | Meaning |
 |---|---|

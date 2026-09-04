@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Implemented for review: 2026-09-02
+- Record status: M1-6 (ADR-0042) lets SimulatedRuntime cite `{eventId, sequence}` on this local store. The event remains audit-only and is not a launch JWT. Signatures, expiry and revocation stay not-delivered.
 
 ## Context
 

@@ -29,6 +29,7 @@ from llm_research_os.events.models import (
     EventDocumentModel,
     EventIdentifier,
     ResearchEvent,
+    SequenceIntegerString,
 )
 from llm_research_os.runs.errors import RunPayloadError
 
@@ -232,12 +233,33 @@ class RunQueuedPayload(RunStateDocumentModel):
     registry_digest: StrictDigest = Field(alias="registryDigest")
     plan_digest: StrictDigest = Field(alias="planDigest")
     decision_digest: StrictDigest | None = Field(default=None, alias="decisionDigest")
+    authorization_event_id: CloudEventsString | None = Field(
+        default=None, alias="authorizationEventId"
+    )
+    authorization_sequence: SequenceIntegerString | None = Field(
+        default=None, alias="authorizationSequence"
+    )
     max_attempts: MaxAttempts = Field(alias="maxAttempts")
 
     @model_validator(mode="before")
     @classmethod
-    def reject_null_decision_digest(cls, value: object) -> object:
-        return _reject_null_optional_digest(value, "decisionDigest")
+    def reject_null_optional_queued_fields(cls, value: object) -> object:
+        value = _reject_null_optional_digest(value, "decisionDigest")
+        value = _reject_null_optional_digest(value, "authorizationEventId")
+        return _reject_null_optional_digest(value, "authorizationSequence")
+
+    @model_validator(mode="after")
+    def authorization_citation_is_complete(self) -> Self:
+        present = (
+            self.authorization_event_id is not None,
+            self.authorization_sequence is not None,
+        )
+        if present[0] != present[1]:
+            raise ValueError(
+                "authorizationEventId and authorizationSequence must both be "
+                "present or both omitted"
+            )
+        return self
 
 
 class RunReviewedPayload(RunStateDocumentModel):
@@ -295,6 +317,13 @@ class RunDigests(RunStateDocumentModel):
     @classmethod
     def reject_null_decision_digest(cls, value: object) -> object:
         return _reject_null_optional_digest(value, "decisionDigest")
+
+
+class ConsumedAuthorization(RunStateDocumentModel):
+    """Immutable citation of the local authorization fact this Run consumed."""
+
+    event_id: CloudEventsString = Field(alias="eventId")
+    sequence: SequenceNumber
 
 
 class RunReview(RunStateDocumentModel):
@@ -380,6 +409,16 @@ class RunSnapshot(RunStateDocumentModel):
     last_event_id: CloudEventsString = Field(alias="lastEventId")
     last_sequence: SequenceNumber = Field(alias="lastSequence")
     review: RunReview
+    consumed_authorization: ConsumedAuthorization | None = Field(
+        default=None, alias="consumedAuthorization"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_consumed_authorization(cls, value: object) -> object:
+        if type(value) is dict and value.get("consumedAuthorization", "omitted") is None:
+            raise ValueError("consumedAuthorization must be omitted or an object")
+        return value
 
     @field_validator("status", mode="before")
     @classmethod
@@ -556,6 +595,8 @@ def run_snapshot_document(snapshot: RunSnapshot) -> dict[str, Any]:
     digests = payload.get("digests")
     if type(digests) is dict and digests.get("decisionDigest") is None:
         digests.pop("decisionDigest", None)
+    if payload.get("consumedAuthorization") is None:
+        payload.pop("consumedAuthorization", None)
     return payload
 
 

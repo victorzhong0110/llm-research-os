@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-30
+- Record status: M1-6 (ADR-0042) consumes a local `{eventId, sequence}` citation before SimulatedRuntime lifecycle writes. The event remains audit-only.
 
 ## Context
 

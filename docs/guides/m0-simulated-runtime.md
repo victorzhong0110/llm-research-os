@@ -37,6 +37,8 @@ request = SimulationRequest(
     subject="run.simulated",
     stream_id="stream.simulated",
     actor_id="researcher.alice",
+    authorization_event_id="evt.authorization.example-minimal.1",
+    authorization_sequence="1",
     events={
         event_type: SimulationEventIdentity(
             id=f"evt.{index}.{event_type}",
@@ -46,6 +48,7 @@ request = SimulationRequest(
     },
 )
 
+# Record the cited plan.authorization.evaluated fact first (sequence "1").
 with EventStore("research.db") as store:
     runtime = SimulatedRuntime(
         store,
@@ -60,8 +63,10 @@ with EventStore("research.db") as store:
 
 `projectId` and `experimentRevision` come from the frozen ResearchSpec.
 `workflowId`, `runId`, `attemptId`, `source`, `subject`, `streamid`, actor id,
-and every event `id` / `time` are supplied by the caller. The runtime does not
-generate them. The plan is bound to the canonical built-in
+authorization `{eventId, sequence}`, and every event `id` / `time` are supplied
+by the caller. The runtime does not generate them. Create the EventStore, record
+the cited authorization fact, then call `run()`. Canonical examples assume that
+fact is sequence `1`. The plan is bound to the canonical built-in
 `simulated.experiment@0.1.0` Manifest digest; a caller registry that keeps the
 same id/version but changes the Manifest, including adding permissions, is
 rejected before the first write.
@@ -69,9 +74,12 @@ rejected before the first write.
 After the canonical-manifest checks, SimulatedRuntime calls the pure
 [M0 plan authorization gate](m0-plan-authorization.md) with an exact three-digest binding and the
 fixed T0 grant `simulate`. No other capability, permission or approval is implicitly granted.
-The gate `decisionDigest` is written on `run.queued` and rebuilt onto `RunSnapshot.digests`.
-That snapshot field is the in-process evaluation identity. It is not a recorded
-`plan.authorization.evaluated` citation and not a launch token.
+It then consumes the cited local `plan.authorization.evaluated` row (this store, matching
+sequence, human actor, authorized decision, four-digest binding). Fail-closed consume writes
+zero lifecycle facts. The gate `decisionDigest` and the citation are written on `run.queued`
+and rebuilt onto `RunSnapshot`. `decisionDigest` is still the in-process evaluation identity.
+`consumedAuthorization` is the local row citation. Neither is a launch token. Lineage stays
+`not-consumed`.
 
 `examples/valid/minimal.yaml` must state `outcome` explicitly:
 
@@ -89,7 +97,7 @@ seed.
 Success (`outcome: success`), exactly six lifecycle facts (optional synthetic
 metrics are not part of this count):
 
-1. `run.queued` — `workflowId`, three plan digests, in-process `decisionDigest`, `maxAttempts: 1`
+1. `run.queued` — `workflowId`, three plan digests, in-process `decisionDigest`, local `{authorizationEventId, authorizationSequence}`, `maxAttempts: 1`
 2. `run.started`
 3. `attempt.queued` — `ordinal: 1`, `retryOf: null`, `retryDecisionId: null`
 4. `attempt.started`

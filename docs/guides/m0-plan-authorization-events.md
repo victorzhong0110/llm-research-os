@@ -21,8 +21,14 @@ The payload preserves:
 ## Create an empty store for the example
 
 The record command deliberately refuses to create a database. An application or an existing Run
-flow must initialize the EventStore first. For a local example, the deterministic simulated CLI can
-create one, or Python can explicitly construct `EventStore`.
+flow must initialize the EventStore first. For a local example, Python can construct
+`EventStore`, then record, then simulate:
+
+```bash
+python -c 'from llm_research_os.storage import EventStore
+with EventStore("research.db"):
+    pass'
+```
 
 After a store exists:
 
@@ -59,7 +65,9 @@ therefore fixes:
 - `authority: audit-only`;
 - `execution: not-executed`.
 
-Linking a Run to an authenticated, expiring and revocable authorization fact remains future
-work. A read-only candidate-set reconstruction now exists as
-[M0 plan authorization lineage](m0-plan-authorization-lineage.md); it does not add a
-RunSnapshot citation or grant runtime consumption.
+Linking a Run to a signed, expiring and revocable authorization fact remains future
+work. SimulatedRuntime may cite `{eventId, sequence}` of one row on *this* EventStore
+([ADR-0042](../adr/0042-m1-local-authorization-consume-and-closure.md)); the payload
+literals stay audit-only. A read-only candidate-set reconstruction exists as
+[M0 plan authorization lineage](m0-plan-authorization-lineage.md) and remains
+`not-consumed`.

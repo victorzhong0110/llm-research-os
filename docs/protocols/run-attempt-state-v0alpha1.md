@@ -142,7 +142,7 @@ fields.
 
 | Type | Payload |
 |---|---|
-| `run.queued` | `{ workflowId, specDigest, registryDigest, planDigest, decisionDigest?, maxAttempts }` |
+| `run.queued` | `{ workflowId, specDigest, registryDigest, planDigest, decisionDigest?, authorizationEventId?, authorizationSequence?, maxAttempts }` |
 | `run.started` | `{}` |
 | `run.cancel.requested` | `{ reasonCode }` |
 | `run.completed` | `{}` |
@@ -186,6 +186,7 @@ ordinals and reused Attempt IDs are illegal.
 - `registryDigest`
 - `planDigest`
 - optional `decisionDigest` (in-process plan-authorization gate identity)
+- optional `authorizationEventId` + `authorizationSequence` (local consume citation; both present or both omitted)
 - `maxAttempts`
 
 `planDigest` MUST NOT be treated as Run identity by itself. After `run.queued`, those bound
@@ -195,6 +196,12 @@ values MUST NOT change. Every Attempt belongs to that immutable Run binding.
 When present, it MUST be a tagged semantic digest and MUST equal the in-process
 `authorize_plan` result that allowed the Run to start. JSON `null` is invalid. The field is
 not an audit-event citation, signature, or launch token. SimulatedRuntime always writes it.
+
+`authorizationEventId` and `authorizationSequence` MUST both be present or both omitted.
+JSON `null` is invalid. `authorizationSequence` is the store-assigned CloudEvents Integer
+string. SimulatedRuntime always writes both, citing the local fact it consumed. Resume of a
+SimulatedRuntime Run requires an exact match with the currently consumed row. Omit remains
+legal on ungated traces that never passed this runtime.
 
 ## 8. Attempt transitions
 
@@ -303,6 +310,12 @@ When present, EventStore replay MUST rebuild the same value from `run.queued`.
 A SimulatedRuntime snapshot always includes the in-process gate digest. That value
 MUST NOT be read as proof that a `plan.authorization.evaluated` fact exists, or as
 permission to launch a process.
+
+`consumedAuthorization` is optional. Omit it when the trace has no local consume
+citation. When present it is `{eventId, sequence}` with integer `sequence` like
+`lastSequence`. JSON `null` is invalid. SimulatedRuntime always writes it from
+`run.queued`. Replay MUST rebuild the same object. It cites one local EventStore
+row; it is not a signature or launch JWT.
 
 The committed `RunSnapshot` example:
 

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Implemented for review: 2026-09-02
+- Record status: Lineage remains `not-consumed`. The Run citation is SimulatedRuntime consume (ADR-0042), not this query.
 
 ## Context
 

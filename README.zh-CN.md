@@ -16,18 +16,19 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表。M1-1 研究决定对象见
 [research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api` 与运行时 CNY 预算事实门控。提问通道见 Issue #42。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api` 与运行时 CNY 预算事实门控。提问通道见 Issue #42。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。M1-6 让 SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)），这不是签名启动凭证。Issue #19 已关闭；伞形 #38 与 #42 仍开放。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
 全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
-非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、显式模拟 Run /
+非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、SimulatedRuntime 对本机 `{eventId, sequence}` 的消费、显式模拟 Run /
 取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 CLI，以及不可启动的 NativeProcessPreflight。
 
-当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告、lineage 重建或
-`decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实。取消请求 CLI 仍不发送进程信号；
+当前仍不执行任何训练任务或真实 GPU 工作负载。授权事件、预检报告、lineage 重建与
+`decisionDigest` 都不是签名回执或启动许可。SimulatedRuntime 会消费本机 EventStore 上
+一条 `{eventId, sequence}` 引用（ADR-0042）；lineage 仍为 `not-consumed`。取消请求 CLI 仍不发送进程信号；
 观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、远程 Worker
-与认证启动凭证均不属于 M0 或 M1-0 已交付能力。
+与签名启动凭证均不属于 M0 或 M1 已交付能力。
 
 ## M0 目标
 
@@ -249,11 +250,11 @@ conflict，也不执行任何积木。CAS 失败后必须由调用者再次 `app
 ## SimulatedRuntime
 
 `SimulatedRuntime` 对冻结的 ResearchSpec 快照重新 dry-run，通过固定的 T0 `simulate`
-capability 策略调用计划授权门，并仅当计划是单个
+capability 策略调用计划授权门，消费所引用的本机授权行，并仅当计划是单个
 `simulated.experiment@0.1.0` 且 config 显式给出 `outcome` 时，才通过 RunControl
-追加 Run/Attempt 生命周期事件。`id`/`time`/`streamid` 仍由调用方提供；conflict
+追加 Run/Attempt 生命周期事件。`id`/`time`/`streamid` 与授权引用仍由调用方提供；conflict
 不会自动重试；`unknown` 不会被收敛成 failure 或 success。模拟 `completed` 只表示
-受控生命周期结束，不表示训练成功或假设成立。最小可运行示例见
+受控生命周期结束，不表示训练成功或假设成立。先创建 EventStore、记录授权事实，再模拟。最小可运行示例见
 [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)。
 
 命令行纵向闭环使用单独的显式请求文件；不会生成 `id`、`time` 或 `streamid`：

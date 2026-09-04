@@ -27,6 +27,7 @@ from llm_research_os.execution.authorization import (
     PlanAuthorizationResult,
     authorize_plan,
 )
+from llm_research_os.execution.consume import consume_local_authorization
 from llm_research_os.execution.errors import PlanAuthorizationError, SimulationError
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, ExecutionPlan, PlannedTask
@@ -129,6 +130,8 @@ class SimulationRequest:
     subject: str
     stream_id: str
     actor_id: str
+    authorization_event_id: str
+    authorization_sequence: str
     events: dict[str, SimulationEventIdentity]
 
 
@@ -187,6 +190,14 @@ class SimulatedRuntime:
         )
         authorization = _authorize_simulated_plan(report)
         outcome = _require_outcome(task)
+        consumed = consume_local_authorization(
+            self._store,
+            event_id=request_fields.authorization_event_id,
+            sequence=request_fields.authorization_sequence,
+            report=report,
+            authorization=authorization,
+            project_id=self._project_id,
+        )
         head = self._control.rebuild()
         snapshot = head.snapshot
         if snapshot is not None:
@@ -196,6 +207,7 @@ class SimulatedRuntime:
                 self._run_id,
                 request_fields.attempt_id,
                 authorization.decision_digest,
+                consumed,
             )
         remaining, stop_disposition = _continuation(snapshot, outcome)
         if stop_disposition is not None:
@@ -210,6 +222,7 @@ class SimulatedRuntime:
             request_fields,
             report=report,
             decision_digest=authorization.decision_digest,
+            consumed=consumed,
             project_id=self._project_id,
             run_id=self._run_id,
             revision=frozen_spec.metadata.revision,
@@ -278,6 +291,8 @@ class _FrozenRequest:
     subject: str
     stream_id: str
     actor_id: str
+    authorization_event_id: str
+    authorization_sequence: str
     events: dict[str, tuple[str, str]]
 
 
@@ -327,6 +342,8 @@ def _freeze_request(request: SimulationRequest) -> _FrozenRequest:
         or type(request.subject) is not str
         or type(request.stream_id) is not str
         or type(request.actor_id) is not str
+        or type(request.authorization_event_id) is not str
+        or type(request.authorization_sequence) is not str
     ):
         raise SimulationError("simulation request identity is invalid")
     if type(request.events) is not dict:
@@ -345,6 +362,8 @@ def _freeze_request(request: SimulationRequest) -> _FrozenRequest:
         subject=request.subject,
         stream_id=request.stream_id,
         actor_id=request.actor_id,
+        authorization_event_id=request.authorization_event_id,
+        authorization_sequence=request.authorization_sequence,
         events=events,
     )
 
@@ -502,6 +521,7 @@ def _require_matching_run(
     run_id: str,
     attempt_id: str,
     decision_digest: str,
+    consumed: StoredEvent,
 ) -> None:
     if snapshot.project_id != report.project.id:
         _reject_run_mismatch("project-id-mismatch")
@@ -519,6 +539,12 @@ def _require_matching_run(
         _reject_run_mismatch("plan-digest-mismatch")
     if snapshot.digests.decision_digest != decision_digest:
         _reject_run_mismatch("decision-digest-mismatch")
+    if snapshot.consumed_authorization is None:
+        _reject_run_mismatch("authorization-citation-missing")
+    elif snapshot.consumed_authorization.event_id != consumed.event.id:
+        _reject_run_mismatch("authorization-event-id-mismatch")
+    elif snapshot.consumed_authorization.sequence != consumed.sequence:
+        _reject_run_mismatch("authorization-sequence-mismatch")
     if snapshot.max_attempts != _MAX_ATTEMPTS:
         _reject_run_mismatch("max-attempts-mismatch")
     if snapshot.attempts and snapshot.attempts[0].attempt_id != attempt_id:
@@ -696,6 +722,7 @@ def _remaining_drafts(
     *,
     report: DryRunReport,
     decision_digest: str,
+    consumed: StoredEvent,
     project_id: str,
     run_id: str,
     revision: int,
@@ -712,7 +739,7 @@ def _remaining_drafts(
         if identity is None:
             raise SimulationError("simulation event identities are incomplete")
         event_id, event_time = identity
-        payload = _payload_for(event_type, report, decision_digest)
+        payload = _payload_for(event_type, report, decision_digest, consumed)
         data: dict[str, Any] = {
             "schemaVersion": "v0alpha1",
             "actor": {"id": request.actor_id},
@@ -741,7 +768,12 @@ def _remaining_drafts(
     return drafts
 
 
-def _payload_for(event_type: str, report: DryRunReport, decision_digest: str) -> dict[str, Any]:
+def _payload_for(
+    event_type: str,
+    report: DryRunReport,
+    decision_digest: str,
+    consumed: StoredEvent,
+) -> dict[str, Any]:
     if event_type == TYPE_RUN_QUEUED:
         return {
             "workflowId": report.workflow_id,
@@ -749,6 +781,8 @@ def _payload_for(event_type: str, report: DryRunReport, decision_digest: str) ->
             "registryDigest": report.digests.registry,
             "planDigest": report.digests.plan,
             "decisionDigest": decision_digest,
+            "authorizationEventId": consumed.event.id,
+            "authorizationSequence": consumed.event.sequence,
             "maxAttempts": _MAX_ATTEMPTS,
         }
     if event_type == TYPE_ATTEMPT_QUEUED:

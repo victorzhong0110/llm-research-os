@@ -765,6 +765,7 @@ stateDiagram-v2
 
 > 勘误 E4–E6（§23）：M1 的切片顺序由威胁模型安全门决定（M1-0 至 M1-6），检查点为“一条命令：spec → Mock 提案 → 反方异议 → 研究者决定 → 模拟运行 → 带 eventId 链接的报告，全程 ¥0 无外网”；“最小Web页面”由静态报告满足；内置模型适配器在 M1 按 T0/T1 进程内运行；能力名进入闭合注册表。
 > 勘误 E15（§23，[ADR-0039](adr/0039-human-help-period-purpose.md)）：检查点中“研究者决定”改为“研究者决定（异议保留，理由记录）”；M1-1 对象集加入决定理由、被否决异议引用与 AI→研究者提问通道，字段级草案见 [research-decision-objects-v0alpha1](protocols/research-decision-objects-v0alpha1.md)；M1-5 报告的成本视图包含人类注意力成本。切片顺序不变。
+> 勘误 E17（§23，[ADR-0042](adr/0042-m1-local-authorization-consume-and-closure.md)）：M1-6 交付本机 `{eventId, sequence}` 引用与 SimulatedRuntime 消费；这不是签名启动凭证。提问通道（#42）与宪章 v0.2 合并仍未交付。
 
 ### 14.4 内部里程碑 M2：真实远程GPU闭环（已决定）
 
@@ -969,6 +970,7 @@ stateDiagram-v2
 | v0.1-errata-1 | 2026-09-03 | [ADR-0038](adr/0038-charter-errata-after-m0.md)：新增 §23 勘误表 E1–E11；登记 M0 债务；为 M1 补顺序、安全门、检查点与预算；确立集中勘误与 ADR 粒度规则 |
 | v0.1-errata-2 | 2026-09-03 | [ADR-0039](adr/0039-human-help-period-purpose.md)：E12–E15。写明目的——服务于人类帮助仍然必要的时期；研究者建模为教师；AI→研究者提问通道；人类注意力成本进入成本视图与 M1 检查点 |
 | v0.1-errata-3 | 2026-09-03 | [ADR-0040](adr/0040-english-primary-and-engineering-standards.md)：E16。英文为仓库工作语言；不建全文双语树；注释记录不变量而非比率；工程规范见 `docs/engineering-standards.md` |
+| v0.1-errata-4 | 2026-09-04 | [ADR-0042](adr/0042-m1-local-authorization-consume-and-closure.md)：E17。M1-6 本机 `{eventId, sequence}` 消费；E4 编号切片收口；#42 与 v0.2 仍未交付 |
 
 ---
 
@@ -994,3 +996,4 @@ stateDiagram-v2
 | E14 | §12.1 成本视图 | 纳入人类注意力成本：决定数、已回答问题数、理由字数，对照预登记结果（预测命中率等）的变化。目标是在不降低信息量的前提下减少人类注意力消耗；旁观即可回答却仍提问视为缺陷 | ADR-0039 |
 | E15 | §14.3、ADR-0038 E4 | M1 检查点改为“研究者决定（异议保留，理由记录）”；M1-1 对象集加入 `rationale`、`overriddenDissentIds` 与提问通道，字段级草案为 `docs/protocols/research-decision-objects-v0alpha1.md`（Issue #41、#42）；M1-5 报告成本视图含 E14 指标；切片顺序不变。带理由的决定与已回答问题是 #26 受治理参数进化的候选训练事实，仅在权利允许 `training` 且人类明确批准时可用，默认不进权重 | ADR-0039 |
 | E16 | §16.2 | 仓库工作语言为英文（代码、注释、提交、ADR、协议、导读、威胁模型、模板）。不维护这些文件的全文中文副本。`README.md` / `CONTRIBUTING.md` 为英文权威文本，`README.zh-CN.md` / `CONTRIBUTING.zh-CN.md` 为译本。本宪章 v0.1 与第 18 章维持已接受的中文原文。注释没有比率目标，只记录 fail-closed 不变量、威胁模型编号与跨模块耦合；协议层承载“为何存在”。细则见 `docs/engineering-standards.md` | ADR-0040 |
+| E17 | §14.3 M1-6 | SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](adr/0042-m1-local-authorization-consume-and-closure.md)）。这不是签名启动凭证。提问通道（#42）、签名/过期/吊销、NativeProcessRuntime 等见该 ADR 未交付清单。M1 切片顺序不变。宪章 v0.2 合并仍待 | ADR-0042 |
