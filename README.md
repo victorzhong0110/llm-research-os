@@ -25,13 +25,15 @@ proof closed on 2026-09-03**; scope is
 erratum is [ADR-0034](docs/adr/0034-m0-scope-clarification.md). Post-closure
 charter errata, M0 debt, and the M1 slice order, security gates, checkpoint, and
 budget are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23.
-The field-level draft for M1-1 research decision objects is
-[research-decision-objects-v0alpha1 (draft)](docs/protocols/research-decision-objects-v0alpha1.md).
+The field-level contract for M1-1 research decision objects is
+[research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md).
 M1-0 is in tree: schema v2 query tables and a verified high-water cache
 ([ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)), typed
 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md), optional ResearchEvent
 actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
-`run.cancelled`. M1-1 decision objects are not implemented.
+`run.cancelled`. M1-1 lands `proposal.submitted`, `dissent.recorded`,
+`decision.recorded`, a rebuildable `ResearchLedger`, and the matching CLI.
+The question channel is Issue #42.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -41,8 +43,8 @@ before write with global CAS, a GPU-free and network-free deterministic
 SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
-simulated-run / cancellation-request / artifact-object CLIs, and a non-launching
-NativeProcessPreflight.
+simulated-run / cancellation-request / artifact-object / research-decision CLIs,
+and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads, and it does
 not treat authorization, a preflight report, a lineage rebuild, or
@@ -84,6 +86,7 @@ acceptance checklist of that milestone.
 - [Changelog](CHANGELOG.md)
 - [ResearchSpec v0alpha1](docs/protocols/research-spec-v0alpha1.md)
 - [ResearchEvent v0alpha1](docs/protocols/research-event-v0alpha1.md)
+- [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
 - [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
@@ -110,6 +113,7 @@ acceptance checklist of that milestone.
 - [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
+- [M1 research decision CLI](docs/guides/m1-research-decisions.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -324,6 +328,23 @@ uv run researchos runs cancel \
 The database must already exist; a missing path is not created. Exit `0` only
 means the cancellation-request fact was committed. Inspect
 `RunSnapshot.cancellationRequested`; do not claim the job has stopped.
+
+Research proposals, dissents, and decisions are separate EventStore facts. The
+database must already exist. `accept` is not a launch credential:
+
+```bash
+uv run researchos proposals submit \
+  examples/research-decisions/valid/proposal-submit.json \
+  research.db --format json
+uv run researchos dissents record \
+  examples/research-decisions/valid/dissent-record.json \
+  research.db --format json
+uv run researchos decisions record \
+  examples/research-decisions/valid/decision-record.json \
+  research.db --format json
+uv run researchos research ledger research.db \
+  --project example-minimal --format json
+```
 
 A local artifact object root must be created first. Import and full verification
 both return a versioned object report and never print object bodies:

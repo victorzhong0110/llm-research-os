@@ -14,15 +14,15 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)；原生进程里程碑勘误见
 [ADR-0034](docs/adr/0034-m0-scope-clarification.md)。收口后的宪章勘误、M0 债务登记，以及
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
-与宪章 §23 勘误表；M1-1 研究决定对象的字段级草案见
-[research-decision-objects-v0alpha1（草案）](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 决定对象尚未实现。
+与宪章 §23 勘误表。M1-1 研究决定对象见
+[research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。提问通道见 Issue #42。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
 全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、显式模拟 Run /
-取消请求 / 制品对象 CLI，以及不可启动的 NativeProcessPreflight。
+取消请求 / 制品对象 / 研究决定 CLI，以及不可启动的 NativeProcessPreflight。
 
 当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告、lineage 重建或
 `decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实。取消请求 CLI 仍不发送进程信号；
@@ -56,6 +56,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
 - [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
 - [ResearchEvent v0alpha1规范说明](docs/protocols/research-event-v0alpha1.md)
+- [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
 - [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
@@ -82,6 +83,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
+- [M1 研究决定 CLI](docs/guides/m1-research-decisions.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 - [工程规范](docs/engineering-standards.md)（英文）
@@ -270,6 +272,22 @@ uv run researchos runs cancel \
 
 数据库必须已经存在；缺失路径不会被创建。退出码 `0` 仅说明取消请求事实已提交，
 应检查返回的 `RunSnapshot.cancellationRequested`，不能据此声称任务已经停止。
+
+研究提案、异议与决定是独立的 EventStore 事实。数据库必须已存在。`accept` 不是启动凭证：
+
+```bash
+uv run researchos proposals submit \
+  examples/research-decisions/valid/proposal-submit.json \
+  research.db --format json
+uv run researchos dissents record \
+  examples/research-decisions/valid/dissent-record.json \
+  research.db --format json
+uv run researchos decisions record \
+  examples/research-decisions/valid/decision-record.json \
+  research.db --format json
+uv run researchos research ledger research.db \
+  --project example-minimal --format json
+```
 
 本地制品对象根目录必须预先创建。导入与完整校验都返回版本化对象报告，不打印对象正文：
 
