@@ -10,6 +10,7 @@ from llm_research_os.cli.artifacts_commands import run_artifacts
 from llm_research_os.cli.authz_commands import run_authorizations, run_authorize
 from llm_research_os.cli.blocks_commands import run_blocks
 from llm_research_os.cli.events_commands import run_events
+from llm_research_os.cli.models_commands import run_models
 from llm_research_os.cli.native_commands import run_native
 from llm_research_os.cli.parser import build_parser
 from llm_research_os.cli.research_commands import (
@@ -33,6 +34,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "events": run_events,
     "runs": run_runs,
     "artifacts": run_artifacts,
+    "models": run_models,
     "proposals": run_proposals,
     "dissents": run_dissents,
     "decisions": run_decisions,
