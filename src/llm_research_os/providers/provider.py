@@ -48,6 +48,7 @@ class GenerateResult:
     prompt_digest: str
     output_digest: str
     capabilities: CapabilityReport
+    output_payload: dict[str, object] | None = None
 
 
 class ModelProvider(ABC):

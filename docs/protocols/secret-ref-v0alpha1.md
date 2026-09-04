@@ -12,9 +12,9 @@ schemas/secret-ref/v0alpha1.schema.json
 The document MUST NOT contain the secret value (TM-007). Resolvers MUST NOT put
 the value in exception messages, logs, events, or problem reports (TM-022).
 
-M1-0 lands the type, redaction helper, and `env` resolver. It does not call
-external APIs, read files, or touch a keyring. Remote model endpoints in M1-4
-MUST use a `SecretRef` rather than an inline token.
+M1-0 lands the type, redaction helper, and `env` resolver. Remote model
+endpoints in M1-4 MUST use a `SecretRef` rather than an inline token. File and
+keyring backends still fail closed.
 
 ## Document shape
 

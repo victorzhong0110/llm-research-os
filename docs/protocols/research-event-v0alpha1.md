@@ -145,7 +145,10 @@ executable authority. `ai.call.started` / `ai.call.completed` / `ai.call.failed`
 [ModelProvider v0alpha1](model-provider-v0alpha1.md); payloads store prompt and output digests
 and optional artifact refs, never inline text. `evidence.imported` is defined by
 [Evidence import v0alpha1](evidence-import-v0alpha1.md); payloads store snapshot and text
-digests, never source paths or extracted bodies.
+digests, never source paths or extracted bodies. `budget.reserved` /
+`budget.consumed` / `budget.exceeded` are defined by
+[OpenAI-compatible generate v0alpha1](openai-compat-v0alpha1.md); amounts are CNY
+decimal strings, never floats.
 
 ## 6. Conformance commands
 

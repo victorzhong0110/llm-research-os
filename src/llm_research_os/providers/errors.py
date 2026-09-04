@@ -38,3 +38,7 @@ class ModelRequestError(ValueError):
         super().__init__("model request failed validation")
         self.error = error
         self.code = "model-request"
+
+
+class ModelTransportError(ModelProviderError):
+    """The HTTP adapter could not complete a request without leaking vendor objects."""

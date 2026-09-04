@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-04
 >
-> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, and local Markdown/PDF evidence import
+> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, and runtime CNY budget facts
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -41,10 +41,14 @@ authorized Python task into a report that denies launch, declares isolation unen
 zero entrypoint imports, processes, signals, network calls and writes.
 It can import a regular local Markdown or PDF file into artifact CAS and append
 one digest-only `evidence.imported` fact; extracted text and filesystem paths stay
-off the event. It does **not** import manifest entrypoints, evaluate `until` expressions,
-contact model APIs, run plugins, start containers, connect Workers, spend money, persist
+off the event. It can POST to a loopback OpenAI-compatible `/v1/chat/completions`
+endpoint and record CNY budget facts plus digest-only `ai.call.*` facts. Remote
+HTTP requires a SecretRef, HTTPS, `read.external_api`, and a budget cap. It does
+**not** import manifest entrypoints, evaluate `until` expressions,
+run plugins, start containers, connect Workers, persist
 projections, crawl GitHub/arXiv/the web for evidence, or upload artifacts. Simulated
-`completed` is a controlled lifecycle finish, not training success.
+`completed` is a controlled lifecycle finish, not training success. Local HTTP
+generate is ¥0; remote spend is capped by `budget.*` facts.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -58,7 +62,7 @@ projections, crawl GitHub/arXiv/the web for evidence, or upload artifacts. Simul
 | Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
 | Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
-| AI/model providers | Untrusted proposals and content | Deterministic mock only; zero network; live HTTP adapter pending M1-4 |
+| AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + budget cap |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
@@ -121,8 +125,8 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-003 | Paid/GPU loop omits termination limits | Budget loss | Iteration count plus cost and wall-time caps for risky capabilities | Tested in M0; runtime enforcement planned |
 | TM-004 | Unknown-rights material enters training data | Legal, ethical and publication harm | Rights and allowed use are separate; unknown denies training/redistribution | Tested in M0; provenance propagation planned |
 | TM-005 | Broken entity or edge reference resolves unpredictably | Wrong experiment or result attribution | Global entity IDs, scoped node IDs and references are validated | Tested in M0 |
-| TM-006 | Prompt injection in papers, notes or repositories controls the assistant | Unauthorized tool use or exfiltration | Evidence is data, not instruction; `evidence.imported` stores digests not bodies; `DeterministicMockProvider` still refuses disallowed capabilities after an adversarial note is imported | Adversarial Markdown corpus in M1-3; live-model injection tests remain blocked until M1-4 |
-| TM-007 | Secret appears in spec, log, event, model prompt or artifact | Credential and private-data exposure | Typed `SecretRef`; redaction of secret-bearing keys and known values; `env` resolver never puts the value in errors. Inline secrets in specs still forbidden. External API sinks and file/keyring backends pending | Type and redaction tested; blocker before live remote APIs (M1-4) |
+| TM-006 | Prompt injection in papers, notes or repositories controls the assistant | Unauthorized tool use or exfiltration | Evidence is data, not instruction; `evidence.imported` stores digests not bodies; `DeterministicMockProvider` still refuses disallowed capabilities after an adversarial note is imported; the HTTP adapter's allowed set is `generate` only | Adversarial Markdown corpus in M1-3; HTTP adapter refuses `tools` before any request (M1-4) |
+| TM-007 | Secret appears in spec, log, event, model prompt or artifact | Credential and private-data exposure | Typed `SecretRef`; redaction of secret-bearing keys and known values; `env` resolver never puts the value in errors. Remote HTTP generate requires SecretRef + https; loopback forbids SecretRef. Inline secrets in specs still forbidden. File/keyring backends pending | Type, redaction, and remote-gate tests; secret value must not appear on events or problem reports |
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
 | TM-010 | Artifact is replaced after validation | Poisoned model/data or false reproducibility | Content-addressed local objects; root `st_dev`/`st_ino` identity; dirfd walk of `tmp`/`objects`/`sha256`/shard with `O_NOFOLLOW`; digest-derived basenames; atomic `link` plus directory fsync; existing mismatch fails closed and is not overwritten | File object layer tested, including intermediate symlink escape, root substitution and fsync-retry recovery; SHA-256 detects accidental corruption, not a host admin who rewrites files and recomputes the digest |
@@ -155,7 +159,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-037 | The AI→researcher question channel (ADR-0039 D3) is used to elicit secrets, private data or out-of-scope information, or to route information requests around it | Credential/private-data exposure; scope creep of what the system learns about the researcher | Planned (M1-1): `question.asked` is the only sanctioned request path; `whyNotObservable` is required; answers pass typed `SecretRef`/redaction (TM-007, TM-022) and carry `14-RB` rights with research-read default; questions are facts the dissent reviewer can object to | Not implemented. Corpus tests in Issue #42 required before any live model may ask a question |
 | TM-038 | Leading, repeated or sycophantic questions steer the researcher's decision through the help channel; excessive questioning exhausts human attention | Governance capture; false consensus; north-star metric degraded | Every `decision.recorded` carries a non-empty rationale; overridden dissents stay in the ledger (ADR-0005 / ADR-0039 D2); the ledger counts decisions, rationale length, and (from #42) questions so attention cost is visible; mock-provider capability-refusal tests in M1-2; adversarial evidence corpus in M1-3 | Rationale and dissent-survival tests in M1-1. Question counters stay 0 until #42. Metric vs outcome is M1-5 |
 | TM-039 | Human answers and rationales are used as training data without consent, or one user's biases are written into weights | Rights violation; single-user bias capture (Issue #26); irreversible drift | Planned: training eligibility requires rights allowing `training` and an explicit human decision approving that use; per-user adapters and content-addressed checkpoints as rollback; nothing enters weights by default (ADR-0039 D5) | Blocker before any parameter-update slice; that slice needs its own ADR and review |
-| TM-040 | A model adapter silently simulates a missing capability (tools, JSON schema, vision) or stores prompt/output text in `ai.call.*` events | False scientific capability; prompt/secret leakage (TM-007, TM-022) | `ModelProvider` records declared/measured/allowed sets; a requested name absent from `allowed` fails closed with no events; `ai.call` payloads denylist prompt/output keys and store `jcs-sha256` digests (optional artifact refs); the mock has no network path | Capability-refusal, digest-only, and socket/subprocess tripwire tests in M1-2. Live HTTP remains M1-4 |
+| TM-040 | A model adapter silently simulates a missing capability (tools, JSON schema, vision) or stores prompt/output text in `ai.call.*` events | False scientific capability; prompt/secret leakage (TM-007, TM-022) | `ModelProvider` records declared/measured/allowed sets; a requested name absent from `allowed` fails closed with no events; `ai.call` payloads denylist prompt/output keys and store `jcs-sha256` digests (optional artifact refs); the mock has no network path; the HTTP adapter allows only `generate` and rejects redirects | Capability-refusal and digest-only tests in M1-2/M1-4 |
 | TM-041 | A compressed or pathological PDF exhausts CPU or memory during evidence import | Local denial of service; importer hang | PDF extract runs in a subprocess with wall-clock, CPU, and best-effort address-space limits; page count and extracted-character caps abort incrementally; fail closed without echoing text or paths (TM-022) | FlateDecode text-bomb, page-limit, timeout, and non-echo tests in M1-3 |
 
 ## 7. M0 security gates

@@ -275,12 +275,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     models = subparsers.add_parser(
         "models",
-        help="record deterministic mock model calls as EventStore facts",
+        help="record mock or OpenAI-compatible model calls as EventStore facts",
     )
     model_commands = models.add_subparsers(dest="models_command", required=True)
     models_generate = model_commands.add_parser(
         "generate",
-        help="append ai.call.started and ai.call.completed for one fixture",
+        help="append ai.call facts (and budget facts for the HTTP adapter)",
     )
     models_generate.add_argument(
         "request",

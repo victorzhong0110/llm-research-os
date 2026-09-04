@@ -7,6 +7,7 @@ import sys
 
 from pydantic import ValidationError
 
+from llm_research_os.budget.errors import BudgetError, BudgetRequestError
 from llm_research_os.events.models import ResearchEvent
 from llm_research_os.evidence.errors import EvidenceError, EvidenceRequestError
 from llm_research_os.execution.errors import SimulationError
@@ -55,12 +56,14 @@ def print_problem(report: ProblemReport, output_format: str) -> None:
 
 def problem_report(exc: Exception) -> ProblemReport:
     request_errors = (
+        BudgetRequestError,
         EvidenceRequestError,
         ModelRequestError,
         ResearchRequestError,
         RunCancellationRequestError,
     )
     coded_errors = (
+        BudgetError,
         EvidenceError,
         ModelProviderError,
         ResearchDecisionError,
