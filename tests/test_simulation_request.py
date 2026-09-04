@@ -54,14 +54,16 @@ def test_simulation_request_schema_declares_closed_external_contract() -> None:
         "workflowId",
     }
     events = schema["properties"]["events"]
-    assert events["maxProperties"] == 9
+    assert events["maxProperties"] == 11
     assert events["additionalProperties"] == {"$ref": "#/$defs/SimulationEventIdentityDocument"}
     assert set(events["propertyNames"]["enum"]) == {
+        "attempt.cancelled",
         "attempt.failed",
         "attempt.queued",
         "attempt.started",
         "attempt.succeeded",
         "attempt.unknown",
+        "run.cancelled",
         "run.completed",
         "run.failed",
         "run.queued",

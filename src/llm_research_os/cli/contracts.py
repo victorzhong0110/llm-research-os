@@ -119,6 +119,9 @@ from llm_research_os.runs.cancellation_schema import (
 from llm_research_os.runs.schema import canonical_schema as canonical_run_state_schema
 from llm_research_os.runs.schema import schema_matches as run_state_schema_matches
 from llm_research_os.runs.schema import write_schema as write_run_state_schema
+from llm_research_os.secrets.schema import canonical_schema as canonical_secret_ref_schema
+from llm_research_os.secrets.schema import schema_matches as secret_ref_schema_matches
+from llm_research_os.secrets.schema import write_schema as write_secret_ref_schema
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
@@ -252,6 +255,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         artifact_object_report_schema_matches,
         write_artifact_object_report_schema,
         "schemas/artifact-object-report/v0alpha1.schema.json",
+    ),
+    "secret-ref": _contract(
+        canonical_secret_ref_schema,
+        secret_ref_schema_matches,
+        write_secret_ref_schema,
+        "schemas/secret-ref/v0alpha1.schema.json",
     ),
 }
 
