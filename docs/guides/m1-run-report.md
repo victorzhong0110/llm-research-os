@@ -34,4 +34,8 @@ uv run researchos report run.simulated \
 means the Run id is absent. Exit `2` is input, integrity, or fold failure.
 The report is not a fact source; replay `events` to audit.
 
+The report lineage section also cites the consumed authorization fact by
+`eventId` even though that event has a null `runId` and is therefore absent from
+`report.lineage`.
+
 Protocol: [Synthetic metrics and static Run report v0alpha1](../protocols/run-report-v0alpha1.md).

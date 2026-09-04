@@ -166,6 +166,36 @@ def test_queued_decision_digest_is_copied_immutably() -> None:
     assert snapshot.last_sequence == 3
 
 
+def test_queued_authorization_citation_is_copied_immutably() -> None:
+    snapshot = _fold(
+        [
+            _event(
+                1,
+                "run.queued",
+                {
+                    **_queued_payload(),
+                    "authorizationEventId": "evt.authorization.1",
+                    "authorizationSequence": "1",
+                },
+            ),
+            _event(2, "run.started", {}),
+        ]
+    )
+    assert snapshot is not None
+    assert snapshot.consumed_authorization is not None
+    assert snapshot.consumed_authorization.event_id == "evt.authorization.1"
+    assert snapshot.consumed_authorization.sequence == 1
+    dumped = run_snapshot_document(snapshot)
+    assert dumped["consumedAuthorization"] == {
+        "eventId": "evt.authorization.1",
+        "sequence": 1,
+    }
+    omitted = _fold([_event(1, "run.queued", _queued_payload())])
+    assert omitted is not None
+    assert omitted.consumed_authorization is None
+    assert "consumedAuthorization" not in run_snapshot_document(omitted)
+
+
 @pytest.mark.parametrize(
     "path", sorted((EXAMPLES / "invalid").glob("*.json")), ids=lambda p: p.name
 )

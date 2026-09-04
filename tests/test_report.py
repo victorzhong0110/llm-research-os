@@ -25,6 +25,8 @@ from llm_research_os.storage import EventStore
 ROOT = Path(__file__).parents[1]
 SPEC = ROOT / "examples" / "valid" / "minimal.yaml"
 REQUEST = ROOT / "examples" / "simulation-requests" / "valid" / "success-with-metrics.json"
+AUTHORIZATION_REQUEST = ROOT / "examples" / "plan-authorization-requests" / "valid" / "minimal.json"
+EVENT_REQUEST = ROOT / "examples" / "plan-authorization-events" / "valid" / "minimal.json"
 PROPOSAL = ROOT / "examples" / "research-decisions" / "valid" / "proposal-submit.json"
 DISSENT = ROOT / "examples" / "research-decisions" / "valid" / "dissent-record.json"
 DECISION = ROOT / "examples" / "research-decisions" / "valid" / "decision-record.json"
@@ -32,7 +34,28 @@ RUN = "run.simulated"
 ATTEMPT = "attempt.1"
 
 
+def _seed_auth(database: Path) -> None:
+    with EventStore(database):
+        pass
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(SPEC),
+                str(AUTHORIZATION_REQUEST),
+                str(EVENT_REQUEST),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+
 def _simulate(database: Path) -> None:
+    _seed_auth(database)
     assert (
         main(
             [
@@ -60,6 +83,7 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     assert "[`evt.training.step`](#evt.training.step)" in output
     assert "[`evt.evaluation.metric`](#evt.evaluation.metric)" in output
     assert "[`evt.6.run.completed`](#evt.6.run.completed)" in output
+    assert "[`evt.authorization.example-minimal.1`](#evt.authorization.example-minimal.1)" in output
     training = synthetic_training_payload(RUN, ATTEMPT)
     evaluation = synthetic_evaluation_payload(RUN, ATTEMPT)
     assert training["loss"] in output

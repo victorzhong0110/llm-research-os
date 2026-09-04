@@ -41,6 +41,10 @@ OpenAI-compatible HTTP adapter (loopback default) gated by `SecretRef`,
 `read.external_api`, and runtime CNY budget facts. The question channel is
 Issue #42. M1-5 emits seeded synthetic `training.step` / `evaluation.metric`
 facts and `researchos report RUN` static HTML/Markdown (React Flow deferred).
+M1-6 lets SimulatedRuntime consume one local `{eventId, sequence}` citation of
+`plan.authorization.evaluated`
+([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)); that
+is not a signed launch JWT. Issue #19 is closed. Umbrella #38 and #42 stay open.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -49,18 +53,20 @@ object layer, a pure Run/Attempt state machine, RunControl that preflights
 before write with global CAS, a GPU-free and network-free deterministic
 SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
-evaluation events, read-only lineage, in-process `decisionDigest`, explicit
+evaluation events, read-only lineage, in-process `decisionDigest`, a local
+`{eventId, sequence}` consume on SimulatedRuntime, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
 mock-model-call / evidence-import / OpenAI-compat / static-report CLIs,
 and a non-launching NativeProcessPreflight.
 
-The tree still does not execute training jobs or real GPU workloads, and it does
-not treat authorization, a preflight report, a lineage rebuild, or
-`decisionDigest` as an authenticated receipt, a launch permit, or the audit fact
-a Run consumed. A cancellation-request CLI still does not send a process signal;
+The tree still does not execute training jobs or real GPU workloads. Authorization
+events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
+receipts or launch permits. SimulatedRuntime does consume one local
+`{eventId, sequence}` citation of the audit fact on this EventStore (ADR-0042);
+lineage stays `not-consumed`. A cancellation-request CLI still does not send a process signal;
 the observed cancelled outcome is a later SimulatedRuntime fact. A real
-NativeProcessRuntime, remote Workers, and authenticated launch credentials are
-not M0 or M1-0 deliverables.
+NativeProcessRuntime, remote Workers, and signed launch credentials are
+not M0 or M1 deliverables.
 
 ## M0 goals
 
@@ -307,14 +313,15 @@ conflicts, and does not execute any block. After a CAS failure the caller must
 ## SimulatedRuntime
 
 `SimulatedRuntime` re-runs dry-run on a frozen ResearchSpec snapshot, calls the
-plan-authorization gate through a fixed T0 `simulate` capability policy, and
-appends Run/Attempt lifecycle events through RunControl only when the plan is a
-single `simulated.experiment@0.1.0` whose config names `outcome` explicitly.
-`id`/`time`/`streamid` are still supplied by the caller; conflicts are not
-retried; `unknown` is not collapsed into failure or success. A simulated
-`completed` only means a controlled lifecycle ended, not that training succeeded
-or a hypothesis held. A minimal runnable example is in
-[M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md).
+plan-authorization gate through a fixed T0 `simulate` capability policy, consumes
+the cited local authorization row, and appends Run/Attempt lifecycle events through
+RunControl only when the plan is a single `simulated.experiment@0.1.0` whose config
+names `outcome` explicitly. `id`/`time`/`streamid` and the authorization citation
+are still supplied by the caller; conflicts are not retried; `unknown` is not
+collapsed into failure or success. A simulated `completed` only means a controlled
+lifecycle ended, not that training succeeded or a hypothesis held. Create the
+EventStore, record the authorization fact, then simulate. A minimal runnable
+example is in [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md).
 
 The command-line vertical loop uses a separate explicit request file. It does not
 generate `id`, `time`, or `streamid`:

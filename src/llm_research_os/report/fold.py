@@ -59,6 +59,7 @@ class RunReport:
     budget_events: tuple[StoredEvent, ...]
     budget: BudgetFold
     lineage: tuple[StoredEvent, ...]
+    consumed_authorization: StoredEvent | None
     last_sequence: int
 
 
@@ -116,6 +117,9 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
                 )
     except SimulationError as exc:
         raise ReportError(str(exc), code=exc.code) from None
+    consumed = None
+    if snapshot is not None and snapshot.consumed_authorization is not None:
+        consumed = store.get_event(snapshot.consumed_authorization.event_id)
     return RunReport(
         run_id=bound_run,
         project_id=observed_project,
@@ -126,6 +130,7 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
         budget_events=tuple(budget_events),
         budget=budget,
         lineage=tuple(matching),
+        consumed_authorization=consumed,
         last_sequence=high_water,
     )
 

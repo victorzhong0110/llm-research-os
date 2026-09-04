@@ -29,6 +29,7 @@ def build_schema() -> dict[str, Any]:
             ordinal["maximum"] = MAX_ATTEMPTS
     schema = {"$schema": SCHEMA_DIALECT, "$id": SCHEMA_ID, **generated}
     _forbid_null_optional_digest(schema, "RunDigests", "decisionDigest")
+    _forbid_null_root_union(schema, "consumedAuthorization")
     return schema
 
 
@@ -40,6 +41,10 @@ def _forbid_null_optional_digest(schema: dict[str, Any], definition: str, field:
     alternative raises so a Pydantic change cannot republish a nullable contract.
     """
 
+    _forbid_null_union(schema, definition, field)
+
+
+def _forbid_null_union(schema: dict[str, Any], definition: str, field: str) -> None:
     location = f"$defs.{definition}.properties.{field}"
     definitions = schema.get("$defs")
     if type(definitions) is not dict:
@@ -50,19 +55,27 @@ def _forbid_null_optional_digest(schema: dict[str, Any], definition: str, field:
     properties = binding.get("properties")
     if type(properties) is not dict:
         raise ValueError(f"schema is missing {location} properties")
-    digest = properties.get(field)
-    if type(digest) is not dict:
+    properties[field] = _non_null_alternative(properties.get(field), location)
+
+
+def _forbid_null_root_union(schema: dict[str, Any], field: str) -> None:
+    location = f"properties.{field}"
+    properties = schema.get("properties")
+    if type(properties) is not dict:
         raise ValueError(f"schema is missing {location}")
-    alternatives = digest.get("anyOf")
+    properties[field] = _non_null_alternative(properties.get(field), location)
+
+
+def _non_null_alternative(node: object, location: str) -> dict[str, Any]:
+    if type(node) is not dict:
+        raise ValueError(f"schema is missing {location}")
+    alternatives = node.get("anyOf")
     if type(alternatives) is not list:
         raise ValueError(f"schema {location} is not an anyOf union")
-    typed = next(
-        (item for item in alternatives if type(item) is dict and item.get("type") == "string"),
-        None,
-    )
-    if typed is None:
-        raise ValueError(f"schema {location} anyOf has no string alternative")
-    properties[field] = typed
+    kept = [item for item in alternatives if type(item) is dict and item.get("type") != "null"]
+    if len(kept) != 1:
+        raise ValueError(f"schema {location} anyOf has no unique non-null alternative")
+    return kept[0]
 
 
 def canonical_schema() -> str:

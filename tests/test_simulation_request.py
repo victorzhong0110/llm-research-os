@@ -45,6 +45,7 @@ def test_simulation_request_schema_declares_closed_external_contract() -> None:
         "actor",
         "apiVersion",
         "attemptId",
+        "authorization",
         "events",
         "kind",
         "runId",
@@ -103,6 +104,8 @@ def test_schema_and_model_accept_valid_request() -> None:
         "attempt.started",
         "attempt.succeeded",
     }
+    assert runtime.authorization_event_id == "evt.authorization.example-minimal.1"
+    assert runtime.authorization_sequence == "1"
 
 
 def test_protocol_normative_example_matches_valid_request() -> None:

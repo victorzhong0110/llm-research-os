@@ -46,6 +46,11 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-5: seeded synthetic `training.step` / `evaluation.metric` from
   SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
   research, training, cost, and lineage sections linked to `eventId`.
+- M1-6: SimulatedRuntime consumes one local `{eventId, sequence}` citation of
+  `plan.authorization.evaluated` before lifecycle writes
+  ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)).
+  Issue #19 closed. Signatures, expiry, revocation, #42, and `v0.1.0-m1` remain
+  not-delivered.
 
 ### Changed
 
