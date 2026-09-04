@@ -28,6 +28,7 @@ from llm_research_os.research.models import ResearchLedger
 from llm_research_os.runs.errors import RunStateError, RunTransitionError
 from llm_research_os.runs.models import RunSnapshot
 from llm_research_os.runs.reducer import RunStateProjection
+from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 
@@ -119,7 +120,21 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
         raise ReportError(str(exc), code=exc.code) from None
     consumed = None
     if snapshot is not None and snapshot.consumed_authorization is not None:
-        consumed = store.get_event(snapshot.consumed_authorization.event_id)
+        citation = snapshot.consumed_authorization
+        try:
+            consumed = store.get_event(citation.event_id)
+        except EventStoreError as exc:
+            raise ReportError(str(exc), code="authorization-citation") from None
+        if consumed is None:
+            raise ReportError(
+                "consumed authorization event was not found",
+                code="authorization-event-not-found",
+            )
+        if consumed.sequence != citation.sequence:
+            raise ReportError(
+                "consumed authorization sequence does not match",
+                code="authorization-sequence-mismatch",
+            )
     return RunReport(
         run_id=bound_run,
         project_id=observed_project,
