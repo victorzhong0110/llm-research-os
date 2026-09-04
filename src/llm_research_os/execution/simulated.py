@@ -31,6 +31,11 @@ from llm_research_os.execution.errors import PlanAuthorizationError, SimulationE
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, ExecutionPlan, PlannedTask
 from llm_research_os.execution.planner import PlanningInputError
+from llm_research_os.execution.synthetic import (
+    append_synthetic_metrics,
+    metric_types_in_request,
+    preflight_synthetic_metrics,
+)
 from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
 from llm_research_os.runs import RunControl, RunSnapshot, RunStateProjection, RunStatus
 from llm_research_os.runs.models import AttemptStatus
@@ -211,12 +216,50 @@ class SimulatedRuntime:
             attempt_id=request_fields.attempt_id,
         )
         _preflight_remaining(self._store, self._projection, snapshot, drafts, head.last_sequence)
+        emit_metrics = _should_emit_synthetic_metrics(outcome, remaining, request_fields.events)
+        if emit_metrics:
+            preflight_synthetic_metrics(
+                self._store,
+                request_fields.events,
+                source=request_fields.source,
+                subject=request_fields.subject,
+                stream_id=request_fields.stream_id,
+                actor_id=request_fields.actor_id,
+                project_id=self._project_id,
+                run_id=self._run_id,
+                revision=frozen_spec.metadata.revision,
+                attempt_id=request_fields.attempt_id,
+                lifecycle_draft_count=len(drafts),
+                frozen_head=head.last_sequence,
+            )
         stored: list[StoredEvent] = []
         committed = snapshot
+        if emit_metrics and TYPE_ATTEMPT_STARTED not in remaining:
+            stored.extend(
+                _append_request_metrics(
+                    self._store,
+                    request_fields,
+                    project_id=self._project_id,
+                    run_id=self._run_id,
+                    revision=frozen_spec.metadata.revision,
+                )
+            )
+            committed = self._control.rebuild().snapshot
         for draft in drafts:
             result = self._control.append(draft)
             stored.append(result.stored)
             committed = result.snapshot
+            if emit_metrics and result.stored.event.type == TYPE_ATTEMPT_STARTED:
+                stored.extend(
+                    _append_request_metrics(
+                        self._store,
+                        request_fields,
+                        project_id=self._project_id,
+                        run_id=self._run_id,
+                        revision=frozen_spec.metadata.revision,
+                    )
+                )
+                committed = self._control.rebuild().snapshot
         if committed is None:
             raise SimulationError("simulation produced no snapshot")
         return SimulationResult(
@@ -488,6 +531,40 @@ def _path_for_outcome(outcome: str) -> tuple[str, ...]:
     if outcome == _OUTCOME_FAILURE:
         return FAILURE_PATH
     return UNKNOWN_PATH
+
+
+def _should_emit_synthetic_metrics(
+    outcome: str,
+    remaining: tuple[str, ...],
+    events: dict[str, tuple[str, str]],
+) -> bool:
+    if outcome != _OUTCOME_SUCCESS:
+        return False
+    if TYPE_ATTEMPT_CANCELLED in remaining or TYPE_RUN_CANCELLED in remaining:
+        return False
+    return bool(metric_types_in_request(events))
+
+
+def _append_request_metrics(
+    store: EventStore,
+    request: _FrozenRequest,
+    *,
+    project_id: str,
+    run_id: str,
+    revision: int,
+) -> list[StoredEvent]:
+    return append_synthetic_metrics(
+        store,
+        request.events,
+        source=request.source,
+        subject=request.subject,
+        stream_id=request.stream_id,
+        actor_id=request.actor_id,
+        project_id=project_id,
+        run_id=run_id,
+        revision=revision,
+        attempt_id=request.attempt_id,
+    )
 
 
 def _emitted_types(snapshot: RunSnapshot) -> tuple[str, ...]:

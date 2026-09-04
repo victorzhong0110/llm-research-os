@@ -48,6 +48,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `budget.limit.recorded` / `reserved` / `consumed` / `exceeded` / `released`.
 - `budget.limit.recorded` as a human-only project CNY cap. Positive reservations
   must repeat that cap; a request cannot raise it by itself.
+- M1-5: seeded synthetic `training.step` / `evaluation.metric` from
+  SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
+  research, training, cost, and lineage sections linked to `eventId`.
 
 ### Changed
 

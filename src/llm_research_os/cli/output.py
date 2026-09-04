@@ -14,6 +14,7 @@ from llm_research_os.execution.errors import SimulationError
 from llm_research_os.execution.planner import PlanningInputError
 from llm_research_os.problem import ProblemDetail, ProblemReport
 from llm_research_os.providers.errors import ModelProviderError, ModelRequestError
+from llm_research_os.report.errors import ReportError
 from llm_research_os.research.errors import ResearchDecisionError, ResearchRequestError
 from llm_research_os.runs import RunCancellationRequestError
 
@@ -66,6 +67,7 @@ def problem_report(exc: Exception) -> ProblemReport:
         BudgetError,
         EvidenceError,
         ModelProviderError,
+        ReportError,
         ResearchDecisionError,
         SimulationError,
     )
