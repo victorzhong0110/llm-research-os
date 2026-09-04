@@ -143,7 +143,9 @@ audit-only and is not executable authority. Locating those facts by plan identit
 [PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md) and likewise is not
 executable authority. `ai.call.started` / `ai.call.completed` / `ai.call.failed` are defined by
 [ModelProvider v0alpha1](model-provider-v0alpha1.md); payloads store prompt and output digests
-and optional artifact refs, never inline text.
+and optional artifact refs, never inline text. `evidence.imported` is defined by
+[Evidence import v0alpha1](evidence-import-v0alpha1.md); payloads store snapshot and text
+digests, never source paths or extracted bodies.
 
 ## 6. Conformance commands
 

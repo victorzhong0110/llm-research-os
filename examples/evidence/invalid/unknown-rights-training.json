@@ -1,0 +1,25 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "EvidenceImportRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "researchos://evidence/import",
+  "subject": "evidence.eval-split",
+  "streamid": "stream.evidence",
+  "actor": {
+    "id": "researcher",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.evidence.imported.1",
+    "time": "2026-09-04T14:00:00Z"
+  },
+  "evidenceId": "evidence.eval-split",
+  "sourceUri": "researchos://local/notes/eval-split.md",
+  "mediaType": "text/markdown",
+  "sourceType": "note",
+  "license": "LicenseRef-Unknown",
+  "rights": "unknown",
+  "allowedUses": ["research-read", "training"],
+  "evidenceRefs": []
+}
