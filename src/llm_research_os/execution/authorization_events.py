@@ -393,7 +393,7 @@ def record_plan_authorization_event(
     except ValueError:
         raise PlanAuthorizationRecordError("authorization event draft is invalid") from None
     validate_plan_authorization_evaluated_event(preflight_event)
-    frozen_head = store.verify_integrity()
+    frozen_head = store.freeze_high_water()
     stored = store.append(draft, expected_last_sequence=frozen_head)
     validate_plan_authorization_evaluated_event(stored.event)
     return PlanAuthorizationEventRecordResult(authorization=result, stored=stored)

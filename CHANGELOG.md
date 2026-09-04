@@ -22,6 +22,11 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - `src/llm_research_os/py.typed`.
 - Hypothesis properties for JCS stability, Run/Attempt folds that ignore foreign
   runs, and Pydantic round-trips of valid spec/event examples.
+- M1-0: SQLite schema v2 verified high-water cache and rebuildable query tables
+  ([ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md);
+  Issues #39 / #40). Typed [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)
+  and redaction. Optional ResearchEvent actor `kind` / `modelId`. SimulatedRuntime
+  emits `attempt.cancelled` / `run.cancelled` from a recorded cancel request.
 
 ### Changed
 

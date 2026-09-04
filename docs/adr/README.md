@@ -18,7 +18,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0012](0012-python-and-dependencies.md) | Python 3.12+, pyproject and uv | Accepted | Written |
 | [0013](0013-schema-authority.md) | Versioned JSON Schema external contract | Accepted | Written |
 | [0014](0014-cloudevents-compatible-research-event.md) | CloudEvents-compatible ResearchEvent envelope | Accepted | Written |
-| [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay, in-memory folds and local file CAS implemented for review; SQLite artifact index and persistent projections pending |
+| [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay, in-memory folds, local file CAS, schema v2 query tables and verified high-water cache (ADR-0041) |
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending; M1 built-in adapters scoped T0/T1 in-process by ADR-0038 E5 |
 | 0017 | Minimal model interface and capability negotiation | Direction accepted | M1 implementation pending (M1-2 in ADR-0038 E4) |
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |
@@ -28,8 +28,8 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0022 | First cloud-provider adapter | Provisional | M2 live verification required |
 | [0023](0023-inert-manifests-and-pure-dry-run.md) | Inert manifests and pure deterministic dry-run | Accepted | Implemented |
 | [0024](0024-run-attempt-state-machine.md) | Pure Run and Attempt state machine | Accepted | Implemented |
-| [0025](0025-atomic-run-control-append-boundary.md) | Atomic RunControl append boundary | Accepted | Implemented |
-| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented |
+| [0025](0025-atomic-run-control-append-boundary.md) | Atomic RunControl append boundary | Accepted | Implemented; write-cost model relaxed for schema v2 by ADR-0041 |
+| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented; M1-0 consumes cancellation requests and emits `attempt.cancelled` / `run.cancelled` |
 | [0027](0027-explicit-simulated-run-cli.md) | Explicit Simulated Run CLI | Accepted | Implemented |
 | [0028](0028-explicit-run-cancellation-request.md) | Explicit Run/Attempt cancellation request CLI | Accepted | Implemented |
 | [0029](0029-explicit-local-artifact-object-cli.md) | Explicit local artifact object CLI | Accepted | Implemented |
@@ -44,7 +44,8 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0038](0038-charter-errata-after-m0.md) | Charter v0.1 errata after M0; M0 debts, M1 order, checkpoint and budget; errata method and ADR granularity | Accepted | Written |
 | [0039](0039-human-help-period-purpose.md) | The OS serves the period in which human help remains necessary; researcher modeled as teacher; sanctioned AI→researcher question channel; human-attention metric; gated persistence into parameters | Accepted | Written; M1-1 draft protocol `research-decision-objects-v0alpha1` pending implementation |
 | [0040](0040-english-primary-and-engineering-standards.md) | English is the working language; comments record invariants, not a ratio; coverage floor 85%; typed package; commit-msg hook; Dependabot | Accepted | Written; operational checklist in `docs/engineering-standards.md` |
+| [0041](0041-verified-high-water-cache-and-query-tables.md) | Verified high-water cache and rebuildable SQLite query tables | Accepted | Implemented; schema v2 (`integrity_checkpoint`, `run_projections`, `spec_revisions`, `artifacts` / `artifact_links`) |
 
-M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are not part of that closure and are registered as M1-0 by ADR-0038.
+M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.
