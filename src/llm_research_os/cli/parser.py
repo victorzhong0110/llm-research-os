@@ -272,6 +272,91 @@ def build_parser() -> argparse.ArgumentParser:
     artifacts_verify.add_argument("root", type=Path, help="existing local artifact root")
     artifacts_verify.add_argument("digest", help="sha256:<64 lowercase hex> object digest")
     add_event_format_argument(artifacts_verify)
+
+    proposals = subparsers.add_parser(
+        "proposals",
+        help="record structured research proposals as EventStore facts",
+    )
+    proposal_commands = proposals.add_subparsers(dest="proposals_command", required=True)
+    proposal_submit = proposal_commands.add_parser(
+        "submit",
+        help="append one proposal.submitted fact",
+    )
+    proposal_submit.add_argument(
+        "request",
+        type=Path,
+        help="ProposalSubmitRequest v0alpha1 YAML or JSON file",
+    )
+    proposal_submit.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(proposal_submit)
+
+    dissents = subparsers.add_parser(
+        "dissents",
+        help="record structured objections as EventStore facts",
+    )
+    dissent_commands = dissents.add_subparsers(dest="dissents_command", required=True)
+    dissent_record = dissent_commands.add_parser(
+        "record",
+        help="append one dissent.recorded fact",
+    )
+    dissent_record.add_argument(
+        "request",
+        type=Path,
+        help="DissentRecordRequest v0alpha1 YAML or JSON file",
+    )
+    dissent_record.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(dissent_record)
+
+    decisions = subparsers.add_parser(
+        "decisions",
+        help="record researcher decisions with rationale as EventStore facts",
+    )
+    decision_commands = decisions.add_subparsers(dest="decisions_command", required=True)
+    decision_record = decision_commands.add_parser(
+        "record",
+        help="append one decision.recorded fact",
+    )
+    decision_record.add_argument(
+        "request",
+        type=Path,
+        help="DecisionRecordRequest v0alpha1 YAML or JSON file",
+    )
+    decision_record.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(decision_record)
+
+    research = subparsers.add_parser(
+        "research",
+        help="rebuild read-only research projections from EventStore",
+    )
+    research_commands = research.add_subparsers(dest="research_command", required=True)
+    research_ledger = research_commands.add_parser(
+        "ledger",
+        help="rebuild the ResearchLedger for one project",
+    )
+    research_ledger.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    research_ledger.add_argument(
+        "--project",
+        required=True,
+        metavar="ID",
+        help="projectId to fold",
+    )
+    add_event_format_argument(research_ledger)
     return parser
 
 

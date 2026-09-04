@@ -1,0 +1,384 @@
+{
+  "$defs": {
+    "DecisionLedgerEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "decisionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Decisionid",
+          "type": "string"
+        },
+        "eventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "overriddenDissentIds": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Overriddendissentids",
+          "type": "array"
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "targetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Targetid",
+          "type": "string"
+        },
+        "targetKind": {
+          "$ref": "#/$defs/DecisionTargetKind"
+        }
+      },
+      "required": [
+        "decisionId",
+        "targetKind",
+        "targetId",
+        "outcome",
+        "rationale",
+        "overriddenDissentIds",
+        "eventId",
+        "sequence"
+      ],
+      "title": "DecisionLedgerEntry",
+      "type": "object"
+    },
+    "DecisionOutcome": {
+      "enum": [
+        "accept",
+        "reject",
+        "modify",
+        "continue",
+        "defer"
+      ],
+      "title": "DecisionOutcome",
+      "type": "string"
+    },
+    "DecisionTargetKind": {
+      "enum": [
+        "proposal",
+        "run",
+        "question",
+        "dissent"
+      ],
+      "title": "DecisionTargetKind",
+      "type": "string"
+    },
+    "DissentLedgerEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "dissentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Dissentid",
+          "type": "string"
+        },
+        "eventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "objections": {
+          "items": {
+            "$ref": "#/$defs/DissentObjection"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Objections",
+          "type": "array"
+        },
+        "overriddenByDecisionIds": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Overriddenbydecisionids",
+          "type": "array"
+        },
+        "sequence": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "targetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Targetid",
+          "type": "string"
+        },
+        "targetKind": {
+          "$ref": "#/$defs/DissentTargetKind"
+        }
+      },
+      "required": [
+        "dissentId",
+        "targetKind",
+        "targetId",
+        "objections",
+        "eventId",
+        "sequence"
+      ],
+      "title": "DissentLedgerEntry",
+      "type": "object"
+    },
+    "DissentObjection": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ObjectionKind"
+        },
+        "statement": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "statement"
+      ],
+      "title": "DissentObjection",
+      "type": "object"
+    },
+    "DissentTargetKind": {
+      "enum": [
+        "proposal",
+        "decision",
+        "conclusion"
+      ],
+      "title": "DissentTargetKind",
+      "type": "string"
+    },
+    "ObjectionKind": {
+      "enum": [
+        "falsifiability",
+        "alternative-explanation",
+        "data-leakage",
+        "baseline-or-ablation",
+        "metric-validity",
+        "cost-benefit",
+        "negative-result-value",
+        "other"
+      ],
+      "title": "ObjectionKind",
+      "type": "string"
+    },
+    "ProposalLedgerEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedByDecisionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        "baseRevision": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Baserevision",
+          "type": "integer"
+        },
+        "eventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "proposalId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Proposalid",
+          "type": "string"
+        },
+        "proposedSpecDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Proposedspecdigest",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "revisionState": {
+          "$ref": "#/$defs/ProposalRevisionState"
+        },
+        "sequence": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "specDiffDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Specdiffdigest",
+          "type": "string"
+        },
+        "supersededByProposalId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposalId",
+        "baseRevision",
+        "specDiffDigest",
+        "proposedSpecDigest",
+        "rationale",
+        "revisionState",
+        "eventId",
+        "sequence"
+      ],
+      "title": "ProposalLedgerEntry",
+      "type": "object"
+    },
+    "ProposalRevisionState": {
+      "enum": [
+        "proposed",
+        "validated",
+        "accepted",
+        "rejected",
+        "superseded"
+      ],
+      "title": "ProposalRevisionState",
+      "type": "string"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/research-ledger/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "answeredQuestionCount": {
+      "minimum": 0,
+      "title": "Answeredquestioncount",
+      "type": "integer"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "decisionCount": {
+      "minimum": 0,
+      "title": "Decisioncount",
+      "type": "integer"
+    },
+    "decisions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DecisionLedgerEntry"
+      },
+      "title": "Decisions",
+      "type": "array"
+    },
+    "dissents": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DissentLedgerEntry"
+      },
+      "title": "Dissents",
+      "type": "array"
+    },
+    "kind": {
+      "const": "ResearchLedger",
+      "title": "Kind",
+      "type": "string"
+    },
+    "lastSequence": {
+      "maximum": 2147483647,
+      "minimum": 0,
+      "title": "Lastsequence",
+      "type": "integer"
+    },
+    "openQuestionCount": {
+      "minimum": 0,
+      "title": "Openquestioncount",
+      "type": "integer"
+    },
+    "overriddenDissentCount": {
+      "minimum": 0,
+      "title": "Overriddendissentcount",
+      "type": "integer"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "proposals": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ProposalLedgerEntry"
+      },
+      "title": "Proposals",
+      "type": "array"
+    },
+    "questions": {
+      "default": [],
+      "maxItems": 0,
+      "minItems": 0,
+      "title": "Questions",
+      "type": "array"
+    },
+    "rationaleCharacters": {
+      "minimum": 0,
+      "title": "Rationalecharacters",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "lastSequence",
+    "decisionCount",
+    "answeredQuestionCount",
+    "openQuestionCount",
+    "rationaleCharacters",
+    "overriddenDissentCount"
+  ],
+  "title": "ResearchLedger",
+  "type": "object"
+}

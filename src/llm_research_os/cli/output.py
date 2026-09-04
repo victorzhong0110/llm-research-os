@@ -11,6 +11,7 @@ from llm_research_os.events.models import ResearchEvent
 from llm_research_os.execution.errors import SimulationError
 from llm_research_os.execution.planner import PlanningInputError
 from llm_research_os.problem import ProblemDetail, ProblemReport
+from llm_research_os.research.errors import ResearchDecisionError, ResearchRequestError
 from llm_research_os.runs import RunCancellationRequestError
 
 
@@ -51,13 +52,13 @@ def print_problem(report: ProblemReport, output_format: str) -> None:
 
 
 def problem_report(exc: Exception) -> ProblemReport:
-    if isinstance(exc, RunCancellationRequestError):
+    if isinstance(exc, (ResearchRequestError, RunCancellationRequestError)):
         errors = _pydantic_problem_details(exc.error, hide_extra_field_names=True)
     elif isinstance(exc, ValidationError):
         errors = _pydantic_problem_details(exc, hide_extra_field_names=False)
     elif isinstance(exc, PlanningInputError):
         errors = [ProblemDetail(path=exc.path, message=str(exc), type=exc.code)]
-    elif isinstance(exc, SimulationError):
+    elif isinstance(exc, (SimulationError, ResearchDecisionError)):
         errors = [ProblemDetail(message=str(exc), type=exc.code)]
     else:
         errors = [ProblemDetail(message=str(exc), type=type(exc).__name__)]

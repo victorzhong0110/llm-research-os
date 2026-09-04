@@ -1,0 +1,28 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "DissentRecordRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "dissent.eval-leakage",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai",
+    "modelId": "mock.deterministic"
+  },
+  "event": {
+    "id": "evt.dissent.1",
+    "time": "2026-09-04T12:01:00Z"
+  },
+  "dissentId": "dissent.eval-leakage",
+  "targetKind": "proposal",
+  "targetId": "proposal.revise-eval",
+  "objections": [
+    {
+      "kind": "data-leakage",
+      "statement": "The proposed split still shares documents with training."
+    }
+  ],
+  "evidenceRefs": []
+}

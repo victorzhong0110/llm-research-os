@@ -1,0 +1,24 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "DecisionRecordRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "decision.ai",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai"
+  },
+  "event": {
+    "id": "evt.decision.ai",
+    "time": "2026-09-04T12:02:00Z"
+  },
+  "decisionId": "decision.ai",
+  "targetKind": "proposal",
+  "targetId": "proposal.revise-eval",
+  "outcome": "accept",
+  "rationale": "Models must not record decisions.",
+  "overriddenDissentIds": [],
+  "evidenceRefs": []
+}
