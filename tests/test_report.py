@@ -28,6 +28,8 @@ from llm_research_os.storage import EventStore
 ROOT = Path(__file__).parents[1]
 SPEC = ROOT / "examples" / "valid" / "minimal.yaml"
 REQUEST = ROOT / "examples" / "simulation-requests" / "valid" / "success-with-metrics.json"
+AUTHORIZATION_REQUEST = ROOT / "examples" / "plan-authorization-requests" / "valid" / "minimal.json"
+EVENT_REQUEST = ROOT / "examples" / "plan-authorization-events" / "valid" / "minimal.json"
 PROPOSAL = ROOT / "examples" / "research-decisions" / "valid" / "proposal-submit.json"
 DISSENT = ROOT / "examples" / "research-decisions" / "valid" / "dissent-record.json"
 DECISION = ROOT / "examples" / "research-decisions" / "valid" / "decision-record.json"
@@ -35,7 +37,28 @@ RUN = "run.simulated"
 ATTEMPT = "attempt.1"
 
 
+def _seed_auth(database: Path) -> None:
+    with EventStore(database):
+        pass
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(SPEC),
+                str(AUTHORIZATION_REQUEST),
+                str(EVENT_REQUEST),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+
 def _simulate(database: Path) -> None:
+    _seed_auth(database)
     assert (
         main(
             [

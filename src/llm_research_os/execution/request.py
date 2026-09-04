@@ -15,6 +15,7 @@ from llm_research_os.events.models import (
     EventDocumentModel,
     EventIdentifier,
     Rfc3339Timestamp,
+    SequenceIntegerString,
 )
 from llm_research_os.spec.io import load_document
 
@@ -71,6 +72,13 @@ class SimulationEventIdentityDocument(SimulationRequestModel):
     time: Rfc3339Timestamp
 
 
+class SimulationAuthorizationCitation(SimulationRequestModel):
+    """Local EventStore citation of one ``plan.authorization.evaluated`` fact."""
+
+    event_id: CloudEventsString = Field(alias="eventId")
+    sequence: SequenceIntegerString
+
+
 class SimulationRequestDocument(SimulationRequestModel):
     """Versioned external request for one deterministic simulated Run."""
 
@@ -83,6 +91,7 @@ class SimulationRequestDocument(SimulationRequestModel):
     subject: CloudEventsString
     stream_id: EventIdentifier = Field(alias="streamid")
     actor: SimulationActor
+    authorization: SimulationAuthorizationCitation
     events: Mapping[SimulationLifecycleType, SimulationEventIdentityDocument] = Field(max_length=13)
 
     @model_validator(mode="after")
@@ -116,6 +125,8 @@ class SimulationRequestDocument(SimulationRequestModel):
             subject=self.subject,
             stream_id=self.stream_id,
             actor_id=self.actor.id,
+            authorization_event_id=self.authorization.event_id,
+            authorization_sequence=self.authorization.sequence,
             events={
                 event_type: SimulationEventIdentity(id=identity.id, time=identity.time)
                 for event_type, identity in self.events.items()

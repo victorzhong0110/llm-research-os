@@ -15,9 +15,10 @@ event IDs. SimulatedRuntime checks that the identities needed by the selected
 ResearchSpec outcome and any resumed prefix are present before the first event
 of that invocation is appended.
 
-This contract packages caller-owned identity. It does not authorize execution,
-choose an outcome, assign an event sequence, or settle the open ResearchEvent
-questions about stream granularity and correlation/causation.
+This contract packages caller-owned identity and a required local citation of
+one `plan.authorization.evaluated` fact. It does not sign, expire, or revoke
+that fact, choose an outcome, assign an event sequence, or settle the open
+ResearchEvent questions about stream granularity and correlation/causation.
 
 ## Document shape
 
@@ -32,6 +33,8 @@ questions about stream granularity and correlation/causation.
 | `subject` | non-empty CloudEvents string used on emitted events |
 | `streamid` | explicit ResearchEvent stream identity |
 | `actor.id` | explicit actor identity |
+| `authorization.eventId` | CloudEvents id of one local `plan.authorization.evaluated` fact |
+| `authorization.sequence` | store-assigned sequence of that fact as a CloudEvents Integer string |
 | `events` | closed map from supported lifecycle type to `{id, time}` |
 
 Every event identity contains a non-empty CloudEvents string `id` and a
@@ -69,6 +72,10 @@ are invalid.
   "actor": {
     "id": "researcher.alice"
   },
+  "authorization": {
+    "eventId": "evt.authorization.example-minimal.1",
+    "sequence": "1"
+  },
   "events": {
     "run.queued": {
       "id": "evt.1.run.queued",
@@ -100,7 +107,21 @@ are invalid.
 
 ## CLI binding
 
+Canonical examples cite `evt.authorization.example-minimal.1` as sequence `"1"`.
+Record that fact first; `runs simulate` will create a missing database and then
+fail closed if the cited row is absent.
+
 ```bash
+python -c 'from llm_research_os.storage import EventStore
+with EventStore("research.db"):
+    pass'
+
+uv run researchos authorizations record \
+  examples/valid/minimal.yaml \
+  examples/plan-authorization-requests/valid/minimal.json \
+  examples/plan-authorization-events/valid/minimal.json \
+  research.db --format json
+
 uv run researchos runs simulate \
   examples/valid/minimal.yaml \
   examples/simulation-requests/valid/success.json \

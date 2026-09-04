@@ -16,12 +16,61 @@ from llm_research_os.storage import EventStore
 ROOT = Path(__file__).parents[1]
 SPEC = ROOT / "examples" / "valid" / "minimal.yaml"
 REQUEST = ROOT / "examples" / "simulation-requests" / "valid" / "success.json"
+AUTHORIZATION_REQUEST = ROOT / "examples" / "plan-authorization-requests" / "valid" / "minimal.json"
+EVENT_REQUEST = ROOT / "examples" / "plan-authorization-events" / "valid" / "minimal.json"
 RUN_STATE_SCHEMA = ROOT / "schemas" / "run-state" / "v0alpha1.schema.json"
 
 
 def _write_json(path: Path, document: object) -> Path:
     path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
     return path
+
+
+def _seed_auth(database: Path, spec: Path, tmp_path: Path) -> None:
+    with EventStore(database):
+        pass
+    report = TrustedKernel(build_registry()).dry_run(
+        load_spec(spec), workflow_id="workflow.simulation"
+    )
+    assert report.digests.plan is not None
+    result = authorize_plan(
+        report,
+        PlanAuthorizationPolicy(
+            spec_digest=report.digests.spec,
+            registry_digest=report.digests.registry,
+            plan_digest=report.digests.plan,
+            granted_capabilities=("simulate",),
+        ),
+    )
+    auth_document = load_document(AUTHORIZATION_REQUEST)
+    auth_document["specDigest"] = result.spec_digest
+    auth_document["registryDigest"] = result.registry_digest
+    auth_document["planDigest"] = result.plan_digest
+    event_document = load_document(EVENT_REQUEST)
+    event_document["experimentRevision"] = report.project.revision
+    event_document["binding"] = {
+        "specDigest": result.spec_digest,
+        "registryDigest": result.registry_digest,
+        "planDigest": result.plan_digest,
+        "decisionDigest": result.decision_digest,
+    }
+    auth_path = _write_json(tmp_path / f"{database.name}-authorization.json", auth_document)
+    event_path = _write_json(tmp_path / f"{database.name}-event.json", event_document)
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(spec),
+                str(auth_path),
+                str(event_path),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
 
 
 def _spec_for(tmp_path: Path, outcome: str) -> Path:
@@ -79,6 +128,8 @@ def test_simulate_command_creates_completed_run_and_emits_run_snapshot(
     capsys: object,
 ) -> None:
     database = tmp_path / "research.db"
+    _seed_auth(database, SPEC, tmp_path)
+    capsys.readouterr()  # type: ignore[attr-defined]
     assert _run(SPEC, REQUEST, database) == 0
     output = capsys.readouterr()  # type: ignore[attr-defined]
     snapshot = json.loads(output.out)
@@ -89,9 +140,13 @@ def test_simulate_command_creates_completed_run_and_emits_run_snapshot(
     assert snapshot["runId"] == "run.simulated"
     assert snapshot["workflowId"] == "workflow.simulation"
     assert snapshot["status"] == "completed"
-    assert snapshot["lastSequence"] == 6
+    assert snapshot["lastSequence"] == 7
     assert snapshot["activeAttemptId"] is None
     assert "disposition" not in snapshot
+    assert snapshot["consumedAuthorization"] == {
+        "eventId": "evt.authorization.example-minimal.1",
+        "sequence": 1,
+    }
     report = TrustedKernel(build_registry()).dry_run(load_spec(SPEC))
     assert report.digests.plan is not None
     expected_decision = authorize_plan(
@@ -108,8 +163,9 @@ def test_simulate_command_creates_completed_run_and_emits_run_snapshot(
         snapshot
     )
     with EventStore(database, create=False) as store:
-        assert store.verify_integrity() == 6
+        assert store.verify_integrity() == 7
         assert [item.event.type for item in store.read_events(limit=10)] == [
+            "plan.authorization.evaluated",
             "run.queued",
             "run.started",
             "attempt.queued",
@@ -124,6 +180,8 @@ def test_completed_rerun_is_idempotent_and_text_is_explicit(
     capsys: object,
 ) -> None:
     database = tmp_path / "research.db"
+    _seed_auth(database, SPEC, tmp_path)
+    capsys.readouterr()  # type: ignore[attr-defined]
     assert _run(SPEC, REQUEST, database) == 0
     capsys.readouterr()  # type: ignore[attr-defined]
     assert _run(SPEC, REQUEST, database, output_format="text") == 0
@@ -134,18 +192,21 @@ def test_completed_rerun_is_idempotent_and_text_is_explicit(
     assert "appended events: 0" in output.out
     assert "scientific conclusion: not evaluated" in output.out
     with EventStore(database, create=False) as store:
-        assert store.verify_integrity() == 6
+        assert store.verify_integrity() == 7
 
 
 def test_failure_and_unknown_are_domain_negative_exit_one(
     tmp_path: Path,
     capsys: object,
 ) -> None:
-    for outcome, status, count in (("failure", "failed", 6), ("unknown", "unknown", 5)):
+    for outcome, status, count in (("failure", "failed", 7), ("unknown", "unknown", 6)):
         database = tmp_path / f"{outcome}.db"
+        spec = _spec_for(tmp_path, outcome)
+        _seed_auth(database, spec, tmp_path)
+        capsys.readouterr()  # type: ignore[attr-defined]
         assert (
             _run(
-                _spec_for(tmp_path, outcome),
+                spec,
                 _request_for(tmp_path, outcome),
                 database,
             )
@@ -182,6 +243,8 @@ def test_missing_event_identities_are_not_generated(tmp_path: Path, capsys: obje
     document["events"] = {}
     request = _write_json(tmp_path / "empty-events.json", document)
     database = tmp_path / "research.db"
+    _seed_auth(database, SPEC, tmp_path)
+    capsys.readouterr()  # type: ignore[attr-defined]
     assert _run(SPEC, request, database) == 2
     output = capsys.readouterr()  # type: ignore[attr-defined]
     problem = json.loads(output.err)
@@ -189,7 +252,7 @@ def test_missing_event_identities_are_not_generated(tmp_path: Path, capsys: obje
     assert problem["errors"][0]["type"] == "SimulationError"
     assert "incomplete" in problem["errors"][0]["message"]
     with EventStore(database, create=False) as store:
-        assert store.verify_integrity() == 0
+        assert store.verify_integrity() == 1
 
 
 def test_spec_and_request_symlinks_fail_before_database_creation(
@@ -271,8 +334,10 @@ def test_unsupported_plan_problem_type_is_the_stable_reason_code(
 
 def test_database_integrity_is_preserved_after_cli_run(tmp_path: Path, capsys: object) -> None:
     database = tmp_path / "research.db"
+    _seed_auth(database, SPEC, tmp_path)
+    capsys.readouterr()  # type: ignore[attr-defined]
     assert _run(SPEC, REQUEST, database) == 0
     capsys.readouterr()  # type: ignore[attr-defined]
     with sqlite3.connect(database, autocommit=True) as connection:
         count = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-    assert count == 6
+    assert count == 7
