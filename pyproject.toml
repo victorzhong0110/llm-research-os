@@ -9,7 +9,10 @@ description = "A model-, training-backend-, and compute-provider-neutral LLM res
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  { name = "victorzhong0110", email = "victorzhong0110@gmail.com" },
+]
 dependencies = [
   "jsonschema>=4.23,<5",
   "pydantic>=2.10,<3",

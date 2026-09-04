@@ -371,4 +371,7 @@ a separate approval. See the [security policy](SECURITY.md).
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Copyright 2026 victorzhong0110.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE)
+and [NOTICE](NOTICE).

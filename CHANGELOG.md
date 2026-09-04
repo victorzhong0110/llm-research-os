@@ -22,6 +22,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - `src/llm_research_os/py.typed`.
 - Hypothesis properties for JCS stability, Run/Attempt folds that ignore foreign
   runs, and Pydantic round-trips of valid spec/event examples.
+- [NOTICE](NOTICE) names copyright owner `victorzhong0110`. `LICENSE` stays the
+  unmodified Apache-2.0 text.
 
 ### Changed
 
