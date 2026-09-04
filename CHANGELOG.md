@@ -42,6 +42,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   Adversarial notes cannot enable mock tools (TM-006). PDF extraction is
   subprocess-isolated with page, character, wall-clock, and best-effort
   memory limits (TM-041).
+- M1-4: OpenAI-compatible HTTP adapter (loopback default). Remote endpoints
+  require `SecretRef`, `read.external_api`, and HTTPS. First runtime-enforced
+  CNY caps: `budget.reserved` / `consumed` / `exceeded`.
 
 ### Changed
 
