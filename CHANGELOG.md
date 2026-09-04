@@ -37,6 +37,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `DeterministicMockProvider` from fixtures, and `ai.call.*` facts that store
   prompt/output digests (optional artifact refs), never inline text
   ([ADR-0017](docs/adr/0017-minimal-model-interface.md)). Zero network.
+- M1-3: local Markdown/PDF import to artifact CAS and `evidence.imported`
+  with default `LicenseRef-Unknown` ([ADR-0019](docs/adr/0019-evidence-rights-by-use.md)).
+  Adversarial notes cannot enable mock tools (TM-006).
 
 ### Changed
 

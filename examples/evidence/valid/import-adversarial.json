@@ -1,0 +1,25 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "EvidenceImportRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "researchos://evidence/import",
+  "subject": "evidence.adversarial",
+  "streamid": "stream.evidence",
+  "actor": {
+    "id": "researcher",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.evidence.imported.adversarial",
+    "time": "2026-09-04T14:00:00Z"
+  },
+  "evidenceId": "evidence.adversarial-inject",
+  "sourceUri": "researchos://local/notes/adversarial-inject.md",
+  "mediaType": "text/markdown",
+  "sourceType": "note",
+  "license": "LicenseRef-Unknown",
+  "rights": "unknown",
+  "allowedUses": ["research-read"],
+  "evidenceRefs": []
+}

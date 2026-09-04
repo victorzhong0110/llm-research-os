@@ -29,6 +29,14 @@ from llm_research_os.blocks.schema import write_schema as write_block_schema
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
+from llm_research_os.evidence.schema import (
+    canonical_evidence_citation_schema,
+    canonical_evidence_import_request_schema,
+    evidence_citation_schema_matches,
+    evidence_import_request_schema_matches,
+    write_evidence_citation_schema,
+    write_evidence_import_request_schema,
+)
 from llm_research_os.execution.authorization_event_request_schema import (
     canonical_schema as canonical_plan_authorization_event_request_schema,
 )
@@ -323,6 +331,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         model_fixture_schema_matches,
         write_model_fixture_schema,
         "schemas/model-fixture/v0alpha1.schema.json",
+    ),
+    "evidence-import-request": _contract(
+        canonical_evidence_import_request_schema,
+        evidence_import_request_schema_matches,
+        write_evidence_import_request_schema,
+        "schemas/evidence-import-request/v0alpha1.schema.json",
+    ),
+    "evidence-citation": _contract(
+        canonical_evidence_citation_schema,
+        evidence_citation_schema_matches,
+        write_evidence_citation_schema,
+        "schemas/evidence-citation/v0alpha1.schema.json",
     ),
 }
 

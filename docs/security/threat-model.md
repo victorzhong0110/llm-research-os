@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-04
 >
-> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, and the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts
+> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, and local Markdown/PDF evidence import
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -39,10 +39,12 @@ cancellation-request fact to an existing store, but sends no signal and infers n
 A strict `NativeProcessPreflightRequest` can freeze the requested launch shape for one exact
 authorized Python task into a report that denies launch, declares isolation unenforced and records
 zero entrypoint imports, processes, signals, network calls and writes.
-It does **not** import manifest entrypoints, evaluate `until` expressions,
+It can import a regular local Markdown or PDF file into artifact CAS and append
+one digest-only `evidence.imported` fact; extracted text and filesystem paths stay
+off the event. It does **not** import manifest entrypoints, evaluate `until` expressions,
 contact model APIs, run plugins, start containers, connect Workers, spend money, persist
-projections, index artifacts in SQLite or upload artifacts. Simulated `completed` is a
-controlled lifecycle finish, not training success.
+projections, crawl GitHub/arXiv/the web for evidence, or upload artifacts. Simulated
+`completed` is a controlled lifecycle finish, not training success.
 
 | Zone | Trust assumption | Current status |
 |---|---|---|
@@ -57,7 +59,7 @@ controlled lifecycle finish, not training success.
 | Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
 | AI/model providers | Untrusted proposals and content | Deterministic mock only; zero network; live HTTP adapter pending M1-4 |
-| Evidence connectors | Untrusted content and metadata | Not connected in M0 |
+| Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented |
@@ -119,7 +121,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-003 | Paid/GPU loop omits termination limits | Budget loss | Iteration count plus cost and wall-time caps for risky capabilities | Tested in M0; runtime enforcement planned |
 | TM-004 | Unknown-rights material enters training data | Legal, ethical and publication harm | Rights and allowed use are separate; unknown denies training/redistribution | Tested in M0; provenance propagation planned |
 | TM-005 | Broken entity or edge reference resolves unpredictably | Wrong experiment or result attribution | Global entity IDs, scoped node IDs and references are validated | Tested in M0 |
-| TM-006 | Prompt injection in papers, notes or repositories controls the assistant | Unauthorized tool use or exfiltration | Evidence is data, not instruction; model actions pass external policy | M1 adversarial tests required |
+| TM-006 | Prompt injection in papers, notes or repositories controls the assistant | Unauthorized tool use or exfiltration | Evidence is data, not instruction; `evidence.imported` stores digests not bodies; `DeterministicMockProvider` still refuses disallowed capabilities after an adversarial note is imported | Adversarial Markdown corpus in M1-3; live-model injection tests remain blocked until M1-4 |
 | TM-007 | Secret appears in spec, log, event, model prompt or artifact | Credential and private-data exposure | Typed `SecretRef`; redaction of secret-bearing keys and known values; `env` resolver never puts the value in errors. Inline secrets in specs still forbidden. External API sinks and file/keyring backends pending | Type and redaction tested; blocker before live remote APIs (M1-4) |
 | TM-008 | Malicious plugin escapes or receives excess capability | Host or data compromise | Planned tiered process/container isolation and capability manifests | Blocker before community plugins |
 | TM-009 | Worker spoofing, replay or stale lease executes a task twice | Cost, corruption or data exposure | Planned authenticated outbound connection, short leases, nonces and idempotency | M2 protocol tests required |
@@ -151,7 +153,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-035 | A lineage reconstruction is treated as the authorization a Run used, a latest-authorized match is selected as a credential, or a corrupt authorization event is skipped | False execution authority or concealed invalid audit history | Closed query binds project/revision/workflow and plan identity; optional decision digest is exact tagged identity; reconstruction is read-only over a frozen verified prefix; invalid authorization events fail closed; report lists every match in sequence order and does not choose one; literals say unauthenticated, audit-only, not-executed and not-consumed; the query does not write RunSnapshot | Schema/model/core/CLI match, miss, mixed-type skip, digest-tag mismatch, empty-store, corrupt-auth-event, non-echo and side-effect-tripwire tests; event citation and runtime consumption remain blocked |
 | TM-036 | A RunSnapshot `decisionDigest` is treated as a recorded audit event, a launch token, or a silently omitted/nullable identity | False execution authority or broken replay | SimulatedRuntime writes the in-process gate digest on `run.queued`; the reducer copies it immutably; JSON null is rejected; omit remains legal on ungated traces; resume requires an exact match with the recomputed gate; no authorization event is read | Schema/model/reducer/runtime/CLI tests for omit, copy, replay equality, null reject, mismatch fail-closed and source tripwires; signatures, event refs and runtime consumption remain blocked |
 | TM-037 | The AI→researcher question channel (ADR-0039 D3) is used to elicit secrets, private data or out-of-scope information, or to route information requests around it | Credential/private-data exposure; scope creep of what the system learns about the researcher | Planned (M1-1): `question.asked` is the only sanctioned request path; `whyNotObservable` is required; answers pass typed `SecretRef`/redaction (TM-007, TM-022) and carry `14-RB` rights with research-read default; questions are facts the dissent reviewer can object to | Not implemented. Corpus tests in Issue #42 required before any live model may ask a question |
-| TM-038 | Leading, repeated or sycophantic questions steer the researcher's decision through the help channel; excessive questioning exhausts human attention | Governance capture; false consensus; north-star metric degraded | Every `decision.recorded` carries a non-empty rationale; overridden dissents stay in the ledger (ADR-0005 / ADR-0039 D2); the ledger counts decisions, rationale length, and (from #42) questions so attention cost is visible; mock-provider capability-refusal tests in M1-2; adversarial evidence corpus remains M1-3 | Rationale and dissent-survival tests in M1-1. Question counters stay 0 until #42. Metric vs outcome is M1-5 |
+| TM-038 | Leading, repeated or sycophantic questions steer the researcher's decision through the help channel; excessive questioning exhausts human attention | Governance capture; false consensus; north-star metric degraded | Every `decision.recorded` carries a non-empty rationale; overridden dissents stay in the ledger (ADR-0005 / ADR-0039 D2); the ledger counts decisions, rationale length, and (from #42) questions so attention cost is visible; mock-provider capability-refusal tests in M1-2; adversarial evidence corpus in M1-3 | Rationale and dissent-survival tests in M1-1. Question counters stay 0 until #42. Metric vs outcome is M1-5 |
 | TM-039 | Human answers and rationales are used as training data without consent, or one user's biases are written into weights | Rights violation; single-user bias capture (Issue #26); irreversible drift | Planned: training eligibility requires rights allowing `training` and an explicit human decision approving that use; per-user adapters and content-addressed checkpoints as rollback; nothing enters weights by default (ADR-0039 D5) | Blocker before any parameter-update slice; that slice needs its own ADR and review |
 | TM-040 | A model adapter silently simulates a missing capability (tools, JSON schema, vision) or stores prompt/output text in `ai.call.*` events | False scientific capability; prompt/secret leakage (TM-007, TM-022) | `ModelProvider` records declared/measured/allowed sets; a requested name absent from `allowed` fails closed with no events; `ai.call` payloads denylist prompt/output keys and store `jcs-sha256` digests (optional artifact refs); the mock has no network path | Capability-refusal, digest-only, and socket/subprocess tripwire tests in M1-2. Live HTTP remains M1-4 |
 

@@ -1,0 +1,10 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "EvidenceCitation",
+  "evidenceId": "evidence.eval-split",
+  "snapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "span": {
+    "start": 0,
+    "end": 12
+  }
+}
