@@ -107,6 +107,14 @@ from llm_research_os.execution.schema import write_schema as write_dry_run_schem
 from llm_research_os.problem_schema import canonical_schema as canonical_problem_schema
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
+from llm_research_os.providers.schema import (
+    canonical_model_fixture_schema,
+    canonical_model_generate_request_schema,
+    model_fixture_schema_matches,
+    model_generate_request_schema_matches,
+    write_model_fixture_schema,
+    write_model_generate_request_schema,
+)
 from llm_research_os.research.schema import (
     canonical_decision_record_request_schema,
     canonical_dissent_record_request_schema,
@@ -303,6 +311,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         decision_record_request_schema_matches,
         write_decision_record_request_schema,
         "schemas/decision-record-request/v0alpha1.schema.json",
+    ),
+    "model-generate-request": _contract(
+        canonical_model_generate_request_schema,
+        model_generate_request_schema_matches,
+        write_model_generate_request_schema,
+        "schemas/model-generate-request/v0alpha1.schema.json",
+    ),
+    "model-fixture": _contract(
+        canonical_model_fixture_schema,
+        model_fixture_schema_matches,
+        write_model_fixture_schema,
+        "schemas/model-fixture/v0alpha1.schema.json",
     ),
 }
 

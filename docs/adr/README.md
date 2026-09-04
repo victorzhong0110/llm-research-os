@@ -20,7 +20,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0014](0014-cloudevents-compatible-research-event.md) | CloudEvents-compatible ResearchEvent envelope | Accepted | Written |
 | [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay, in-memory folds, local file CAS, schema v2 query tables and verified high-water cache (ADR-0041) |
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending; M1 built-in adapters scoped T0/T1 in-process by ADR-0038 E5 |
-| 0017 | Minimal model interface and capability negotiation | Direction accepted | M1 implementation pending (M1-2 in ADR-0038 E4) |
+| [0017](0017-minimal-model-interface.md) | Minimal model interface and capability negotiation | Accepted | Implemented; M1-2 DeterministicMockProvider and `ai.call.*` digest facts; OpenAI-compatible adapter remains M1-4 |
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |
 | [0019](0019-evidence-rights-by-use.md) | Evidence rights tracked by use | Accepted | Written |
 | 0020 | Capability evaluation and progressive autonomy | Direction accepted | M1 implementation pending |
