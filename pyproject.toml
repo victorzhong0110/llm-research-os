@@ -13,6 +13,7 @@ license-files = ["LICENSE"]
 dependencies = [
   "jsonschema>=4.23,<5",
   "pydantic>=2.10,<3",
+  "pypdf>=5.1,<7",
   "pyyaml>=6,<7",
 ]
 

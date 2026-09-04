@@ -22,7 +22,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending; M1 built-in adapters scoped T0/T1 in-process by ADR-0038 E5 |
 | [0017](0017-minimal-model-interface.md) | Minimal model interface and capability negotiation | Accepted | Implemented; M1-2 DeterministicMockProvider and `ai.call.*` digest facts; OpenAI-compatible adapter remains M1-4 |
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |
-| [0019](0019-evidence-rights-by-use.md) | Evidence rights tracked by use | Accepted | Written |
+| [0019](0019-evidence-rights-by-use.md) | Evidence rights tracked by use | Accepted | Implemented for local Markdown/PDF import (M1-3); Git/web connectors pending |
 | 0020 | Capability evaluation and progressive autonomy | Direction accepted | M1 implementation pending |
 | 0021 | Remote Worker transport and connection bootstrap | Deferred | M2 experiment required |
 | 0022 | First cloud-provider adapter | Provisional | M2 live verification required |

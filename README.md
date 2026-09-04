@@ -35,7 +35,8 @@ actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
 `decision.recorded`, a rebuildable `ResearchLedger`, and the matching CLI.
 M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
 deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
-The question channel is Issue #42.
+M1-3 lands local Markdown/PDF import as `evidence.imported` with default
+`LicenseRef-Unknown`. The question channel is Issue #42.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -46,7 +47,7 @@ SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
-mock-model-call CLIs,
+mock-model-call / evidence-import CLIs,
 and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads, and it does
@@ -92,6 +93,7 @@ acceptance checklist of that milestone.
 - [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
 - [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
+- [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -119,6 +121,7 @@ acceptance checklist of that milestone.
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
 - [M1 research decision CLI](docs/guides/m1-research-decisions.md)
 - [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
+- [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -362,6 +365,19 @@ uv run researchos models generate \
   --format json
 ```
 
+Local Markdown or PDF notes become `evidence.imported` facts. The file path and
+extracted text stay off the event:
+
+```bash
+mkdir -m 700 artifacts
+uv run researchos evidence import \
+  examples/evidence/valid/import-markdown.json \
+  research.db \
+  --source examples/evidence/sources/eval-split.md \
+  --artifacts artifacts \
+  --format json
+```
+
 A local artifact object root must be created first. Import and full verification
 both return a versioned object report and never print object bodies:
 
@@ -408,6 +424,8 @@ object bodies and they do not build an index or lineage.
 `models generate` records digest-only `ai.call.*` facts from a local fixture
 through the deterministic mock; it does not open a network connection or
 resolve a live API secret.
+`evidence import` stores a local Markdown or PDF snapshot in CAS and appends
+digest-only `evidence.imported`; unknown rights cannot authorize training.
 The tree does not import block entrypoints, does not execute arbitrary training
 code, expressions, plugins, or remote Workers, does not write a SQLite artifact
 index or durable projections, and does not provide object export/delete, a real
