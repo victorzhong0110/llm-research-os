@@ -43,6 +43,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-4: OpenAI-compatible HTTP adapter (loopback default). Remote endpoints
   require `SecretRef`, `read.external_api`, and HTTPS. First runtime-enforced
   CNY caps: `budget.reserved` / `consumed` / `exceeded` / `released`.
+- M1-5: seeded synthetic `training.step` / `evaluation.metric` from
+  SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
+  research, training, cost, and lineage sections linked to `eventId`.
 
 ### Changed
 

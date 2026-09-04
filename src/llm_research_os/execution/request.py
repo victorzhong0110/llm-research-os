@@ -38,6 +38,8 @@ SimulationLifecycleType = Literal[
     "attempt.failed",
     "attempt.unknown",
     "attempt.cancelled",
+    "training.step",
+    "evaluation.metric",
 ]
 
 
@@ -81,7 +83,7 @@ class SimulationRequestDocument(SimulationRequestModel):
     subject: CloudEventsString
     stream_id: EventIdentifier = Field(alias="streamid")
     actor: SimulationActor
-    events: Mapping[SimulationLifecycleType, SimulationEventIdentityDocument] = Field(max_length=11)
+    events: Mapping[SimulationLifecycleType, SimulationEventIdentityDocument] = Field(max_length=13)
 
     @model_validator(mode="after")
     def event_ids_are_unique(self) -> Self:

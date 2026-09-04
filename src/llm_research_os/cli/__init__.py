@@ -14,6 +14,7 @@ from llm_research_os.cli.evidence_commands import run_evidence
 from llm_research_os.cli.models_commands import run_models
 from llm_research_os.cli.native_commands import run_native
 from llm_research_os.cli.parser import build_parser
+from llm_research_os.cli.report_commands import run_report
 from llm_research_os.cli.research_commands import (
     run_decisions,
     run_dissents,
@@ -41,6 +42,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "dissents": run_dissents,
     "decisions": run_decisions,
     "research": run_research,
+    "report": run_report,
 }
 
 
