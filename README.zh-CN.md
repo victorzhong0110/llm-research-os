@@ -16,7 +16,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表。M1-1 研究决定对象见
 [research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api` 与运行时 CNY 预算事实门控。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。M1-6 让 SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)），这不是签名启动凭证。Issue #19 的本机消费已交付；签名、过期与吊销见 Issue #53。提问通道为 `question.asked` / `question.answered`，命令为 `questions ask` / `questions answer`。伞形 #38 仍开放。编号切片不是 M1 检查点。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束，且只继承最小环境。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api`、HTTPS、远端正数 CNY 上限/预留，以及原子 reserve-or-exceed 预算门控。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。M1-6 让 SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)），这不是签名启动凭证。Issue #19 的本机消费已交付；签名、过期与吊销见 Issue #53。提问通道为 `question.asked` / `question.answered`，命令为 `questions ask` / `questions answer`。伞形 #38 仍开放。编号切片不是 M1 检查点。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
@@ -324,7 +324,7 @@ uv run researchos models generate \
   --format json
 ```
 
-本地 Markdown 或 PDF 笔记成为 `evidence.imported` 事实。文件路径与抽取正文不写入事件。PDF 抽取在子进程中受页数、字符数与墙钟上限约束：
+本地 Markdown 或 PDF 笔记成为 `evidence.imported` 事实。文件路径与抽取正文不写入事件。PDF 抽取在子进程中受页数、字符数与墙钟上限约束，且只继承最小环境：
 
 ```bash
 mkdir -m 700 artifacts
@@ -374,9 +374,9 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 推断取消结果。
 `artifacts put` / `verify` 只复用本地对象层，既不输出对象正文，也不建立索引或血缘。
 `models generate` 把仅含摘要的 `ai.call.*` 事实写入既有库。mock 路径不打开网络。
-OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `SecretRef`、`read.external_api` 与 HTTPS。
+OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `SecretRef`、`read.external_api`、HTTPS 以及正数 CNY 上限与预留。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
-PDF 抽取在子进程中设上限；未知权利不能授权训练。
+PDF 抽取在子进程中设上限且不继承进程密钥；未知权利不能授权训练。
 `report` 重建静态 HTML 或 Markdown 投影；它不是事实源。
 它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
 或持久化投影，也不提供对象导出/删除、实际停止适配器、可执行的 NativeProcessRuntime 或网络上传。

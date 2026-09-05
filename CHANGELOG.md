@@ -41,10 +41,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   with default `LicenseRef-Unknown` ([ADR-0019](docs/adr/0019-evidence-rights-by-use.md)).
   Adversarial notes cannot enable mock tools (TM-006). PDF extraction is
   subprocess-isolated with page, character, wall-clock, and best-effort
-  memory limits (TM-041).
+  memory limits (TM-041). The parser subprocess receives a minimal environment
+  and does not inherit process secrets.
 - M1-4: OpenAI-compatible HTTP adapter (loopback default). Remote endpoints
-  require `SecretRef`, `read.external_api`, and HTTPS. First runtime-enforced
-  CNY caps: `budget.reserved` / `consumed` / `exceeded` / `released`.
+  require `SecretRef`, `read.external_api`, HTTPS, and a positive CNY cap and
+  reserve. First runtime-enforced CNY caps: `budget.reserved` / `consumed` /
+  `exceeded` / `released`.
 - M1-5: seeded synthetic `training.step` / `evaluation.metric` from
   SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
   research, training, cost, and lineage sections linked to `eventId`.
@@ -57,7 +59,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - Question channel: `question.asked` / `question.answered`, CLI
   `questions ask` / `questions answer`, ledger question entries and counters,
   and report attention cost (Issue #42). Answers are data with rights, not
-  instructions.
+  instructions. `QuestionLedgerEntry` is a status discriminant: `open` forbids
+  answer fields; `answered` requires them.
 
 ### Changed
 
@@ -70,18 +73,28 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-1: `ResearchControl` validates the complete prospective ledger before the
   CAS append. The 33rd override of one dissent is rejected before commit.
   Dissent `targetKind` `conclusion` remains reserved. Decision `targetKind`
-  `question` is valid once a `question.asked` fact exists (Issue #42).
+  `question` is valid once a `question.asked` fact exists (Issue #42). Ledger
+  `run_ids` come only from `run.queued`; a run-targeted `decision.recorded`
+  cannot create the Run it cites.
 - M1-3: PDF text extraction no longer parses every page in-process before
   applying the character cap. A compressed PDF that expands past the work
-  bounds fails closed without echoing extracted text.
-- M1-4: HTTP generate CAS-appends `budget.reserved` and `ai.call.started`
-  before opening a socket. Outstanding reservations hold the cap. Loopback
-  consumes only when cost is known; remote leaves the reservation open.
-  Transport failure after start writes `budget.released` and `ai.call.failed`.
-  Consume/release must match the reservation (`callId`, currency, cap, amount).
-- M1-5: `researchos report` folds research, budget, and lineage from one frozen
-  prefix. Synthetic metric resume compares the canonical caller document, not
-  only id+type. Markdown/HTML fragment ids percent-encode event ids.
+  bounds fails closed without echoing extracted text. The worker environment is
+  an allowlist (TM-041).
+- M1-4: HTTP generate decides reserve-or-exceed on one frozen budget head
+  (`BudgetControl.reserve_or_exceed`) and CAS-appends `budget.reserved` or
+  `budget.exceeded` before opening a socket. `_apply_reserved` itself rejects a
+  reservation that would break `consumed + outstanding + requested <= cap`.
+  Outstanding reservations hold the cap. Loopback consumes only when cost is
+  known; remote leaves the reservation open and must declare a positive cap and
+  reserve. Transport failure after start writes `budget.released` and
+  `ai.call.failed`. Consume/release must match the reservation (`callId`,
+  currency, cap, amount). Endpoints reject query/fragment/userinfo; transport
+  pins DNS and refuses private, link-local, metadata, and mixed answers (TM-042).
+- M1-5: `researchos report` folds research, budget, lineage, and consumed
+  authorization from one frozen prefix. `--project` selects `(projectId, runId)`
+  before treating a colliding `runId` as ambiguous. Synthetic metric resume
+  compares the canonical caller document, not only id+type. Markdown/HTML event
+  links use HTML `<code>` so punctuation in an id cannot break a code span.
 - M1-6: `SimulationRequest` requires `authorization: {eventId, sequence}`.
   Committed M0 request files without that field no longer validate.
   SimulatedRuntime resume of a Run that omitted the citation fails closed

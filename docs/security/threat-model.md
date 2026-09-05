@@ -2,7 +2,7 @@
 
 > Status: Active M0 baseline; kernel-proof closed 2026-09-03 ([ADR-0037](../adr/0037-m0-kernel-proof-closure.md))
 >
-> Last reviewed: 2026-09-05
+> Last reviewed: 2026-09-06
 >
 > Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, SimulatedRuntime consume of one local `{eventId, sequence}` citation of `plan.authorization.evaluated` (not a signed launch JWT), non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger including `question.asked` / `question.answered`, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, runtime CNY budget facts, seeded synthetic `training.step` / `evaluation.metric` facts, and static HTML/Markdown Run reports
 
@@ -43,10 +43,10 @@ It can import a regular local Markdown or PDF file into artifact CAS and append
 one digest-only `evidence.imported` fact; extracted text and filesystem paths stay
 off the event. It can POST to a loopback OpenAI-compatible `/v1/chat/completions`
 endpoint and record CNY budget facts plus digest-only `ai.call.*` facts. Remote
-HTTP requires a SecretRef, HTTPS, `read.external_api`, and a budget cap. It can
-append seeded synthetic `training.step` / `evaluation.metric` facts on a success
-simulation when the request supplies those identities, and it can rebuild a
-static HTML/Markdown Run report from EventStore. It does
+HTTP requires a SecretRef, HTTPS, `read.external_api`, and a positive CNY cap
+and reserve. It can append seeded synthetic `training.step` / `evaluation.metric`
+facts on a success simulation when the request supplies those identities, and it
+can rebuild a static HTML/Markdown Run report from EventStore. It does
 **not** import manifest entrypoints, evaluate `until` expressions,
 run plugins, start containers, connect Workers, persist
 projections, crawl GitHub/arXiv/the web for evidence, or upload artifacts. Simulated
@@ -65,7 +65,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
 | Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
-| AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + budget cap |
+| AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + positive CNY cap/reserve; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
@@ -126,7 +126,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 |---|---|---|---|---|
 | TM-001 | Hidden or misspelled fields change intended behavior | Policy or experiment bypass | Strict Pydantic models with `extra=forbid`; declared `config`/`extensions` only | Tested in M0 |
 | TM-002 | Arbitrary workflow cycles create infinite execution | Denial of service and uncontrolled cost | Each graph must be acyclic; explicit `LoopBlock` only | Tested in M0 |
-| TM-003 | Paid/GPU loop omits termination limits | Budget loss | Iteration count plus cost and wall-time caps for risky capabilities | Tested in M0; runtime enforcement planned |
+| TM-003 | Paid/GPU loop omits termination limits | Budget loss | Iteration count plus cost and wall-time caps for risky capabilities; HTTP generate enforces CNY via atomic `budget.reserved` / `budget.exceeded` on one frozen head | Spec caps tested in M0; HTTP generate cap tests in M1-4; GPU-loop runtime still planned |
 | TM-004 | Unknown-rights material enters training data | Legal, ethical and publication harm | Rights and allowed use are separate; unknown denies training/redistribution | Tested in M0; provenance propagation planned |
 | TM-005 | Broken entity or edge reference resolves unpredictably | Wrong experiment or result attribution | Global entity IDs, scoped node IDs and references are validated | Tested in M0 |
 | TM-006 | Prompt injection in papers, notes or repositories controls the assistant | Unauthorized tool use or exfiltration | Evidence is data, not instruction; `evidence.imported` stores digests not bodies; `DeterministicMockProvider` still refuses disallowed capabilities after an adversarial note is imported; the HTTP adapter's allowed set is `generate` only | Adversarial Markdown corpus in M1-3; HTTP adapter refuses `tools` before any request (M1-4) |
@@ -164,7 +164,8 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-038 | Leading, repeated or sycophantic questions steer the researcher's decision through the help channel; excessive questioning exhausts human attention | Governance capture; false consensus; north-star metric degraded | Every `decision.recorded` carries a non-empty rationale; overridden dissents stay in the ledger (ADR-0005 / ADR-0039 D2); the ledger counts decisions, rationale length, open and answered questions so attention cost is visible on `researchos report`; mock-provider capability-refusal tests in M1-2; adversarial evidence corpus in M1-3 | Rationale and dissent-survival tests in M1-1. Question counters and report attention line land with #42. Metric vs outcome is M1-5 |
 | TM-039 | Human answers and rationales are used as training data without consent, or one user's biases are written into weights | Rights violation; single-user bias capture (Issue #26); irreversible drift | Planned: training eligibility requires rights allowing `training` and an explicit human decision approving that use; per-user adapters and content-addressed checkpoints as rollback; nothing enters weights by default (ADR-0039 D5) | Blocker before any parameter-update slice; that slice needs its own ADR and review |
 | TM-040 | A model adapter silently simulates a missing capability (tools, JSON schema, vision) or stores prompt/output text in `ai.call.*` events | False scientific capability; prompt/secret leakage (TM-007, TM-022) | `ModelProvider` records declared/measured/allowed sets; a requested name absent from `allowed` fails closed with no events; `ai.call` payloads denylist prompt/output keys and store `jcs-sha256` digests (optional artifact refs); the mock has no network path; the HTTP adapter allows only `generate` and rejects redirects | Capability-refusal and digest-only tests in M1-2/M1-4 |
-| TM-041 | A compressed or pathological PDF exhausts CPU or memory during evidence import | Local denial of service; importer hang | PDF extract runs in a subprocess with wall-clock, CPU, and best-effort address-space limits; page count and extracted-character caps abort incrementally; fail closed without echoing text or paths (TM-022) | FlateDecode text-bomb, page-limit, timeout, and non-echo tests in M1-3 |
+| TM-041 | A compressed or pathological PDF exhausts CPU or memory during evidence import, or the parser subprocess inherits host secrets | Local denial of service; importer hang; credential exposure (TM-007) | PDF extract runs in a subprocess with wall-clock, CPU, and best-effort address-space limits; page count and extracted-character caps abort incrementally; worker environment is a minimal allowlist (no `PYTHONPATH`, proxy, or inherited API keys); fail closed without echoing text or paths (TM-022) | FlateDecode text-bomb, page-limit, timeout, non-echo, and worker-env sentinel tests in M1-3 |
+| TM-042 | A model endpoint hostname is used for SSRF, DNS rebinding, or a private/metadata address, or a zero remote reservation is treated as a free call | Host/network compromise; unmetered paid API use | Literal classification plus one-shot DNS pin; query/fragment/userinfo forbidden; loopback, private, link-local, multicast, reserved, CGNAT, and cloud-metadata addresses fail closed; mixed loopback/public answers are `dns-rebinding`; remote `costKnown=false` requires `budgetCap > 0` and `reserveAmount > 0`; outstanding remote reservations stay visible on the report | Endpoint, pin, remote-zero-budget, and concurrent reserve tests in M1-4 |
 
 ## 7. M0 security gates
 
@@ -206,7 +207,9 @@ Before merging executable capability, the following gates apply:
 - M1-0 has a typed `SecretRef` and redaction helper. Users must still not place
   credentials in ResearchSpec or manifests. Resolvers do not call remote APIs.
 - Rights metadata can be wrong or incomplete; the validator enforces declared policy but is not a legal authority.
-- Cost caps in this slice are protocol declarations, not runtime enforcement.
+- Cost caps in ResearchSpec remain protocol declarations for GPU/paid loops.
+  HTTP generate enforces CNY via `budget.*` facts; remote cost is still unknown,
+  so outstanding reservations continue to hold the cap.
 - JSON Schema consumers still need the normative semantic tests for cross-object references and acyclicity.
 - Semantic JSON digests are RFC 8785 JCS SHA-256 tagged `jcs-sha256:`, with a
   committed Python + Node golden corpus. They are not signatures, authenticators
@@ -233,5 +236,6 @@ Before merging executable capability, the following gates apply:
 - PDF extraction isolates pypdf in a subprocess with page, character, and wall-clock
   caps. `RLIMIT_AS` is best-effort and often unenforced on macOS; the wall-clock
   timeout is the portable bound. This is not a public-service parser sandbox.
+  A minimal worker environment is not a seccomp or container boundary.
 
 These risks must not be described as solved until their corresponding executable gates pass.

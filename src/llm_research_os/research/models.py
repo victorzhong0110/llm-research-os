@@ -534,6 +534,19 @@ class QuestionLedgerEntry(ResearchDocumentModel):
     def json_lists_are_tuples(cls, value: object) -> object:
         return _require_tuple(value, "list")
 
+    @model_validator(mode="after")
+    def answer_fields_match_status(self) -> Self:
+        answered = (self.answer_event_id, self.answer_sequence, self.answer, self.rights)
+        if self.status is QuestionStatus.OPEN:
+            if any(item is not None for item in answered):
+                raise ValueError("open questions must not include answer fields")
+            return self
+        if any(item is None for item in answered):
+            raise ValueError("answered questions require answer fields")
+        if self.answer_sequence is None or self.answer_sequence <= self.sequence:
+            raise ValueError("answerSequence must be greater than sequence")
+        return self
+
 
 class ResearchLedger(ResearchDocumentModel):
     api_version: Literal["researchos.dev/v0alpha1"] = Field(alias="apiVersion")

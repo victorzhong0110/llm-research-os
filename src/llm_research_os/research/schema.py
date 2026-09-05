@@ -113,6 +113,7 @@ def _patch_ledger(schema: dict[str, Any]) -> None:
     _forbid_null_optional(schema, "QuestionLedgerEntry", "answerSequence")
     _forbid_null_optional(schema, "QuestionLedgerEntry", "answer")
     _forbid_null_optional(schema, "QuestionLedgerEntry", "rights")
+    _patch_question_ledger_status(schema)
     _patch_answer_exclusive(schema)
     _patch_unknown_rights(schema)
 
@@ -135,6 +136,41 @@ def _patch_question_ask_request(schema: dict[str, Any]) -> None:
 def _patch_question_answer_request(schema: dict[str, Any]) -> None:
     _patch_answer_exclusive(schema)
     _patch_unknown_rights(schema)
+
+
+def _patch_question_ledger_status(schema: dict[str, Any]) -> None:
+    definitions = schema.get("$defs")
+    if type(definitions) is not dict:
+        raise ValueError("schema is missing $defs while patching question status")
+    binding = definitions.get("QuestionLedgerEntry")
+    if type(binding) is not dict:
+        raise ValueError("schema is missing QuestionLedgerEntry")
+    extra = [
+        {
+            "if": {"properties": {"status": {"const": "open"}}, "required": ["status"]},
+            "then": {
+                "not": {
+                    "anyOf": [
+                        {"required": ["answer"]},
+                        {"required": ["rights"]},
+                        {"required": ["answerEventId"]},
+                        {"required": ["answerSequence"]},
+                    ]
+                }
+            },
+        },
+        {
+            "if": {"properties": {"status": {"const": "answered"}}, "required": ["status"]},
+            "then": {
+                "required": ["answer", "rights", "answerEventId", "answerSequence"],
+            },
+        },
+    ]
+    existing = binding.get("allOf")
+    if type(existing) is list:
+        binding["allOf"] = [*existing, *extra]
+    else:
+        binding["allOf"] = extra
 
 
 def _patch_answer_exclusive(schema: dict[str, Any]) -> None:
