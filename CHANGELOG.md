@@ -31,6 +31,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   [`ResearchLedger`](docs/protocols/research-decision-objects-v0alpha1.md), and CLI
   `proposals submit` / `dissents record` / `decisions record` / `research ledger`
   (Issue #41). Question channel remains Issue #42.
+- M1-2: `ModelProvider` with declared/measured/allowed capabilities,
+  `DeterministicMockProvider` from fixtures, and `ai.call.*` facts that store
+  prompt/output digests (optional artifact refs), never inline text
+  ([ADR-0017](docs/adr/0017-minimal-model-interface.md)). Zero network.
 
 ### Changed
 

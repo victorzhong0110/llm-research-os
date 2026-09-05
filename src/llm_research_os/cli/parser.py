@@ -273,6 +273,40 @@ def build_parser() -> argparse.ArgumentParser:
     artifacts_verify.add_argument("digest", help="sha256:<64 lowercase hex> object digest")
     add_event_format_argument(artifacts_verify)
 
+    models = subparsers.add_parser(
+        "models",
+        help="record deterministic mock model calls as EventStore facts",
+    )
+    model_commands = models.add_subparsers(dest="models_command", required=True)
+    models_generate = model_commands.add_parser(
+        "generate",
+        help="append ai.call.started and ai.call.completed for one fixture",
+    )
+    models_generate.add_argument(
+        "request",
+        type=Path,
+        help="ModelGenerateRequest v0alpha1 YAML or JSON file",
+    )
+    models_generate.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    models_generate.add_argument(
+        "--fixture",
+        required=True,
+        type=Path,
+        metavar="PATH",
+        help="ModelFixture v0alpha1 YAML or JSON file; prompt/output stay off events",
+    )
+    models_generate.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="optional existing local artifact root for prompt/output object refs",
+    )
+    add_event_format_argument(models_generate)
+
     proposals = subparsers.add_parser(
         "proposals",
         help="record structured research proposals as EventStore facts",

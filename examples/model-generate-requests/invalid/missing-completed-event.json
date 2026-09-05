@@ -1,0 +1,25 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ModelGenerateRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "researchos://models/mock",
+  "subject": "call.generate-json",
+  "streamid": "stream.models",
+  "actor": {
+    "id": "mock.deterministic",
+    "kind": "ai",
+    "modelId": "mock.deterministic.v1"
+  },
+  "callId": "call.generate-json.1",
+  "fixtureId": "generate-json",
+  "providerId": "mock.deterministic",
+  "requestedCapabilities": ["generate"],
+  "events": {
+    "ai.call.started": {
+      "id": "evt.call.started.1",
+      "time": "2026-09-04T13:00:00Z"
+    }
+  },
+  "evidenceRefs": []
+}

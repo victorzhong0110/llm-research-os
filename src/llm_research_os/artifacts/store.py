@@ -21,6 +21,7 @@ from llm_research_os.artifacts.errors import (
 from llm_research_os.artifacts.models import ArtifactRecord
 
 CHUNK_SIZE: Final[int] = 65_536
+MAX_PUT_BYTES: Final[int] = 1_048_576
 DIGEST_PATTERN: Final[re.Pattern[str]] = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PRIVATE_FILE_MODE: Final[int] = stat.S_IRUSR | stat.S_IWUSR
 _PRIVATE_DIR_MODE: Final[int] = stat.S_IRWXU
@@ -126,6 +127,55 @@ class LocalArtifactStore:
                 _unlink_at(tmp_fd, temp_name)
             _close_all(owned)
             _close_quietly(source_fd)
+
+    def put_bytes(self, payload: bytes) -> ArtifactRecord:
+        """Publish in-memory bytes as one content-addressed object.
+
+        Intended for small protocol objects (prompt/output JSON). Source-file
+        ``put`` remains the path for arbitrary local files.
+        """
+
+        if type(payload) is not bytes:
+            raise ArtifactPathError("artifact payload must be bytes")
+        if len(payload) > MAX_PUT_BYTES:
+            raise ArtifactPathError("artifact payload exceeds put_bytes limit")
+        owned: list[int] = []
+        tmp_fd: int | None = None
+        temp_name: str | None = None
+        try:
+            root_fd = self._open_trusted_root()
+            owned.append(root_fd)
+            _hook_after_trusted_root_open()
+            tmp_fd = _ensure_child_dir(root_fd, "tmp", parent_reason="tmp")
+            owned.append(tmp_fd)
+            temp_name, temp_fd = _create_temp(tmp_fd)
+            owned.append(temp_fd)
+            digest, size = _write_hashed(temp_fd, payload)
+            _fsync_file(temp_fd)
+            shard_name, object_name = _object_components(digest)
+            objects_fd = _ensure_child_dir(root_fd, "objects", parent_reason="objects")
+            owned.append(objects_fd)
+            algorithm_fd = _ensure_child_dir(objects_fd, "sha256", parent_reason="sha256")
+            owned.append(algorithm_fd)
+            shard_fd = _ensure_child_dir(algorithm_fd, shard_name, parent_reason="shard")
+            owned.append(shard_fd)
+            _hook_after_shard_dir_open()
+            return _publish(
+                tmp_fd=tmp_fd,
+                temp_name=temp_name,
+                shard_fd=shard_fd,
+                object_name=object_name,
+                digest=digest,
+                size=size,
+            )
+        except ArtifactStoreError:
+            raise
+        except OSError as exc:
+            raise ArtifactStoreError("could not import artifact") from exc
+        finally:
+            if tmp_fd is not None and temp_name is not None:
+                _unlink_at(tmp_fd, temp_name)
+            _close_all(owned)
 
     def exists(self, digest: str) -> bool:
         """Return whether a regular object exists for a verified digest."""
@@ -498,6 +548,13 @@ def _copy_hashed(source_fd: int, destination_fd: int) -> tuple[str, int]:
         _write_all(destination_fd, chunk)
         size += len(chunk)
     return f"sha256:{hasher.hexdigest()}", size
+
+
+def _write_hashed(destination_fd: int, payload: bytes) -> tuple[str, int]:
+    hasher = hashlib.sha256()
+    hasher.update(payload)
+    _write_all(destination_fd, payload)
+    return f"sha256:{hasher.hexdigest()}", len(payload)
 
 
 def _hash_fd(descriptor: int) -> tuple[str, int]:
