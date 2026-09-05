@@ -1,0 +1,30 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ProposalSubmitRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "proposal.empty",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai"
+  },
+  "event": {
+    "id": "evt.proposal.empty",
+    "time": "2026-09-04T12:00:00Z"
+  },
+  "proposalId": "proposal.empty",
+  "specDiffDigest": "jcs-sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "proposedSpecDigest": "jcs-sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "rationale": "Missing predictions.",
+  "predictions": [],
+  "falsificationConditions": ["No predictions."],
+  "riskAssessment": {
+    "data": "",
+    "method": "",
+    "safety": "",
+    "cost": ""
+  },
+  "evidenceRefs": []
+}
