@@ -16,7 +16,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表。M1-1 研究决定对象见
 [research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。提问通道见 Issue #42。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。提问通道见 Issue #42。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
@@ -303,7 +303,7 @@ uv run researchos models generate \
   --format json
 ```
 
-本地 Markdown 或 PDF 笔记成为 `evidence.imported` 事实。文件路径与抽取正文不写入事件：
+本地 Markdown 或 PDF 笔记成为 `evidence.imported` 事实。文件路径与抽取正文不写入事件。PDF 抽取在子进程中受页数、字符数与墙钟上限约束：
 
 ```bash
 mkdir -m 700 artifacts
@@ -347,7 +347,7 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 `models generate` 通过确定性 mock 把仅含摘要的 `ai.call.*` 事实写入既有库；不打开网络，
 也不解析线上 API 密钥。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
-未知权利不能授权训练。
+PDF 抽取在子进程中设上限；未知权利不能授权训练。
 它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
 或持久化投影，也不提供对象导出/删除、实际停止适配器、可执行的 NativeProcessRuntime 或网络上传。
 模拟 `completed` 不是科学成功；`unknown` 保持未决。

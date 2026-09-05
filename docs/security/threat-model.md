@@ -156,6 +156,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-038 | Leading, repeated or sycophantic questions steer the researcher's decision through the help channel; excessive questioning exhausts human attention | Governance capture; false consensus; north-star metric degraded | Every `decision.recorded` carries a non-empty rationale; overridden dissents stay in the ledger (ADR-0005 / ADR-0039 D2); the ledger counts decisions, rationale length, and (from #42) questions so attention cost is visible; mock-provider capability-refusal tests in M1-2; adversarial evidence corpus in M1-3 | Rationale and dissent-survival tests in M1-1. Question counters stay 0 until #42. Metric vs outcome is M1-5 |
 | TM-039 | Human answers and rationales are used as training data without consent, or one user's biases are written into weights | Rights violation; single-user bias capture (Issue #26); irreversible drift | Planned: training eligibility requires rights allowing `training` and an explicit human decision approving that use; per-user adapters and content-addressed checkpoints as rollback; nothing enters weights by default (ADR-0039 D5) | Blocker before any parameter-update slice; that slice needs its own ADR and review |
 | TM-040 | A model adapter silently simulates a missing capability (tools, JSON schema, vision) or stores prompt/output text in `ai.call.*` events | False scientific capability; prompt/secret leakage (TM-007, TM-022) | `ModelProvider` records declared/measured/allowed sets; a requested name absent from `allowed` fails closed with no events; `ai.call` payloads denylist prompt/output keys and store `jcs-sha256` digests (optional artifact refs); the mock has no network path | Capability-refusal, digest-only, and socket/subprocess tripwire tests in M1-2. Live HTTP remains M1-4 |
+| TM-041 | A compressed or pathological PDF exhausts CPU or memory during evidence import | Local denial of service; importer hang | PDF extract runs in a subprocess with wall-clock, CPU, and best-effort address-space limits; page count and extracted-character caps abort incrementally; fail closed without echoing text or paths (TM-022) | FlateDecode text-bomb, page-limit, timeout, and non-echo tests in M1-3 |
 
 ## 7. M0 security gates
 
@@ -219,5 +220,8 @@ Before merging executable capability, the following gates apply:
 - YAML node and depth budgets are enforced after alias-free composition. The 8 MiB source
   cap bounds input size, but transient parser memory is still a residual risk until
   composer-phase budgets or process isolation are implemented for a public service.
+- PDF extraction isolates pypdf in a subprocess with page, character, and wall-clock
+  caps. `RLIMIT_AS` is best-effort and often unenforced on macOS; the wall-clock
+  timeout is the portable bound. This is not a public-service parser sandbox.
 
 These risks must not be described as solved until their corresponding executable gates pass.

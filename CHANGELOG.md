@@ -39,7 +39,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   ([ADR-0017](docs/adr/0017-minimal-model-interface.md)). Zero network.
 - M1-3: local Markdown/PDF import to artifact CAS and `evidence.imported`
   with default `LicenseRef-Unknown` ([ADR-0019](docs/adr/0019-evidence-rights-by-use.md)).
-  Adversarial notes cannot enable mock tools (TM-006).
+  Adversarial notes cannot enable mock tools (TM-006). PDF extraction is
+  subprocess-isolated with page, character, wall-clock, and best-effort
+  memory limits (TM-041).
 
 ### Changed
 
@@ -53,3 +55,6 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   CAS append. The 33rd override of one dissent is rejected before commit.
   Dissent/decision `targetKind` values `conclusion` and `question` are reserved
   until those aggregates exist (Issue #42 for questions).
+- M1-3: PDF text extraction no longer parses every page in-process before
+  applying the character cap. A compressed PDF that expands past the work
+  bounds fails closed without echoing extracted text.

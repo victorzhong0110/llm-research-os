@@ -1,20 +1,39 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import time
+import types
+import zlib
 from io import BytesIO
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
 
 from llm_research_os.artifacts import LocalArtifactStore
 from llm_research_os.canonical import content_digest
 from llm_research_os.cli import main
+from llm_research_os.evidence import extract as extract_mod
+from llm_research_os.evidence import pdf_worker as pdf_worker_mod
 from llm_research_os.evidence.errors import EvidenceExtractError, EvidenceRequestError
-from llm_research_os.evidence.extract import extract_text
+from llm_research_os.evidence.extract import (
+    MAX_EVIDENCE_BYTES,
+    MAX_EXTRACTED_CHARS,
+    MAX_PDF_EXTRACT_SECONDS,
+    MAX_PDF_PAGES,
+    MAX_PDF_STDOUT_BYTES,
+    apply_pdf_resource_limits,
+    extract_pdf_pages,
+    extract_text,
+    media_type_for_suffix,
+)
 from llm_research_os.evidence.models import DEFAULT_LICENSE, EvidenceCitation
+from llm_research_os.evidence.pdf_worker import main as pdf_worker_main
+from llm_research_os.evidence.pdf_worker import run_worker
 from llm_research_os.evidence.requests import (
     load_evidence_import_request,
     validate_evidence_citation,
@@ -78,6 +97,55 @@ def _pdf_bytes(text: str) -> bytes:
     body.extend(b"".join(xref))
     body.extend(f"trailer<< /Size 6 /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n".encode())
     return bytes(body)
+
+
+def _pdf_objects(content: bytes) -> list[bytes]:
+    stream = zlib.compress(content, 9)
+    stream_obj = (
+        b"4 0 obj<< /Length %d /Filter /FlateDecode >>stream\n" % len(stream)
+        + stream
+        + b"\nendstream\nendobj\n"
+    )
+    return [
+        b"1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n",
+        b"2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n",
+        (
+            b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] "
+            b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj\n"
+        ),
+        stream_obj,
+        b"5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n",
+    ]
+
+
+def _build_pdf(objs: list[bytes]) -> bytes:
+    body = bytearray(b"%PDF-1.1\n")
+    offsets = []
+    for obj in objs:
+        offsets.append(len(body))
+        body.extend(obj)
+    xref_pos = len(body)
+    size = len(objs) + 1
+    xref = [f"xref\n0 {size}\n0000000000 65535 f \n".encode()]
+    for off in offsets:
+        xref.append(f"{off:010d} 00000 n \n".encode())
+    body.extend(b"".join(xref))
+    body.extend(f"trailer<< /Size {size} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n".encode())
+    return bytes(body)
+
+
+def _flate_text_pdf(text: str) -> bytes:
+    content = f"BT /F1 12 Tf 10 100 Td ({text}) Tj ET\n".encode("latin-1")
+    return _build_pdf(_pdf_objects(content))
+
+
+def _blank_pdf(page_count: int) -> bytes:
+    writer = PdfWriter()
+    for _ in range(page_count):
+        writer.add_blank_page(width=72, height=72)
+    buffer = BytesIO()
+    writer.write(buffer)
+    return buffer.getvalue()
 
 
 def test_committed_evidence_schemas_are_current() -> None:
@@ -322,3 +390,264 @@ def test_omitted_allowed_uses_defaults_to_research_read() -> None:
     del document["allowedUses"]
     parsed = validate_evidence_import_request(document)
     assert [item.value for item in parsed.allowed_uses] == ["research-read"]
+
+
+def test_compressed_pdf_text_bomb_fails_within_work_bounds() -> None:
+    marker = "A" * (MAX_EXTRACTED_CHARS + 1)
+    payload = _flate_text_pdf(marker)
+    assert len(payload) < 8_192
+    started = time.monotonic()
+    with pytest.raises(EvidenceExtractError) as refused:
+        extract_text(payload, "application/pdf")
+    elapsed = time.monotonic() - started
+    assert refused.value.code == "text-too-large"
+    assert elapsed < MAX_PDF_EXTRACT_SECONDS + 3.0
+    assert marker[:32] not in str(refused.value)
+
+
+def test_pdf_page_limit_is_enforced_before_text_accumulation() -> None:
+    payload = _blank_pdf(MAX_PDF_PAGES + 1)
+    assert len(PdfReader(BytesIO(payload)).pages) == MAX_PDF_PAGES + 1
+    with pytest.raises(EvidenceExtractError, match="page limit") as refused:
+        extract_text(payload, "application/pdf")
+    assert refused.value.code == "pdf-page-limit"
+    with pytest.raises(EvidenceExtractError, match="page limit"):
+        extract_pdf_pages(payload)
+
+
+def test_pdf_worker_timeout_does_not_echo_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def timeout(*_args: object, **_kwargs: object) -> object:
+        raise subprocess.TimeoutExpired(cmd=["python"], timeout=MAX_PDF_EXTRACT_SECONDS)
+
+    monkeypatch.setattr(extract_mod.subprocess, "run", timeout)
+    with pytest.raises(EvidenceExtractError, match="time limit") as refused:
+        extract_text(_pdf_bytes("SECRET_PAYLOAD"), "application/pdf")
+    assert refused.value.code == "pdf-timeout"
+    assert "SECRET_PAYLOAD" not in str(refused.value)
+
+
+def test_pdf_worker_signal_is_resource_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    def killed(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            args=["python"],
+            returncode=-9,
+            stdout=b"SECRET_PAYLOAD",
+            stderr=b"SECRET_PAYLOAD",
+        )
+
+    monkeypatch.setattr(extract_mod.subprocess, "run", killed)
+    with pytest.raises(EvidenceExtractError, match="resource limit") as refused:
+        extract_text(_pdf_bytes("SECRET_PAYLOAD"), "application/pdf")
+    assert refused.value.code == "pdf-resource"
+    assert "SECRET_PAYLOAD" not in str(refused.value)
+
+
+def test_pdf_worker_unknown_stderr_is_pdf_extract(monkeypatch: pytest.MonkeyPatch) -> None:
+    def crashed(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            args=["python"],
+            returncode=1,
+            stdout=b"SECRET_PAYLOAD",
+            stderr=b"Traceback: SECRET_PAYLOAD\n",
+        )
+
+    monkeypatch.setattr(extract_mod.subprocess, "run", crashed)
+    with pytest.raises(EvidenceExtractError, match="could not extract PDF text") as refused:
+        extract_text(_pdf_bytes("SECRET_PAYLOAD"), "application/pdf")
+    assert refused.value.code == "pdf-extract"
+    assert "SECRET_PAYLOAD" not in str(refused.value)
+
+
+def test_pdf_worker_run_does_not_echo_invalid_source() -> None:
+    code, stdout, stderr = run_worker(b"%PDF-1.1 SECRET_PAYLOAD")
+    assert code == 1
+    assert stdout == b""
+    assert stderr == b"pdf-extract\n"
+    assert b"SECRET_PAYLOAD" not in stderr
+
+
+def test_apply_pdf_resource_limits_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
+    resource = pytest.importorskip("resource")
+    recorded: list[tuple[int, tuple[int, int]]] = []
+
+    def fake_setrlimit(kind: int, spec: tuple[int, int]) -> None:
+        recorded.append((kind, spec))
+
+    monkeypatch.setattr(resource, "setrlimit", fake_setrlimit)
+    apply_pdf_resource_limits()
+    assert recorded
+
+    def denied(_kind: int, _spec: tuple[int, int]) -> None:
+        raise OSError("resource limit denied")
+
+    monkeypatch.setattr(resource, "setrlimit", denied)
+    apply_pdf_resource_limits()
+
+
+def test_extract_pdf_pages_stops_when_text_would_exceed_cap() -> None:
+    assert extract_pdf_pages(_pdf_bytes("Held-out split note")) == "Held-out split note"
+    with pytest.raises(EvidenceExtractError, match="extracted text exceeds") as refused:
+        extract_pdf_pages(_flate_text_pdf("A" * (MAX_EXTRACTED_CHARS + 1)))
+    assert refused.value.code == "text-too-large"
+    with pytest.raises(EvidenceExtractError, match="no extractable text") as empty:
+        extract_pdf_pages(_blank_pdf(1))
+    assert empty.value.code == "pdf-empty"
+
+
+def test_extract_guards_payload_size_and_media_suffix() -> None:
+    assert media_type_for_suffix(".MD") == "text/markdown"
+    assert media_type_for_suffix(".pdf") == "application/pdf"
+    with pytest.raises(EvidenceExtractError, match="not supported") as media:
+        media_type_for_suffix(".txt")
+    assert media.value.code == "unsupported-media"
+    with pytest.raises(EvidenceExtractError, match="must be bytes"):
+        extract_text("note", "text/markdown")  # type: ignore[arg-type]
+    with pytest.raises(EvidenceExtractError, match="empty") as empty:
+        extract_text(b"", "text/markdown")
+    assert empty.value.code == "empty-source"
+    with pytest.raises(EvidenceExtractError, match="size limit") as oversized:
+        extract_text(b"a" * (MAX_EVIDENCE_BYTES + 1), "text/markdown")
+    assert oversized.value.code == "source-too-large"
+    with pytest.raises(EvidenceExtractError, match="extracted text exceeds"):
+        extract_text(("a" * (MAX_EXTRACTED_CHARS + 1)).encode("utf-8"), "text/markdown")
+    with pytest.raises(EvidenceExtractError, match="not UTF-8"):
+        extract_text(b"\xff", "text/markdown")
+    with pytest.raises(EvidenceExtractError, match="must be bytes"):
+        extract_pdf_pages("note")  # type: ignore[arg-type]
+    with pytest.raises(EvidenceExtractError, match="empty"):
+        extract_pdf_pages(b"")
+    with pytest.raises(EvidenceExtractError, match="size limit"):
+        extract_pdf_pages(b"a" * (MAX_EVIDENCE_BYTES + 1))
+
+
+def test_pdf_worker_result_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    def spawn(returncode: int, stdout: bytes, stderr: bytes = b"") -> None:
+        def impl(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(
+                args=["python"],
+                returncode=returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+        monkeypatch.setattr(extract_mod.subprocess, "run", impl)
+
+    spawn(0, b"x" * (MAX_PDF_STDOUT_BYTES + 1))
+    with pytest.raises(EvidenceExtractError) as huge:
+        extract_text(_pdf_bytes("n"), "application/pdf")
+    assert huge.value.code == "text-too-large"
+
+    spawn(0, b"\xff")
+    with pytest.raises(EvidenceExtractError) as binary:
+        extract_text(_pdf_bytes("n"), "application/pdf")
+    assert binary.value.code == "pdf-extract"
+
+    spawn(0, b"")
+    with pytest.raises(EvidenceExtractError) as empty:
+        extract_text(_pdf_bytes("n"), "application/pdf")
+    assert empty.value.code == "pdf-empty"
+
+    spawn(1, b"SECRET", b"pdf-empty\n")
+    with pytest.raises(EvidenceExtractError) as coded:
+        extract_text(_pdf_bytes("SECRET"), "application/pdf")
+    assert coded.value.code == "pdf-empty"
+    assert "SECRET" not in str(coded.value)
+
+    spawn(137, b"SECRET", b"SECRET")
+    with pytest.raises(EvidenceExtractError) as oom:
+        extract_text(_pdf_bytes("SECRET"), "application/pdf")
+    assert oom.value.code == "pdf-resource"
+    assert "SECRET" not in str(oom.value)
+
+    def missing(*_args: object, **_kwargs: object) -> object:
+        raise OSError("worker missing")
+
+    monkeypatch.setattr(extract_mod.subprocess, "run", missing)
+    with pytest.raises(EvidenceExtractError) as spawn_err:
+        extract_text(_pdf_bytes("n"), "application/pdf")
+    assert spawn_err.value.code == "pdf-extract"
+
+
+def test_pdf_worker_success_and_main_without_rlimit_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    code, stdout, stderr = run_worker(_pdf_bytes("Held-out split note"))
+    assert code == 0
+    assert stdout == b"Held-out split note"
+    assert stderr == b""
+
+    stdin = types.SimpleNamespace(buffer=BytesIO(_pdf_bytes("Held-out split note")))
+    stdout_buf = BytesIO()
+    stderr_buf = BytesIO()
+    monkeypatch.setattr(sys, "stdin", stdin)
+    monkeypatch.setattr(sys, "stdout", types.SimpleNamespace(buffer=stdout_buf))
+    monkeypatch.setattr(sys, "stderr", types.SimpleNamespace(buffer=stderr_buf))
+    monkeypatch.delenv("LROS_PDF_WORKER", raising=False)
+    assert pdf_worker_main() == 0
+    assert stdout_buf.getvalue() == b"Held-out split note"
+    assert stderr_buf.getvalue() == b""
+
+
+def test_pdf_page_extract_errors_are_pdf_extract(monkeypatch: pytest.MonkeyPatch) -> None:
+    class BoomPage:
+        def extract_text(self) -> str:
+            raise ValueError("parser exploded")
+
+    class BoomReader:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.pages = [BoomPage()]
+
+    monkeypatch.setattr("pypdf.PdfReader", BoomReader)
+    with pytest.raises(EvidenceExtractError, match="could not extract PDF text") as refused:
+        extract_pdf_pages(_pdf_bytes("SECRET_PAYLOAD"))
+    assert refused.value.code == "pdf-extract"
+    assert "SECRET_PAYLOAD" not in str(refused.value)
+    assert "parser exploded" not in str(refused.value)
+
+
+def test_pdf_worker_maps_unexpected_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        pdf_worker_mod,
+        "extract_pdf_pages",
+        lambda _payload: (_ for _ in ()).throw(EvidenceExtractError("x", code="not-listed")),
+    )
+    code, stdout, stderr = run_worker(b"SECRET_PAYLOAD")
+    assert code == 1
+    assert stdout == b""
+    assert stderr == b"pdf-extract\n"
+
+    monkeypatch.setattr(
+        pdf_worker_mod,
+        "extract_pdf_pages",
+        lambda _payload: (_ for _ in ()).throw(RuntimeError("SECRET_PAYLOAD")),
+    )
+    code, stdout, stderr = run_worker(b"x")
+    assert stderr == b"pdf-extract\n"
+    assert b"SECRET_PAYLOAD" not in stderr
+
+    monkeypatch.setattr(pdf_worker_mod, "extract_pdf_pages", lambda _payload: "\ud800")
+    code, stdout, stderr = run_worker(b"x")
+    assert code == 1
+    assert stdout == b""
+    assert stderr == b"pdf-extract\n"
+
+
+def test_pdf_worker_main_applies_limits_and_writes_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    applied: list[int] = []
+    monkeypatch.setattr(pdf_worker_mod, "apply_pdf_resource_limits", lambda: applied.append(1))
+    monkeypatch.setenv("LROS_PDF_WORKER", "1")
+    stdin = types.SimpleNamespace(buffer=BytesIO(b"%PDF-1.1 SECRET_PAYLOAD"))
+    stdout_buf = BytesIO()
+    stderr_buf = BytesIO()
+    monkeypatch.setattr(sys, "stdin", stdin)
+    monkeypatch.setattr(sys, "stdout", types.SimpleNamespace(buffer=stdout_buf))
+    monkeypatch.setattr(sys, "stderr", types.SimpleNamespace(buffer=stderr_buf))
+    assert pdf_worker_main() == 1
+    assert applied == [1]
+    assert stdout_buf.getvalue() == b""
+    assert stderr_buf.getvalue() == b"pdf-extract\n"
+    assert b"SECRET_PAYLOAD" not in stderr_buf.getvalue()
