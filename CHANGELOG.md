@@ -27,6 +27,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   Issues #39 / #40). Typed [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)
   and redaction. Optional ResearchEvent actor `kind` / `modelId`. SimulatedRuntime
   emits `attempt.cancelled` / `run.cancelled` from a recorded cancel request.
+- M1-1: `proposal.submitted`, `dissent.recorded`, `decision.recorded`, rebuildable
+  [`ResearchLedger`](docs/protocols/research-decision-objects-v0alpha1.md), and CLI
+  `proposals submit` / `dissents record` / `decisions record` / `research ledger`
+  (Issue #41). Question channel remains Issue #42.
 
 ### Changed
 
@@ -36,3 +40,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   recreate when writable). `RunControl` always folds the frozen prefix from
   sequence 0; the snapshot cache is not fold authority. A cache-write failure
   after a committed lifecycle fact does not fail the append.
+- M1-1: `ResearchControl` validates the complete prospective ledger before the
+  CAS append. The 33rd override of one dissent is rejected before commit.
+  Dissent/decision `targetKind` values `conclusion` and `question` are reserved
+  until those aggregates exist (Issue #42 for questions).
