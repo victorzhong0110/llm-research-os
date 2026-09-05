@@ -1,0 +1,26 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "QuestionAnswerRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "question.eval-split.answer",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "researcher.alice",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.question.answer.1",
+    "time": "2026-09-04T12:05:00Z"
+  },
+  "questionId": "question.eval-split",
+  "answer": {
+    "option": "No overlap."
+  },
+  "rights": {
+    "status": "allowed",
+    "allowedUses": ["research-read"]
+  },
+  "evidenceRefs": []
+}

@@ -30,7 +30,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-1: `proposal.submitted`, `dissent.recorded`, `decision.recorded`, rebuildable
   [`ResearchLedger`](docs/protocols/research-decision-objects-v0alpha1.md), and CLI
   `proposals submit` / `dissents record` / `decisions record` / `research ledger`
-  (Issue #41). Question channel remains Issue #42.
+  (Issue #41).
 - M1-2: `ModelProvider` with declared/measured/allowed capabilities,
   `DeterministicMockProvider` from fixtures, and `ai.call.*` facts that store
   prompt/output digests (optional artifact refs), never inline text
@@ -50,8 +50,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `plan.authorization.evaluated` before lifecycle writes
   ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)).
   Issue #19 local consume is delivered; signatures, expiry, and revocation are
-  Issue #53. #42 and `v0.1.0-m1` remain not-delivered. Numbered slices are not
+  Issue #53. `v0.1.0-m1` remains not-delivered. Numbered slices are not
   the M1 checkpoint (#38).
+- Question channel: `question.asked` / `question.answered`, CLI
+  `questions ask` / `questions answer`, ledger question entries and counters,
+  and report attention cost (Issue #42). Answers are data with rights, not
+  instructions.
 
 ### Changed
 
@@ -63,8 +67,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   after a committed lifecycle fact does not fail the append.
 - M1-1: `ResearchControl` validates the complete prospective ledger before the
   CAS append. The 33rd override of one dissent is rejected before commit.
-  Dissent/decision `targetKind` values `conclusion` and `question` are reserved
-  until those aggregates exist (Issue #42 for questions).
+  Dissent `targetKind` `conclusion` remains reserved. Decision `targetKind`
+  `question` is valid once a `question.asked` fact exists (Issue #42).
 - M1-3: PDF text extraction no longer parses every page in-process before
   applying the character cap. A compressed PDF that expands past the work
   bounds fails closed without echoing extracted text.

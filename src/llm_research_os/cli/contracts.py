@@ -130,12 +130,18 @@ from llm_research_os.research.schema import (
     canonical_decision_record_request_schema,
     canonical_dissent_record_request_schema,
     canonical_proposal_submit_request_schema,
+    canonical_question_answer_request_schema,
+    canonical_question_ask_request_schema,
     decision_record_request_schema_matches,
     dissent_record_request_schema_matches,
     proposal_submit_request_schema_matches,
+    question_answer_request_schema_matches,
+    question_ask_request_schema_matches,
     write_decision_record_request_schema,
     write_dissent_record_request_schema,
     write_proposal_submit_request_schema,
+    write_question_answer_request_schema,
+    write_question_ask_request_schema,
 )
 from llm_research_os.research.schema import (
     canonical_schema as canonical_research_ledger_schema,
@@ -322,6 +328,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         decision_record_request_schema_matches,
         write_decision_record_request_schema,
         "schemas/decision-record-request/v0alpha1.schema.json",
+    ),
+    "question-ask-request": _contract(
+        canonical_question_ask_request_schema,
+        question_ask_request_schema_matches,
+        write_question_ask_request_schema,
+        "schemas/question-ask-request/v0alpha1.schema.json",
+    ),
+    "question-answer-request": _contract(
+        canonical_question_answer_request_schema,
+        question_answer_request_schema_matches,
+        write_question_answer_request_schema,
+        "schemas/question-answer-request/v0alpha1.schema.json",
     ),
     "model-generate-request": _contract(
         canonical_model_generate_request_schema,
