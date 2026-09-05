@@ -1,0 +1,23 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "QuestionAskRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "question.human",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "researcher.alice",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.question.human",
+    "time": "2026-09-04T12:04:00Z"
+  },
+  "questionId": "question.human",
+  "question": "Should a human be allowed to ask?",
+  "uncertainty": "Actor kind on the ask path.",
+  "whyNotObservable": "This is a corpus rejection, not an information gap.",
+  "blocking": false,
+  "evidenceRefs": []
+}

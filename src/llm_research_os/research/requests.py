@@ -22,6 +22,9 @@ from llm_research_os.research.models import (
     TYPE_DECISION_RECORDED,
     TYPE_DISSENT_RECORDED,
     TYPE_PROPOSAL_SUBMITTED,
+    TYPE_QUESTION_ANSWERED,
+    TYPE_QUESTION_ASKED,
+    AnswerRights,
     DecisionItemText,
     DecisionOutcome,
     DecisionTargetKind,
@@ -30,6 +33,7 @@ from llm_research_os.research.models import (
     DissentTargetKind,
     JcsDigest,
     ProposalPrediction,
+    QuestionAnswerValue,
     ResearchDocumentModel,
     RiskAssessment,
     require_json_array,
@@ -44,6 +48,12 @@ DISSENT_RECORD_REQUEST_SCHEMA_ID = (
 )
 DECISION_RECORD_REQUEST_SCHEMA_ID = (
     "https://researchos.dev/schemas/decision-record-request/v0alpha1.schema.json"
+)
+QUESTION_ASK_REQUEST_SCHEMA_ID = (
+    "https://researchos.dev/schemas/question-ask-request/v0alpha1.schema.json"
+)
+QUESTION_ANSWER_REQUEST_SCHEMA_ID = (
+    "https://researchos.dev/schemas/question-answer-request/v0alpha1.schema.json"
 )
 RESEARCH_REQUEST_API_VERSION = "researchos.dev/v0alpha1"
 
@@ -68,6 +78,23 @@ class ProposalRequestActor(ResearchDocumentModel):
 class DecisionRequestActor(ResearchDocumentModel):
     id: EventIdentifier
     kind: Literal["human", "policy"]
+
+
+class QuestionRequestActor(ResearchDocumentModel):
+    id: EventIdentifier
+    kind: Literal["ai", "system"]
+    model_id: EventIdentifier | None = Field(default=None, alias="modelId")
+
+    @model_validator(mode="after")
+    def model_id_requires_ai_kind(self) -> Self:
+        if self.model_id is not None and self.kind != ActorKind.AI.value:
+            raise ValueError("modelId is only valid when actor kind is ai")
+        return self
+
+
+class AnswerRequestActor(ResearchDocumentModel):
+    id: EventIdentifier
+    kind: Literal["human"]
 
 
 class ProposalSubmitRequestDocument(ResearchDocumentModel):
@@ -305,6 +332,138 @@ class DecisionRecordRequestDocument(ResearchDocumentModel):
         )
 
 
+class QuestionAskRequestDocument(ResearchDocumentModel):
+    api_version: Literal["researchos.dev/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["QuestionAskRequest"]
+    project_id: EventIdentifier = Field(alias="projectId")
+    experiment_revision: ExperimentRevision = Field(alias="experimentRevision")
+    source: CloudEventsUriReference
+    subject: CloudEventsString
+    stream_id: EventIdentifier = Field(alias="streamid")
+    actor: QuestionRequestActor
+    event: ResearchEventIdentity
+    question_id: EventIdentifier = Field(alias="questionId")
+    question: DecisionText
+    uncertainty: DecisionText
+    why_not_observable: DecisionText = Field(alias="whyNotObservable")
+    options: tuple[DecisionItemText, ...] | None = Field(
+        default=None, min_length=1, max_length=MAX_DECISION_LIST
+    )
+    blocking: bool
+    related_proposal_id: EventIdentifier | None = Field(default=None, alias="relatedProposalId")
+    evidence_refs: tuple[EventIdentifier, ...] = Field(
+        alias="evidenceRefs",
+        max_length=MAX_DECISION_LIST,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("options", "evidence_refs", mode="before")
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        if value is None:
+            return value
+        return require_json_array(value, "list")
+
+    @model_validator(mode="after")
+    def identifier_lists_are_unique(self) -> Self:
+        if len(self.evidence_refs) != len(set(self.evidence_refs)):
+            raise ValueError("evidenceRefs entries must be unique")
+        if self.options is not None and len(self.options) != len(set(self.options)):
+            raise ValueError("options entries must be unique")
+        if "options" in self.model_fields_set and self.options is None:
+            raise ValueError("options must be omitted rather than null")
+        if "related_proposal_id" in self.model_fields_set and self.related_proposal_id is None:
+            raise ValueError("relatedProposalId must be omitted rather than null")
+        return self
+
+    @field_serializer("evidence_refs")
+    def serialize_evidence_refs(self, evidence_refs: tuple[EventIdentifier, ...]) -> list[str]:
+        return list(evidence_refs)
+
+    def event_draft(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "questionId": self.question_id,
+            "question": self.question,
+            "uncertainty": self.uncertainty,
+            "whyNotObservable": self.why_not_observable,
+            "blocking": self.blocking,
+            "evidenceRefs": list(self.evidence_refs),
+        }
+        if self.options is not None:
+            payload["options"] = list(self.options)
+        if self.related_proposal_id is not None:
+            payload["relatedProposalId"] = self.related_proposal_id
+        return _event_draft(
+            event_id=self.event.id,
+            event_type=TYPE_QUESTION_ASKED,
+            time=self.event.time,
+            source=self.source,
+            subject=self.subject,
+            stream_id=self.stream_id,
+            actor=_actor_document(self.actor.id, self.actor.kind, self.actor.model_id),
+            project_id=self.project_id,
+            experiment_revision=self.experiment_revision,
+            payload=payload,
+            evidence_refs=self.evidence_refs,
+        )
+
+
+class QuestionAnswerRequestDocument(ResearchDocumentModel):
+    api_version: Literal["researchos.dev/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["QuestionAnswerRequest"]
+    project_id: EventIdentifier = Field(alias="projectId")
+    experiment_revision: ExperimentRevision = Field(alias="experimentRevision")
+    source: CloudEventsUriReference
+    subject: CloudEventsString
+    stream_id: EventIdentifier = Field(alias="streamid")
+    actor: AnswerRequestActor
+    event: ResearchEventIdentity
+    question_id: EventIdentifier = Field(alias="questionId")
+    answer: QuestionAnswerValue
+    rights: AnswerRights
+    evidence_refs: tuple[EventIdentifier, ...] = Field(
+        alias="evidenceRefs",
+        max_length=MAX_DECISION_LIST,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("evidence_refs", mode="before")
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        return require_json_array(value, "list")
+
+    @model_validator(mode="after")
+    def evidence_refs_are_unique(self) -> Self:
+        if len(self.evidence_refs) != len(set(self.evidence_refs)):
+            raise ValueError("evidenceRefs entries must be unique")
+        return self
+
+    @field_serializer("evidence_refs")
+    def serialize_evidence_refs(self, evidence_refs: tuple[EventIdentifier, ...]) -> list[str]:
+        return list(evidence_refs)
+
+    def event_draft(self) -> dict[str, Any]:
+        payload = {
+            "questionId": self.question_id,
+            "answer": self.answer.model_dump(mode="json", by_alias=True, exclude_none=True),
+            "rights": self.rights.model_dump(mode="json", by_alias=True),
+            "evidenceRefs": list(self.evidence_refs),
+        }
+        return _event_draft(
+            event_id=self.event.id,
+            event_type=TYPE_QUESTION_ANSWERED,
+            time=self.event.time,
+            source=self.source,
+            subject=self.subject,
+            stream_id=self.stream_id,
+            actor=_actor_document(self.actor.id, self.actor.kind, None),
+            project_id=self.project_id,
+            experiment_revision=self.experiment_revision,
+            payload=payload,
+            evidence_refs=self.evidence_refs,
+        )
+
+
 def validate_proposal_submit_request(document: object) -> ProposalSubmitRequestDocument:
     try:
         return ProposalSubmitRequestDocument.model_validate(document)
@@ -336,6 +495,28 @@ def load_dissent_record_request(path: str | Path) -> DissentRecordRequestDocumen
 
 def load_decision_record_request(path: str | Path) -> DecisionRecordRequestDocument:
     return validate_decision_record_request(load_document(path, reject_symlinks=True))
+
+
+def validate_question_ask_request(document: object) -> QuestionAskRequestDocument:
+    try:
+        return QuestionAskRequestDocument.model_validate(document)
+    except ValidationError as exc:
+        raise ResearchRequestError(exc) from None
+
+
+def validate_question_answer_request(document: object) -> QuestionAnswerRequestDocument:
+    try:
+        return QuestionAnswerRequestDocument.model_validate(document)
+    except ValidationError as exc:
+        raise ResearchRequestError(exc) from None
+
+
+def load_question_ask_request(path: str | Path) -> QuestionAskRequestDocument:
+    return validate_question_ask_request(load_document(path, reject_symlinks=True))
+
+
+def load_question_answer_request(path: str | Path) -> QuestionAnswerRequestDocument:
+    return validate_question_answer_request(load_document(path, reject_symlinks=True))
 
 
 def _actor_document(actor_id: str, kind: str, model_id: str | None) -> dict[str, str]:

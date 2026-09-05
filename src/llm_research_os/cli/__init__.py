@@ -19,6 +19,7 @@ from llm_research_os.cli.research_commands import (
     run_decisions,
     run_dissents,
     run_proposals,
+    run_questions,
     run_research,
 )
 from llm_research_os.cli.runs_commands import run_runs
@@ -42,6 +43,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "dissents": run_dissents,
     "decisions": run_decisions,
     "research": run_research,
+    "questions": run_questions,
     "report": run_report,
 }
 

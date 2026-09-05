@@ -1,0 +1,24 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "QuestionAskRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "question.empty-why",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai",
+    "modelId": "mock.deterministic"
+  },
+  "event": {
+    "id": "evt.question.empty-why",
+    "time": "2026-09-04T12:04:00Z"
+  },
+  "questionId": "question.empty-why",
+  "question": "Why is this empty?",
+  "uncertainty": "The whyNotObservable field is empty.",
+  "whyNotObservable": "",
+  "blocking": true,
+  "evidenceRefs": []
+}

@@ -69,8 +69,13 @@ def render_html(report: RunReport) -> str:
 
 def _research_markdown(report: RunReport) -> list[str]:
     ledger = report.ledger
-    if not ledger.proposals and not ledger.dissents and not ledger.decisions:
-        return ["No proposal, dissent, or decision facts for this project."]
+    if (
+        not ledger.proposals
+        and not ledger.dissents
+        and not ledger.decisions
+        and not ledger.questions
+    ):
+        return ["No proposal, dissent, decision, or question facts for this project."]
     lines: list[str] = []
     for proposal in ledger.proposals:
         lines.append(
@@ -86,6 +91,12 @@ def _research_markdown(report: RunReport) -> list[str]:
         lines.append(
             f"- Decision `{_md(decision.decision_id)}` {_md_link(decision.event_id)} "
             f"outcome `{_md(decision.outcome.value)}`."
+        )
+    for question in ledger.questions:
+        cited = question.answer_event_id or question.event_id
+        lines.append(
+            f"- Question `{_md(question.question_id)}` {_md_link(cited)} "
+            f"status `{_md(question.status.value)}`."
         )
     return lines
 
@@ -108,12 +119,14 @@ def _training_markdown(report: RunReport) -> list[str]:
 
 
 def _cost_markdown(report: RunReport) -> list[str]:
+    lines = [_attention_markdown(report)]
     if not report.budget_events:
-        return ["No `budget.*` facts for this project."]
-    lines = [
+        lines.append("No `budget.*` facts for this project.")
+        return lines
+    lines.append(
         f"- Consumed `{_md(format_consumed(report.budget))}` CNY "
         f"{_md_link(report.budget_events[-1].event.id)}."
-    ]
+    )
     if report.budget.outstanding > 0:
         lines.append(
             f"- Outstanding `{_md(format_outstanding(report.budget))}` CNY still reserved; "
@@ -170,8 +183,13 @@ def _index_markdown(report: RunReport) -> list[str]:
 
 def _research_html(report: RunReport) -> list[str]:
     ledger = report.ledger
-    if not ledger.proposals and not ledger.dissents and not ledger.decisions:
-        return ["<p>No proposal, dissent, or decision facts for this project.</p>"]
+    if (
+        not ledger.proposals
+        and not ledger.dissents
+        and not ledger.decisions
+        and not ledger.questions
+    ):
+        return ["<p>No proposal, dissent, decision, or question facts for this project.</p>"]
     items: list[str] = []
     for proposal in ledger.proposals:
         items.append(
@@ -190,6 +208,13 @@ def _research_html(report: RunReport) -> list[str]:
             "<li>Decision <code>"
             f"{_html(decision.decision_id)}</code> {_html_link(decision.event_id)} "
             f"outcome <code>{_html(decision.outcome.value)}</code>.</li>"
+        )
+    for question in ledger.questions:
+        cited = question.answer_event_id or question.event_id
+        items.append(
+            "<li>Question <code>"
+            f"{_html(question.question_id)}</code> {_html_link(cited)} "
+            f"status <code>{_html(question.status.value)}</code>.</li>"
         )
     return ["<ul>", *items, "</ul>"]
 
@@ -218,26 +243,32 @@ def _training_html(report: RunReport) -> list[str]:
 
 
 def _cost_html(report: RunReport) -> list[str]:
-    if not report.budget_events:
-        return ["<p>No <code>budget.*</code> facts for this project.</p>"]
-    items = [
-        "<li>Consumed <code>"
-        f"{_html(format_consumed(report.budget))}</code> CNY "
-        f"{_html_link(report.budget_events[-1].event.id)}.</li>"
+    items = [_attention_html_item(report)]
+    if report.budget_events:
+        items.append(
+            "<li>Consumed <code>"
+            f"{_html(format_consumed(report.budget))}</code> CNY "
+            f"{_html_link(report.budget_events[-1].event.id)}.</li>"
+        )
+        if report.budget.outstanding > 0:
+            items.append(
+                "<li>Outstanding <code>"
+                f"{_html(format_outstanding(report.budget))}</code> CNY still reserved; "
+                f"actual cost unknown {_html_link(report.budget_events[-1].event.id)}.</li>"
+            )
+        for stored in report.budget_events:
+            amount = _budget_amount(stored.event.data.payload)
+            items.append(
+                f"<li><code>{_html(stored.event.type)}</code> "
+                f"<code>{_html(amount)}</code> CNY {_html_link(stored.event.id)}.</li>"
+            )
+        return ["<ul>", *items, "</ul>"]
+    return [
+        "<ul>",
+        *items,
+        "</ul>",
+        "<p>No <code>budget.*</code> facts for this project.</p>",
     ]
-    if report.budget.outstanding > 0:
-        items.append(
-            "<li>Outstanding <code>"
-            f"{_html(format_outstanding(report.budget))}</code> CNY still reserved; "
-            f"actual cost unknown {_html_link(report.budget_events[-1].event.id)}.</li>"
-        )
-    for stored in report.budget_events:
-        amount = _budget_amount(stored.event.data.payload)
-        items.append(
-            f"<li><code>{_html(stored.event.type)}</code> "
-            f"<code>{_html(amount)}</code> CNY {_html_link(stored.event.id)}.</li>"
-        )
-    return ["<ul>", *items, "</ul>"]
 
 
 def _lineage_html(report: RunReport) -> list[str]:
@@ -286,11 +317,52 @@ def _index_html(report: RunReport) -> list[str]:
 
 def _ledger_event_ids(report: RunReport) -> tuple[str, ...]:
     ledger = report.ledger
-    return tuple(
-        entry.event_id
-        for group in (ledger.proposals, ledger.dissents, ledger.decisions)
-        for entry in group
+    ids: list[str] = []
+    for group in (ledger.proposals, ledger.dissents, ledger.decisions):
+        ids.extend(entry.event_id for entry in group)
+    for question in ledger.questions:
+        ids.append(question.event_id)
+        if question.answer_event_id is not None:
+            ids.append(question.answer_event_id)
+    return tuple(ids)
+
+
+def _attention_event_id(report: RunReport) -> str | None:
+    ledger = report.ledger
+    if ledger.questions:
+        last = ledger.questions[-1]
+        return last.answer_event_id or last.event_id
+    if ledger.decisions:
+        return ledger.decisions[-1].event_id
+    return None
+
+
+def _attention_markdown(report: RunReport) -> str:
+    ledger = report.ledger
+    line = (
+        f"- Attention: {ledger.decision_count} decisions, "
+        f"{ledger.answered_question_count} answered questions, "
+        f"{ledger.open_question_count} open questions, "
+        f"{ledger.rationale_characters} rationale characters."
     )
+    cited = _attention_event_id(report)
+    if cited is not None:
+        return f"{line} {_md_link(cited)}"
+    return line
+
+
+def _attention_html_item(report: RunReport) -> str:
+    ledger = report.ledger
+    item = (
+        f"<li>Attention: {ledger.decision_count} decisions, "
+        f"{ledger.answered_question_count} answered questions, "
+        f"{ledger.open_question_count} open questions, "
+        f"{ledger.rationale_characters} rationale characters."
+    )
+    cited = _attention_event_id(report)
+    if cited is not None:
+        return f"{item} {_html_link(cited)}</li>"
+    return f"{item}</li>"
 
 
 def _indexed_events(report: RunReport) -> tuple[StoredEvent, ...]:
