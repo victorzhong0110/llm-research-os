@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from llm_research_os.budget.errors import BudgetCallError, BudgetPayloadError
+from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError, BudgetPayloadError
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
@@ -89,7 +89,46 @@ class BudgetControl:
         return BudgetHead(last_sequence=high_water, fold=fold)
 
     def append(self, document: dict[str, Any]) -> StoredEvent:
+        return self._append_at(self.rebuild(), document)
+
+    def reserve_or_exceed(
+        self,
+        reserved_document: dict[str, Any],
+        exceeded_document: dict[str, Any],
+    ) -> StoredEvent:
+        """Atomically reserve or record exceeded on one frozen head. Do not retry CAS."""
+
         head = self.rebuild()
+        reserved_event = self._preflight_event(head, reserved_document)
+        payload = parse_budget_payload(reserved_event)
+        if (
+            reserved_event.type != TYPE_BUDGET_RESERVED
+            or type(payload) is not BudgetReservedPayload
+        ):
+            raise BudgetCallError(
+                "reserve_or_exceed reserved draft must be budget.reserved",
+                code="invalid-draft",
+            )
+        requested = parse_money(payload.amount)
+        cap = parse_money(payload.cap)
+        if reservation_would_exceed(head.fold, requested, cap):
+            exceeded_event = self._preflight_event(head, exceeded_document)
+            if exceeded_event.type != TYPE_BUDGET_EXCEEDED:
+                raise BudgetCallError(
+                    "reserve_or_exceed exceeded draft must be budget.exceeded",
+                    code="invalid-draft",
+                )
+            self._append_at(head, exceeded_document)
+            raise BudgetExceededError()
+        return self._append_at(head, reserved_document)
+
+    def _append_at(self, head: BudgetHead, document: dict[str, Any]) -> StoredEvent:
+        event = self._preflight_event(head, document)
+        apply_budget_fold(head.fold, event, project_id=self._project_id)
+        draft = snapshot_json_document(document)
+        return self._store.append(draft, expected_last_sequence=head.last_sequence)
+
+    def _preflight_event(self, head: BudgetHead, document: dict[str, Any]) -> ResearchEvent:
         frozen_head = head.last_sequence
         try:
             draft = snapshot_json_document(document)
@@ -117,8 +156,7 @@ class BudgetControl:
                 "event projectId does not match this BudgetControl",
                 code="project-mismatch",
             )
-        apply_budget_fold(head.fold, preflight_event, project_id=self._project_id)
-        return self._store.append(draft, expected_last_sequence=frozen_head)
+        return preflight_event
 
 
 BUDGET_TYPES = frozenset(
@@ -148,11 +186,20 @@ def _known_ids(fold: BudgetFold) -> frozenset[str]:
     return fold.open_ids | fold.closed_ids
 
 
+def reservation_would_exceed(fold: BudgetFold, requested: Decimal, cap: Decimal) -> bool:
+    return fold.consumed + fold.outstanding + requested > cap
+
+
 def _apply_reserved(fold: BudgetFold, payload: BudgetReservedPayload) -> BudgetFold:
     if payload.budget_id in _known_ids(fold):
         raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
     amount = parse_money(payload.amount)
     cap = parse_money(payload.cap)
+    if reservation_would_exceed(fold, amount, cap):
+        raise BudgetCallError(
+            "reservation would exceed the declared cap",
+            code="reservation-exceeds-cap",
+        )
     reservation = OpenReservation(
         budget_id=payload.budget_id,
         call_id=payload.call_id,

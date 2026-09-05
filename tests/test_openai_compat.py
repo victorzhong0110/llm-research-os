@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 from llm_research_os.budget.control import BudgetControl
-from llm_research_os.budget.errors import BudgetExceededError
+from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError
 from llm_research_os.canonical import content_digest
 from llm_research_os.cli import main
 from llm_research_os.providers.compat import CompatHttpProvider
@@ -446,3 +446,77 @@ def test_concurrent_reservations_only_affordable_call_hits_transport(
     assert outcomes.count("ok") == 1
     assert len(transports) == 1
     assert "exceeded" in outcomes or "conflict" in outcomes
+
+
+def test_remote_zero_budget_is_rejected_before_socket() -> None:
+    called: list[int] = []
+
+    def transport(url: str, payload: bytes, headers: dict[str, str]) -> dict[str, object]:
+        called.append(1)
+        return _completion(OUTPUT_TOKEN)
+
+    document = _remote_document(suffix="zero", cap="0.00", reserve="0.00", consume="0.00")
+    with pytest.raises(ModelRequestError):
+        validate_compat_generate_request(document)
+    assert called == []
+
+
+def test_concurrent_reserve_uses_one_frozen_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
+    database = tmp_path / "research.db"
+    _init_store(database)
+    fixture = load_model_fixture(FIXTURE)
+    transports: list[str] = []
+    lock = Lock()
+    original = BudgetControl.rebuild
+    seen = {"n": 0}
+    start = Barrier(2, timeout=5)
+
+    def gated(self: BudgetControl) -> object:
+        head = original(self)
+        with lock:
+            seen["n"] += 1
+            n = seen["n"]
+        if n <= 2:
+            start.wait()
+        return head
+
+    monkeypatch.setattr(BudgetControl, "rebuild", gated)
+
+    def transport(url: str, payload: bytes, headers: dict[str, str]) -> dict[str, object]:
+        with lock:
+            transports.append(url)
+        return _completion(OUTPUT_TOKEN)
+
+    def run_one(suffix: str) -> str:
+        request = validate_compat_generate_request(
+            _remote_document(suffix=suffix, cap="1.00", reserve="0.60", consume="0.60")
+        )
+        provider = CompatHttpProvider(
+            endpoint=request.endpoint,
+            model_id=request.actor.model_id,
+            secret=SECRET,
+            transport=transport,
+        )
+        with EventStore(database, require_existing=True) as store:
+            try:
+                ModelCallControl(store, project_id=request.project_id).record_http_generate(
+                    request,
+                    fixture,
+                    provider,
+                )
+            except BudgetExceededError:
+                return "exceeded"
+            except EventSequenceConflictError:
+                return "conflict"
+            except BudgetCallError:
+                return "fold"
+        return "ok"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(run_one, ("gate-a", "gate-b")))
+    assert outcomes.count("ok") == 1
+    assert len(transports) == 1
+    assert "conflict" in outcomes or "exceeded" in outcomes or "fold" in outcomes

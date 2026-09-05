@@ -30,6 +30,11 @@ from llm_research_os.policy.capabilities import (
     require_known_kernel_capabilities,
 )
 from llm_research_os.providers.capabilities import ModelCapability, sorted_capability_names
+from llm_research_os.providers.endpoint import (
+    EndpointKind,
+    classify_literal_endpoint,
+    endpoint_is_loopback,
+)
 from llm_research_os.providers.errors import ModelRequestError
 from llm_research_os.providers.models import (
     MAX_CAPABILITY_LIST,
@@ -50,7 +55,6 @@ OPENAI_COMPAT_GENERATE_REQUEST_SCHEMA_ID = (
 )
 DEFAULT_COMPAT_ENDPOINT = "http://127.0.0.1:8080/v1"
 COMPAT_PROVIDER_ID = "openai.compat"
-LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 CompatLifecycleType = Literal[
     "ai.call.started",
     "ai.call.completed",
@@ -72,11 +76,6 @@ REQUIRED_COMPAT_EVENTS: frozenset[str] = frozenset(
     }
 )
 BUDGET_ACTOR = {"id": "researchos.budget", "kind": ActorKind.SYSTEM.value}
-
-
-def endpoint_is_loopback(endpoint: str) -> bool:
-    parsed = urlparse(endpoint)
-    return parsed.hostname in LOOPBACK_HOSTS
 
 
 class CompatRequestActor(ProviderDocumentModel):
@@ -158,9 +157,10 @@ class OpenAICompatGenerateRequestDocument(ProviderDocumentModel):
         parsed = urlparse(self.endpoint)
         if parsed.username is not None or parsed.password is not None:
             raise ValueError("endpoint must not contain userinfo")
-        if parsed.scheme not in {"http", "https"}:
-            raise ValueError("endpoint scheme must be http or https")
-        local = endpoint_is_loopback(self.endpoint)
+        try:
+            local = classify_literal_endpoint(self.endpoint) is EndpointKind.LOOPBACK
+        except ValueError as exc:
+            raise ValueError(str(exc)) from None
         if local:
             if self.secret_ref is not None:
                 raise ValueError("loopback endpoints must not carry a secretRef")
@@ -180,6 +180,8 @@ class OpenAICompatGenerateRequestDocument(ProviderDocumentModel):
         cap = parse_money(self.budget_cap)
         reserve = parse_money(self.reserve_amount)
         consume = parse_money(self.consume_amount)
+        if not local and (cap <= 0 or reserve <= 0):
+            raise ValueError("remote endpoints require a positive CNY cap and reserve")
         if reserve > cap:
             raise ValueError("reserveAmount must not exceed budgetCap")
         if consume > reserve:
