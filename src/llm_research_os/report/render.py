@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+from urllib.parse import quote
 
 from llm_research_os.report.fold import RunReport, format_consumed
 
@@ -144,13 +145,14 @@ def _index_markdown(report: RunReport) -> list[str]:
             continue
         seen.add(event_id)
         lines.append(
-            f'- <a id="{_html(event_id)}"></a>`{_md(event_id)}` `{_md(stored.event.type)}`'
+            f'- <a id="{_html(_fragment(event_id))}"></a>'
+            f"`{_md(event_id)}` `{_md(stored.event.type)}`"
         )
     for event_id in _ledger_event_ids(report):
         if event_id in seen:
             continue
         seen.add(event_id)
-        lines.append(f'- <a id="{_html(event_id)}"></a>`{_md(event_id)}`')
+        lines.append(f'- <a id="{_html(_fragment(event_id))}"></a>`{_md(event_id)}`')
     return lines or ["No events."]
 
 
@@ -245,14 +247,14 @@ def _index_html(report: RunReport) -> list[str]:
             continue
         seen.add(event_id)
         items.append(
-            f'<li id="{_html(event_id)}"><code>{_html(event_id)}</code> '
+            f'<li id="{_html(_fragment(event_id))}"><code>{_html(event_id)}</code> '
             f"<code>{_html(stored.event.type)}</code></li>"
         )
     for event_id in _ledger_event_ids(report):
         if event_id in seen:
             continue
         seen.add(event_id)
-        items.append(f'<li id="{_html(event_id)}"><code>{_html(event_id)}</code></li>')
+        items.append(f'<li id="{_html(_fragment(event_id))}"><code>{_html(event_id)}</code></li>')
     if not items:
         return ["<p>No events.</p>"]
     return ["<ul>", *items, "</ul>"]
@@ -281,12 +283,17 @@ def _html(value: str) -> str:
 
 def _html_link(event_id: str) -> str:
     escaped = _html(event_id)
-    return f'<a href="#{escaped}"><code>{escaped}</code></a>'
+    fragment = _html(_fragment(event_id))
+    return f'<a href="#{fragment}"><code>{escaped}</code></a>'
 
 
 def _md(value: str) -> str:
     return value.replace("\\", "\\\\").replace("`", "\\`").replace("[", "\\[").replace("]", "\\]")
 
 
+def _fragment(event_id: str) -> str:
+    return quote(event_id, safe="._-")
+
+
 def _md_link(event_id: str) -> str:
-    return f"[`{_md(event_id)}`](#{event_id})"
+    return f"[`{_md(event_id)}`](#{_fragment(event_id)})"

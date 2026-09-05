@@ -9,12 +9,17 @@ from llm_research_os.events.models import validate_event_document
 from llm_research_os.execution.errors import SimulationError
 from llm_research_os.execution.synthetic import (
     TYPE_EVALUATION_METRIC,
+    TYPE_TRAINING_STEP,
+    append_synthetic_metrics,
     metric_event_draft,
     parse_evaluation_metric_payload,
     parse_training_step_payload,
     synthetic_evaluation_payload,
     synthetic_training_payload,
 )
+from llm_research_os.report.fold import build_run_report
+from llm_research_os.report.render import _fragment, _html_link, _md_link
+from llm_research_os.research.requests import load_proposal_submit_request
 from llm_research_os.storage import EventStore
 
 ROOT = Path(__file__).parents[1]
@@ -166,3 +171,91 @@ def test_synthetic_payload_parsers_reject_type_mismatch() -> None:
             revision=1,
             attempt_id=ATTEMPT,
         )
+
+
+def test_synthetic_metric_resume_requires_canonical_match(tmp_path: Path) -> None:
+    events = {TYPE_TRAINING_STEP: ("evt.training.step", "2026-08-30T12:00:00Z")}
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        first = append_synthetic_metrics(
+            store,
+            events,
+            source="https://researchos.dev/projects/example-minimal",
+            subject="run.simulated",
+            stream_id="stream.simulated",
+            actor_id="researcher.alice",
+            project_id="example-minimal",
+            run_id="run.a",
+            revision=1,
+            attempt_id=ATTEMPT,
+        )
+        assert len(first) == 1
+        assert (
+            append_synthetic_metrics(
+                store,
+                events,
+                source="https://researchos.dev/projects/example-minimal",
+                subject="run.simulated",
+                stream_id="stream.simulated",
+                actor_id="researcher.alice",
+                project_id="example-minimal",
+                run_id="run.a",
+                revision=1,
+                attempt_id=ATTEMPT,
+            )
+            == []
+        )
+        with pytest.raises(SimulationError, match="already exists"):
+            append_synthetic_metrics(
+                store,
+                events,
+                source="https://researchos.dev/projects/example-minimal",
+                subject="run.simulated",
+                stream_id="stream.simulated",
+                actor_id="researcher.alice",
+                project_id="example-minimal",
+                run_id="run.b",
+                revision=1,
+                attempt_id=ATTEMPT,
+            )
+
+
+def test_report_omits_facts_appended_after_the_frozen_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "research.db"
+    _simulate(database)
+    request = load_proposal_submit_request(PROPOSAL)
+    with EventStore(database, require_existing=True) as store:
+        original = EventStore.freeze_high_water
+        appended = {"done": False}
+
+        def freeze(self: EventStore) -> int:
+            head = original(self)
+            if not appended["done"]:
+                appended["done"] = True
+                self.append(request.event_draft(), expected_last_sequence=head)
+                return head
+            return original(self)
+
+        monkeypatch.setattr(EventStore, "freeze_high_water", freeze)
+        report = build_run_report(store, RUN)
+        assert report.ledger.proposals == ()
+        assert store.last_sequence() == report.last_sequence + 1
+
+
+def test_markdown_and_html_anchors_percent_encode_punctuation() -> None:
+    event_id = 'evt.foo) bar"baz*`#λ'
+    fragment = _fragment(event_id)
+    assert ")" not in fragment
+    assert " " not in fragment
+    assert '"' not in fragment
+    assert "`" not in fragment
+    assert "#" not in fragment
+    assert "λ" not in fragment
+    markdown = _md_link(event_id)
+    assert markdown.endswith(f"](#{fragment})")
+    html = _html_link(event_id)
+    assert f'href="#{fragment}"' in html
+    assert "evt.foo)" in html
+    assert "λ" in html

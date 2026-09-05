@@ -62,7 +62,16 @@ and must match the Run when supplied. The database must already exist.
 
 Sections, in order: Research, Training, Cost, Lineage, Event index. Every
 claim that reports a stored fact cites that fact's `eventId` as a fragment
-link into the event index.
+link into the event index. Fragment destinations are percent-encoded so
+punctuation in an id cannot break Markdown or HTML anchors; the index uses the
+same encoding.
+
+The report freezes EventStore high-water `H` once and folds every section from
+that prefix. Facts appended after `H` are omitted, including project-scoped
+ledger and budget facts that do not carry the Run id.
+
+A resumed synthetic metric with the same event id MUST match the canonical
+caller document (type, Run, payload). Id+type agreement is not enough.
 
 | Exit code | Meaning |
 |---|---|
