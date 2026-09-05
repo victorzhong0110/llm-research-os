@@ -33,6 +33,8 @@ M1-0 is in tree: schema v2 query tables and a verified high-water cache
 actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
 `run.cancelled`. M1-1 lands `proposal.submitted`, `dissent.recorded`,
 `decision.recorded`, a rebuildable `ResearchLedger`, and the matching CLI.
+M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
+deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
 The question channel is Issue #42.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
@@ -43,7 +45,8 @@ before write with global CAS, a GPU-free and network-free deterministic
 SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
-simulated-run / cancellation-request / artifact-object / research-decision CLIs,
+simulated-run / cancellation-request / artifact-object / research-decision /
+mock-model-call CLIs,
 and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads, and it does
@@ -88,6 +91,7 @@ acceptance checklist of that milestone.
 - [ResearchEvent v0alpha1](docs/protocols/research-event-v0alpha1.md)
 - [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
 - [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
+- [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -114,6 +118,7 @@ acceptance checklist of that milestone.
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
 - [M1 research decision CLI](docs/guides/m1-research-decisions.md)
+- [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -346,6 +351,17 @@ uv run researchos research ledger research.db \
   --project example-minimal --format json
 ```
 
+A deterministic mock model call is a pair of EventStore facts. Prompt and
+output text stay in the fixture file:
+
+```bash
+uv run researchos models generate \
+  examples/model-generate-requests/valid/generate.json \
+  research.db \
+  --fixture examples/model-fixtures/valid/generate-json.json \
+  --format json
+```
+
 A local artifact object root must be created first. Import and full verification
 both return a versioned object report and never print object bodies:
 
@@ -389,6 +405,9 @@ does not retry conflicts.
 an existing database, and neither signals nor infers a cancellation outcome.
 `artifacts put` / `verify` only reuse the local object layer: they do not print
 object bodies and they do not build an index or lineage.
+`models generate` records digest-only `ai.call.*` facts from a local fixture
+through the deterministic mock; it does not open a network connection or
+resolve a live API secret.
 The tree does not import block entrypoints, does not execute arbitrary training
 code, expressions, plugins, or remote Workers, does not write a SQLite artifact
 index or durable projections, and does not provide object export/delete, a real

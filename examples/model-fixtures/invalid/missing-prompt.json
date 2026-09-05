@@ -1,0 +1,8 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ModelFixture",
+  "id": "generate-json",
+  "output": {
+    "kind": "proposal-draft"
+  }
+}
