@@ -74,14 +74,16 @@ def _patch_compat_generate_request(schema: dict[str, Any]) -> None:
     events = schema.get("properties", {}).get("events")
     if type(events) is not dict:
         raise ValueError("compat generate request schema is missing events")
-    events["minProperties"] = 5
-    events["maxProperties"] = 5
+    events["minProperties"] = 7
+    events["maxProperties"] = 7
     events["required"] = [
         "ai.call.started",
         "ai.call.completed",
+        "ai.call.failed",
         "budget.reserved",
         "budget.consumed",
         "budget.exceeded",
+        "budget.released",
     ]
 
 

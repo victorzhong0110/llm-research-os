@@ -174,23 +174,27 @@
       "additionalProperties": {
         "$ref": "#/$defs/ModelEventIdentity"
       },
-      "maxProperties": 5,
-      "minProperties": 5,
+      "maxProperties": 7,
+      "minProperties": 7,
       "propertyNames": {
         "enum": [
           "ai.call.started",
           "ai.call.completed",
+          "ai.call.failed",
           "budget.reserved",
           "budget.consumed",
-          "budget.exceeded"
+          "budget.exceeded",
+          "budget.released"
         ]
       },
       "required": [
         "ai.call.started",
         "ai.call.completed",
+        "ai.call.failed",
         "budget.reserved",
         "budget.consumed",
-        "budget.exceeded"
+        "budget.exceeded",
+        "budget.released"
       ],
       "title": "Events",
       "type": "object"

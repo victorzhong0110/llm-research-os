@@ -16,6 +16,7 @@ from llm_research_os.budget.errors import BudgetExceededError
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
+    TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
 )
 from llm_research_os.budget.money import CURRENCY_CNY, parse_money
@@ -40,6 +41,7 @@ from llm_research_os.providers.provider import (
     ModelProvider,
 )
 from llm_research_os.secrets.redaction import message_without_secrets
+from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 
@@ -74,7 +76,10 @@ def _urllib_transport(url: str, payload: bytes, headers: Mapping[str, str]) -> d
     request = urllib.request.Request(url, data=payload, method="POST")  # noqa: S310
     for name, value in headers.items():
         request.add_header(name, value)
-    opener = urllib.request.build_opener(_RejectRedirects)
+    opener = urllib.request.build_opener(
+        _RejectRedirects,
+        urllib.request.ProxyHandler({}),
+    )
     try:
         with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
@@ -131,7 +136,7 @@ class CompatHttpProvider(ModelProvider):
             provider_id=COMPAT_PROVIDER_ID,
             model_id=self._model_id,
             local=self._local,
-            cost_known=True,
+            cost_known=self._local,
             data_leaves_machine=not self._local,
             context_tokens=8192,
             max_output_tokens=1024,
@@ -195,7 +200,7 @@ def record_compat_generate(
     fixture: ModelFixtureDocument,
     provider: CompatHttpProvider,
     artifacts: LocalArtifactStore | None,
-) -> tuple[StoredEvent, StoredEvent, StoredEvent, StoredEvent]:
+) -> tuple[StoredEvent, StoredEvent, StoredEvent, StoredEvent | None]:
     if not isinstance(request, OpenAICompatGenerateRequestDocument):
         raise ModelCallError("request is not an HTTP generate document", code="invalid-request")
     if request.project_id != project_id:
@@ -235,7 +240,7 @@ def record_compat_generate(
     head = budget.rebuild()
     cap = parse_money(request.budget_cap)
     reserve = parse_money(request.reserve_amount)
-    if head.fold.consumed + reserve > cap:
+    if head.fold.consumed + head.fold.outstanding + reserve > cap:
         budget.append(
             request.budget_draft(
                 TYPE_BUDGET_EXCEEDED,
@@ -249,7 +254,41 @@ def record_compat_generate(
             )
         )
         raise BudgetExceededError()
-    result = provider.generate_fixture(fixture)
+    reserved = budget.append(
+        request.budget_draft(
+            TYPE_BUDGET_RESERVED,
+            {
+                "budgetId": request.budget_id,
+                "callId": request.call_id,
+                "currency": CURRENCY_CNY,
+                "amount": request.reserve_amount,
+                "cap": request.budget_cap,
+            },
+        )
+    )
+    report = provider.capabilities().document()
+    declared = tuple(report["declaredCapabilities"])
+    measured = tuple(report["measuredCapabilities"])
+    allowed = tuple(report["allowedCapabilities"])
+    try:
+        started = append_call(
+            request.started_draft(
+                identity=identity,
+                prompt_digest=content_digest(fixture.prompt),
+                declared=declared,
+                measured=measured,
+                allowed=allowed,
+            )
+        )
+    except (EventStoreError, ModelCallError):
+        budget.append(_release_draft(request, reason_code="call-start-failed"))
+        raise
+    try:
+        result = provider.generate_fixture(fixture)
+    except ModelTransportError as exc:
+        budget.append(_release_draft(request, reason_code=exc.code))
+        append_call(request.failed_draft(reason_code=exc.code))
+        raise
     if result.prompt_digest != content_digest(fixture.prompt):
         raise ModelCallError(
             "provider prompt digest does not match fixture",
@@ -263,43 +302,20 @@ def record_compat_generate(
             code="digest-mismatch",
         )
     prompt_artifact, output_artifact = _compat_artifacts(artifacts, fixture, result.output_payload)
-    report = result.capabilities.document()
-    declared = tuple(report["declaredCapabilities"])
-    measured = tuple(report["measuredCapabilities"])
-    allowed = tuple(report["allowedCapabilities"])
-    reserved = budget.append(
-        request.budget_draft(
-            TYPE_BUDGET_RESERVED,
-            {
-                "budgetId": request.budget_id,
-                "callId": request.call_id,
-                "currency": CURRENCY_CNY,
-                "amount": request.reserve_amount,
-                "cap": request.budget_cap,
-            },
+    consumed: StoredEvent | None = None
+    if identity.cost_known:
+        consumed = budget.append(
+            request.budget_draft(
+                TYPE_BUDGET_CONSUMED,
+                {
+                    "budgetId": request.budget_id,
+                    "callId": request.call_id,
+                    "currency": CURRENCY_CNY,
+                    "amount": request.consume_amount,
+                    "cap": request.budget_cap,
+                },
+            )
         )
-    )
-    consumed = budget.append(
-        request.budget_draft(
-            TYPE_BUDGET_CONSUMED,
-            {
-                "budgetId": request.budget_id,
-                "callId": request.call_id,
-                "currency": CURRENCY_CNY,
-                "amount": request.consume_amount,
-                "cap": request.budget_cap,
-            },
-        )
-    )
-    started = append_call(
-        request.started_draft(
-            identity=identity,
-            prompt_digest=result.prompt_digest,
-            declared=declared,
-            measured=measured,
-            allowed=allowed,
-        )
-    )
     completed = append_call(
         request.completed_draft(
             output_digest=result.output_digest,
@@ -311,6 +327,22 @@ def record_compat_generate(
         )
     )
     return started, completed, reserved, consumed
+
+
+def _release_draft(
+    request: OpenAICompatGenerateRequestDocument, *, reason_code: str
+) -> dict[str, Any]:
+    return request.budget_draft(
+        TYPE_BUDGET_RELEASED,
+        {
+            "budgetId": request.budget_id,
+            "callId": request.call_id,
+            "currency": CURRENCY_CNY,
+            "amount": request.reserve_amount,
+            "cap": request.budget_cap,
+            "reasonCode": reason_code,
+        },
+    )
 
 
 def _chat_completions_url(endpoint: str) -> str:

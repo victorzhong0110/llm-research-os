@@ -12,9 +12,11 @@ from llm_research_os.budget.errors import BudgetCallError, BudgetPayloadError
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
+    TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
     BudgetConsumedPayload,
     BudgetExceededPayload,
+    BudgetReleasedPayload,
     BudgetReservedPayload,
     parse_budget_payload,
     require_budget_actor,
@@ -34,10 +36,30 @@ _STORE_ASSIGNED_FIELDS = frozenset({"sequence", "sequencetype", "streamversion"}
 
 
 @dataclass(frozen=True, slots=True)
+class OpenReservation:
+    budget_id: str
+    call_id: str
+    currency: str
+    amount: Decimal
+    cap: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class BudgetFold:
-    open_ids: frozenset[str]
-    closed_ids: frozenset[str]
-    consumed: Decimal
+    open: tuple[OpenReservation, ...] = ()
+    closed_ids: frozenset[str] = frozenset()
+    consumed: Decimal = Decimal("0.00")
+
+    @property
+    def outstanding(self) -> Decimal:
+        total = Decimal("0.00")
+        for item in self.open:
+            total += item.amount
+        return total
+
+    @property
+    def open_ids(self) -> frozenset[str]:
+        return frozenset(item.budget_id for item in self.open)
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,11 +78,7 @@ class BudgetControl:
 
     def rebuild(self) -> BudgetHead:
         high_water = self._store.freeze_high_water()
-        fold = BudgetFold(
-            open_ids=frozenset(),
-            closed_ids=frozenset(),
-            consumed=Decimal("0.00"),
-        )
+        fold = BudgetFold()
         for stored in replay_events(
             self._store,
             page_size=self._page_size,
@@ -103,47 +121,115 @@ class BudgetControl:
         return self._store.append(draft, expected_last_sequence=frozen_head)
 
 
+BUDGET_TYPES = frozenset(
+    {TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED, TYPE_BUDGET_RELEASED}
+)
+
+
 def apply_budget_fold(fold: BudgetFold, event: ResearchEvent, *, project_id: str) -> BudgetFold:
     if event.data.project_id != project_id:
         return fold
-    if event.type not in {TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED}:
+    if event.type not in BUDGET_TYPES:
         return fold
     require_budget_actor(event)
     payload = parse_budget_payload(event)
     if isinstance(payload, BudgetReservedPayload):
-        if payload.budget_id in fold.open_ids or payload.budget_id in fold.closed_ids:
-            raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
-        parse_money(payload.amount)
-        parse_money(payload.cap)
-        return BudgetFold(
-            open_ids=fold.open_ids | {payload.budget_id},
-            closed_ids=fold.closed_ids,
-            consumed=fold.consumed,
-        )
+        return _apply_reserved(fold, payload)
     if isinstance(payload, BudgetConsumedPayload):
-        if payload.budget_id in fold.closed_ids:
-            raise BudgetCallError("budgetId is already complete", code="duplicate-budget-id")
-        if payload.budget_id not in fold.open_ids:
-            raise BudgetCallError(
-                "budget consumption has no matching reserve",
-                code="orphan-budget-id",
-            )
-        return BudgetFold(
-            open_ids=fold.open_ids - {payload.budget_id},
-            closed_ids=fold.closed_ids | {payload.budget_id},
-            consumed=fold.consumed + parse_money(payload.amount),
-        )
+        return _close_reservation(fold, payload, add_consumed=True)
+    if isinstance(payload, BudgetReleasedPayload):
+        return _close_reservation(fold, payload, add_consumed=False)
     if isinstance(payload, BudgetExceededPayload):
-        if payload.budget_id in fold.open_ids or payload.budget_id in fold.closed_ids:
-            raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
-        parse_money(payload.attempted)
-        parse_money(payload.cap)
-        return BudgetFold(
-            open_ids=fold.open_ids,
-            closed_ids=fold.closed_ids | {payload.budget_id},
-            consumed=fold.consumed,
-        )
+        return _apply_exceeded(fold, payload)
     raise BudgetCallError("budget payload type is not foldable", code="unknown-budget-type")
+
+
+def _known_ids(fold: BudgetFold) -> frozenset[str]:
+    return fold.open_ids | fold.closed_ids
+
+
+def _apply_reserved(fold: BudgetFold, payload: BudgetReservedPayload) -> BudgetFold:
+    if payload.budget_id in _known_ids(fold):
+        raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
+    amount = parse_money(payload.amount)
+    cap = parse_money(payload.cap)
+    reservation = OpenReservation(
+        budget_id=payload.budget_id,
+        call_id=payload.call_id,
+        currency=payload.currency,
+        amount=amount,
+        cap=cap,
+    )
+    return BudgetFold(
+        open=(*fold.open, reservation),
+        closed_ids=fold.closed_ids,
+        consumed=fold.consumed,
+    )
+
+
+def _close_reservation(
+    fold: BudgetFold,
+    payload: BudgetConsumedPayload | BudgetReleasedPayload,
+    *,
+    add_consumed: bool,
+) -> BudgetFold:
+    if payload.budget_id in fold.closed_ids:
+        raise BudgetCallError("budgetId is already complete", code="duplicate-budget-id")
+    current = next((item for item in fold.open if item.budget_id == payload.budget_id), None)
+    if current is None:
+        raise BudgetCallError(
+            "budget consumption has no matching reserve",
+            code="orphan-budget-id",
+        )
+    amount = parse_money(payload.amount)
+    cap = parse_money(payload.cap)
+    if payload.call_id != current.call_id:
+        raise BudgetCallError(
+            "budget callId does not match the reservation",
+            code="reservation-mismatch",
+        )
+    if payload.currency != current.currency:
+        raise BudgetCallError(
+            "budget currency does not match the reservation",
+            code="reservation-mismatch",
+        )
+    if cap != current.cap:
+        raise BudgetCallError(
+            "budget cap does not match the reservation",
+            code="reservation-mismatch",
+        )
+    if add_consumed:
+        if amount > current.amount:
+            raise BudgetCallError(
+                "budget consume amount exceeds the reservation",
+                code="consume-exceeds-reserve",
+            )
+        consumed = fold.consumed + amount
+    else:
+        if amount != current.amount:
+            raise BudgetCallError(
+                "budget release amount must equal the reservation",
+                code="reservation-mismatch",
+            )
+        consumed = fold.consumed
+    remaining = tuple(item for item in fold.open if item.budget_id != payload.budget_id)
+    return BudgetFold(
+        open=remaining,
+        closed_ids=fold.closed_ids | {payload.budget_id},
+        consumed=consumed,
+    )
+
+
+def _apply_exceeded(fold: BudgetFold, payload: BudgetExceededPayload) -> BudgetFold:
+    if payload.budget_id in _known_ids(fold):
+        raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
+    parse_money(payload.attempted)
+    parse_money(payload.cap)
+    return BudgetFold(
+        open=fold.open,
+        closed_ids=fold.closed_ids | {payload.budget_id},
+        consumed=fold.consumed,
+    )
 
 
 def _require_page_size(page_size: int) -> int:

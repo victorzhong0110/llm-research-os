@@ -13,6 +13,7 @@ from pydantic import Field, ValidationError, field_serializer, field_validator, 
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
+    TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
 )
 from llm_research_os.budget.money import ZERO_MONEY, MoneyAmount, parse_money
@@ -33,6 +34,7 @@ from llm_research_os.providers.errors import ModelRequestError
 from llm_research_os.providers.models import (
     MAX_CAPABILITY_LIST,
     TYPE_AI_CALL_COMPLETED,
+    TYPE_AI_CALL_FAILED,
     TYPE_AI_CALL_STARTED,
     ProviderDocumentModel,
     _capability_tuple,
@@ -52,17 +54,21 @@ LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 CompatLifecycleType = Literal[
     "ai.call.started",
     "ai.call.completed",
+    "ai.call.failed",
     "budget.reserved",
     "budget.consumed",
     "budget.exceeded",
+    "budget.released",
 ]
 REQUIRED_COMPAT_EVENTS: frozenset[str] = frozenset(
     {
         TYPE_AI_CALL_STARTED,
         TYPE_AI_CALL_COMPLETED,
+        TYPE_AI_CALL_FAILED,
         TYPE_BUDGET_RESERVED,
         TYPE_BUDGET_CONSUMED,
         TYPE_BUDGET_EXCEEDED,
+        TYPE_BUDGET_RELEASED,
     }
 )
 BUDGET_ACTOR = {"id": "researchos.budget", "kind": ActorKind.SYSTEM.value}
@@ -108,7 +114,7 @@ class OpenAICompatGenerateRequestDocument(ProviderDocumentModel):
         max_length=MAX_CAPABILITY_LIST,
         json_schema_extra={"uniqueItems": True},
     )
-    events: Mapping[CompatLifecycleType, ModelEventIdentity] = Field(min_length=5, max_length=5)
+    events: Mapping[CompatLifecycleType, ModelEventIdentity] = Field(min_length=7, max_length=7)
     evidence_refs: tuple[EventIdentifier, ...] = Field(
         alias="evidenceRefs",
         max_length=32,
@@ -142,7 +148,10 @@ class OpenAICompatGenerateRequestDocument(ProviderDocumentModel):
         grants = require_known_kernel_capabilities(self.granted_kernel_capabilities)
         object.__setattr__(self, "granted_kernel_capabilities", grants)
         if set(self.events) != REQUIRED_COMPAT_EVENTS:
-            raise ValueError("events must include ai.call started/completed and budget facts")
+            raise ValueError(
+                "events must include ai.call started/completed/failed "
+                "and budget reserved/consumed/exceeded/released"
+            )
         event_ids = [identity.id for identity in self.events.values()]
         if len(event_ids) != len(set(event_ids)):
             raise ValueError("compat generate event ids must be unique")
@@ -280,6 +289,22 @@ class OpenAICompatGenerateRequestDocument(ProviderDocumentModel):
             project_id=self.project_id,
             experiment_revision=self.experiment_revision,
             payload=payload,
+            evidence_refs=self.evidence_refs,
+        )
+
+    def failed_draft(self, *, reason_code: str) -> dict[str, Any]:
+        event = self.events["ai.call.failed"]
+        return _event_draft(
+            event_id=event.id,
+            event_type=TYPE_AI_CALL_FAILED,
+            time=event.time,
+            source=self.source,
+            subject=self.subject,
+            stream_id=self.stream_id,
+            actor=_actor_document(self.actor.id, self.actor.model_id),
+            project_id=self.project_id,
+            experiment_revision=self.experiment_revision,
+            payload={"callId": self.call_id, "reasonCode": reason_code},
             evidence_refs=self.evidence_refs,
         )
 
