@@ -30,6 +30,7 @@ from llm_research_os.research.models import (
     parse_decision_payload,
     require_actor_kind,
 )
+from llm_research_os.runs.models import TYPE_RUN_QUEUED
 
 _IDENTIFIER = TypeAdapter(EventIdentifier)
 
@@ -62,13 +63,12 @@ class ResearchLedgerProjection:
         fold = state if state is not None else LedgerFold()
         if event.data.project_id != self.project_id:
             return fold
-        run_ids = fold.run_ids
-        if event.data.run_id is not None:
+        if event.type == TYPE_RUN_QUEUED and event.data.run_id is not None:
             fold = LedgerFold(
                 proposals=fold.proposals,
                 dissents=fold.dissents,
                 decisions=fold.decisions,
-                run_ids=run_ids | {event.data.run_id},
+                run_ids=fold.run_ids | {event.data.run_id},
             )
         if event.type not in DECISION_EVENT_TYPES:
             return fold

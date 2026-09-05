@@ -208,3 +208,75 @@ def _preflight(draft: dict[str, Any], *, sequence: int, event_id: str | None = N
         }
     )
     return validate_event_document(document)
+
+
+def _run_queued_draft(*, run_id: str, event_id: str) -> dict[str, Any]:
+    digest = "sha256:" + "11" * 32
+    return {
+        "specversion": "1.0",
+        "id": event_id,
+        "source": "https://researchos.dev/projects/example-minimal",
+        "type": "run.queued",
+        "time": "2026-09-04T12:00:00Z",
+        "subject": run_id,
+        "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+        "datacontenttype": "application/json",
+        "streamid": "stream.example-minimal",
+        "data": {
+            "schemaVersion": "v0alpha1",
+            "actor": {"id": "researcher.alice"},
+            "projectId": PROJECT,
+            "experimentRevision": 1,
+            "payload": {
+                "workflowId": "wf.train",
+                "specDigest": digest,
+                "registryDigest": "sha256:" + "22" * 32,
+                "planDigest": "sha256:" + "33" * 32,
+                "maxAttempts": 1,
+            },
+            "evidenceRefs": [],
+            "runId": run_id,
+        },
+    }
+
+
+def test_run_targeted_decision_without_queued_run_is_rejected_before_commit(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    document = load_document(DECISION)
+    document["decisionId"] = "decision.run-missing"
+    document["targetKind"] = "run"
+    document["targetId"] = "run.nonexistent"
+    document["overriddenDissentIds"] = []
+    document["event"] = {"id": "evt.decision.run-missing", "time": "2026-09-04T12:07:00Z"}
+    with EventStore(database) as store:
+        control = ResearchControl(store, project_id=PROJECT)
+        with pytest.raises(ResearchLedgerError) as missing:
+            control.append(validate_decision_record_request(document).event_draft())
+        assert missing.value.code == "unknown-decision-target"
+        assert store.last_sequence() == 0
+        assert store.get_event("evt.decision.run-missing") is None
+
+
+def test_run_targeted_decision_resolves_only_from_run_queued(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    document = load_document(DECISION)
+    document["decisionId"] = "decision.run-exists"
+    document["targetKind"] = "run"
+    document["targetId"] = "run.example"
+    document["overriddenDissentIds"] = []
+    document["event"] = {"id": "evt.decision.run-exists", "time": "2026-09-04T12:07:00Z"}
+    with EventStore(database) as store:
+        store.append(_run_queued_draft(run_id="run.example", event_id="evt.run.queued.target"))
+        control = ResearchControl(store, project_id=PROJECT)
+        result = control.append(validate_decision_record_request(document).event_draft())
+        assert result.snapshot.decisions[0].target_id == "run.example"
+        metric = load_document(DECISION)
+        metric["decisionId"] = "decision.metric-run"
+        metric["targetKind"] = "run"
+        metric["targetId"] = "run.from-metric"
+        metric["overriddenDissentIds"] = []
+        metric["event"] = {"id": "evt.decision.metric-run", "time": "2026-09-04T12:08:00Z"}
+        with pytest.raises(ResearchLedgerError) as missing:
+            control.append(validate_decision_record_request(metric).event_draft())
+        assert missing.value.code == "unknown-decision-target"
+        assert store.get_event("evt.decision.metric-run") is None
