@@ -561,6 +561,24 @@ def test_pdf_worker_result_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     assert oom.value.code == "pdf-resource"
     assert "SECRET" not in str(oom.value)
 
+    captured: dict[str, object] = {}
+
+    def capture(*_args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        captured["env"] = kwargs.get("env")
+        return subprocess.CompletedProcess(args=["python"], returncode=0, stdout=b"ok", stderr=b"")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-secret-sentinel")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+    monkeypatch.setenv("PYTHONPATH", "/evil")
+    monkeypatch.setattr(extract_mod.subprocess, "run", capture)
+    assert extract_text(_pdf_bytes("n"), "application/pdf") == "ok"
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert "OPENAI_API_KEY" not in env
+    assert "HTTPS_PROXY" not in env
+    assert "PYTHONPATH" not in env
+    assert env[extract_mod.PDF_WORKER_ENV] == "1"
+
     def missing(*_args: object, **_kwargs: object) -> object:
         raise OSError("worker missing")
 

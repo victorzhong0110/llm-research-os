@@ -20,6 +20,20 @@ MAX_PDF_WORKER_MEMORY_BYTES = 256 * 1024 * 1024
 MAX_PDF_STDOUT_BYTES = MAX_EXTRACTED_CHARS * 4 + 32
 PDF_WORKER_MODULE = "llm_research_os.evidence.pdf_worker"
 PDF_WORKER_ENV = "LROS_PDF_WORKER"
+_PDF_WORKER_ENV_PASSTHROUGH = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "LC_MESSAGES",
+    "TZ",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "LD_LIBRARY_PATH",
+    "DYLD_LIBRARY_PATH",
+)
 
 # Worker stderr is a single allowlisted code. Never copy stdout/stderr into errors (TM-022).
 PDF_WORKER_FAIL_CODES = frozenset(
@@ -125,6 +139,21 @@ def extract_pdf_pages(payload: bytes) -> str:
     return text
 
 
+def pdf_worker_env() -> dict[str, str]:
+    """Minimal environment for the parser subprocess. Do not inherit secrets (TM-041)."""
+
+    env: dict[str, str] = {}
+    for key in _PDF_WORKER_ENV_PASSTHROUGH:
+        value = os.environ.get(key)
+        if type(value) is str and value != "":
+            env[key] = value
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env[PDF_WORKER_ENV] = "1"
+    return env
+
+
 def _decode_markdown(payload: bytes) -> str:
     if b"\x00" in payload:
         raise EvidenceExtractError("markdown source contains NUL bytes", code="invalid-markdown")
@@ -138,15 +167,13 @@ def _decode_markdown(payload: bytes) -> str:
 
 
 def _extract_pdf(payload: bytes) -> str:
-    env = os.environ.copy()
-    env[PDF_WORKER_ENV] = "1"
     try:
         completed = subprocess.run(  # noqa: S603
             [sys.executable, "-B", "-m", PDF_WORKER_MODULE],
             input=payload,
             capture_output=True,
             timeout=MAX_PDF_EXTRACT_SECONDS,
-            env=env,
+            env=pdf_worker_env(),
             check=False,
             close_fds=True,
         )
