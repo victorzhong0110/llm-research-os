@@ -45,6 +45,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-4: OpenAI-compatible HTTP adapter (loopback default). Remote endpoints
   require `SecretRef`, `read.external_api`, and HTTPS. First runtime-enforced
   CNY caps: `budget.reserved` / `consumed` / `exceeded` / `released`.
+- M1-5: seeded synthetic `training.step` / `evaluation.metric` from
+  SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
+  research, training, cost, and lineage sections linked to `eventId`.
 
 ### Changed
 
@@ -66,3 +69,6 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   consumes only when cost is known; remote leaves the reservation open.
   Transport failure after start writes `budget.released` and `ai.call.failed`.
   Consume/release must match the reservation (`callId`, currency, cap, amount).
+- M1-5: `researchos report` folds research, budget, and lineage from one frozen
+  prefix. Synthetic metric resume compares the canonical caller document, not
+  only id+type. Markdown/HTML fragment ids percent-encode event ids.

@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-04
 >
-> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, and runtime CNY budget facts
+> Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, runtime CNY budget facts, seeded synthetic `training.step` / `evaluation.metric` facts, and static HTML/Markdown Run reports
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -43,7 +43,10 @@ It can import a regular local Markdown or PDF file into artifact CAS and append
 one digest-only `evidence.imported` fact; extracted text and filesystem paths stay
 off the event. It can POST to a loopback OpenAI-compatible `/v1/chat/completions`
 endpoint and record CNY budget facts plus digest-only `ai.call.*` facts. Remote
-HTTP requires a SecretRef, HTTPS, `read.external_api`, and a budget cap. It does
+HTTP requires a SecretRef, HTTPS, `read.external_api`, and a budget cap. It can
+append seeded synthetic `training.step` / `evaluation.metric` facts on a success
+simulation when the request supplies those identities, and it can rebuild a
+static HTML/Markdown Run report from EventStore. It does
 **not** import manifest entrypoints, evaluate `until` expressions,
 run plugins, start containers, connect Workers, persist
 projections, crawl GitHub/arXiv/the web for evidence, or upload artifacts. Simulated
@@ -68,7 +71,8 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | Local/remote Workers | Partially trusted execution nodes | Not connected in M0 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented |
 | RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented; SimulatedRuntime is a caller and does not auto-retry |
-| SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion |
+| SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion; optional synthetic metrics are `kind: synthetic` |
+| Static Run report | Rebuildable HTML/Markdown projection | Implemented; every stored-fact summary cites `eventId`; not a fact source; no React Flow |
 | Simulated Run CLI | Local request-to-RunSnapshot adapter | Implemented; strict versioned request, explicit identity, no conflict retry, exact RunSnapshot JSON |
 | Run Cancellation CLI | Local single-fact cancellation-request adapter | Implemented; existing store only, explicit identity, no signal, no inferred outcome or conflict retry |
 | Artifact Object CLI | Local object import and full verification adapter | Implemented; existing root only, no byte output, SQLite row, event, delete or upload |
@@ -142,7 +146,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-020 | Manifest loading or dry-run imports code, evaluates text or retrieves a remote schema | Host compromise or data exfiltration | Manifests are revalidated into private inert snapshots; remote refs, expensive Schema keywords and symlinks are rejected; process/import/network/eval tripwires | Tested in M0 |
 | TM-021 | Non-deterministic planning corrupts comparison or cache identity | Irreproducible or misattributed experiment | Stable lexical stages and RFC 8785 JCS semantic digests (`jcs-sha256:`) without host/time data; Python and Node golden corpus committed | Adopted JCS with Python + Node golden conformance; residual risk is I-JSON profile (high-precision values MUST be strings) and that tags are part of identity |
 | TM-022 | Plan or diagnostic output exposes config, prompt, expression or dynamic-key secrets | Credential/private-data disclosure | Values are represented by digests; config diagnostics expose only rule names; terminal text escapes controls; `redact_object` / `message_without_secrets` strip secret keys and known values | Partial mitigation; SecretRef type landed; sink policy for model prompts still required |
-| TM-023 | A dry-run or simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters; SimulatedRuntime `completed` is a controlled lifecycle finish, not training success, valid metrics, or a supported hypothesis | Tested for dry-run and SimulatedRuntime |
+| TM-023 | A dry-run or simulated result is treated as real training success | Invalid scientific conclusion | Reports say only `ready`/`blocked`, `not-executed`, and four zero side-effect counters; SimulatedRuntime `completed` is a controlled lifecycle finish, not training success, valid metrics, or a supported hypothesis; synthetic `training.step` / `evaluation.metric` are `kind: synthetic` and the static report is a projection | Tested for dry-run, SimulatedRuntime, and `researchos report` |
 | TM-024 | Concurrent appenders allocate duplicate or reordered sequence values | Ambiguous fact order and broken replay | One `BEGIN IMMEDIATE` transaction allocates global and per-stream versions; database uniqueness checks both identities; RunControl CAS uses the frozen global head and does not retry | Tested with concurrent local connections |
 | TM-025 | Corrupt JSON or duplicated index columns are trusted during replay | Wrong projection or concealed event substitution | Every read revalidates canonical event JSON, content digest and extracted columns; full scans reject sequence gaps | Tested locally; no malicious-host guarantee |
 | TM-026 | A caller mutates an event draft after reducer preflight and before SQLite write | An illegal lifecycle fact is persisted under a type that never passed preflight | RunControl copies exact JSON dict/list values into a new tree before preflight and `EventStore.append`; cyclic or non-JSON containers fail closed; malformed `type` is validated as ResearchEvent, not hashed | Isolated-snapshot and malformed-type tests |

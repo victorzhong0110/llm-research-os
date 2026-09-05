@@ -43,7 +43,9 @@ The only recognized `events` keys are:
 
 - `run.queued`, `run.started`, `run.completed`, `run.failed`, `run.cancelled`;
 - `attempt.queued`, `attempt.started`, `attempt.succeeded`,
-  `attempt.failed`, `attempt.unknown`, `attempt.cancelled`.
+  `attempt.failed`, `attempt.unknown`, `attempt.cancelled`;
+- optional `training.step` and `evaluation.metric` (M1-5 synthetic metrics;
+  success path only; identities still caller-owned).
 
 The map may contain only the path needed by a specific outcome. Cancel
 continuations also need `attempt.cancelled` and/or `run.cancelled`. The map may
