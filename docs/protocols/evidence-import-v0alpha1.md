@@ -50,7 +50,10 @@ PDF extraction MUST:
   exceed 400_000 (the same cap as `textCharacters`);
 - terminate within 5 seconds of wall time;
 - apply best-effort `RLIMIT_CPU` (4 seconds) and address-space (256 MiB)
-  limits in the worker. macOS may not enforce `RLIMIT_AS`.
+  limits in the worker. macOS may not enforce `RLIMIT_AS`;
+- start with a minimal environment (PATH/locale/temp plus `LROS_PDF_WORKER=1`).
+  The worker MUST NOT inherit the parent process environment, `PYTHONPATH`,
+  proxy variables, or secret-bearing keys (TM-041).
 
 Oversized or slow PDFs fail closed (`pdf-page-limit`, `text-too-large`,
 `pdf-timeout`, `pdf-resource`, `pdf-extract`). The importer MUST NOT truncate

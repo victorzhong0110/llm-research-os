@@ -29,7 +29,8 @@ Imported notes are data. They cannot enable tools on `DeterministicMockProvider`
 (TM-006).
 
 PDF extraction runs in a subprocess. It refuses more than 64 pages, more than
-400_000 extracted characters, or work that exceeds 5 seconds. A compressed PDF
+400_000 extracted characters, or work that exceeds 5 seconds. The worker
+receives a minimal environment and does not inherit API keys. A compressed PDF
 that expands past those bounds fails closed; the problem report does not echo
 the extracted text (TM-041).
 
