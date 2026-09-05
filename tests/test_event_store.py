@@ -890,3 +890,30 @@ def test_wrong_schema_digest_on_checkpoint_forces_rescan(tmp_path: Path) -> None
         assert checkpoint is not None
         assert checkpoint.schema_digest == SCHEMA_DEFINITION_DIGEST
         assert checkpoint.last_event_digest == stored.digest
+
+
+def test_missing_checkpoint_reopens_writable_and_read_only(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DELETE FROM integrity_checkpoint")
+        assert connection.execute("SELECT COUNT(*) FROM integrity_checkpoint").fetchone()[0] == 0
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.freeze_high_water() == 2
+        checkpoint = store.read_integrity_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint.high_water == 2
+        assert checkpoint.verified_event_count == 2
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DELETE FROM integrity_checkpoint")
+
+    with EventStore(database, create=False, clock=_clock) as readonly:
+        assert readonly.verify_integrity() == 2
+        assert readonly.read_integrity_checkpoint() is None
+        assert readonly.freeze_high_water() == 2
+        assert readonly.read_integrity_checkpoint() is None

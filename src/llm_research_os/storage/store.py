@@ -316,6 +316,9 @@ class EventStore:
         else:
             self._upgrade_schema_if_needed()
         self._verify_schema()
+        if self._read_checkpoint() is None:
+            # Missing/malformed checkpoint is an invalid cache, not altered DDL.
+            self.verify_integrity()
 
     def _create_schema(self) -> None:
         applied_at = _recorded_timestamp(self._clock())
@@ -459,11 +462,6 @@ class EventStore:
         actual = [(cast(int, row[0]), cast(str, row[1]), cast(str, row[2])) for row in migrations]
         if actual != expected:
             raise EventStoreSchemaError("event-store migration history is unsupported or corrupt")
-        checkpoint = self._connection.execute(
-            "SELECT slot FROM integrity_checkpoint WHERE slot = 1"
-        ).fetchone()
-        if checkpoint is None:
-            raise EventStoreSchemaError("integrity checkpoint is missing")
         quick_check = cast(
             str,
             self._connection.execute("PRAGMA quick_check").fetchone()[0],
@@ -677,14 +675,14 @@ class EventStore:
         """Return a verified high-water mark, revalidating any remembered checkpoint.
 
         The checkpoint is untrusted until the live ``MAX(sequence)``, last event
-        digest, and schema digest match it (TM-011). A mismatch falls back to
-        ``verify_integrity``.
+        digest, and schema digest match it (TM-011). A mismatch, a missing row,
+        or a malformed fingerprint falls back to ``verify_integrity``.
         """
 
         self._verify_schema()
         live = self._live_head_fingerprint()
         cached = self._read_checkpoint()
-        if cached == live:
+        if cached is not None and cached == live:
             return live.high_water
         return self.verify_integrity()
 
@@ -719,35 +717,41 @@ class EventStore:
 
         if not self._writable:
             raise EventStoreError("run projections cannot be written on a read-only store")
-        self._connection.execute(
-            """
-            INSERT INTO run_projections(
-                project_id, run_id, last_sequence, snapshot_json, snapshot_digest
+        try:
+            self._connection.execute(
+                """
+                INSERT INTO run_projections(
+                    project_id, run_id, last_sequence, snapshot_json, snapshot_digest
+                )
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(project_id, run_id) DO UPDATE SET
+                    last_sequence = excluded.last_sequence,
+                    snapshot_json = excluded.snapshot_json,
+                    snapshot_digest = excluded.snapshot_digest
+                """,
+                (
+                    record.project_id,
+                    record.run_id,
+                    record.last_sequence,
+                    record.snapshot_json,
+                    record.snapshot_digest,
+                ),
             )
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(project_id, run_id) DO UPDATE SET
-                last_sequence = excluded.last_sequence,
-                snapshot_json = excluded.snapshot_json,
-                snapshot_digest = excluded.snapshot_digest
-            """,
-            (
-                record.project_id,
-                record.run_id,
-                record.last_sequence,
-                record.snapshot_json,
-                record.snapshot_digest,
-            ),
-        )
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not write the run projection cache") from exc
 
     def delete_run_projection(self, project_id: str, run_id: str) -> None:
         """Drop one Run snapshot cache row."""
 
         if not self._writable:
             raise EventStoreError("run projections cannot be written on a read-only store")
-        self._connection.execute(
-            "DELETE FROM run_projections WHERE project_id = ? AND run_id = ?",
-            (project_id, run_id),
-        )
+        try:
+            self._connection.execute(
+                "DELETE FROM run_projections WHERE project_id = ? AND run_id = ?",
+                (project_id, run_id),
+            )
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not delete the run projection cache") from exc
 
     def list_spec_revisions(self) -> tuple[SpecRevisionRecord, ...]:
         """Return projected spec revisions in first-seen order."""
@@ -908,11 +912,28 @@ class EventStore:
             raise EventStoreError("could not read the integrity checkpoint") from exc
         if row is None:
             return None
+        high_water = row[0]
+        last_event_digest = row[1]
+        schema_digest = row[2]
+        verified_event_count = row[3]
+        if type(high_water) is not int or type(verified_event_count) is not int:
+            return None
+        if type(schema_digest) is not str:
+            return None
+        if last_event_digest is not None and type(last_event_digest) is not str:
+            return None
+        if high_water < 0 or verified_event_count != high_water:
+            return None
+        if high_water == 0:
+            if last_event_digest is not None:
+                return None
+        elif not last_event_digest:
+            return None
         return IntegrityCheckpoint(
-            high_water=cast(int, row[0]),
-            last_event_digest=cast(str | None, row[1]),
-            schema_digest=cast(str, row[2]),
-            verified_event_count=cast(int, row[3]),
+            high_water=high_water,
+            last_event_digest=last_event_digest,
+            schema_digest=schema_digest,
+            verified_event_count=verified_event_count,
         )
 
     def _replace_checkpoint(
