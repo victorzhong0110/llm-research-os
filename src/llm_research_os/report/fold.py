@@ -80,15 +80,23 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
     for stored in prefix:
         if stored.event.data.run_id != bound_run:
             continue
+        if bound_project is not None and stored.event.data.project_id != bound_project:
+            continue
         matching.append(stored)
         projects.add(stored.event.data.project_id)
     if not matching:
+        if bound_project is not None:
+            others = {
+                stored.event.data.project_id
+                for stored in prefix
+                if stored.event.data.run_id == bound_run
+            }
+            if others:
+                raise ReportError("run project does not match", code="run-project-mismatch")
         raise ReportError("run not found", code="run-not-found")
-    if len(projects) != 1:
+    if bound_project is None and len(projects) != 1:
         raise ReportError("run is bound to more than one project", code="run-project-mismatch")
     observed_project = next(iter(projects))
-    if bound_project is not None and bound_project != observed_project:
-        raise ReportError("run project does not match", code="run-project-mismatch")
     snapshot = _fold_snapshot(matching, observed_project, bound_run)
     try:
         ledger, budget, budget_events = _fold_project_prefix(
@@ -174,3 +182,7 @@ def _require_identifier(name: str, value: str) -> str:
 
 def format_consumed(fold: BudgetFold) -> str:
     return format_money(fold.consumed)
+
+
+def format_outstanding(fold: BudgetFold) -> str:
+    return format_money(fold.outstanding)

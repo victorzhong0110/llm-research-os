@@ -57,18 +57,22 @@ uv run researchos report run.simulated \
   --format markdown
 ```
 
-`--format html` writes a static document (no JavaScript). `--project` is optional
-and must match the Run when supplied. The database must already exist.
+`--format html` writes a static document (no JavaScript). `--project` selects
+the `(projectId, runId)` aggregate when supplied. Without `--project`, a `runId`
+that appears in more than one project is `run-project-mismatch`. The database
+must already exist.
 
 Sections, in order: Research, Training, Cost, Lineage, Event index. Every
 claim that reports a stored fact cites that fact's `eventId` as a fragment
 link into the event index. Fragment destinations are percent-encoded so
-punctuation in an id cannot break Markdown or HTML anchors; the index uses the
-same encoding.
+punctuation in an id cannot break Markdown or HTML anchors; visible event ids
+are HTML `<code>` text (not Markdown code spans) so backticks and markup in an
+id stay literal. The index uses the same encoding. When outstanding
+reservations remain, Cost states the reserved amount and that actual cost is
+unknown.
 
 The report freezes EventStore high-water `H` once and folds every section from
-that prefix. Facts appended after `H` are omitted, including project-scoped
-ledger and budget facts that do not carry the Run id.
+that prefix. Facts appended after `H` are omitted.
 
 A resumed synthetic metric with the same event id MUST match the canonical
 caller document (type, Run, payload). Id+type agreement is not enough.

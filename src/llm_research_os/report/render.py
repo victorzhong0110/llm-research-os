@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 from urllib.parse import quote
 
-from llm_research_os.report.fold import RunReport, format_consumed
+from llm_research_os.report.fold import RunReport, format_consumed, format_outstanding
 
 
 def render_markdown(report: RunReport) -> str:
@@ -113,6 +113,11 @@ def _cost_markdown(report: RunReport) -> list[str]:
         f"- Consumed `{_md(format_consumed(report.budget))}` CNY "
         f"{_md_link(report.budget_events[-1].event.id)}."
     ]
+    if report.budget.outstanding > 0:
+        lines.append(
+            f"- Outstanding `{_md(format_outstanding(report.budget))}` CNY still reserved; "
+            f"actual cost unknown {_md_link(report.budget_events[-1].event.id)}."
+        )
     for stored in report.budget_events:
         amount = _budget_amount(stored.event.data.payload)
         lines.append(
@@ -146,13 +151,13 @@ def _index_markdown(report: RunReport) -> list[str]:
         seen.add(event_id)
         lines.append(
             f'- <a id="{_html(_fragment(event_id))}"></a>'
-            f"`{_md(event_id)}` `{_md(stored.event.type)}`"
+            f"{_md_code(event_id)} {_md_code(stored.event.type)}"
         )
     for event_id in _ledger_event_ids(report):
         if event_id in seen:
             continue
         seen.add(event_id)
-        lines.append(f'- <a id="{_html(_fragment(event_id))}"></a>`{_md(event_id)}`')
+        lines.append(f'- <a id="{_html(_fragment(event_id))}"></a>{_md_code(event_id)}')
     return lines or ["No events."]
 
 
@@ -213,6 +218,12 @@ def _cost_html(report: RunReport) -> list[str]:
         f"{_html(format_consumed(report.budget))}</code> CNY "
         f"{_html_link(report.budget_events[-1].event.id)}.</li>"
     ]
+    if report.budget.outstanding > 0:
+        items.append(
+            "<li>Outstanding <code>"
+            f"{_html(format_outstanding(report.budget))}</code> CNY still reserved; "
+            f"actual cost unknown {_html_link(report.budget_events[-1].event.id)}.</li>"
+        )
     for stored in report.budget_events:
         amount = _budget_amount(stored.event.data.payload)
         items.append(
@@ -295,5 +306,10 @@ def _fragment(event_id: str) -> str:
     return quote(event_id, safe="._-")
 
 
+def _md_code(value: str) -> str:
+    return f"<code>{html.escape(value, quote=True)}</code>"
+
+
 def _md_link(event_id: str) -> str:
-    return f"[`{_md(event_id)}`](#{_fragment(event_id)})"
+    fragment = html.escape(_fragment(event_id), quote=True)
+    return f'<a href="#{fragment}">{_md_code(event_id)}</a>'
