@@ -7,6 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from llm_research_os.research.errors import ResearchRequestError
 from llm_research_os.research.models import DecisionRecordedPayload, ProposalSubmittedPayload
 from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
@@ -15,6 +16,8 @@ from llm_research_os.research.requests import (
     load_decision_record_request,
     load_dissent_record_request,
     load_proposal_submit_request,
+    validate_decision_record_request,
+    validate_dissent_record_request,
 )
 from llm_research_os.research.schema import (
     build_decision_record_request_schema,
@@ -148,3 +151,17 @@ def test_proposal_payload_requires_at_least_one_prediction() -> None:
                 "evidenceRefs": [],
             }
         )
+
+
+def test_reserved_dissent_target_conclusion_is_rejected() -> None:
+    document = load_document(EXAMPLES / "valid" / "dissent-record.json")
+    document["targetKind"] = "conclusion"
+    with pytest.raises(ResearchRequestError):
+        validate_dissent_record_request(document)
+
+
+def test_reserved_decision_target_question_is_rejected() -> None:
+    document = load_document(EXAMPLES / "valid" / "decision-record.json")
+    document["targetKind"] = "question"
+    with pytest.raises(ResearchRequestError):
+        validate_decision_record_request(document)

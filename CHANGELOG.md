@@ -40,3 +40,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   recreate when writable). `RunControl` always folds the frozen prefix from
   sequence 0; the snapshot cache is not fold authority. A cache-write failure
   after a committed lifecycle fact does not fail the append.
+- M1-1: `ResearchControl` validates the complete prospective ledger before the
+  CAS append. The 33rd override of one dissent is rejected before commit.
+  Dissent/decision `targetKind` values `conclusion` and `question` are reserved
+  until those aggregates exist (Issue #42 for questions).

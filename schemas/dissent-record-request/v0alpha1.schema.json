@@ -23,8 +23,7 @@
     "DissentTargetKind": {
       "enum": [
         "proposal",
-        "decision",
-        "conclusion"
+        "decision"
       ],
       "title": "DissentTargetKind",
       "type": "string"

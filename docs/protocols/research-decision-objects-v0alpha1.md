@@ -80,7 +80,8 @@ live in artifacts). A proposal does not change any revision state by itself.
 | Field | Type | Rule |
 |---|---|---|
 | `dissentId` | identifier | Unique per project |
-| `targetKind` | `proposal` \| `decision` \| `conclusion` | Closed enum |
+| `targetKind` | `proposal` \| `decision` | Closed enum for M1-1. `conclusion` is reserved until that aggregate exists |
+| `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `objections` | list of `{kind, statement}` | ≥ 1 item |
 | `objections[].kind` | closed enum | `falsifiability`, `alternative-explanation`, `data-leakage`, `baseline-or-ablation`, `metric-validity`, `cost-benefit`, `negative-result-value`, `other` — the charter §9.3 checklist |
@@ -93,7 +94,7 @@ A dissent is never mutated or deleted. A later decision references it (§5).
 | Field | Type | Rule |
 |---|---|---|
 | `decisionId` | identifier | Unique per project; the value later cited by `run.reviewed.decisionId` and `attempt.queued.retryDecisionId` |
-| `targetKind` | `proposal` \| `run` \| `question` \| `dissent` | Closed enum |
+| `targetKind` | `proposal` \| `run` \| `dissent` | Closed enum for M1-1. `question` is reserved for Issue #42 |
 | `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `outcome` | `accept` \| `reject` \| `modify` \| `continue` \| `defer` | Closed enum |
 | `rationale` | text | **Required, non-empty.** A decision without rationale is invalid (ADR-0039 D2) |
