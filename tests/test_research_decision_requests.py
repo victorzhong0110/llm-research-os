@@ -13,9 +13,13 @@ from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
     DissentRecordRequestDocument,
     ProposalSubmitRequestDocument,
+    QuestionAnswerRequestDocument,
+    QuestionAskRequestDocument,
     load_decision_record_request,
     load_dissent_record_request,
     load_proposal_submit_request,
+    load_question_answer_request,
+    load_question_ask_request,
     validate_decision_record_request,
     validate_dissent_record_request,
 )
@@ -23,10 +27,14 @@ from llm_research_os.research.schema import (
     build_decision_record_request_schema,
     build_dissent_record_request_schema,
     build_proposal_submit_request_schema,
+    build_question_answer_request_schema,
+    build_question_ask_request_schema,
     build_research_ledger_schema,
     decision_record_request_schema_matches,
     dissent_record_request_schema_matches,
     proposal_submit_request_schema_matches,
+    question_answer_request_schema_matches,
+    question_ask_request_schema_matches,
     schema_matches,
 )
 from llm_research_os.spec.io import load_document
@@ -37,6 +45,8 @@ LEDGER_SCHEMA = ROOT / "schemas" / "research-ledger" / "v0alpha1.schema.json"
 PROPOSAL_SCHEMA = ROOT / "schemas" / "proposal-submit-request" / "v0alpha1.schema.json"
 DISSENT_SCHEMA = ROOT / "schemas" / "dissent-record-request" / "v0alpha1.schema.json"
 DECISION_SCHEMA = ROOT / "schemas" / "decision-record-request" / "v0alpha1.schema.json"
+QUESTION_ASK_SCHEMA = ROOT / "schemas" / "question-ask-request" / "v0alpha1.schema.json"
+QUESTION_ANSWER_SCHEMA = ROOT / "schemas" / "question-answer-request" / "v0alpha1.schema.json"
 
 
 def _validator(path: Path) -> Draft202012Validator:
@@ -48,15 +58,24 @@ def test_committed_research_decision_schemas_are_current() -> None:
     assert proposal_submit_request_schema_matches(PROPOSAL_SCHEMA)
     assert dissent_record_request_schema_matches(DISSENT_SCHEMA)
     assert decision_record_request_schema_matches(DECISION_SCHEMA)
-    for path in (LEDGER_SCHEMA, PROPOSAL_SCHEMA, DISSENT_SCHEMA, DECISION_SCHEMA):
+    assert question_ask_request_schema_matches(QUESTION_ASK_SCHEMA)
+    assert question_answer_request_schema_matches(QUESTION_ANSWER_SCHEMA)
+    for path in (
+        LEDGER_SCHEMA,
+        PROPOSAL_SCHEMA,
+        DISSENT_SCHEMA,
+        DECISION_SCHEMA,
+        QUESTION_ASK_SCHEMA,
+        QUESTION_ANSWER_SCHEMA,
+    ):
         Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
 
-def test_ledger_schema_keeps_questions_empty() -> None:
+def test_ledger_schema_lists_question_entries() -> None:
     schema = build_research_ledger_schema()
     questions = schema["properties"]["questions"]
-    assert questions["maxItems"] == 0
-    assert questions["minItems"] == 0
+    assert questions.get("maxItems") is None
+    assert questions["items"]["$ref"] == "#/$defs/QuestionLedgerEntry"
 
 
 def test_optional_metric_rejects_json_null() -> None:
@@ -72,8 +91,10 @@ def test_optional_metric_rejects_json_null() -> None:
         (EXAMPLES / "valid" / "proposal-submit.json", ProposalSubmitRequestDocument),
         (EXAMPLES / "valid" / "dissent-record.json", DissentRecordRequestDocument),
         (EXAMPLES / "valid" / "decision-record.json", DecisionRecordRequestDocument),
+        (EXAMPLES / "valid" / "question-ask.json", QuestionAskRequestDocument),
+        (EXAMPLES / "valid" / "question-answer.json", QuestionAnswerRequestDocument),
     ),
-    ids=("proposal", "dissent", "decision"),
+    ids=("proposal", "dissent", "decision", "question-ask", "question-answer"),
 )
 def test_valid_research_decision_examples(path: Path, model: type[object]) -> None:
     document = load_document(path)
@@ -81,6 +102,8 @@ def test_valid_research_decision_examples(path: Path, model: type[object]) -> No
         "ProposalSubmitRequest": PROPOSAL_SCHEMA,
         "DissentRecordRequest": DISSENT_SCHEMA,
         "DecisionRecordRequest": DECISION_SCHEMA,
+        "QuestionAskRequest": QUESTION_ASK_SCHEMA,
+        "QuestionAnswerRequest": QUESTION_ANSWER_SCHEMA,
     }[document["kind"]]
     _validator(schema_path).validate(document)
     model.model_validate(document)  # type: ignore[attr-defined]
@@ -108,6 +131,16 @@ def test_invalid_research_decision_examples(path: Path) -> None:
             load_decision_record_request,
             build_decision_record_request_schema,
             DecisionRecordRequestDocument,
+        ),
+        "QuestionAskRequest": (
+            load_question_ask_request,
+            build_question_ask_request_schema,
+            QuestionAskRequestDocument,
+        ),
+        "QuestionAnswerRequest": (
+            load_question_answer_request,
+            build_question_answer_request_schema,
+            QuestionAnswerRequestDocument,
         ),
     }
     _load, build, model = loaders[document["kind"]]
@@ -160,8 +193,8 @@ def test_reserved_dissent_target_conclusion_is_rejected() -> None:
         validate_dissent_record_request(document)
 
 
-def test_reserved_decision_target_question_is_rejected() -> None:
+def test_decision_target_question_is_accepted_on_the_request() -> None:
     document = load_document(EXAMPLES / "valid" / "decision-record.json")
     document["targetKind"] = "question"
-    with pytest.raises(ResearchRequestError):
-        validate_decision_record_request(document)
+    document["targetId"] = "question.eval-split"
+    validate_decision_record_request(document)

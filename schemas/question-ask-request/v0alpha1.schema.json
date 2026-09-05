@@ -1,17 +1,6 @@
 {
   "$defs": {
-    "DecisionOutcome": {
-      "enum": [
-        "accept",
-        "reject",
-        "modify",
-        "continue",
-        "defer"
-      ],
-      "title": "DecisionOutcome",
-      "type": "string"
-    },
-    "DecisionRequestActor": {
+    "QuestionRequestActor": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -23,10 +12,16 @@
         },
         "kind": {
           "enum": [
-            "human",
-            "policy"
+            "ai",
+            "system"
           ],
           "title": "Kind",
+          "type": "string"
+        },
+        "modelId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
           "type": "string"
         }
       },
@@ -34,18 +29,8 @@
         "id",
         "kind"
       ],
-      "title": "DecisionRequestActor",
+      "title": "QuestionRequestActor",
       "type": "object"
-    },
-    "DecisionTargetKind": {
-      "enum": [
-        "proposal",
-        "run",
-        "dissent",
-        "question"
-      ],
-      "title": "DecisionTargetKind",
-      "type": "string"
     },
     "ResearchEventIdentity": {
       "additionalProperties": false,
@@ -71,24 +56,21 @@
       "type": "object"
     }
   },
-  "$id": "https://researchos.dev/schemas/decision-record-request/v0alpha1.schema.json",
+  "$id": "https://researchos.dev/schemas/question-ask-request/v0alpha1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "actor": {
-      "$ref": "#/$defs/DecisionRequestActor"
+      "$ref": "#/$defs/QuestionRequestActor"
     },
     "apiVersion": {
       "const": "researchos.dev/v0alpha1",
       "title": "Apiversion",
       "type": "string"
     },
-    "decisionId": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Decisionid",
-      "type": "string"
+    "blocking": {
+      "title": "Blocking",
+      "type": "boolean"
     },
     "event": {
       "$ref": "#/$defs/ResearchEventIdentity"
@@ -112,24 +94,19 @@
       "type": "integer"
     },
     "kind": {
-      "const": "DecisionRecordRequest",
+      "const": "QuestionAskRequest",
       "title": "Kind",
       "type": "string"
     },
-    "outcome": {
-      "$ref": "#/$defs/DecisionOutcome"
-    },
-    "overriddenDissentIds": {
+    "options": {
       "items": {
-        "maxLength": 128,
+        "maxLength": 1000,
         "minLength": 1,
-        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
         "type": "string"
       },
       "maxItems": 32,
-      "title": "Overriddendissentids",
-      "type": "array",
-      "uniqueItems": true
+      "minItems": 1,
+      "type": "array"
     },
     "projectId": {
       "maxLength": 128,
@@ -138,10 +115,23 @@
       "title": "Projectid",
       "type": "string"
     },
-    "rationale": {
+    "question": {
       "maxLength": 4000,
       "minLength": 1,
-      "title": "Rationale",
+      "title": "Question",
+      "type": "string"
+    },
+    "questionId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Questionid",
+      "type": "string"
+    },
+    "relatedProposalId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "type": "string"
     },
     "source": {
@@ -164,15 +154,17 @@
       "title": "Subject",
       "type": "string"
     },
-    "targetId": {
-      "maxLength": 128,
+    "uncertainty": {
+      "maxLength": 4000,
       "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Targetid",
+      "title": "Uncertainty",
       "type": "string"
     },
-    "targetKind": {
-      "$ref": "#/$defs/DecisionTargetKind"
+    "whyNotObservable": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Whynotobservable",
+      "type": "string"
     }
   },
   "required": [
@@ -185,14 +177,13 @@
     "streamid",
     "actor",
     "event",
-    "decisionId",
-    "targetKind",
-    "targetId",
-    "outcome",
-    "rationale",
-    "overriddenDissentIds",
+    "questionId",
+    "question",
+    "uncertainty",
+    "whyNotObservable",
+    "blocking",
     "evidenceRefs"
   ],
-  "title": "DecisionRecordRequestDocument",
+  "title": "QuestionAskRequestDocument",
   "type": "object"
 }

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -12,8 +12,11 @@ from llm_research_os.research.models import (
     DECISION_EVENT_TYPES,
     MAX_DECISION_LIST,
     RESEARCH_LEDGER_API_VERSION,
+    TYPE_DECISION_RECORDED,
     TYPE_DISSENT_RECORDED,
     TYPE_PROPOSAL_SUBMITTED,
+    TYPE_QUESTION_ANSWERED,
+    TYPE_QUESTION_ASKED,
     DecisionLedgerEntry,
     DecisionOutcome,
     DecisionRecordedPayload,
@@ -24,6 +27,10 @@ from llm_research_os.research.models import (
     ProposalLedgerEntry,
     ProposalRevisionState,
     ProposalSubmittedPayload,
+    QuestionAnsweredPayload,
+    QuestionAskedPayload,
+    QuestionLedgerEntry,
+    QuestionStatus,
     ResearchDocumentModel,
     ResearchLedger,
     empty_research_ledger,
@@ -41,6 +48,7 @@ class LedgerFold:
     proposals: tuple[ProposalLedgerEntry, ...] = ()
     dissents: tuple[DissentLedgerEntry, ...] = ()
     decisions: tuple[DecisionLedgerEntry, ...] = ()
+    questions: tuple[QuestionLedgerEntry, ...] = ()
     run_ids: frozenset[str] = frozenset()
 
 
@@ -48,8 +56,7 @@ class ResearchLedgerProjection:
     """Fold ResearchEvents for one ``projectId``.
 
     ``apply`` is a pure function of the previous fold and one already-validated
-    event. It performs no I/O and never emits events. Question facts are ignored
-    until Issue #42.
+    event. It performs no I/O and never emits events.
     """
 
     def __init__(self, project_id: str) -> None:
@@ -64,12 +71,7 @@ class ResearchLedgerProjection:
             return fold
         run_ids = fold.run_ids
         if event.data.run_id is not None:
-            fold = LedgerFold(
-                proposals=fold.proposals,
-                dissents=fold.dissents,
-                decisions=fold.decisions,
-                run_ids=run_ids | {event.data.run_id},
-            )
+            fold = replace(fold, run_ids=run_ids | {event.data.run_id})
         if event.type not in DECISION_EVENT_TYPES:
             return fold
         require_actor_kind(event)
@@ -94,17 +96,27 @@ class ResearchLedgerProjection:
                     code="invalid-payload",
                 )
             return _apply_dissent(fold, event, payload)
-        if type(payload) is not DecisionRecordedPayload:
+        if event.type == TYPE_QUESTION_ASKED:
+            if type(payload) is not QuestionAskedPayload:
+                raise ResearchPayloadError(_type_mismatch(event), code="invalid-payload")
+            return _apply_question_asked(fold, event, payload)
+        if event.type == TYPE_QUESTION_ANSWERED:
+            if type(payload) is not QuestionAnsweredPayload:
+                raise ResearchPayloadError(_type_mismatch(event), code="invalid-payload")
+            return _apply_question_answered(fold, event, payload)
+        if event.type != TYPE_DECISION_RECORDED or type(payload) is not DecisionRecordedPayload:
             raise ResearchPayloadError(_type_mismatch(event), code="invalid-payload")
         return _apply_decision(fold, event, payload)
 
     def snapshot(self, state: LedgerFold | None, last_sequence: int) -> ResearchLedger:
         fold = state if state is not None else LedgerFold()
         decisions = fold.decisions
+        questions = fold.questions
         overridden = {
             dissent_id for item in decisions for dissent_id in item.overridden_dissent_ids
         }
         rationale_characters = sum(len(item.rationale) for item in decisions)
+        answered = sum(1 for item in questions if item.status is QuestionStatus.ANSWERED)
         return ResearchLedger.model_validate(
             {
                 "apiVersion": RESEARCH_LEDGER_API_VERSION,
@@ -123,10 +135,13 @@ class ResearchLedgerProjection:
                     item.model_dump(mode="json", by_alias=True, exclude_none=True)
                     for item in decisions
                 ],
-                "questions": [],
+                "questions": [
+                    item.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for item in questions
+                ],
                 "decisionCount": len(decisions),
-                "answeredQuestionCount": 0,
-                "openQuestionCount": 0,
+                "answeredQuestionCount": answered,
+                "openQuestionCount": len(questions) - answered,
                 "rationaleCharacters": rationale_characters,
                 "overriddenDissentCount": len(overridden),
             }
@@ -179,12 +194,7 @@ def _apply_proposal(
             "sequence": _event_sequence(event),
         }
     )
-    return LedgerFold(
-        proposals=(*fold.proposals, entry),
-        dissents=fold.dissents,
-        decisions=fold.decisions,
-        run_ids=fold.run_ids,
-    )
+    return replace(fold, proposals=(*fold.proposals, entry))
 
 
 def _apply_dissent(
@@ -217,12 +227,7 @@ def _apply_dissent(
             "sequence": _event_sequence(event),
         }
     )
-    return LedgerFold(
-        proposals=fold.proposals,
-        dissents=(*fold.dissents, entry),
-        decisions=fold.decisions,
-        run_ids=fold.run_ids,
-    )
+    return replace(fold, dissents=(*fold.dissents, entry))
 
 
 def _apply_decision(
@@ -250,6 +255,18 @@ def _apply_decision(
             "decision target does not resolve in this project",
             code="unknown-decision-target",
         )
+    if payload.target_kind is DecisionTargetKind.QUESTION:
+        question = _question(fold, payload.target_id)
+        if question is None:
+            raise ResearchLedgerError(
+                "decision target does not resolve in this project",
+                code="unknown-decision-target",
+            )
+        if question.status is QuestionStatus.OPEN and payload.outcome is not DecisionOutcome.DEFER:
+            raise ResearchLedgerError(
+                "decision on a question requires an answer or outcome=defer",
+                code="unanswered-question-decision",
+            )
     sequence = _event_sequence(event)
     for dissent_id in payload.overridden_dissent_ids:
         dissent = _dissent(fold, dissent_id)
@@ -275,12 +292,95 @@ def _apply_decision(
             "sequence": sequence,
         }
     )
-    return LedgerFold(
+    return replace(
+        fold,
         proposals=_apply_proposal_outcome(fold.proposals, payload),
         dissents=_mark_overridden_dissents(fold.dissents, payload),
         decisions=(*fold.decisions, entry),
-        run_ids=fold.run_ids,
     )
+
+
+def _apply_question_asked(
+    fold: LedgerFold,
+    event: ResearchEvent,
+    payload: QuestionAskedPayload,
+) -> LedgerFold:
+    if any(item.question_id == payload.question_id for item in fold.questions):
+        raise ResearchLedgerError(
+            "questionId is not unique in this project",
+            code="duplicate-question",
+        )
+    if event.data.run_id is not None:
+        raise ResearchLedgerError("question.asked must not set runId", code="unexpected-run-id")
+    if payload.related_proposal_id is not None and not any(
+        item.proposal_id == payload.related_proposal_id for item in fold.proposals
+    ):
+        raise ResearchLedgerError(
+            "relatedProposalId does not resolve in this project",
+            code="unknown-related-proposal",
+        )
+    entry = QuestionLedgerEntry.model_validate(
+        {
+            "questionId": payload.question_id,
+            "question": payload.question,
+            "uncertainty": payload.uncertainty,
+            "whyNotObservable": payload.why_not_observable,
+            "options": list(payload.options) if payload.options is not None else [],
+            "blocking": payload.blocking,
+            **(
+                {"relatedProposalId": payload.related_proposal_id}
+                if payload.related_proposal_id is not None
+                else {}
+            ),
+            "status": QuestionStatus.OPEN.value,
+            "eventId": event.id,
+            "sequence": _event_sequence(event),
+        }
+    )
+    return replace(fold, questions=(*fold.questions, entry))
+
+
+def _apply_question_answered(
+    fold: LedgerFold,
+    event: ResearchEvent,
+    payload: QuestionAnsweredPayload,
+) -> LedgerFold:
+    if event.data.run_id is not None:
+        raise ResearchLedgerError(
+            "question.answered must not set runId",
+            code="unexpected-run-id",
+        )
+    asked = _question(fold, payload.question_id)
+    if asked is None:
+        raise ResearchLedgerError(
+            "questionId has no prior question.asked in this project",
+            code="unknown-question",
+        )
+    if asked.status is QuestionStatus.ANSWERED:
+        raise ResearchLedgerError(
+            "questionId already has an answer",
+            code="duplicate-answer",
+        )
+    if payload.answer.option is not None:
+        allowed = asked.options
+        if payload.answer.option not in allowed:
+            raise ResearchLedgerError(
+                "answer option is not one of the question options",
+                code="invalid-answer-option",
+            )
+    updated = asked.model_copy(
+        update={
+            "status": QuestionStatus.ANSWERED,
+            "answer_event_id": event.id,
+            "answer_sequence": _event_sequence(event),
+            "answer": payload.answer,
+            "rights": payload.rights,
+        }
+    )
+    questions = tuple(
+        updated if item.question_id == payload.question_id else item for item in fold.questions
+    )
+    return replace(fold, questions=questions)
 
 
 def _dissent_target_resolves(fold: LedgerFold, payload: DissentRecordedPayload) -> bool:
@@ -298,6 +398,8 @@ def _decision_target_resolves(fold: LedgerFold, payload: DecisionRecordedPayload
         return any(item.dissent_id == payload.target_id for item in fold.dissents)
     if payload.target_kind is DecisionTargetKind.RUN:
         return payload.target_id in fold.run_ids
+    if payload.target_kind is DecisionTargetKind.QUESTION:
+        return any(item.question_id == payload.target_id for item in fold.questions)
     return False
 
 
@@ -385,6 +487,13 @@ def _mark_overridden_dissents(
 def _dissent(fold: LedgerFold, dissent_id: str) -> DissentLedgerEntry | None:
     for item in fold.dissents:
         if item.dissent_id == dissent_id:
+            return item
+    return None
+
+
+def _question(fold: LedgerFold, question_id: str) -> QuestionLedgerEntry | None:
+    for item in fold.questions:
+        if item.question_id == question_id:
             return item
     return None
 

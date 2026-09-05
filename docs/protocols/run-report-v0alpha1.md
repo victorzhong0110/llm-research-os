@@ -64,7 +64,9 @@ Sections, in order: Research, Training, Cost, Lineage, Event index. Every
 claim that reports a stored fact cites that fact's `eventId` as a fragment
 link into the event index. Fragment destinations are percent-encoded so
 punctuation in an id cannot break Markdown or HTML anchors; the index uses the
-same encoding.
+same encoding. Cost always includes human-attention counters from the project
+ledger (`decisionCount`, `answeredQuestionCount`, `openQuestionCount`,
+`rationaleCharacters`) and does not echo question or answer text.
 
 The report freezes EventStore high-water `H` once and folds every section from
 that prefix. Facts appended after `H` are omitted, including project-scoped
@@ -87,4 +89,3 @@ Lineage also cites the consumed authorization row when
 - React Flow / editable canvas (`9-UIA` unchanged)
 - Real trainer metrics, GPU telemetry, or treating `kind: synthetic` as evaluation
 - JSON report schema
-- Question channel (#42)
