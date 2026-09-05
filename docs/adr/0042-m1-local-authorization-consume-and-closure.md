@@ -1,13 +1,14 @@
-# ADR-0042: M1 local authorization consume and numbered-slice closure
+# ADR-0042: M1 local authorization consume and numbered-slice status
 
 - Status: Accepted
 - Date: 2026-09-04
 
-This record does not reopen ADR-0032, ADR-0035, or ADR-0036. It closes the
-ADR-0038 E4 numbered M1 slices (M1-0 through M1-6) and the Issue #19 remainder
-that M0 left as in-process `decisionDigest` only. Umbrella Issue #38 stays open
-while the question channel (Issue #42) and charter v0.2 consolidation remain
-not-delivered. The first tag `v0.1.0-m1` is not cut by this record.
+This record does not reopen ADR-0032, ADR-0035, or ADR-0036. It records the
+status of the ADR-0038 E4 numbered slices (M1-0 through M1-6) after local
+`{eventId, sequence}` consume lands. That is numbered-slice status, not M1
+checkpoint closure. Umbrella Issue #38 stays open. The question channel
+(Issue #42) and charter v0.2 consolidation remain not-delivered. The first
+tag `v0.1.0-m1` is not cut by this record.
 
 ## Context
 
@@ -18,10 +19,11 @@ does not choose a fact (ADR-0035), and an in-process `decisionDigest` on
 `RunSnapshot` (ADR-0036). ADR-0037 recorded those as non-credentials and left
 `{eventId, sequence}` consume for M1.
 
-ADR-0038 E4 named M1-6 as that remainder plus an M1 closure ADR with an
-explicit not-delivered list. Treating the stored event as a signed launch JWT,
+ADR-0038 E4 named M1-6 as that remainder plus a numbered-slice status ADR with
+an explicit not-delivered list. Treating the stored event as a signed launch JWT,
 or treating lineage `not-consumed` as the citation, would erase those
-boundaries.
+boundaries. The M1 checkpoint (Issue #38) is not passed by landing the
+numbered slices.
 
 ## Decision
 
@@ -73,15 +75,16 @@ the cited event is absent.
 - M1-3: local Markdown/PDF `evidence.imported`.
 - M1-4: OpenAI-compatible HTTP adapter, `SecretRef`, CNY budget facts.
 - M1-5: seeded synthetic metrics and static `researchos report`.
-- M1-6: this consume rule and closure list.
+- M1-6: this consume rule and numbered-slice status list.
 
 ### Explicitly not delivered
 
 These MUST NOT be described as M1 complete:
 
 - Issue #42 question channel; umbrella #38 still lists 提问/回答 and
-  human-attention cost on the report.
-- Signatures, expiry, or revocation of authorization; a remote or launch JWT.
+  human-attention cost on the report. Numbered slices ≠ that checkpoint.
+- Signatures, expiry, or revocation of authorization (Issue #53); a remote
+  or launch JWT.
 - `NativeProcessRuntime`, remote Workers, GPU training.
 - React Flow / editable canvas (`9-UIA`).
 - T2 community adapter isolation (E5).
@@ -89,7 +92,7 @@ These MUST NOT be described as M1 complete:
 - OpenAI Python SDK / LiteLLM / streaming / tool execution.
 - GitHub / arXiv / web evidence connectors.
 - Tag `v0.1.0-m1` (cut only when asked).
-- Making the mock an HTTP server; `ai.call.failed` remains unused.
+- Making the mock an HTTP server.
 - Charter v0.2 consolidation (E8).
 
 ### Status changes this record authorizes
@@ -100,9 +103,10 @@ These MUST NOT be described as M1 complete:
 | ADR-0032 | Record status notes SimulatedRuntime may cite `{eventId, sequence}` on this store; the event remains audit-only. |
 | ADR-0035 | Lineage remains `not-consumed`. The Run citation is consume, not this query. |
 | ADR-0036 | `decisionDigest` remains in-process identity and is no longer sufficient alone for SimulatedRuntime. |
-| Issue #19 | Closed by this slice. |
-| Issue #38 | Remains open. |
+| Issue #19 | Closed for local durable fact + citation + SimulatedRuntime consume. Signatures, expiry, and revocation move to [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53). |
+| Issue #38 | Remains open. Numbered slices are not the M1 checkpoint. |
 | Issue #42 | Remains open and independent. |
+| Issue #53 | Open. Signatures, expiry, revocation. |
 
 ## Consequences
 
@@ -125,12 +129,14 @@ Independently checkable:
    non-human, not-authorized, binding, project, and resume citation drift.
 3. Lineage reports still say `not-consumed`.
 4. `researchos schema --check-all`, ruff, mypy, pytest, and coverage ≥ 85%.
-5. Issue #38 and #42 remain open. No `v0.1.0-m1` tag is created by this PR.
+5. Issue #38, #42, and #53 remain open. No `v0.1.0-m1` tag is created by this PR.
 
 ## References
 
 - [Issue #19](https://github.com/victorzhong0110/llm-research-os/issues/19)
 - [Issue #38](https://github.com/victorzhong0110/llm-research-os/issues/38)
+- [Issue #42](https://github.com/victorzhong0110/llm-research-os/issues/42)
+- [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53)
 - [ADR-0032 Audit-only Plan Authorization Events](0032-audit-only-plan-authorization-events.md)
 - [ADR-0035 Read-only Plan Authorization Lineage Query](0035-read-only-plan-authorization-lineage.md)
 - [ADR-0036 In-process Run decisionDigest](0036-in-process-run-decision-digest.md)

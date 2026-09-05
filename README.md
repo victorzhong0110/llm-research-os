@@ -44,7 +44,9 @@ facts and `researchos report RUN` static HTML/Markdown (React Flow deferred).
 M1-6 lets SimulatedRuntime consume one local `{eventId, sequence}` citation of
 `plan.authorization.evaluated`
 ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)); that
-is not a signed launch JWT. Issue #19 is closed. Umbrella #38 and #42 stay open.
+is not a signed launch JWT. Issue #19's local consume is delivered; signatures,
+expiry, and revocation are [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53).
+Umbrella #38 and #42 stay open. Numbered slices are not the M1 checkpoint.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
