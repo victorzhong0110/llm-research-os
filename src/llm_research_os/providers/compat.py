@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import http.client
 import json
+import socket
+import ssl
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
@@ -12,20 +15,23 @@ from urllib.parse import urlparse
 
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.budget.control import BudgetControl
-from llm_research_os.budget.errors import BudgetExceededError
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
     TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
 )
-from llm_research_os.budget.money import CURRENCY_CNY, parse_money
+from llm_research_os.budget.money import CURRENCY_CNY
 from llm_research_os.canonical import canonical_json, content_digest
 from llm_research_os.providers.capabilities import CapabilityReport, ModelCapability
 from llm_research_os.providers.compat_requests import (
     COMPAT_PROVIDER_ID,
     OpenAICompatGenerateRequestDocument,
+)
+from llm_research_os.providers.endpoint import (
+    classify_literal_endpoint,
     endpoint_is_loopback,
+    pin_endpoint,
 )
 from llm_research_os.providers.errors import (
     ModelCallError,
@@ -69,17 +75,70 @@ class _RejectRedirects(urllib.request.HTTPRedirectHandler):
         raise ModelTransportError("HTTP redirects are not allowed", code="redirect-forbidden")
 
 
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(
+        self,
+        host: str,
+        port: int | None = None,
+        *,
+        server_hostname: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(host, port, **kwargs)
+        self._pinned_server_hostname = server_hostname
+
+    def connect(self) -> None:
+        if getattr(self, "_tunnel_host", None) is not None:
+            raise ModelTransportError("HTTP proxies are not allowed", code="proxy-forbidden")
+        port = 443 if self.port is None else self.port
+        sock = socket.create_connection((self.host, port), self.timeout)
+        context = getattr(self, "_context", None)
+        if not isinstance(context, ssl.SSLContext):
+            context = ssl.create_default_context()
+        self.sock = context.wrap_socket(sock, server_hostname=self._pinned_server_hostname)
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self, server_hostname: str) -> None:
+        super().__init__(context=ssl.create_default_context())
+        self._pinned_server_hostname = server_hostname
+
+    def https_open(self, req: urllib.request.Request) -> Any:
+        hostname = self._pinned_server_hostname
+
+        def connection(host: str, **kwargs: Any) -> _PinnedHTTPSConnection:
+            return _PinnedHTTPSConnection(host, server_hostname=hostname, **kwargs)
+
+        return self.do_open(connection, req)
+
+
 def _urllib_transport(url: str, payload: bytes, headers: Mapping[str, str]) -> dict[str, Any]:
+    pinned = pin_endpoint(url)
+    try:
+        declared = classify_literal_endpoint(url)
+    except ValueError as exc:
+        raise ModelTransportError(str(exc), code="endpoint-url") from None
+    if declared is not pinned.kind:
+        raise ModelTransportError(
+            "endpoint resolved to mixed loopback and public addresses",
+            code="dns-rebinding",
+        )
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         raise ModelTransportError("endpoint scheme must be http or https", code="endpoint-scheme")
-    request = urllib.request.Request(url, data=payload, method="POST")  # noqa: S310
+    request = urllib.request.Request(pinned.request_url, data=payload, method="POST")  # noqa: S310
+    request.add_header("Host", pinned.host_header)
     for name, value in headers.items():
+        if name.casefold() == "host":
+            continue
         request.add_header(name, value)
-    opener = urllib.request.build_opener(
-        _RejectRedirects,
+    handlers: list[urllib.request.BaseHandler] = [
+        _RejectRedirects(),
         urllib.request.ProxyHandler({}),
-    )
+    ]
+    if parsed.scheme == "https":
+        handlers.append(_PinnedHTTPSHandler(parsed.hostname or pinned.host_header))
+    opener = urllib.request.build_opener(*handlers)
     try:
         with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
@@ -92,12 +151,12 @@ def _urllib_transport(url: str, payload: bytes, headers: Mapping[str, str]) -> d
     if len(raw) > MAX_RESPONSE_BYTES:
         raise ModelTransportError("model response exceeds size limit", code="response-too-large")
     try:
-        parsed = json.loads(raw.decode("utf-8"))
+        decoded = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise ModelTransportError("model response is not JSON", code="invalid-response") from None
-    if type(parsed) is not dict:
+    if type(decoded) is not dict:
         raise ModelTransportError("model response is not a JSON object", code="invalid-response")
-    return parsed
+    return decoded
 
 
 class CompatHttpProvider(ModelProvider):
@@ -115,7 +174,10 @@ class CompatHttpProvider(ModelProvider):
         self._model_id = model_id
         self._secret = secret
         self._transport = transport or _urllib_transport
-        self._local = endpoint_is_loopback(endpoint)
+        try:
+            self._local = endpoint_is_loopback(endpoint)
+        except ValueError as exc:
+            raise ModelTransportError(str(exc), code="endpoint-url") from None
         if self._local:
             if secret is not None:
                 raise ModelTransportError(
@@ -237,24 +299,7 @@ def record_compat_generate(
             code="capability-empty",
         )
     budget = BudgetControl(store, project_id=project_id)
-    head = budget.rebuild()
-    cap = parse_money(request.budget_cap)
-    reserve = parse_money(request.reserve_amount)
-    if head.fold.consumed + head.fold.outstanding + reserve > cap:
-        budget.append(
-            request.budget_draft(
-                TYPE_BUDGET_EXCEEDED,
-                {
-                    "budgetId": request.budget_id,
-                    "callId": request.call_id,
-                    "currency": CURRENCY_CNY,
-                    "attempted": request.reserve_amount,
-                    "cap": request.budget_cap,
-                },
-            )
-        )
-        raise BudgetExceededError()
-    reserved = budget.append(
+    reserved = budget.reserve_or_exceed(
         request.budget_draft(
             TYPE_BUDGET_RESERVED,
             {
@@ -264,7 +309,17 @@ def record_compat_generate(
                 "amount": request.reserve_amount,
                 "cap": request.budget_cap,
             },
-        )
+        ),
+        request.budget_draft(
+            TYPE_BUDGET_EXCEEDED,
+            {
+                "budgetId": request.budget_id,
+                "callId": request.call_id,
+                "currency": CURRENCY_CNY,
+                "attempted": request.reserve_amount,
+                "cap": request.budget_cap,
+            },
+        ),
     )
     report = provider.capabilities().document()
     declared = tuple(report["declaredCapabilities"])
