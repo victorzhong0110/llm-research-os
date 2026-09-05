@@ -20,6 +20,7 @@ from llm_research_os.events.models import (
 )
 from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
 from llm_research_os.projections.replay import replay_events
+from llm_research_os.providers.compat import CompatHttpProvider, record_compat_generate
 from llm_research_os.providers.errors import ModelCallError, ModelPayloadError
 from llm_research_os.providers.mock import DeterministicMockProvider
 from llm_research_os.providers.models import (
@@ -57,6 +58,8 @@ class ModelCallHead:
 class ModelCallResult:
     started: StoredEvent
     completed: StoredEvent
+    reserved: StoredEvent | None = None
+    consumed: StoredEvent | None = None
 
 
 class ModelCallControl:
@@ -144,6 +147,32 @@ class ModelCallControl:
         started = self._append_one(started_draft)
         completed = self._append_one(completed_draft)
         return ModelCallResult(started=started, completed=completed)
+
+    def record_http_generate(
+        self,
+        request: object,
+        fixture: ModelFixtureDocument,
+        provider: ModelProvider,
+        *,
+        artifacts: LocalArtifactStore | None = None,
+    ) -> ModelCallResult:
+        if not isinstance(provider, CompatHttpProvider):
+            raise ModelCallError("provider is not the HTTP adapter", code="provider-not-compat")
+        started, completed, reserved, consumed = record_compat_generate(
+            store=self._store,
+            project_id=self._project_id,
+            append_call=self._append_one,
+            request=request,
+            fixture=fixture,
+            provider=provider,
+            artifacts=artifacts,
+        )
+        return ModelCallResult(
+            started=started,
+            completed=completed,
+            reserved=reserved,
+            consumed=consumed,
+        )
 
     def _append_one(self, document: dict[str, Any]) -> StoredEvent:
         head = self.rebuild()

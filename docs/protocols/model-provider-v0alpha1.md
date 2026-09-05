@@ -5,8 +5,9 @@
 > `ai.call.failed`. JSON Schema files are the structural contracts.
 
 This slice realises [ADR-0017](../adr/0017-minimal-model-interface.md)
-(chapter 18 `8-MC`). It does **not** open a socket, call a vendor SDK, or
-spend money. The OpenAI-compatible adapter is M1-4.
+(chapter 18 `8-MC`). The deterministic mock does **not** open a socket, call a
+vendor SDK, or spend money. The OpenAI-compatible adapter is documented in
+[openai-compat-v0alpha1](openai-compat-v0alpha1.md).
 
 ## 1. Capability triple
 
@@ -52,7 +53,7 @@ contain `ai.call.started` and `ai.call.completed` with distinct ids. Actor
 The fixture document is a separate `ModelFixture` file passed on the CLI
 (`--fixture`). The request carries only `fixtureId`.
 
-M1-2 accepts `providerId=mock.deterministic` only.
+M1-2 accepts `providerId=mock.deterministic` only. M1-4 adds `openai.compat`.
 
 ## 4. Recording
 
@@ -62,11 +63,11 @@ draft, and CAS-appends. The mock `generate()` runs **before** any append: a
 capability or fixture refusal leaves the log empty. Conflicts are not retried.
 `callId` is unique per project.
 
-`ai.call.failed` is reserved for later adapters that emit a start and then
-fail. This slice does not write it.
+The deterministic mock does not write `ai.call.failed`. The OpenAI-compatible
+HTTP adapter writes it after `ai.call.started` when transport fails, together
+with `budget.released`.
 
 ## 5. Non-goals
 
-HTTP, GPU, streaming `generate()`, LiteLLM, secret resolution for remote
-endpoints, and treating a mock call as a `proposal.submitted` are out of
-scope.
+HTTP, GPU, streaming `generate()`, LiteLLM, and treating a mock or HTTP call as a
+`proposal.submitted` are out of scope.

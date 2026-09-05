@@ -7,6 +7,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from llm_research_os.providers.compat_requests import (
+    OPENAI_COMPAT_GENERATE_REQUEST_SCHEMA_ID,
+    OpenAICompatGenerateRequestDocument,
+)
 from llm_research_os.providers.models import MODEL_FIXTURE_SCHEMA_ID, ModelFixtureDocument
 from llm_research_os.providers.requests import (
     MODEL_GENERATE_REQUEST_SCHEMA_ID,
@@ -64,6 +68,43 @@ def build_model_generate_request_schema() -> dict[str, Any]:
         MODEL_GENERATE_REQUEST_SCHEMA_ID,
         _patch_generate_request,
     )
+
+
+def _patch_compat_generate_request(schema: dict[str, Any]) -> None:
+    events = schema.get("properties", {}).get("events")
+    if type(events) is not dict:
+        raise ValueError("compat generate request schema is missing events")
+    events["minProperties"] = 7
+    events["maxProperties"] = 7
+    events["required"] = [
+        "ai.call.started",
+        "ai.call.completed",
+        "ai.call.failed",
+        "budget.reserved",
+        "budget.consumed",
+        "budget.exceeded",
+        "budget.released",
+    ]
+
+
+def build_openai_compat_generate_request_schema() -> dict[str, Any]:
+    return _build(
+        OpenAICompatGenerateRequestDocument,
+        OPENAI_COMPAT_GENERATE_REQUEST_SCHEMA_ID,
+        _patch_compat_generate_request,
+    )
+
+
+def canonical_openai_compat_generate_request_schema() -> str:
+    return _canonical(build_openai_compat_generate_request_schema())
+
+
+def write_openai_compat_generate_request_schema(path: str | Path) -> None:
+    _write(build_openai_compat_generate_request_schema(), path)
+
+
+def openai_compat_generate_request_schema_matches(path: str | Path) -> bool:
+    return _matches(build_openai_compat_generate_request_schema(), path)
 
 
 def build_model_fixture_schema() -> dict[str, Any]:
