@@ -149,7 +149,9 @@ digests, never source paths or extracted bodies. `budget.reserved` /
 `budget.consumed` / `budget.exceeded` / `budget.released` are defined by
 [OpenAI-compatible generate v0alpha1](openai-compat-v0alpha1.md); amounts are CNY
 decimal strings, never floats. Outstanding reservations hold the cap until
-consume or full release.
+consume or full release. `training.step` / `evaluation.metric` are defined
+by [Synthetic metrics and static Run report v0alpha1](run-report-v0alpha1.md);
+payloads are `kind: synthetic` and are not scientific metrics.
 
 ## 6. Conformance commands
 

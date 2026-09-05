@@ -426,6 +426,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="projectId to fold",
     )
     add_event_format_argument(research_ledger)
+
+    report = subparsers.add_parser(
+        "report",
+        help="rebuild a static HTML or Markdown report for one Run",
+    )
+    report.add_argument("run_id", metavar="RUN", help="runId to project")
+    report.add_argument(
+        "--database",
+        required=True,
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    report.add_argument(
+        "--project",
+        metavar="ID",
+        help="optional projectId; must match the Run when supplied",
+    )
+    report.add_argument(
+        "--format",
+        choices=("html", "markdown"),
+        default="markdown",
+        help="static HTML or Markdown; every summary cites an eventId",
+    )
     return parser
 
 
