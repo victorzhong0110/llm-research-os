@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from html.parser import HTMLParser
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -17,6 +19,7 @@ from llm_research_os.execution.synthetic import (
     synthetic_evaluation_payload,
     synthetic_training_payload,
 )
+from llm_research_os.report.errors import ReportError
 from llm_research_os.report.fold import build_run_report
 from llm_research_os.report.render import _fragment, _html_link, _md_link
 from llm_research_os.research.requests import load_proposal_submit_request
@@ -57,13 +60,13 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     for heading in ("## Research", "## Training", "## Cost", "## Lineage"):
         assert heading in output
-    assert "[`evt.training.step`](#evt.training.step)" in output
-    assert "[`evt.evaluation.metric`](#evt.evaluation.metric)" in output
-    assert "[`evt.6.run.completed`](#evt.6.run.completed)" in output
     training = synthetic_training_payload(RUN, ATTEMPT)
     evaluation = synthetic_evaluation_payload(RUN, ATTEMPT)
     assert training["loss"] in output
     assert evaluation["value"] in output
+    assert '<a href="#evt.training.step"><code>evt.training.step</code></a>' in output
+    assert '<a href="#evt.evaluation.metric"><code>evt.evaluation.metric</code></a>' in output
+    assert '<a href="#evt.6.run.completed"><code>evt.6.run.completed</code></a>' in output
     assert "No `budget.*` facts for this project." in output
     assert "React Flow" not in output
 
@@ -89,6 +92,51 @@ def test_report_missing_run_exits_one(tmp_path: Path, capsys: object) -> None:
     assert main(["report", "run.missing", "--database", str(database)]) == 1
     error = capsys.readouterr().err  # type: ignore[attr-defined]
     assert "run-not-found" in error
+
+
+def test_report_project_flag_selects_one_aggregate_when_run_ids_collide(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        store.append(_queued_event("project.a", "run.example", "evt.a.queued"))
+        store.append(_queued_event("project.b", "run.example", "evt.b.queued"))
+        report = build_run_report(store, "run.example", project_id="project.a")
+        assert report.project_id == "project.a"
+        assert report.lineage[0].event.id == "evt.a.queued"
+        with pytest.raises(ReportError) as captured:
+            build_run_report(store, "run.example")
+        assert captured.value.code == "run-project-mismatch"
+    assert (
+        main(["report", "run.example", "--database", str(database), "--project", "project.b"]) == 0
+    )
+
+
+def _queued_event(project: str, run: str, event_id: str) -> dict[str, Any]:
+    return {
+        "specversion": "1.0",
+        "id": event_id,
+        "source": f"https://researchos.dev/projects/{project}",
+        "type": "run.queued",
+        "time": "2026-08-30T12:00:00Z",
+        "subject": run,
+        "dataschema": "https://researchos.dev/schemas/research-event/v0alpha1.schema.json",
+        "datacontenttype": "application/json",
+        "streamid": f"stream.{project}",
+        "data": {
+            "schemaVersion": "v0alpha1",
+            "actor": {"id": "researcher.alice"},
+            "projectId": project,
+            "experimentRevision": 1,
+            "payload": {
+                "workflowId": "wf.train",
+                "specDigest": "sha256:" + "11" * 32,
+                "registryDigest": "sha256:" + "22" * 32,
+                "planDigest": "sha256:" + "33" * 32,
+                "maxAttempts": 1,
+            },
+            "evidenceRefs": [],
+            "runId": run,
+        },
+    }
 
 
 def test_report_project_mismatch_exits_two(tmp_path: Path, capsys: object) -> None:
@@ -120,9 +168,9 @@ def test_report_cites_research_ledger_event_ids(tmp_path: Path, capsys: object) 
     capsys.readouterr()  # type: ignore[attr-defined]
     assert main(["report", RUN, "--database", str(database), "--format", "markdown"]) == 0
     markdown = capsys.readouterr().out  # type: ignore[attr-defined]
-    assert "[`evt.proposal.1`](#evt.proposal.1)" in markdown
-    assert "[`evt.dissent.1`](#evt.dissent.1)" in markdown
-    assert "[`evt.decision.1`](#evt.decision.1)" in markdown
+    assert '<a href="#evt.proposal.1"><code>evt.proposal.1</code></a>' in markdown
+    assert '<a href="#evt.dissent.1"><code>evt.dissent.1</code></a>' in markdown
+    assert '<a href="#evt.decision.1"><code>evt.decision.1</code></a>' in markdown
     assert main(["report", RUN, "--database", str(database), "--format", "html"]) == 0
     html = capsys.readouterr().out  # type: ignore[attr-defined]
     assert 'href="#evt.proposal.1"' in html
@@ -139,7 +187,7 @@ def test_report_rejects_invalid_run_identifier(tmp_path: Path, capsys: object) -
     assert "invalid-identifier" in error
 
 
-def test_synthetic_payload_parsers_reject_type_mismatch() -> None:
+def test_metric_payload_parsers_reject_the_other_type() -> None:
     draft = metric_event_draft(
         TYPE_EVALUATION_METRIC,
         {TYPE_EVALUATION_METRIC: ("evt.evaluation.metric", "2026-08-30T12:00:00Z")},
@@ -245,7 +293,7 @@ def test_report_omits_facts_appended_after_the_frozen_head(
 
 
 def test_markdown_and_html_anchors_percent_encode_punctuation() -> None:
-    event_id = 'evt.foo) bar"baz*`#λ'
+    event_id = 'evt.foo) bar"baz*`#λ<img>'
     fragment = _fragment(event_id)
     assert ")" not in fragment
     assert " " not in fragment
@@ -254,8 +302,40 @@ def test_markdown_and_html_anchors_percent_encode_punctuation() -> None:
     assert "#" not in fragment
     assert "λ" not in fragment
     markdown = _md_link(event_id)
-    assert markdown.endswith(f"](#{fragment})")
     html = _html_link(event_id)
+    assert f'href="#{fragment}"' in markdown
     assert f'href="#{fragment}"' in html
-    assert "evt.foo)" in html
-    assert "λ" in html
+    assert "<img" not in markdown
+    assert "<img" not in html
+    parser = _AnchorParser()
+    parser.feed(markdown)
+    assert parser.hrefs == [f"#{fragment}"]
+    assert parser.codes == [event_id]
+    assert all(href.startswith("#") for href in parser.hrefs)
+
+
+class _AnchorParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+        self.codes: list[str] = []
+        self._in_code = False
+        self._chunks: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "a":
+            href = dict(attrs).get("href")
+            if type(href) is str:
+                self.hrefs.append(href)
+        if tag == "code":
+            self._in_code = True
+            self._chunks = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "code" and self._in_code:
+            self._in_code = False
+            self.codes.append("".join(self._chunks))
+
+    def handle_data(self, data: str) -> None:
+        if self._in_code:
+            self._chunks.append(data)
