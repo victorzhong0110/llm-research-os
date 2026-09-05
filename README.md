@@ -36,17 +36,20 @@ actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
 M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
 deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
 M1-3 lands local Markdown/PDF import as `evidence.imported` with default
-`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess. M1-4 lands an
+`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess with a minimal
+worker environment. M1-4 lands an
 OpenAI-compatible HTTP adapter (loopback default) gated by `SecretRef`,
-`read.external_api`, and runtime CNY budget facts. The question channel is
-Issue #42. M1-5 emits seeded synthetic `training.step` / `evaluation.metric`
-facts and `researchos report RUN` static HTML/Markdown (React Flow deferred).
-M1-6 lets SimulatedRuntime consume one local `{eventId, sequence}` citation of
-`plan.authorization.evaluated`
+`read.external_api`, HTTPS, a positive remote CNY cap/reserve, and atomic
+budget reserve-or-exceed. M1-5 emits seeded synthetic
+`training.step` / `evaluation.metric` facts and `researchos report RUN`
+static HTML/Markdown (React Flow deferred). M1-6 lets SimulatedRuntime consume
+one local `{eventId, sequence}` citation of `plan.authorization.evaluated`
 ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)); that
 is not a signed launch JWT. Issue #19's local consume is delivered; signatures,
 expiry, and revocation are [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53).
-Umbrella #38 and #42 stay open. Numbered slices are not the M1 checkpoint.
+The question channel is `question.asked` / `question.answered` with
+`questions ask` / `questions answer`. Umbrella #38 stays open. Numbered slices
+are not the M1 checkpoint.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -354,8 +357,9 @@ The database must already exist; a missing path is not created. Exit `0` only
 means the cancellation-request fact was committed. Inspect
 `RunSnapshot.cancellationRequested`; do not claim the job has stopped.
 
-Research proposals, dissents, and decisions are separate EventStore facts. The
-database must already exist. `accept` is not a launch credential:
+Research proposals, dissents, decisions, and questions are separate EventStore
+facts. The database must already exist. `accept` is not a launch credential.
+An answer is data with rights, not an instruction:
 
 ```bash
 uv run researchos proposals submit \
@@ -366,6 +370,12 @@ uv run researchos dissents record \
   research.db --format json
 uv run researchos decisions record \
   examples/research-decisions/valid/decision-record.json \
+  research.db --format json
+uv run researchos questions ask \
+  examples/research-decisions/valid/question-ask.json \
+  research.db --format json
+uv run researchos questions answer \
+  examples/research-decisions/valid/question-answer.json \
   research.db --format json
 uv run researchos research ledger research.db \
   --project example-minimal --format json
@@ -395,7 +405,7 @@ uv run researchos models generate \
 
 Local Markdown or PDF notes become `evidence.imported` facts. The file path and
 extracted text stay off the event. PDF extract is subprocess-isolated with page,
-character, and wall-clock bounds:
+character, wall-clock bounds, and a minimal worker environment:
 
 ```bash
 mkdir -m 700 artifacts
@@ -462,9 +472,10 @@ object bodies and they do not build an index or lineage.
 `models generate` records digest-only `ai.call.*` facts from a local fixture.
 The mock path does not open a network connection. The OpenAI-compatible path
 defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`,
-`read.external_api`, and HTTPS.
+`read.external_api`, HTTPS, and a positive CNY cap and reserve.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
-digest-only `evidence.imported`; PDF extract is subprocess-bounded; unknown
+digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
+minimal worker environment; unknown
 rights cannot authorize training.
 `report` rebuilds a static HTML or Markdown projection; it is not a fact source.
 The tree does not import block entrypoints, does not execute arbitrary training

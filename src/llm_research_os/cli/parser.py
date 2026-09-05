@@ -405,6 +405,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_event_format_argument(decision_record)
 
+    questions = subparsers.add_parser(
+        "questions",
+        help="record AI→researcher questions and answers as EventStore facts",
+    )
+    question_commands = questions.add_subparsers(dest="questions_command", required=True)
+    question_ask = question_commands.add_parser(
+        "ask",
+        help="append one question.asked fact",
+    )
+    question_ask.add_argument(
+        "request",
+        type=Path,
+        help="QuestionAskRequest v0alpha1 YAML or JSON file",
+    )
+    question_ask.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(question_ask)
+    question_answer = question_commands.add_parser(
+        "answer",
+        help="append one question.answered fact",
+    )
+    question_answer.add_argument(
+        "request",
+        type=Path,
+        help="QuestionAnswerRequest v0alpha1 YAML or JSON file",
+    )
+    question_answer.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(question_answer)
+
     research = subparsers.add_parser(
         "research",
         help="rebuild read-only research projections from EventStore",
