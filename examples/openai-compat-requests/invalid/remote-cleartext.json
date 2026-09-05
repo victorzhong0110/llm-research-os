@@ -19,14 +19,18 @@
   "budgetCap": "30.00",
   "reserveAmount": "1.00",
   "consumeAmount": "1.00",
-  "grantedKernelCapabilities": ["read.external_api"],
+  "grantedKernelCapabilities": [
+    "read.external_api"
+  ],
   "secretRef": {
     "apiVersion": "researchos.dev/v0alpha1",
     "kind": "SecretRef",
     "backend": "env",
     "name": "RESEARCHOS_TEST_MODEL_KEY"
   },
-  "requestedCapabilities": ["generate"],
+  "requestedCapabilities": [
+    "generate"
+  ],
   "events": {
     "ai.call.started": {
       "id": "evt.compat.cleartext.started.1",
@@ -46,6 +50,14 @@
     },
     "budget.exceeded": {
       "id": "evt.budget.cleartext.exceeded.1",
+      "time": "2026-09-04T15:10:00Z"
+    },
+    "ai.call.failed": {
+      "id": "evt.compat.cleartext.failed.1",
+      "time": "2026-09-04T15:10:01Z"
+    },
+    "budget.released": {
+      "id": "evt.budget.cleartext.released.1",
       "time": "2026-09-04T15:10:00Z"
     }
   },

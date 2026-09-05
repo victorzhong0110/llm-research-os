@@ -20,7 +20,9 @@
   "reserveAmount": "0.00",
   "consumeAmount": "0.00",
   "grantedKernelCapabilities": [],
-  "requestedCapabilities": ["generate"],
+  "requestedCapabilities": [
+    "generate"
+  ],
   "events": {
     "ai.call.started": {
       "id": "evt.compat.started.1",
@@ -40,6 +42,14 @@
     },
     "budget.exceeded": {
       "id": "evt.budget.exceeded.1",
+      "time": "2026-09-04T15:00:00Z"
+    },
+    "ai.call.failed": {
+      "id": "evt.compat.failed.1",
+      "time": "2026-09-04T15:00:01Z"
+    },
+    "budget.released": {
+      "id": "evt.budget.released.1",
       "time": "2026-09-04T15:00:00Z"
     }
   },

@@ -63,8 +63,9 @@ draft, and CAS-appends. The mock `generate()` runs **before** any append: a
 capability or fixture refusal leaves the log empty. Conflicts are not retried.
 `callId` is unique per project.
 
-`ai.call.failed` is reserved for later adapters that emit a start and then
-fail. This slice does not write it.
+The deterministic mock does not write `ai.call.failed`. The OpenAI-compatible
+HTTP adapter writes it after `ai.call.started` when transport fails, together
+with `budget.released`.
 
 ## 5. Non-goals
 

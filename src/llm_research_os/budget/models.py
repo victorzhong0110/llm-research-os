@@ -1,4 +1,4 @@
-"""Closed v0alpha1 payloads for ``budget.reserved`` / ``consumed`` / ``exceeded``."""
+"""Closed v0alpha1 payloads for ``budget.reserved`` / ``consumed`` / ``exceeded`` / ``released``."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from llm_research_os.budget.errors import BudgetPayloadError
 from llm_research_os.budget.money import MoneyAmount
 from llm_research_os.events.models import (
     ActorKind,
+    CloudEventsString,
     EventDocumentModel,
     EventIdentifier,
     ResearchEvent,
@@ -18,7 +19,10 @@ from llm_research_os.events.models import (
 TYPE_BUDGET_RESERVED = "budget.reserved"
 TYPE_BUDGET_CONSUMED = "budget.consumed"
 TYPE_BUDGET_EXCEEDED = "budget.exceeded"
-BUDGET_EVENT_TYPES = frozenset({TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED})
+TYPE_BUDGET_RELEASED = "budget.released"
+BUDGET_EVENT_TYPES = frozenset(
+    {TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED, TYPE_BUDGET_RELEASED}
+)
 
 
 class BudgetDocumentModel(EventDocumentModel):
@@ -61,10 +65,20 @@ class BudgetExceededPayload(BudgetDocumentModel):
     cap: MoneyAmount
 
 
+class BudgetReleasedPayload(BudgetDocumentModel):
+    budget_id: EventIdentifier = Field(alias="budgetId")
+    call_id: EventIdentifier = Field(alias="callId")
+    currency: Literal["CNY"] = "CNY"
+    amount: MoneyAmount
+    cap: MoneyAmount
+    reason_code: CloudEventsString = Field(alias="reasonCode")
+
+
 PAYLOAD_MODELS: dict[str, type[EventDocumentModel]] = {
     TYPE_BUDGET_RESERVED: BudgetReservedPayload,
     TYPE_BUDGET_CONSUMED: BudgetConsumedPayload,
     TYPE_BUDGET_EXCEEDED: BudgetExceededPayload,
+    TYPE_BUDGET_RELEASED: BudgetReleasedPayload,
 }
 
 if set(PAYLOAD_MODELS) != BUDGET_EVENT_TYPES:
