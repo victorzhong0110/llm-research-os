@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, ValidationError
 
-from llm_research_os.canonical import JCS_SHA256_PREFIX, content_digest
+from llm_research_os.canonical import JCS_SHA256_PREFIX, canonical_json, content_digest
 from llm_research_os.events.models import (
     CLOUD_EVENTS_INTEGER_MAX,
     RESEARCH_EVENT_SCHEMA_ID,
@@ -101,6 +101,16 @@ def synthetic_evaluation_payload(run_id: str, attempt_id: str) -> dict[str, Any]
     }
 
 
+def _require_resumable_metric(existing: StoredEvent, draft: dict[str, Any]) -> None:
+    if existing.event.type != draft["type"]:
+        raise SimulationError("simulation event id already exists", code="event-id-exists")
+    current = existing.event.model_dump(mode="json", by_alias=True, exclude_none=True)
+    for key in ("sequence", "sequencetype", "streamversion"):
+        current.pop(key, None)
+    if canonical_json(current) != canonical_json(draft):
+        raise SimulationError("simulation event id already exists", code="event-id-exists")
+
+
 def parse_training_step_payload(event: ResearchEvent) -> TrainingStepPayload:
     if event.type != TYPE_TRAINING_STEP:
         raise SimulationError("event type is not training.step", code="metric-type-mismatch")
@@ -156,8 +166,19 @@ def preflight_synthetic_metrics(
         if existing is None:
             extra += 1
             continue
-        if existing.event.type != event_type:
-            raise SimulationError("simulation event id already exists", code="event-id-exists")
+        draft = metric_event_draft(
+            event_type,
+            events,
+            source=source,
+            subject=subject,
+            stream_id=stream_id,
+            actor_id=actor_id,
+            project_id=project_id,
+            run_id=run_id,
+            revision=revision,
+            attempt_id=attempt_id,
+        )
+        _require_resumable_metric(existing, draft)
     if frozen_head + lifecycle_draft_count + extra > CLOUD_EVENTS_INTEGER_MAX:
         raise SimulationError("global event sequence is exhausted", code="sequence-exhausted")
     for event_type in wanted:
@@ -211,16 +232,11 @@ def append_synthetic_metrics(
     revision: int,
     attempt_id: str,
 ) -> list[StoredEvent]:
-    """Append missing synthetic metric facts. Existing matching ids are skipped."""
+    """Append missing synthetic metric facts. Existing facts must match the draft."""
 
     stored: list[StoredEvent] = []
     for event_type in metric_types_in_request(events):
         event_id, _time = events[event_type]
-        existing = store.get_event(event_id)
-        if existing is not None:
-            if existing.event.type != event_type:
-                raise SimulationError("simulation event id already exists", code="event-id-exists")
-            continue
         draft = metric_event_draft(
             event_type,
             events,
@@ -233,6 +249,10 @@ def append_synthetic_metrics(
             revision=revision,
             attempt_id=attempt_id,
         )
+        existing = store.get_event(event_id)
+        if existing is not None:
+            _require_resumable_metric(existing, draft)
+            continue
         head = store.freeze_high_water()
         stored.append(store.append(draft, expected_last_sequence=head))
     return stored

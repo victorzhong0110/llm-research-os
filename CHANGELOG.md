@@ -79,3 +79,6 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   prove the request was not dispatched, or when `ai.call.started` itself failed
   to commit. Consume/release must match the reservation (`callId`,
   currency, cap, amount).
+- M1-5: `researchos report` folds research, budget, and lineage from one frozen
+  prefix. Synthetic metric resume compares the canonical caller document, not
+  only id+type. Markdown/HTML fragment ids percent-encode event ids.
