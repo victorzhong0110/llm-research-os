@@ -51,8 +51,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-6: SimulatedRuntime consumes one local `{eventId, sequence}` citation of
   `plan.authorization.evaluated` before lifecycle writes
   ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)).
-  Issue #19 closed. Signatures, expiry, revocation, #42, and `v0.1.0-m1` remain
-  not-delivered.
+  Issue #19 local consume is delivered; signatures, expiry, and revocation are
+  Issue #53. #42 and `v0.1.0-m1` remain not-delivered. Numbered slices are not
+  the M1 checkpoint (#38).
 
 ### Changed
 
