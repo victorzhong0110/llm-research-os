@@ -8,12 +8,15 @@ import pytest
 
 from llm_research_os.cli import main
 from llm_research_os.events.models import validate_event_document
+from llm_research_os.research.control import ResearchControl
 from llm_research_os.research.errors import ResearchLedgerError
 from llm_research_os.research.ledger import ResearchLedgerProjection, build_research_ledger
-from llm_research_os.research.models import ProposalRevisionState
+from llm_research_os.research.models import MAX_DECISION_LIST, ProposalRevisionState
 from llm_research_os.research.requests import (
     load_decision_record_request,
+    load_dissent_record_request,
     load_proposal_submit_request,
+    validate_decision_record_request,
 )
 from llm_research_os.spec.io import load_document
 from llm_research_os.storage import EventStore
@@ -161,6 +164,36 @@ def test_ledger_error_on_duplicate_proposal() -> None:
     fold = projection.apply(None, event)
     with pytest.raises(ResearchLedgerError, match="proposalId is not unique"):
         projection.apply(fold, _preflight(proposal.event_draft(), sequence=2, event_id="evt.dup"))
+
+
+def _override_draft(index: int) -> dict[str, Any]:
+    document = load_document(DECISION)
+    document["decisionId"] = f"decision.override.{index}"
+    document["subject"] = f"decision.override.{index}"
+    document["event"] = {
+        "id": f"evt.decision.override.{index}",
+        "time": "2026-09-04T12:03:00Z",
+    }
+    document["targetKind"] = "dissent"
+    document["targetId"] = "dissent.eval-leakage"
+    document["outcome"] = "continue"
+    document["overriddenDissentIds"] = ["dissent.eval-leakage"]
+    return validate_decision_record_request(document).event_draft()
+
+
+def test_thirty_third_override_is_rejected_before_commit(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = ResearchControl(store, project_id=PROJECT)
+        control.append(load_proposal_submit_request(PROPOSAL).event_draft())
+        control.append(load_dissent_record_request(DISSENT).event_draft())
+        for index in range(MAX_DECISION_LIST):
+            control.append(_override_draft(index))
+        head = store.last_sequence()
+        with pytest.raises(ResearchLedgerError, match="overriddenByDecisionIds exceeds"):
+            control.append(_override_draft(MAX_DECISION_LIST))
+        assert store.last_sequence() == head
+        assert store.get_event(f"evt.decision.override.{MAX_DECISION_LIST}") is None
 
 
 def _preflight(draft: dict[str, Any], *, sequence: int, event_id: str | None = None):

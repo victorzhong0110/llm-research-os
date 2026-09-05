@@ -10,6 +10,7 @@ from llm_research_os.events.models import EventIdentifier, ResearchEvent
 from llm_research_os.research.errors import ResearchLedgerError, ResearchPayloadError
 from llm_research_os.research.models import (
     DECISION_EVENT_TYPES,
+    MAX_DECISION_LIST,
     RESEARCH_LEDGER_API_VERSION,
     TYPE_DISSENT_RECORDED,
     TYPE_PROPOSAL_SUBMITTED,
@@ -370,7 +371,14 @@ def _mark_overridden_dissents(
             updated.append(dissent)
             continue
         linked = (*dissent.overridden_by_decision_ids, payload.decision_id)
-        updated.append(dissent.model_copy(update={"overridden_by_decision_ids": linked}))
+        if len(linked) > MAX_DECISION_LIST:
+            raise ResearchLedgerError(
+                "overriddenByDecisionIds exceeds the ledger list cap",
+                code="override-list-exhausted",
+            )
+        dumped = dissent.model_dump(mode="json", by_alias=True)
+        dumped["overriddenByDecisionIds"] = list(linked)
+        updated.append(DissentLedgerEntry.model_validate(dumped))
     return tuple(updated)
 
 
