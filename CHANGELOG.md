@@ -37,3 +37,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 - `src/` fail-closed checks use `raise`, not `assert` (they must survive
   `python -O`).
+- M1-0: a missing `integrity_checkpoint` row is an invalid cache (full verify,
+  recreate when writable). `RunControl` always folds the frozen prefix from
+  sequence 0; the snapshot cache is not fold authority. A cache-write failure
+  after a committed lifecycle fact does not fail the append.

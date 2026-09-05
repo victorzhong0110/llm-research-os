@@ -55,26 +55,28 @@ verified high-water mark and folds this Run:
    full `verify_integrity` scan is skipped. If they disagree, the store falls
    back to `PRAGMA integrity_check` plus a complete event re-parse and rewrites
    the checkpoint (ADR-0041, TM-011).
-2. When a cached `run_projections` row for this Run is canonical, digest-valid,
-   and not ahead of that high-water mark, folding starts after
-   `last_sequence`. Otherwise the Run is folded from sequence 0. The iterator
+2. Fold this Run from sequence 0 through that high-water mark. A cached
+   `run_projections` row is **not** a fold start: canonical JSON plus digest
+   only prove the row agrees with itself. Wrong `projectId`/`runId`, an
+   impossible `last_sequence`, or a parse failure drops the row. The iterator
    pages `read_events` up to the frozen mark; each page still verifies every
    row through the decoder. `page_size` bounds **memory**.
 3. `RunStateProjection.apply` folds only events for the configured
    `(projectId, runId)`. A successful rebuild or append rewrites the cached
-   snapshot. The row is a consumer, not a fact.
+   snapshot when the store is writable. A cache-write failure does not convert
+   a committed fact into an append failure. The row is a consumer, not a fact.
 
 Therefore:
 
-- One `append` against a matching checkpoint and Run cache costs Θ(Δ)
-  verification work in the unread suffix.
+- One `append` against a matching integrity checkpoint skips the full
+  `verify_integrity` scan, then folds the frozen prefix from sequence 0.
 - Filling a store from empty to N events exclusively through `RunControl.append`
-  is Θ(N) verification work while the checkpoint stays valid.
-- A CAS conflict retry rebuilds against the new head; a mismatched checkpoint
-  pays a full scan once, then continues.
-- Cost still tracks the **global** sequence for cache misses. Events for other
-  projects, Runs, or authorization audits still sit on a scanned prefix when
-  the Run cache is cold.
+  is Θ(N) checkpoint work while the checkpoint stays valid, plus Θ(N²) fold
+  work over the growing prefix.
+- A CAS conflict retry rebuilds against the new head; a mismatched or missing
+  checkpoint pays a full scan once, then continues.
+- Cost still tracks the **global** sequence. Events for other projects, Runs,
+  or authorization audits still sit on the scanned prefix.
 
 Schema v1 (M0) paid Θ(N) per append and Θ(N²) to fill N events. That model is
 historical; do not use it to explain current append latency.
@@ -147,8 +149,10 @@ their EventStore meanings and are not translated into success.
 
 - EventStore is the only fact source.
 - `RunSnapshot` is a rebuildable projection. RunControl may cache it in
-  `run_projections` after canonical JSON and digest checks; a mismatch is
-  discarded and folded from events.
+  `run_projections` after a full prefix fold; the cache is never fold
+  authority. Identity, sequence, canonical JSON, and digest mismatches drop
+  the row. A cache-write failure after a committed fact does not fail the
+  append.
 - JSON Schema for `RunSnapshot` is available as
   `researchos schema --contract run-state`.
 
