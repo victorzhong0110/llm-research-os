@@ -20,5 +20,7 @@ Project code and original documentation are released under Apache License 2.0 un
 
 ## Validation
 
-The repository contains the canonical Apache-2.0 license text and declares the SPDX identifier in `pyproject.toml`.
+The repository contains the unmodified Apache-2.0 license text, including the
+appendix placeholders. [NOTICE](../../NOTICE) names the copyright owner
+`victorzhong0110`. `pyproject.toml` declares SPDX `Apache-2.0`.
 

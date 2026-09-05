@@ -76,7 +76,8 @@ forward-compat job. Coverage below 85% of `llm_research_os` fails the build.
 
 ## License
 
-Code and original documentation are released under [Apache-2.0](LICENSE).
+Copyright 2026 victorzhong0110. Code and original documentation are released
+under [Apache-2.0](LICENSE). Attribution is in [NOTICE](NOTICE).
 Submitting a contribution is agreement to submit under section 5 of that license.
 Datasets, papers, model weights, and third-party notes do not inherit that
 license; origin and rights are recorded separately (charter §10, ADR-0019).
