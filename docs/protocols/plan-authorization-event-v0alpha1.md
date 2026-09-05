@@ -12,7 +12,8 @@ needed to persist one `plan.authorization.evaluated` fact. The evaluator still r
 decision from the ResearchSpec, sealed registry and separate `PlanAuthorizationRequest`.
 
 The resulting event is durable audit data. It is not an authenticated approval, signature,
-revocable receipt, lease or runtime launch token.
+revocable receipt, lease or runtime launch token. SimulatedRuntime MAY cite this local
+row by `{eventId, sequence}` (ADR-0042). That consume does not upgrade these literals.
 
 ## Preconditions
 
@@ -77,6 +78,7 @@ The store assigns `sequence`, `sequencetype` and `streamversion`. The command fi
 - project/revision scope with null `runId`, `attemptId` and `blockId`;
 - a normalized payload containing workflow ID, four-digest binding, status, the authorization
   boolean and every capability, permission and requirement disposition;
+- stored actor `kind=human` (the request actor still supplies only `id`);
 - `approvalAuthentication=not-authenticated`, `authority=audit-only` and
   `execution=not-executed`.
 
@@ -109,9 +111,10 @@ ResearchEvent Schema. It can be retrieved independently with `events get` or `ev
 ## Explicit non-goals
 
 This protocol does not authenticate an actor, sign, expire or revoke a decision, create a missing
-database, persist a Run projection, link a Run to the event, import a block entrypoint, execute a
+database, persist a Run projection, import a block entrypoint, execute a
 runtime, send a signal, access a network, upload an artifact, retry a conflict or reach a scientific
 conclusion. Locating recorded evaluations by plan identity is a separate read-only contract,
-[PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md). A future executable
-runtime must add and review an authenticated authorization consumption rule; mere event existence
-or a non-empty lineage candidate set is insufficient.
+[PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md), and remains
+`not-consumed`. SimulatedRuntime may cite `{eventId, sequence}` of one row on *this* EventStore
+([ADR-0042](../adr/0042-m1-local-authorization-consume-and-closure.md)); mere event existence
+or a non-empty lineage candidate set is still insufficient, and the event is still not a launch JWT.

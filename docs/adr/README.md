@@ -29,23 +29,24 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0023](0023-inert-manifests-and-pure-dry-run.md) | Inert manifests and pure deterministic dry-run | Accepted | Implemented |
 | [0024](0024-run-attempt-state-machine.md) | Pure Run and Attempt state machine | Accepted | Implemented |
 | [0025](0025-atomic-run-control-append-boundary.md) | Atomic RunControl append boundary | Accepted | Implemented; write-cost model relaxed for schema v2 by ADR-0041 |
-| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented; M1-0 consumes cancellation requests and emits `attempt.cancelled` / `run.cancelled`; M1-5 optionally emits seeded synthetic `training.step` / `evaluation.metric` after `attempt.started` |
+| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented; M1-0 consumes cancellation requests and emits `attempt.cancelled` / `run.cancelled`; M1-5 optionally emits seeded synthetic `training.step` / `evaluation.metric` after `attempt.started`; M1-6 consumes a local `{eventId, sequence}` authorization citation before lifecycle writes (ADR-0042) |
 | [0027](0027-explicit-simulated-run-cli.md) | Explicit Simulated Run CLI | Accepted | Implemented |
 | [0028](0028-explicit-run-cancellation-request.md) | Explicit Run/Attempt cancellation request CLI | Accepted | Implemented |
 | [0029](0029-explicit-local-artifact-object-cli.md) | Explicit local artifact object CLI | Accepted | Implemented |
 | [0030](0030-deterministic-plan-authorization-gate.md) | Deterministic plan authorization gate | Accepted | Implemented |
 | [0031](0031-explicit-plan-authorization-cli.md) | Explicit non-credential plan authorization CLI | Accepted | Implemented |
-| [0032](0032-audit-only-plan-authorization-events.md) | Audit-only plan authorization evaluation events | Accepted | Implemented |
+| [0032](0032-audit-only-plan-authorization-events.md) | Audit-only plan authorization evaluation events | Accepted | Implemented; M1-6 SimulatedRuntime cites `{eventId, sequence}` on this local store without treating the event as a launch JWT (ADR-0042) |
 | [0033](0033-normative-jcs-semantic-digests.md) | Normative RFC 8785 JCS semantic digests | Accepted | Implemented |
 | [0034](0034-m0-scope-clarification.md) | M0 native-process milestone is NativeProcessPreflight, not NativeProcessRuntime | Accepted | Written |
-| [0035](0035-read-only-plan-authorization-lineage.md) | Read-only plan authorization lineage query | Accepted | Implemented |
-| [0036](0036-in-process-run-decision-digest.md) | In-process plan-authorization decisionDigest on RunSnapshot | Accepted | Implemented |
+| [0035](0035-read-only-plan-authorization-lineage.md) | Read-only plan authorization lineage query | Accepted | Implemented; lineage remains `not-consumed`. The Run citation is SimulatedRuntime consume (ADR-0042), not this query |
+| [0036](0036-in-process-run-decision-digest.md) | In-process plan-authorization decisionDigest on RunSnapshot | Accepted | Implemented; `decisionDigest` remains in-process identity. M1-6 additionally cites `{eventId, sequence}` (ADR-0042); the digest alone is no longer sufficient for SimulatedRuntime |
 | [0037](0037-m0-kernel-proof-closure.md) | M0 kernel-proof closure | Accepted | Written |
 | [0038](0038-charter-errata-after-m0.md) | Charter v0.1 errata after M0; M0 debts, M1 order, checkpoint and budget; errata method and ADR granularity | Accepted | Written |
 | [0039](0039-human-help-period-purpose.md) | The OS serves the period in which human help remains necessary; researcher modeled as teacher; sanctioned AI→researcher question channel; human-attention metric; gated persistence into parameters | Accepted | Written; M1-1 implements proposal/dissent/decision + ResearchLedger; question channel is Issue #42 |
 | [0040](0040-english-primary-and-engineering-standards.md) | English is the working language; comments record invariants, not a ratio; coverage floor 85%; typed package; commit-msg hook; Dependabot | Accepted | Written; operational checklist in `docs/engineering-standards.md` |
 | [0041](0041-verified-high-water-cache-and-query-tables.md) | Verified high-water cache and rebuildable SQLite query tables | Accepted | Implemented; schema v2 (`integrity_checkpoint`, `run_projections`, `spec_revisions`, `artifacts` / `artifact_links`) |
+| [0042](0042-m1-local-authorization-consume-and-closure.md) | M1 local authorization consume and numbered-slice status | Accepted | Implemented; SimulatedRuntime consumes `{eventId, sequence}` on this EventStore; #19 local consume delivered; signatures/expiry/revocation are #53; #38 / #42 remain open |
 
-M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0.
+M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel remains Issue #42.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.

@@ -48,6 +48,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-5: seeded synthetic `training.step` / `evaluation.metric` from
   SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
   research, training, cost, and lineage sections linked to `eventId`.
+- M1-6: SimulatedRuntime consumes one local `{eventId, sequence}` citation of
+  `plan.authorization.evaluated` before lifecycle writes
+  ([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)).
+  Issue #19 local consume is delivered; signatures, expiry, and revocation are
+  Issue #53. #42 and `v0.1.0-m1` remain not-delivered. Numbered slices are not
+  the M1 checkpoint (#38).
 
 ### Changed
 
@@ -72,3 +78,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-5: `researchos report` folds research, budget, and lineage from one frozen
   prefix. Synthetic metric resume compares the canonical caller document, not
   only id+type. Markdown/HTML fragment ids percent-encode event ids.
+- M1-6: `SimulationRequest` requires `authorization: {eventId, sequence}`.
+  Committed M0 request files without that field no longer validate.
+  SimulatedRuntime resume of a Run that omitted the citation fails closed
+  (`authorization-citation-missing`).

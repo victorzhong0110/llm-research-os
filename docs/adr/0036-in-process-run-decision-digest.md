@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Implemented for review: 2026-09-03
+- Record status: `decisionDigest` remains in-process identity. M1-6 (ADR-0042) additionally cites `{eventId, sequence}`; the digest alone is no longer sufficient for SimulatedRuntime.
 
 ## Context
 

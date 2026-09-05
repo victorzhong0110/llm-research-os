@@ -72,10 +72,15 @@ reservations remain, Cost states the reserved amount and that actual cost is
 unknown.
 
 The report freezes EventStore high-water `H` once and folds every section from
-that prefix. Facts appended after `H` are omitted.
+that prefix, including consumed `plan.authorization.evaluated`. Facts appended
+after `H` are omitted. Authorization citations are resolved from the frozen
+prefix by event id; the report MUST NOT re-query the live store.
 
 A resumed synthetic metric with the same event id MUST match the canonical
 caller document (type, Run, payload). Id+type agreement is not enough.
+Lineage also cites the consumed authorization row when
+`RunSnapshot.consumedAuthorization` is present; that event has a null
+`runId` so it is not in the Run-scoped lineage list.
 
 | Exit code | Meaning |
 |---|---|
