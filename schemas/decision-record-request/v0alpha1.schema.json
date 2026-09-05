@@ -41,7 +41,6 @@
       "enum": [
         "proposal",
         "run",
-        "question",
         "dissent"
       ],
       "title": "DecisionTargetKind",

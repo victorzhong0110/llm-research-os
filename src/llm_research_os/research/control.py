@@ -116,6 +116,13 @@ class ResearchControl:
                 "research preflight produced no ledger fold",
                 code="empty-preflight",
             )
+        try:
+            self._projection.snapshot(preflight_fold, frozen_head + 1)
+        except ValidationError:
+            raise ResearchControlError(
+                "prospective ledger failed validation",
+                code="invalid-prospective-ledger",
+            ) from None
         stored = self._store.append(draft, expected_last_sequence=frozen_head)
         committed_fold = self._projection.apply(head.fold, stored.event)
         snapshot = self._projection.snapshot(committed_fold, stored.sequence)

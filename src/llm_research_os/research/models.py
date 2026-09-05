@@ -129,13 +129,11 @@ class ObjectionKind(StrEnum):
 class DissentTargetKind(StrEnum):
     PROPOSAL = "proposal"
     DECISION = "decision"
-    CONCLUSION = "conclusion"
 
 
 class DecisionTargetKind(StrEnum):
     PROPOSAL = "proposal"
     RUN = "run"
-    QUESTION = "question"
     DISSENT = "dissent"
 
 
