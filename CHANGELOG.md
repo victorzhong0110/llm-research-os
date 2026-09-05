@@ -67,3 +67,6 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   consumes only when cost is known; remote leaves the reservation open.
   Transport failure after start writes `budget.released` and `ai.call.failed`.
   Consume/release must match the reservation (`callId`, currency, cap, amount).
+- M1-5: `researchos report` folds research, budget, and lineage from one frozen
+  prefix. Synthetic metric resume compares the canonical caller document, not
+  only id+type. Markdown/HTML fragment ids percent-encode event ids.
