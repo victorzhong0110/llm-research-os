@@ -36,7 +36,8 @@ actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
 M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
 deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
 M1-3 lands local Markdown/PDF import as `evidence.imported` with default
-`LicenseRef-Unknown`. The question channel is Issue #42.
+`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess. The question
+channel is Issue #42.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -366,7 +367,8 @@ uv run researchos models generate \
 ```
 
 Local Markdown or PDF notes become `evidence.imported` facts. The file path and
-extracted text stay off the event:
+extracted text stay off the event. PDF extract is subprocess-isolated with page,
+character, and wall-clock bounds:
 
 ```bash
 mkdir -m 700 artifacts
@@ -425,7 +427,8 @@ object bodies and they do not build an index or lineage.
 through the deterministic mock; it does not open a network connection or
 resolve a live API secret.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
-digest-only `evidence.imported`; unknown rights cannot authorize training.
+digest-only `evidence.imported`; PDF extract is subprocess-bounded; unknown
+rights cannot authorize training.
 The tree does not import block entrypoints, does not execute arbitrary training
 code, expressions, plugins, or remote Workers, does not write a SQLite artifact
 index or durable projections, and does not provide object export/delete, a real
