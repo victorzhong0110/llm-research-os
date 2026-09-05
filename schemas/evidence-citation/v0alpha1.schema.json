@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "EvidenceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "maximum": 400000,
+          "minimum": 1,
+          "title": "End",
+          "type": "integer"
+        },
+        "start": {
+          "maximum": 400000,
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "EvidenceSpan",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/evidence-citation/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "evidenceId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Evidenceid",
+      "type": "string"
+    },
+    "kind": {
+      "const": "EvidenceCitation",
+      "title": "Kind",
+      "type": "string"
+    },
+    "snapshotDigest": {
+      "maxLength": 71,
+      "minLength": 71,
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Snapshotdigest",
+      "type": "string"
+    },
+    "span": {
+      "$ref": "#/$defs/EvidenceSpan"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "evidenceId",
+    "snapshotDigest",
+    "span"
+  ],
+  "title": "EvidenceCitation",
+  "type": "object"
+}

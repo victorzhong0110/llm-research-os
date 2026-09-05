@@ -307,6 +307,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_event_format_argument(models_generate)
 
+    evidence = subparsers.add_parser(
+        "evidence",
+        help="import local Markdown or PDF notes as EventStore facts",
+    )
+    evidence_commands = evidence.add_subparsers(dest="evidence_command", required=True)
+    evidence_import = evidence_commands.add_parser(
+        "import",
+        help="store one local file in CAS and append evidence.imported",
+    )
+    evidence_import.add_argument(
+        "request",
+        type=Path,
+        help="EvidenceImportRequest v0alpha1 YAML or JSON file",
+    )
+    evidence_import.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    evidence_import.add_argument(
+        "--source",
+        required=True,
+        type=Path,
+        metavar="PATH",
+        help="regular local Markdown or PDF file; the path is not stored on the event",
+    )
+    evidence_import.add_argument(
+        "--artifacts",
+        required=True,
+        type=Path,
+        metavar="ROOT",
+        help="existing local artifact root for the snapshot and extracted text",
+    )
+    add_event_format_argument(evidence_import)
+
     proposals = subparsers.add_parser(
         "proposals",
         help="record structured research proposals as EventStore facts",
