@@ -24,6 +24,7 @@ from llm_research_os.projections.replay import replay_events
 from llm_research_os.runs.errors import RunControlError
 from llm_research_os.runs.models import LIFECYCLE_TYPES, RunSnapshot, run_snapshot_document
 from llm_research_os.runs.reducer import RunStateProjection
+from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import RunProjectionRecord, StoredEvent
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 
@@ -52,8 +53,11 @@ class RunControl:
     ``last_sequence`` is the global EventStore head used as the CAS token. It is
     not a per-Run event count and is not ``streamversion``. Conflicts are not
     retried; the caller must invoke ``append`` again so replay and preflight run
-    against the new head. Cached Run rows are discarded when they fail
-    canonical JSON, digest, or snapshot validation.
+    against the new head. Cached Run rows are a performance hint: rebuild
+    always folds the frozen prefix from sequence 0. A row with the wrong
+    aggregate identity, an impossible sequence, or a failed canonical/digest
+    check is dropped. A cache-write failure after a committed fact does not
+    fail the append.
     """
 
     def __init__(
@@ -74,10 +78,11 @@ class RunControl:
         """Replay the frozen global log and fold only this Run's events."""
 
         high_water = self._store.freeze_high_water()
-        snapshot, after_sequence = self._cached_snapshot(high_water)
+        self._discard_untrusted_cache(high_water)
+        snapshot = None
         for stored in replay_events(
             self._store,
-            after_sequence=after_sequence,
+            after_sequence=0,
             page_size=self._page_size,
             freeze_high_water=False,
             until_sequence=high_water,
@@ -125,42 +130,48 @@ class RunControl:
         self._persist_projection(stored.sequence, committed_snapshot)
         return RunControlResult(stored=stored, snapshot=committed_snapshot)
 
-    def _cached_snapshot(self, high_water: int) -> tuple[RunSnapshot | None, int]:
-        if high_water == 0:
-            return None, 0
+    def _discard_untrusted_cache(self, high_water: int) -> None:
         cached = self._store.get_run_projection(self._project_id, self._run_id)
-        if cached is None or cached.last_sequence > high_water or cached.last_sequence < 1:
-            return None, 0
-        try:
-            snapshot = _require_cached_snapshot(cached)
-        except (ValueError, ValidationError):
-            return None, 0
-        return snapshot, cached.last_sequence
+        if cached is None:
+            return
+        if not _cache_row_is_plausible(cached, self._project_id, self._run_id, high_water):
+            self._drop_projection_cache()
 
     def _persist_projection(self, last_sequence: int, snapshot: RunSnapshot | None) -> None:
         if not self._store.writable:
             return
-        if last_sequence == 0:
-            self._store.delete_run_projection(self._project_id, self._run_id)
+        try:
+            if last_sequence == 0:
+                self._store.delete_run_projection(self._project_id, self._run_id)
+                return
+            if snapshot is None:
+                record = RunProjectionRecord(
+                    project_id=self._project_id,
+                    run_id=self._run_id,
+                    last_sequence=last_sequence,
+                    snapshot_json=None,
+                    snapshot_digest=None,
+                )
+            else:
+                payload = run_snapshot_document(snapshot)
+                record = RunProjectionRecord(
+                    project_id=self._project_id,
+                    run_id=self._run_id,
+                    last_sequence=last_sequence,
+                    snapshot_json=legacy_canonical_json(payload),
+                    snapshot_digest=legacy_content_digest(payload),
+                )
+            self._store.upsert_run_projection(record)
+        except EventStoreError:
+            self._drop_projection_cache()
+
+    def _drop_projection_cache(self) -> None:
+        if not self._store.writable:
             return
-        if snapshot is None:
-            record = RunProjectionRecord(
-                project_id=self._project_id,
-                run_id=self._run_id,
-                last_sequence=last_sequence,
-                snapshot_json=None,
-                snapshot_digest=None,
-            )
-        else:
-            payload = run_snapshot_document(snapshot)
-            record = RunProjectionRecord(
-                project_id=self._project_id,
-                run_id=self._run_id,
-                last_sequence=last_sequence,
-                snapshot_json=legacy_canonical_json(payload),
-                snapshot_digest=legacy_content_digest(payload),
-            )
-        self._store.upsert_run_projection(record)
+        try:
+            self._store.delete_run_projection(self._project_id, self._run_id)
+        except EventStoreError:
+            return
 
 
 def _require_page_size(page_size: int) -> int:
@@ -186,6 +197,29 @@ def _validate_preflight_event(document: dict[str, Any]) -> ResearchEvent:
     else:
         return validated
     raise payload_error
+
+
+def _cache_row_is_plausible(
+    cached: RunProjectionRecord,
+    project_id: str,
+    run_id: str,
+    high_water: int,
+) -> bool:
+    """Return whether a cache row may remain; never used as fold authority."""
+
+    if cached.project_id != project_id or cached.run_id != run_id:
+        return False
+    if cached.last_sequence > high_water or cached.last_sequence < 1:
+        return False
+    try:
+        snapshot = _require_cached_snapshot(cached)
+    except (ValueError, ValidationError, json.JSONDecodeError):
+        return False
+    if snapshot is None:
+        return True
+    if snapshot.project_id != project_id or snapshot.run_id != run_id:
+        return False
+    return snapshot.last_sequence <= cached.last_sequence and snapshot.last_sequence <= high_water
 
 
 def _require_cached_snapshot(cached: RunProjectionRecord) -> RunSnapshot | None:

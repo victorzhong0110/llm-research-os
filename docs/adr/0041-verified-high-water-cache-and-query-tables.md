@@ -33,11 +33,16 @@ Add SQLite schema v2 as a versioned migration on top of `m0-append-only-events`:
    write transaction as the new event. The checkpoint is never authority.
 2. `run_projections` caches one rebuildable `RunSnapshot` (or a null snapshot)
    per `(project_id, run_id)` together with the global sequence it was folded
-   through. `RunControl.rebuild` loads that row only after canonical JSON,
-   digest, and `RunSnapshot` validation succeed and `last_sequence` is not
-   ahead of the frozen head. A corrupt, stale, or future row is discarded and
-   the Run is folded from sequence 0. Successful rebuilds and appends rewrite
-   the row. EventStore does not import the reducer.
+   through. The row is a **performance hint and query-table consumer**, not a
+   verified fold start. A digest of the cached JSON only proves the row agrees
+   with itself; it does not prove derivation from the cited event prefix.
+   `RunControl.rebuild` always folds the frozen prefix from sequence 0.
+   A row whose `projectId`/`runId` disagree with the lookup key, whose
+   `last_sequence` is impossible relative to the frozen head, or whose
+   canonical JSON / digest / `RunSnapshot` parse fails, is dropped. EventStore
+   does not import the reducer. A cache-write failure after a committed
+   lifecycle fact does not fail the append; the fact stands and the cache is
+   omitted.
 3. `spec_revisions`, `artifacts`, and `artifact_links` are rebuildable indexes
    of digest references observed in events. They are replaced by
    `rebuild_query_tables()` from a frozen verified prefix. `artifacts put`
@@ -54,13 +59,17 @@ not make SimulatedRuntime mint `id` / `time` / `streamid`.
 
 ## Consequences
 
-- One `RunControl.append` against a trusted matching checkpoint is Θ(Δ) in the
-  unread suffix plus the usual CAS, not Θ(N) in the global log. Filling N
-  events through RunControl is Θ(N) verification work when the checkpoint and
-  Run cache stay valid.
+- One `RunControl.append` against a trusted matching **integrity checkpoint**
+  skips the full `verify_integrity` scan (still Θ(prefix) to fold this Run
+  from sequence 0). The Run snapshot cache is not a skip token for unread
+  events: a self-consistent fabricated snapshot for the same Run at a valid
+  high-water must not become preflight authority.
+- Filling N events through RunControl is Θ(N) checkpoint work when the
+  checkpoint stays valid, plus Θ(N²) fold work over the growing prefix.
 - A host that tampers earlier events while leaving the last digest intact is
   still outside the threat model (ADR-0015: no malicious-host guarantee).
-  Tampered, truncated, and stale checkpoints have tests and must fall back.
+  Tampered, truncated, stale, and **missing** checkpoints have tests and must
+  fall back to a full scan. A missing checkpoint row is not a schema failure.
 - Query tables can be deleted and rebuilt from `events`. Treating them as facts
   remains a TM-011 violation.
 - ADR-0025's M0 write-cost paragraph remains historically true for schema v1
@@ -69,10 +78,12 @@ not make SimulatedRuntime mint `id` / `time` / `streamid`.
 ## Validation
 
 Tests cover v1→v2 upgrade, read-only refusal of v1, matching-checkpoint skip of
-the full scan, stale/tampered/truncated checkpoint fallback, query-table
-rebuild after deleting index rows, RunControl discard of a tampered snapshot
-row, and equality between a rebuilt Run projection and a reducer fold of the
-same prefix.
+the full scan, stale/tampered/truncated/missing checkpoint fallback (writable
+recreate, read-only verify without recreate), query-table rebuild after deleting
+index rows, RunControl discard of a tampered or foreign-Run snapshot row,
+rejection of a fabricated same-Run snapshot as fold authority, cache-write
+failure after a committed append, and equality between a rebuilt Run projection
+and a reducer fold of the same prefix.
 
 ## References
 
