@@ -6,8 +6,8 @@ from pydantic import ValidationError
 class ResearchDecisionError(ValueError):
     """Fail-closed error from proposal, dissent, decision, or ledger code.
 
-    Messages MUST NOT include rationale, objection statements, predictions, or
-    other payload text (TM-022).
+    Messages MUST NOT include rationale, objection statements, predictions,
+    question text, answers, or other payload text (TM-022).
     """
 
     def __init__(self, message: str, code: str = "research-decision") -> None:
@@ -28,7 +28,7 @@ class ResearchControlError(ResearchDecisionError):
 
 
 class ResearchRequestError(ValueError):
-    """Invalid external proposal, dissent, or decision request document."""
+    """Invalid external proposal, dissent, decision, or question request document."""
 
     def __init__(self, error: ValidationError) -> None:
         super().__init__("research request failed validation")

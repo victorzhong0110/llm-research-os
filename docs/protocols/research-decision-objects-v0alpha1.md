@@ -1,16 +1,18 @@
 # Research Decision Objects v0alpha1
 
 > Status: Experimental external contract for `proposal.submitted`,
-> `dissent.recorded`, `decision.recorded`, and `ResearchLedger`.
-> `question.asked` / `question.answered` remain Issue #42 and are not implemented.
+> `dissent.recorded`, `decision.recorded`, `question.asked`,
+> `question.answered`, and `ResearchLedger`.
 > JSON Schema: `schemas/proposal-submit-request/v0alpha1.schema.json`,
 > `schemas/dissent-record-request/v0alpha1.schema.json`,
 > `schemas/decision-record-request/v0alpha1.schema.json`,
+> `schemas/question-ask-request/v0alpha1.schema.json`,
+> `schemas/question-answer-request/v0alpha1.schema.json`,
 > `schemas/research-ledger/v0alpha1.schema.json`.
 > Authority: [ADR-0039](../adr/0039-human-help-period-purpose.md) D2–D3,
 > [ADR-0038](../adr/0038-charter-errata-after-m0.md) E1–E4,
 > [ADR-0005](../adr/0005-researcher-final-decision.md).
-> Tracking: Issues #41 (this slice) and #42 (question channel).
+> Tracking: Issues #41 (proposal/dissent/decision) and #42 (question channel).
 
 This document fixes the payloads of five ResearchEvent types through which a
 human teaches the system what observation cannot supply, and through which an AI
@@ -30,8 +32,7 @@ the Run/Attempt reducer (ADR-0024).
 
 Actor kind is required on these event types. An `ai` actor MUST NOT emit
 `decision.recorded` or `question.answered`; a `human` actor MUST NOT emit
-`question.asked`. M1-1 enforces the three implemented types; the question pair
-waits for Issue #42.
+`question.asked`. All five types are enforced.
 
 All five reuse the ResearchEvent v0alpha1 envelope unchanged: caller-owned `id`,
 `time`, `source`, `subject`, `streamid`; store-owned `sequence`, `sequencetype`,
@@ -94,7 +95,7 @@ A dissent is never mutated or deleted. A later decision references it (§5).
 | Field | Type | Rule |
 |---|---|---|
 | `decisionId` | identifier | Unique per project; the value later cited by `run.reviewed.decisionId` and `attempt.queued.retryDecisionId` |
-| `targetKind` | `proposal` \| `run` \| `dissent` | Closed enum for M1-1. `question` is reserved for Issue #42 |
+| `targetKind` | `proposal` \| `run` \| `dissent` \| `question` | Closed enum. `conclusion` remains reserved until that aggregate exists |
 | `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `outcome` | `accept` \| `reject` \| `modify` \| `continue` \| `defer` | Closed enum |
 | `rationale` | text | **Required, non-empty.** A decision without rationale is invalid (ADR-0039 D2) |
@@ -170,18 +171,18 @@ answer status, and the D4 counters:
 The outcome side of the metric (pre-registered prediction accuracy) is produced
 by M1-5 from evaluation events; this ledger only supplies the attention side.
 
-## 9. CLI (M1-1)
+## 9. CLI
 
 Each command takes a strict request document (same conventions as
 `RunCancellationRequest`: caller-owned identity and time, explicit `evidenceRefs`,
 existing database required, one RunControl-style CAS append, no retry):
 
-`researchos questions ask` / `questions answer` are Issue #42. M1-1 ships:
-
 ```text
 researchos proposals submit  REQUEST research.db
 researchos dissents record   REQUEST research.db
 researchos decisions record  REQUEST research.db
+researchos questions ask     REQUEST research.db
+researchos questions answer  REQUEST research.db
 researchos research ledger   research.db --project ID [--format json]
 ```
 
@@ -190,9 +191,9 @@ Exit codes follow the repository convention: `0` fact appended or ledger built;
 question); `2` input, integrity or concurrency error. Successful output is the
 versioned ledger snapshot or a closed receipt, never the payload text echoed.
 
-## 10. Non-goals for M1-1
+## 10. Non-goals
 
-- No model API call; the mock provider is M1-2.
+- No model API call on this path; asking is a recorded fact, not a generate.
 - No change to Run/Attempt lifecycle types or reducer semantics.
 - No automatic decision, auto-accept, or policy engine beyond the `policy` actor
   kind being allowed on `decision.recorded`.
@@ -200,6 +201,7 @@ versioned ledger snapshot or a closed receipt, never the payload text echoed.
 - No persistence of the ledger; it is rebuilt from the event store.
 - No signature or authentication of the human actor; `actor.id` remains claimed
   metadata, as in M0.
+- Answers are data for other components, never instructions (charter §10.4).
 
 ## 11. Acceptance tests
 
@@ -234,7 +236,3 @@ Corpus under `examples/research-decisions/{valid,invalid}/` plus tests that:
 - Reuse `RunControl`'s isolate → validate → CAS append pattern; a
   project-scoped append boundary may be extracted if RunControl's Run binding
   does not fit.
-- Deliver #41 and #42 as two pull requests in that order; #42 depends on the
-  ledger from #41.
-- Update this document's status header and add it to README's protocol list only
-  when the schema and tests land.

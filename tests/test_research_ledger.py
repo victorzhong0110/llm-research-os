@@ -16,6 +16,8 @@ from llm_research_os.research.requests import (
     load_decision_record_request,
     load_dissent_record_request,
     load_proposal_submit_request,
+    load_question_answer_request,
+    load_question_ask_request,
     validate_decision_record_request,
 )
 from llm_research_os.spec.io import load_document
@@ -26,8 +28,12 @@ EXAMPLES = ROOT / "examples" / "research-decisions"
 PROPOSAL = EXAMPLES / "valid" / "proposal-submit.json"
 DISSENT = EXAMPLES / "valid" / "dissent-record.json"
 DECISION = EXAMPLES / "valid" / "decision-record.json"
+QUESTION_ASK = EXAMPLES / "valid" / "question-ask.json"
+QUESTION_ANSWER = EXAMPLES / "valid" / "question-answer.json"
 RATIONALE = "The dissent stands; we still accept."
 OBJECTION = "The proposed split still shares documents with training."
+QUESTION = "Was any evaluation document used in training?"
+ANSWER_OPTION = "No overlap."
 PROJECT = "example-minimal"
 
 
@@ -194,6 +200,123 @@ def test_thirty_third_override_is_rejected_before_commit(tmp_path: Path) -> None
             control.append(_override_draft(MAX_DECISION_LIST))
         assert store.last_sequence() == head
         assert store.get_event(f"evt.decision.override.{MAX_DECISION_LIST}") is None
+
+
+def test_question_channel_corpus_and_counters(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _init_store(database)
+    assert _record(database, ["proposals", "submit", str(PROPOSAL)]) == 0
+    assert _record(database, ["questions", "ask", str(QUESTION_ASK)]) == 0
+    assert _record(database, ["questions", "answer", str(QUESTION_ANSWER)]) == 0
+    receipts = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert QUESTION not in receipts
+    assert ANSWER_OPTION not in receipts
+    assert (
+        main(["research", "ledger", str(database), "--project", PROJECT, "--format", "json"]) == 0
+    )
+    ledger = json.loads(capsys.readouterr().out)  # type: ignore[attr-defined]
+    assert ledger["openQuestionCount"] == 0
+    assert ledger["answeredQuestionCount"] == 1
+    assert ledger["questions"][0]["status"] == "answered"
+    assert ledger["questions"][0]["question"] == QUESTION
+    assert ledger["questions"][0]["answer"] == {"option": ANSWER_OPTION}
+
+
+def test_answer_without_ask_is_a_domain_refusal(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _init_store(database)
+    assert _record(database, ["questions", "answer", str(QUESTION_ANSWER)]) == 1
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    assert ANSWER_OPTION not in output.err
+    assert "unknown-question" in output.err
+
+
+def test_second_answer_is_a_domain_refusal(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _init_store(database)
+    assert _record(database, ["proposals", "submit", str(PROPOSAL)]) == 0
+    assert _record(database, ["questions", "ask", str(QUESTION_ASK)]) == 0
+    assert _record(database, ["questions", "answer", str(QUESTION_ANSWER)]) == 0
+    capsys.readouterr()  # type: ignore[attr-defined]
+    document = load_document(QUESTION_ANSWER)
+    document["event"] = {"id": "evt.question.answer.2", "time": "2026-09-04T12:06:00Z"}
+    path = tmp_path / "second-answer.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert _record(database, ["questions", "answer", str(path)]) == 1
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    assert ANSWER_OPTION not in output.err
+    assert "duplicate-answer" in output.err
+
+
+def test_option_outside_the_closed_list_is_a_domain_refusal(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _init_store(database)
+    assert _record(database, ["proposals", "submit", str(PROPOSAL)]) == 0
+    assert _record(database, ["questions", "ask", str(QUESTION_ASK)]) == 0
+    capsys.readouterr()  # type: ignore[attr-defined]
+    hostile = "sk-secret-should-not-echo"
+    document = load_document(QUESTION_ANSWER)
+    document["answer"] = {"option": hostile}
+    path = tmp_path / "bad-option.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert _record(database, ["questions", "answer", str(path)]) == 1
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    assert hostile not in output.err
+    assert QUESTION not in output.err
+    assert "invalid-answer-option" in output.err
+
+
+def test_human_ask_and_ai_answer_fail_request_validation() -> None:
+    with pytest.raises(Exception, match="research request failed validation"):
+        load_question_ask_request(EXAMPLES / "invalid" / "question-human-actor.json")
+    with pytest.raises(Exception, match="research request failed validation"):
+        load_question_answer_request(EXAMPLES / "invalid" / "answer-ai-actor.json")
+
+
+def test_unknown_rights_cannot_authorize_training() -> None:
+    with pytest.raises(Exception, match="research request failed validation"):
+        load_question_answer_request(EXAMPLES / "invalid" / "answer-unknown-training.json")
+
+
+def test_unknown_rights_training_does_not_echo_answer(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    _init_store(database)
+    hostile = "sk-secret-should-not-echo"
+    assert (
+        main(
+            [
+                "questions",
+                "answer",
+                str(EXAMPLES / "invalid" / "answer-unknown-training.json"),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+    output = capsys.readouterr()  # type: ignore[attr-defined]
+    assert hostile not in output.err
+    assert output.out == ""
+
+
+def test_unanswered_question_decision_requires_defer(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        control = ResearchControl(store, project_id=PROJECT)
+        control.append(load_proposal_submit_request(PROPOSAL).event_draft())
+        control.append(load_question_ask_request(QUESTION_ASK).event_draft())
+        accept = load_document(DECISION)
+        accept["decisionId"] = "decision.close-question"
+        accept["targetKind"] = "question"
+        accept["targetId"] = "question.eval-split"
+        accept["overriddenDissentIds"] = []
+        accept["event"] = {"id": "evt.decision.question", "time": "2026-09-04T12:06:00Z"}
+        with pytest.raises(ResearchLedgerError, match="requires an answer or outcome=defer"):
+            control.append(validate_decision_record_request(accept).event_draft())
+        accept["outcome"] = "defer"
+        result = control.append(validate_decision_record_request(accept).event_draft())
+        assert result.snapshot.questions[0].status.value == "open"
 
 
 def _preflight(draft: dict[str, Any], *, sequence: int, event_id: str | None = None):

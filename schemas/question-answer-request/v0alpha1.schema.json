@@ -1,17 +1,6 @@
 {
   "$defs": {
-    "DecisionOutcome": {
-      "enum": [
-        "accept",
-        "reject",
-        "modify",
-        "continue",
-        "defer"
-      ],
-      "title": "DecisionOutcome",
-      "type": "string"
-    },
-    "DecisionRequestActor": {
+    "AnswerRequestActor": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -22,10 +11,7 @@
           "type": "string"
         },
         "kind": {
-          "enum": [
-            "human",
-            "policy"
-          ],
+          "const": "human",
           "title": "Kind",
           "type": "string"
         }
@@ -34,18 +20,95 @@
         "id",
         "kind"
       ],
-      "title": "DecisionRequestActor",
+      "title": "AnswerRequestActor",
       "type": "object"
     },
-    "DecisionTargetKind": {
-      "enum": [
-        "proposal",
-        "run",
-        "dissent",
-        "question"
+    "AnswerRights": {
+      "additionalProperties": false,
+      "not": {
+        "properties": {
+          "allowedUses": {
+            "contains": {
+              "enum": [
+                "redistribution",
+                "training"
+              ]
+            }
+          },
+          "status": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "allowedUses",
+          "status"
+        ]
+      },
+      "properties": {
+        "allowedUses": {
+          "default": [
+            "research-read"
+          ],
+          "items": {
+            "$ref": "#/$defs/DataUse"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Alloweduses",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "$ref": "#/$defs/RightsStatus"
+        }
+      },
+      "required": [
+        "status"
       ],
-      "title": "DecisionTargetKind",
+      "title": "AnswerRights",
+      "type": "object"
+    },
+    "DataUse": {
+      "enum": [
+        "research-read",
+        "retrieval",
+        "training",
+        "redistribution"
+      ],
+      "title": "DataUse",
       "type": "string"
+    },
+    "QuestionAnswerValue": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "option": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "option"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "ResearchEventIdentity": {
       "additionalProperties": false,
@@ -69,25 +132,30 @@
       ],
       "title": "ResearchEventIdentity",
       "type": "object"
+    },
+    "RightsStatus": {
+      "enum": [
+        "allowed",
+        "restricted",
+        "unknown"
+      ],
+      "title": "RightsStatus",
+      "type": "string"
     }
   },
-  "$id": "https://researchos.dev/schemas/decision-record-request/v0alpha1.schema.json",
+  "$id": "https://researchos.dev/schemas/question-answer-request/v0alpha1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "actor": {
-      "$ref": "#/$defs/DecisionRequestActor"
+      "$ref": "#/$defs/AnswerRequestActor"
+    },
+    "answer": {
+      "$ref": "#/$defs/QuestionAnswerValue"
     },
     "apiVersion": {
       "const": "researchos.dev/v0alpha1",
       "title": "Apiversion",
-      "type": "string"
-    },
-    "decisionId": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Decisionid",
       "type": "string"
     },
     "event": {
@@ -112,24 +180,9 @@
       "type": "integer"
     },
     "kind": {
-      "const": "DecisionRecordRequest",
+      "const": "QuestionAnswerRequest",
       "title": "Kind",
       "type": "string"
-    },
-    "outcome": {
-      "$ref": "#/$defs/DecisionOutcome"
-    },
-    "overriddenDissentIds": {
-      "items": {
-        "maxLength": 128,
-        "minLength": 1,
-        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-        "type": "string"
-      },
-      "maxItems": 32,
-      "title": "Overriddendissentids",
-      "type": "array",
-      "uniqueItems": true
     },
     "projectId": {
       "maxLength": 128,
@@ -138,11 +191,15 @@
       "title": "Projectid",
       "type": "string"
     },
-    "rationale": {
-      "maxLength": 4000,
+    "questionId": {
+      "maxLength": 128,
       "minLength": 1,
-      "title": "Rationale",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Questionid",
       "type": "string"
+    },
+    "rights": {
+      "$ref": "#/$defs/AnswerRights"
     },
     "source": {
       "maxLength": 2048,
@@ -163,16 +220,6 @@
       "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
       "title": "Subject",
       "type": "string"
-    },
-    "targetId": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Targetid",
-      "type": "string"
-    },
-    "targetKind": {
-      "$ref": "#/$defs/DecisionTargetKind"
     }
   },
   "required": [
@@ -185,14 +232,11 @@
     "streamid",
     "actor",
     "event",
-    "decisionId",
-    "targetKind",
-    "targetId",
-    "outcome",
-    "rationale",
-    "overriddenDissentIds",
+    "questionId",
+    "answer",
+    "rights",
     "evidenceRefs"
   ],
-  "title": "DecisionRecordRequestDocument",
+  "title": "QuestionAnswerRequestDocument",
   "type": "object"
 }

@@ -1,0 +1,26 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "QuestionAnswerRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "question.ai-answer",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai"
+  },
+  "event": {
+    "id": "evt.question.ai-answer",
+    "time": "2026-09-04T12:05:00Z"
+  },
+  "questionId": "question.eval-split",
+  "answer": {
+    "text": "Models must not answer."
+  },
+  "rights": {
+    "status": "allowed",
+    "allowedUses": ["research-read"]
+  },
+  "evidenceRefs": []
+}

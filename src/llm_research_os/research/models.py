@@ -24,24 +24,36 @@ from llm_research_os.events.models import (
     ResearchEvent,
 )
 from llm_research_os.research.errors import ResearchPayloadError
+from llm_research_os.spec.models import DataUse, RightsStatus
 
 RESEARCH_LEDGER_SCHEMA_ID = "https://researchos.dev/schemas/research-ledger/v0alpha1.schema.json"
 RESEARCH_LEDGER_API_VERSION = "researchos.dev/v0alpha1"
 MAX_DECISION_LIST = 32
 MAX_DECISION_TEXT = 4000
 MAX_DECISION_ITEM_TEXT = 1000
+MAX_ALLOWED_USES = 4
 JCS_DIGEST_LENGTH = len(JCS_SHA256_PREFIX) + 64
 
 TYPE_PROPOSAL_SUBMITTED = "proposal.submitted"
 TYPE_DISSENT_RECORDED = "dissent.recorded"
 TYPE_DECISION_RECORDED = "decision.recorded"
+TYPE_QUESTION_ASKED = "question.asked"
+TYPE_QUESTION_ANSWERED = "question.answered"
 DECISION_EVENT_TYPES = frozenset(
-    {TYPE_PROPOSAL_SUBMITTED, TYPE_DISSENT_RECORDED, TYPE_DECISION_RECORDED}
+    {
+        TYPE_PROPOSAL_SUBMITTED,
+        TYPE_DISSENT_RECORDED,
+        TYPE_DECISION_RECORDED,
+        TYPE_QUESTION_ASKED,
+        TYPE_QUESTION_ANSWERED,
+    }
 )
 ALLOWED_ACTOR_KINDS: dict[str, frozenset[ActorKind]] = {
     TYPE_PROPOSAL_SUBMITTED: frozenset({ActorKind.AI, ActorKind.HUMAN}),
     TYPE_DISSENT_RECORDED: frozenset({ActorKind.AI, ActorKind.HUMAN}),
     TYPE_DECISION_RECORDED: frozenset({ActorKind.HUMAN, ActorKind.POLICY}),
+    TYPE_QUESTION_ASKED: frozenset({ActorKind.AI, ActorKind.SYSTEM}),
+    TYPE_QUESTION_ANSWERED: frozenset({ActorKind.HUMAN}),
 }
 
 
@@ -135,6 +147,12 @@ class DecisionTargetKind(StrEnum):
     PROPOSAL = "proposal"
     RUN = "run"
     DISSENT = "dissent"
+    QUESTION = "question"
+
+
+class QuestionStatus(StrEnum):
+    OPEN = "open"
+    ANSWERED = "answered"
 
 
 class DecisionOutcome(StrEnum):
@@ -295,14 +313,124 @@ class DecisionRecordedPayload(ResearchDocumentModel):
         return self
 
 
+class QuestionAskedPayload(ResearchDocumentModel):
+    question_id: EventIdentifier = Field(alias="questionId")
+    question: DecisionText
+    uncertainty: DecisionText
+    why_not_observable: DecisionText = Field(alias="whyNotObservable")
+    options: tuple[DecisionItemText, ...] | None = Field(
+        default=None, min_length=1, max_length=MAX_DECISION_LIST
+    )
+    blocking: bool
+    related_proposal_id: EventIdentifier | None = Field(default=None, alias="relatedProposalId")
+    evidence_refs: tuple[EventIdentifier, ...] = Field(
+        alias="evidenceRefs",
+        max_length=MAX_DECISION_LIST,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("options", "evidence_refs", mode="before")
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        if value is None:
+            return value
+        return _require_tuple(value, "list")
+
+    @model_validator(mode="after")
+    def identifier_lists_are_unique(self) -> Self:
+        if len(self.evidence_refs) != len(set(self.evidence_refs)):
+            raise ValueError("evidenceRefs entries must be unique")
+        if self.options is not None and len(self.options) != len(set(self.options)):
+            raise ValueError("options entries must be unique")
+        if "options" in self.model_fields_set and self.options is None:
+            raise ValueError("options must be omitted rather than null")
+        if "related_proposal_id" in self.model_fields_set and self.related_proposal_id is None:
+            raise ValueError("relatedProposalId must be omitted rather than null")
+        return self
+
+
+class QuestionAnswerValue(ResearchDocumentModel):
+    text: DecisionText | None = None
+    option: DecisionItemText | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_answer_key(self) -> Self:
+        if "text" in self.model_fields_set and self.text is None:
+            raise ValueError("text must be omitted rather than null")
+        if "option" in self.model_fields_set and self.option is None:
+            raise ValueError("option must be omitted rather than null")
+        has_text = self.text is not None
+        has_option = self.option is not None
+        if has_text == has_option:
+            raise ValueError("answer must contain exactly one of text or option")
+        return self
+
+
+class AnswerRights(ResearchDocumentModel):
+    status: RightsStatus
+    allowed_uses: tuple[DataUse, ...] = Field(
+        default=(DataUse.RESEARCH_READ,),
+        alias="allowedUses",
+        min_length=1,
+        max_length=MAX_ALLOWED_USES,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def coerce_status(cls, value: object) -> object:
+        return _coerce_strenum(RightsStatus, value)
+
+    @field_validator("allowed_uses", mode="before")
+    @classmethod
+    def json_allowed_uses(cls, value: object) -> object:
+        items = _require_tuple(value, "allowedUses")
+        if type(items) is not tuple:
+            return items
+        return tuple(_coerce_strenum(DataUse, item) for item in items)
+
+    @model_validator(mode="after")
+    def unknown_rights_cannot_train(self) -> Self:
+        if len(self.allowed_uses) != len(set(self.allowed_uses)):
+            raise ValueError("allowedUses entries must be unique")
+        prohibited = {DataUse.TRAINING, DataUse.REDISTRIBUTION}
+        if self.status is RightsStatus.UNKNOWN and prohibited.intersection(self.allowed_uses):
+            raise ValueError("unknown rights cannot authorize training or redistribution")
+        return self
+
+
+class QuestionAnsweredPayload(ResearchDocumentModel):
+    question_id: EventIdentifier = Field(alias="questionId")
+    answer: QuestionAnswerValue
+    rights: AnswerRights
+    evidence_refs: tuple[EventIdentifier, ...] = Field(
+        alias="evidenceRefs",
+        max_length=MAX_DECISION_LIST,
+        json_schema_extra={"uniqueItems": True},
+    )
+
+    @field_validator("evidence_refs", mode="before")
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        return _require_tuple(value, "list")
+
+    @model_validator(mode="after")
+    def evidence_refs_are_unique(self) -> Self:
+        if len(self.evidence_refs) != len(set(self.evidence_refs)):
+            raise ValueError("evidenceRefs entries must be unique")
+        return self
+
+
 PAYLOAD_MODELS: dict[str, type[ResearchDocumentModel]] = {
     TYPE_PROPOSAL_SUBMITTED: ProposalSubmittedPayload,
     TYPE_DISSENT_RECORDED: DissentRecordedPayload,
     TYPE_DECISION_RECORDED: DecisionRecordedPayload,
+    TYPE_QUESTION_ASKED: QuestionAskedPayload,
+    TYPE_QUESTION_ANSWERED: QuestionAnsweredPayload,
 }
 
 if set(PAYLOAD_MODELS) != DECISION_EVENT_TYPES:
-    raise RuntimeError("PAYLOAD_MODELS must cover exactly the M1-1 research event catalog")
+    raise RuntimeError("PAYLOAD_MODELS must cover exactly the research decision event catalog")
 
 
 class ProposalLedgerEntry(ResearchDocumentModel):
@@ -380,6 +508,33 @@ class DecisionLedgerEntry(ResearchDocumentModel):
         return _require_tuple(value, "list")
 
 
+class QuestionLedgerEntry(ResearchDocumentModel):
+    question_id: EventIdentifier = Field(alias="questionId")
+    question: DecisionText
+    uncertainty: DecisionText
+    why_not_observable: DecisionText = Field(alias="whyNotObservable")
+    options: tuple[DecisionItemText, ...] = Field(default=(), max_length=MAX_DECISION_LIST)
+    blocking: bool
+    related_proposal_id: EventIdentifier | None = Field(default=None, alias="relatedProposalId")
+    status: QuestionStatus
+    event_id: CloudEventsString = Field(alias="eventId")
+    sequence: LedgerSequence
+    answer_event_id: CloudEventsString | None = Field(default=None, alias="answerEventId")
+    answer_sequence: LedgerSequence | None = Field(default=None, alias="answerSequence")
+    answer: QuestionAnswerValue | None = None
+    rights: AnswerRights | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def coerce_status(cls, value: object) -> object:
+        return _coerce_strenum(QuestionStatus, value)
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        return _require_tuple(value, "list")
+
+
 class ResearchLedger(ResearchDocumentModel):
     api_version: Literal["researchos.dev/v0alpha1"] = Field(alias="apiVersion")
     kind: Literal["ResearchLedger"]
@@ -388,7 +543,7 @@ class ResearchLedger(ResearchDocumentModel):
     proposals: tuple[ProposalLedgerEntry, ...] = Field(default=())
     dissents: tuple[DissentLedgerEntry, ...] = Field(default=())
     decisions: tuple[DecisionLedgerEntry, ...] = Field(default=())
-    questions: tuple[()] = Field(default=())
+    questions: tuple[QuestionLedgerEntry, ...] = Field(default=())
     decision_count: int = Field(alias="decisionCount", ge=0)
     answered_question_count: int = Field(alias="answeredQuestionCount", ge=0)
     open_question_count: int = Field(alias="openQuestionCount", ge=0)
@@ -401,18 +556,22 @@ class ResearchLedger(ResearchDocumentModel):
         return _require_tuple(value, "list")
 
     @model_validator(mode="after")
-    def questions_are_absent_until_channel_lands(self) -> Self:
-        if self.questions != ():
-            raise ValueError("question channel entries are not part of M1-1")
-        if self.answered_question_count != 0 or self.open_question_count != 0:
-            raise ValueError("question counters stay at zero until Issue #42")
+    def counters_match_entries(self) -> Self:
         if self.decision_count != len(self.decisions):
             raise ValueError("decisionCount must equal the number of decision entries")
+        answered = sum(1 for item in self.questions if item.status is QuestionStatus.ANSWERED)
+        opened = sum(1 for item in self.questions if item.status is QuestionStatus.OPEN)
+        if answered + opened != len(self.questions):
+            raise ValueError("every question must be open or answered")
+        if self.answered_question_count != answered:
+            raise ValueError("answeredQuestionCount must equal answered question entries")
+        if self.open_question_count != opened:
+            raise ValueError("openQuestionCount must equal open question entries")
         return self
 
 
 def empty_research_ledger(project_id: str, last_sequence: int = 0) -> ResearchLedger:
-    """Return a project ledger with no proposals, dissents, or decisions."""
+    """Return a project ledger with no proposals, dissents, decisions, or questions."""
 
     return ResearchLedger.model_validate(
         {
