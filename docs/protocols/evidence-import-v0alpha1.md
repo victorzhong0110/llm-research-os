@@ -37,6 +37,25 @@ The filesystem path (`--source`) and the extracted body MUST NOT appear on the
 event. Request field `source` is the CloudEvents event source. `sourceUri` is a
 caller-owned logical URI (`researchos://local/...`), not a host path.
 
+## 2.1 PDF work bounds
+
+Imported PDFs are adversarial (TM-006, TM-041). File-byte caps are not enough:
+a small FlateDecode stream can expand into large text, CPU, or memory.
+
+PDF extraction MUST:
+
+- run in a subprocess (not in the CLI process);
+- abort when the page count exceeds 64;
+- extract page text incrementally and refuse when extracted characters would
+  exceed 400_000 (the same cap as `textCharacters`);
+- terminate within 5 seconds of wall time;
+- apply best-effort `RLIMIT_CPU` (4 seconds) and address-space (256 MiB)
+  limits in the worker. macOS may not enforce `RLIMIT_AS`.
+
+Oversized or slow PDFs fail closed (`pdf-page-limit`, `text-too-large`,
+`pdf-timeout`, `pdf-resource`, `pdf-extract`). The importer MUST NOT truncate
+silently and MUST NOT echo extracted text or source paths in errors (TM-022).
+
 ## 3. Citation
 
 An `EvidenceCitation` is `{evidenceId, snapshotDigest, span}` where `span` is
