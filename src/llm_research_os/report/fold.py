@@ -11,7 +11,11 @@ from llm_research_os.budget.errors import BudgetError
 from llm_research_os.budget.models import BUDGET_EVENT_TYPES
 from llm_research_os.budget.money import format_money
 from llm_research_os.events.models import EventIdentifier
-from llm_research_os.execution.errors import SimulationError
+from llm_research_os.execution.authorization_events import (
+    PLAN_AUTHORIZATION_EVALUATED_TYPE,
+    validate_plan_authorization_evaluated_event,
+)
+from llm_research_os.execution.errors import PlanAuthorizationRecordError, SimulationError
 from llm_research_os.execution.synthetic import (
     TYPE_EVALUATION_METRIC,
     TYPE_TRAINING_STEP,
@@ -28,7 +32,6 @@ from llm_research_os.research.models import ResearchLedger
 from llm_research_os.runs.errors import RunStateError, RunTransitionError
 from llm_research_os.runs.models import RunSnapshot
 from llm_research_os.runs.reducer import RunStateProjection
-from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 
@@ -128,21 +131,11 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
         raise ReportError(str(exc), code=exc.code) from None
     consumed = None
     if snapshot is not None and snapshot.consumed_authorization is not None:
-        citation = snapshot.consumed_authorization
-        try:
-            consumed = store.get_event(citation.event_id)
-        except EventStoreError as exc:
-            raise ReportError(str(exc), code="authorization-citation") from None
-        if consumed is None:
-            raise ReportError(
-                "consumed authorization event was not found",
-                code="authorization-event-not-found",
-            )
-        if consumed.sequence != citation.sequence:
-            raise ReportError(
-                "consumed authorization sequence does not match",
-                code="authorization-sequence-mismatch",
-            )
+        consumed = _consumed_authorization_from_prefix(
+            prefix,
+            snapshot=snapshot,
+            high_water=high_water,
+        )
     return RunReport(
         run_id=bound_run,
         project_id=observed_project,
@@ -176,6 +169,67 @@ def _fold_project_prefix(
     if ledger_fold is None:
         ledger_fold = LedgerFold()
     return projection.snapshot(ledger_fold, last_sequence), budget, budget_events
+
+
+def _consumed_authorization_from_prefix(
+    prefix: list[StoredEvent],
+    *,
+    snapshot: RunSnapshot,
+    high_water: int,
+) -> StoredEvent:
+    citation = snapshot.consumed_authorization
+    if citation is None:
+        raise ReportError(
+            "consumed authorization event was not found",
+            code="authorization-event-not-found",
+        )
+    events_by_id = {stored.event.id: stored for stored in prefix}
+    stored = events_by_id.get(citation.event_id)
+    if stored is None or stored.sequence > high_water:
+        raise ReportError(
+            "consumed authorization event was not found",
+            code="authorization-event-not-found",
+        )
+    if stored.sequence != citation.sequence:
+        raise ReportError(
+            "consumed authorization sequence does not match",
+            code="authorization-sequence-mismatch",
+        )
+    event = stored.event
+    if event.type != PLAN_AUTHORIZATION_EVALUATED_TYPE:
+        raise ReportError(
+            "authorization event type is invalid",
+            code="authorization-type-mismatch",
+        )
+    try:
+        payload = validate_plan_authorization_evaluated_event(event)
+    except PlanAuthorizationRecordError:
+        raise ReportError(
+            "authorization event is invalid",
+            code="authorization-event-invalid",
+        ) from None
+    binding = payload.binding
+    if (
+        event.data.project_id != snapshot.project_id
+        or event.data.experiment_revision != snapshot.experiment_revision
+        or payload.workflow_id != snapshot.workflow_id
+        or binding.spec_digest != snapshot.digests.spec
+        or binding.registry_digest != snapshot.digests.registry
+        or binding.plan_digest != snapshot.digests.plan
+    ):
+        raise ReportError(
+            "authorization event does not match this project revision",
+            code="authorization-binding-mismatch",
+        )
+    if (
+        snapshot.digests.decision_digest is not None
+        and binding.decision_digest != snapshot.digests.decision_digest
+    ):
+        raise ReportError(
+            "authorization event does not match this project revision",
+            code="authorization-binding-mismatch",
+        )
+    return stored
 
 
 def _fold_snapshot(
