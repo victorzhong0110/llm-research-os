@@ -49,6 +49,7 @@ from llm_research_os.execution.authorization_lineage import (
     validate_plan_authorization_lineage_query_document,
     validate_plan_authorization_lineage_report_document,
 )
+from llm_research_os.execution.consume import consume_local_authorization
 from llm_research_os.execution.errors import (
     NativeProcessPreflightError,
     PlanAuthorizationError,
@@ -177,6 +178,7 @@ __all__ = [
     "SimulationResult",
     "TrustedKernel",
     "authorize_plan",
+    "consume_local_authorization",
     "load_native_process_preflight_request",
     "load_plan_authorization_event_request",
     "load_plan_authorization_lineage_query",

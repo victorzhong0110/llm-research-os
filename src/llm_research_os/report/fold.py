@@ -28,6 +28,7 @@ from llm_research_os.research.models import ResearchLedger
 from llm_research_os.runs.errors import RunStateError, RunTransitionError
 from llm_research_os.runs.models import RunSnapshot
 from llm_research_os.runs.reducer import RunStateProjection
+from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 
@@ -59,6 +60,7 @@ class RunReport:
     budget_events: tuple[StoredEvent, ...]
     budget: BudgetFold
     lineage: tuple[StoredEvent, ...]
+    consumed_authorization: StoredEvent | None
     last_sequence: int
 
 
@@ -116,6 +118,23 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
                 )
     except SimulationError as exc:
         raise ReportError(str(exc), code=exc.code) from None
+    consumed = None
+    if snapshot is not None and snapshot.consumed_authorization is not None:
+        citation = snapshot.consumed_authorization
+        try:
+            consumed = store.get_event(citation.event_id)
+        except EventStoreError as exc:
+            raise ReportError(str(exc), code="authorization-citation") from None
+        if consumed is None:
+            raise ReportError(
+                "consumed authorization event was not found",
+                code="authorization-event-not-found",
+            )
+        if consumed.sequence != citation.sequence:
+            raise ReportError(
+                "consumed authorization sequence does not match",
+                code="authorization-sequence-mismatch",
+            )
     return RunReport(
         run_id=bound_run,
         project_id=observed_project,
@@ -126,6 +145,7 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
         budget_events=tuple(budget_events),
         budget=budget,
         lineage=tuple(matching),
+        consumed_authorization=consumed,
         last_sequence=high_water,
     )
 

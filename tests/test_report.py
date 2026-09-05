@@ -21,10 +21,13 @@ from llm_research_os.report.fold import build_run_report
 from llm_research_os.report.render import _fragment, _html_link, _md_link
 from llm_research_os.research.requests import load_proposal_submit_request
 from llm_research_os.storage import EventStore
+from llm_research_os.storage.errors import EventIntegrityError
 
 ROOT = Path(__file__).parents[1]
 SPEC = ROOT / "examples" / "valid" / "minimal.yaml"
 REQUEST = ROOT / "examples" / "simulation-requests" / "valid" / "success-with-metrics.json"
+AUTHORIZATION_REQUEST = ROOT / "examples" / "plan-authorization-requests" / "valid" / "minimal.json"
+EVENT_REQUEST = ROOT / "examples" / "plan-authorization-events" / "valid" / "minimal.json"
 PROPOSAL = ROOT / "examples" / "research-decisions" / "valid" / "proposal-submit.json"
 DISSENT = ROOT / "examples" / "research-decisions" / "valid" / "dissent-record.json"
 DECISION = ROOT / "examples" / "research-decisions" / "valid" / "decision-record.json"
@@ -32,7 +35,28 @@ RUN = "run.simulated"
 ATTEMPT = "attempt.1"
 
 
+def _seed_auth(database: Path) -> None:
+    with EventStore(database):
+        pass
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(SPEC),
+                str(AUTHORIZATION_REQUEST),
+                str(EVENT_REQUEST),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+
 def _simulate(database: Path) -> None:
+    _seed_auth(database)
     assert (
         main(
             [
@@ -60,6 +84,7 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     assert "[`evt.training.step`](#evt.training.step)" in output
     assert "[`evt.evaluation.metric`](#evt.evaluation.metric)" in output
     assert "[`evt.6.run.completed`](#evt.6.run.completed)" in output
+    assert "[`evt.authorization.example-minimal.1`](#evt.authorization.example-minimal.1)" in output
     training = synthetic_training_payload(RUN, ATTEMPT)
     evaluation = synthetic_evaluation_payload(RUN, ATTEMPT)
     assert training["loss"] in output
@@ -139,7 +164,32 @@ def test_report_rejects_invalid_run_identifier(tmp_path: Path, capsys: object) -
     assert "invalid-identifier" in error
 
 
-def test_synthetic_payload_parsers_reject_type_mismatch() -> None:
+def test_report_wraps_authorization_lookup_failures(
+    tmp_path: Path, capsys: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "research.db"
+    _simulate(database)
+    capsys.readouterr()  # type: ignore[attr-defined]
+
+    def boom(self: EventStore, _event_id: str) -> None:
+        raise EventIntegrityError("stored event digest mismatch")
+
+    monkeypatch.setattr(EventStore, "get_event", boom)
+    assert main(["report", RUN, "--database", str(database)]) == 2
+    error = capsys.readouterr().err  # type: ignore[attr-defined]
+    assert "authorization-citation" in error
+
+
+def test_report_fails_closed_when_cited_authorization_is_missing(
+    tmp_path: Path, capsys: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "research.db"
+    _simulate(database)
+    capsys.readouterr()  # type: ignore[attr-defined]
+    monkeypatch.setattr(EventStore, "get_event", lambda self, event_id: None)
+    assert main(["report", RUN, "--database", str(database)]) == 2
+    error = capsys.readouterr().err  # type: ignore[attr-defined]
+    assert "authorization-event-not-found" in error
     draft = metric_event_draft(
         TYPE_EVALUATION_METRIC,
         {TYPE_EVALUATION_METRIC: ("evt.evaluation.metric", "2026-08-30T12:00:00Z")},

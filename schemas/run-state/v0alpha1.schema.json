@@ -115,6 +115,30 @@
       "title": "AttemptStatus",
       "type": "string"
     },
+    "ConsumedAuthorization": {
+      "additionalProperties": false,
+      "description": "Immutable citation of the local authorization fact this Run consumed.",
+      "properties": {
+        "eventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eventId",
+        "sequence"
+      ],
+      "title": "ConsumedAuthorization",
+      "type": "object"
+    },
     "RetryHint": {
       "enum": [
         "retryable",
@@ -270,6 +294,9 @@
     "cancellationRequested": {
       "title": "Cancellationrequested",
       "type": "boolean"
+    },
+    "consumedAuthorization": {
+      "$ref": "#/$defs/ConsumedAuthorization"
     },
     "digests": {
       "$ref": "#/$defs/RunDigests"
