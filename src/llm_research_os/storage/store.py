@@ -26,15 +26,25 @@ from llm_research_os.storage.errors import (
     EventStoreError,
     EventStoreSchemaError,
 )
-from llm_research_os.storage.models import StoredEvent
+from llm_research_os.storage.models import (
+    ArtifactIndexRecord,
+    ArtifactLinkRecord,
+    IntegrityCheckpoint,
+    RunProjectionRecord,
+    SpecRevisionRecord,
+    StoredEvent,
+)
 from llm_research_os.storage.schema import (
     APPLICATION_ID,
     EXPECTED_SCHEMA_DEFINITIONS,
     EXPECTED_SCHEMA_OBJECTS,
-    MIGRATION_NAME,
-    MIGRATION_STATEMENTS,
+    MIGRATIONS,
     SCHEMA_DEFINITION_DIGEST,
     SCHEMA_VERSION,
+    V1_EXPECTED_SCHEMA_DEFINITIONS,
+    V1_EXPECTED_SCHEMA_OBJECTS,
+    V2_MIGRATION,
+    expected_migration_history,
     normalize_schema_sql,
 )
 
@@ -163,6 +173,7 @@ class EventStore:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
         self._path, is_new = _validate_database_path(path)
+        self._writable = create
         self._clock = clock
         try:
             self._connection = _connect_sqlite(
@@ -200,6 +211,12 @@ class EventStore:
         """Return the absolute database path."""
 
         return self._path
+
+    @property
+    def writable(self) -> bool:
+        """Return whether this connection may write facts or query tables."""
+
+        return self._writable
 
     @property
     def schema_version(self) -> int:
@@ -296,7 +313,12 @@ class EventStore:
             raise EventStoreSchemaError(
                 f"database is not an LLM Research OS event store (application_id={application_id})"
             )
+        else:
+            self._upgrade_schema_if_needed()
         self._verify_schema()
+        if self._read_checkpoint() is None:
+            # Missing/malformed checkpoint is an invalid cache, not altered DDL.
+            self.verify_integrity()
 
     def _create_schema(self) -> None:
         applied_at = _recorded_timestamp(self._clock())
@@ -313,17 +335,84 @@ class EventStore:
                     "database is not an LLM Research OS event store "
                     f"(application_id={application_id})"
                 )
-            for statement in MIGRATION_STATEMENTS:
+            for migration in MIGRATIONS:
+                for statement in migration.statements:
+                    self._connection.execute(statement)
+                self._connection.execute(
+                    """
+                    INSERT INTO schema_migrations(version, name, applied_at, schema_digest)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (migration.version, migration.name, applied_at, migration.digest),
+                )
+            self._replace_checkpoint(
+                high_water=0,
+                last_event_digest=None,
+                verified_event_count=0,
+                recorded_at=applied_at,
+            )
+            self._connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+            self._connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    def _upgrade_schema_if_needed(self) -> None:
+        user_version = cast(
+            int,
+            self._connection.execute("PRAGMA user_version").fetchone()[0],
+        )
+        if user_version == SCHEMA_VERSION:
+            return
+        if user_version != 1:
+            raise EventStoreSchemaError(
+                "unsupported event-store header: "
+                f"application_id={APPLICATION_ID}, user_version={user_version}"
+            )
+        if not self._writable:
+            raise EventStoreSchemaError(
+                "schema version 1 requires a writable open to apply migration 2"
+            )
+        if self._schema_objects() != V1_EXPECTED_SCHEMA_OBJECTS:
+            raise EventStoreSchemaError("event-store schema objects do not match version 1")
+        definitions = {
+            (cast(str, row[0]), cast(str, row[1])): normalize_schema_sql(cast(str, row[2]))
+            for row in self._connection.execute(
+                """
+                SELECT type, name, sql
+                FROM sqlite_master
+                WHERE name NOT LIKE 'sqlite_%'
+                """
+            ).fetchall()
+        }
+        if definitions != V1_EXPECTED_SCHEMA_DEFINITIONS:
+            raise EventStoreSchemaError("event-store SQL definitions do not match version 1")
+        applied_at = _recorded_timestamp(self._clock())
+        with self._immediate_transaction():
+            current = cast(
+                int,
+                self._connection.execute("PRAGMA user_version").fetchone()[0],
+            )
+            if current == SCHEMA_VERSION:
+                return
+            if current != 1:
+                raise EventStoreSchemaError(
+                    "unsupported event-store header: "
+                    f"application_id={APPLICATION_ID}, user_version={current}"
+                )
+            for statement in V2_MIGRATION.statements:
                 self._connection.execute(statement)
             self._connection.execute(
                 """
                 INSERT INTO schema_migrations(version, name, applied_at, schema_digest)
                 VALUES (?, ?, ?, ?)
                 """,
-                (SCHEMA_VERSION, MIGRATION_NAME, applied_at, SCHEMA_DEFINITION_DIGEST),
+                (V2_MIGRATION.version, V2_MIGRATION.name, applied_at, V2_MIGRATION.digest),
             )
-            self._connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
             self._connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            self._replace_checkpoint(
+                high_water=0,
+                last_event_digest=None,
+                verified_event_count=0,
+                recorded_at=applied_at,
+            )
 
     def _schema_objects(self) -> frozenset[tuple[str, str]]:
         rows = self._connection.execute(
@@ -350,7 +439,7 @@ class EventStore:
                 f"application_id={application_id}, user_version={user_version}"
             )
         if self._schema_objects() != EXPECTED_SCHEMA_OBJECTS:
-            raise EventStoreSchemaError("event-store schema objects do not match version 1")
+            raise EventStoreSchemaError("event-store schema objects do not match version 2")
         definitions = {
             (cast(str, row[0]), cast(str, row[1])): normalize_schema_sql(cast(str, row[2]))
             for row in self._connection.execute(
@@ -362,14 +451,14 @@ class EventStore:
             ).fetchall()
         }
         if definitions != EXPECTED_SCHEMA_DEFINITIONS:
-            raise EventStoreSchemaError("event-store SQL definitions do not match version 1")
+            raise EventStoreSchemaError("event-store SQL definitions do not match version 2")
         try:
             migrations = self._connection.execute(
                 "SELECT version, name, schema_digest FROM schema_migrations ORDER BY version"
             ).fetchall()
         except sqlite3.DatabaseError as exc:
             raise EventStoreSchemaError("could not read schema migration history") from exc
-        expected = [(SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)]
+        expected = expected_migration_history()
         actual = [(cast(int, row[0]), cast(str, row[1]), cast(str, row[2])) for row in migrations]
         if actual != expected:
             raise EventStoreSchemaError("event-store migration history is unsupported or corrupt")
@@ -491,6 +580,12 @@ class EventStore:
                 )
             except sqlite3.IntegrityError as exc:
                 raise EventAppendError("SQLite rejected the append-only event row") from exc
+            self._replace_checkpoint(
+                high_water=sequence,
+                last_event_digest=digest,
+                verified_event_count=sequence,
+                recorded_at=recorded_at,
+            )
 
         return StoredEvent(event=event, recorded_at=recorded_at, digest=digest)
 
@@ -556,6 +651,7 @@ class EventStore:
         cursor = self._connection.execute(f"{_SELECT_EVENT_COLUMNS} ORDER BY sequence")
         expected_sequence = 1
         count = 0
+        last_digest: str | None = None
         while rows := cursor.fetchmany(256):
             for row in rows:
                 stored = self._stored_event_from_row(row)
@@ -565,8 +661,312 @@ class EventStore:
                         f"expected {expected_sequence}, found {stored.sequence}"
                     )
                 expected_sequence += 1
+                last_digest = stored.digest
                 count += 1
+        if self._writable:
+            self._replace_checkpoint(
+                high_water=count,
+                last_event_digest=last_digest,
+                verified_event_count=count,
+            )
         return count
+
+    def freeze_high_water(self) -> int:
+        """Return a verified high-water mark, revalidating any remembered checkpoint.
+
+        The checkpoint is untrusted until the live ``MAX(sequence)``, last event
+        digest, and schema digest match it (TM-011). A mismatch, a missing row,
+        or a malformed fingerprint falls back to ``verify_integrity``.
+        """
+
+        self._verify_schema()
+        live = self._live_head_fingerprint()
+        cached = self._read_checkpoint()
+        if cached is not None and cached == live:
+            return live.high_water
+        return self.verify_integrity()
+
+    def read_integrity_checkpoint(self) -> IntegrityCheckpoint | None:
+        """Return the stored high-water checkpoint without treating it as verified."""
+
+        return self._read_checkpoint()
+
+    def get_run_projection(self, project_id: str, run_id: str) -> RunProjectionRecord | None:
+        """Return one cached Run snapshot row, or ``None`` if absent."""
+
+        row = self._connection.execute(
+            """
+            SELECT project_id, run_id, last_sequence, snapshot_json, snapshot_digest
+            FROM run_projections
+            WHERE project_id = ? AND run_id = ?
+            """,
+            (project_id, run_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return RunProjectionRecord(
+            project_id=cast(str, row[0]),
+            run_id=cast(str, row[1]),
+            last_sequence=cast(int, row[2]),
+            snapshot_json=cast(str | None, row[3]),
+            snapshot_digest=cast(str | None, row[4]),
+        )
+
+    def upsert_run_projection(self, record: RunProjectionRecord) -> None:
+        """Replace one rebuildable Run snapshot cache row."""
+
+        if not self._writable:
+            raise EventStoreError("run projections cannot be written on a read-only store")
+        try:
+            self._connection.execute(
+                """
+                INSERT INTO run_projections(
+                    project_id, run_id, last_sequence, snapshot_json, snapshot_digest
+                )
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(project_id, run_id) DO UPDATE SET
+                    last_sequence = excluded.last_sequence,
+                    snapshot_json = excluded.snapshot_json,
+                    snapshot_digest = excluded.snapshot_digest
+                """,
+                (
+                    record.project_id,
+                    record.run_id,
+                    record.last_sequence,
+                    record.snapshot_json,
+                    record.snapshot_digest,
+                ),
+            )
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not write the run projection cache") from exc
+
+    def delete_run_projection(self, project_id: str, run_id: str) -> None:
+        """Drop one Run snapshot cache row."""
+
+        if not self._writable:
+            raise EventStoreError("run projections cannot be written on a read-only store")
+        try:
+            self._connection.execute(
+                "DELETE FROM run_projections WHERE project_id = ? AND run_id = ?",
+                (project_id, run_id),
+            )
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not delete the run projection cache") from exc
+
+    def list_spec_revisions(self) -> tuple[SpecRevisionRecord, ...]:
+        """Return projected spec revisions in first-seen order."""
+
+        rows = self._connection.execute(
+            """
+            SELECT project_id, revision, spec_digest, first_seen_sequence
+            FROM spec_revisions
+            ORDER BY first_seen_sequence, project_id, revision
+            """
+        ).fetchall()
+        return tuple(
+            SpecRevisionRecord(
+                project_id=cast(str, row[0]),
+                revision=cast(int, row[1]),
+                spec_digest=cast(str, row[2]),
+                first_seen_sequence=cast(int, row[3]),
+            )
+            for row in rows
+        )
+
+    def list_artifact_index(self) -> tuple[ArtifactIndexRecord, ...]:
+        """Return projected artifact digest rows in first-seen order."""
+
+        rows = self._connection.execute(
+            """
+            SELECT digest, byte_length, first_seen_sequence
+            FROM artifacts
+            ORDER BY first_seen_sequence, digest
+            """
+        ).fetchall()
+        return tuple(
+            ArtifactIndexRecord(
+                digest=cast(str, row[0]),
+                byte_length=cast(int | None, row[1]),
+                first_seen_sequence=cast(int, row[2]),
+            )
+            for row in rows
+        )
+
+    def list_artifact_links(self) -> tuple[ArtifactLinkRecord, ...]:
+        """Return projected artifact-to-event links in sequence order."""
+
+        rows = self._connection.execute(
+            """
+            SELECT digest, event_sequence, role
+            FROM artifact_links
+            ORDER BY event_sequence, role, digest
+            """
+        ).fetchall()
+        return tuple(
+            ArtifactLinkRecord(
+                digest=cast(str, row[0]),
+                event_sequence=cast(int, row[1]),
+                role=cast(str, row[2]),
+            )
+            for row in rows
+        )
+
+    def replace_query_tables(
+        self,
+        *,
+        spec_revisions: tuple[SpecRevisionRecord, ...],
+        artifacts: tuple[ArtifactIndexRecord, ...],
+        artifact_links: tuple[ArtifactLinkRecord, ...],
+        run_projections: tuple[RunProjectionRecord, ...],
+    ) -> None:
+        """Atomically replace rebuildable query tables. Event rows are not touched."""
+
+        if not self._writable:
+            raise EventStoreError("query tables cannot be written on a read-only store")
+        with self._immediate_transaction():
+            self._connection.execute("DELETE FROM artifact_links")
+            self._connection.execute("DELETE FROM artifacts")
+            self._connection.execute("DELETE FROM spec_revisions")
+            self._connection.execute("DELETE FROM run_projections")
+            self._connection.executemany(
+                """
+                INSERT INTO spec_revisions(
+                    project_id, revision, spec_digest, first_seen_sequence
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.project_id,
+                        item.revision,
+                        item.spec_digest,
+                        item.first_seen_sequence,
+                    )
+                    for item in spec_revisions
+                ],
+            )
+            self._connection.executemany(
+                """
+                INSERT INTO artifacts(digest, byte_length, first_seen_sequence)
+                VALUES (?, ?, ?)
+                """,
+                [(item.digest, item.byte_length, item.first_seen_sequence) for item in artifacts],
+            )
+            self._connection.executemany(
+                """
+                INSERT INTO artifact_links(digest, event_sequence, role)
+                VALUES (?, ?, ?)
+                """,
+                [(item.digest, item.event_sequence, item.role) for item in artifact_links],
+            )
+            self._connection.executemany(
+                """
+                INSERT INTO run_projections(
+                    project_id, run_id, last_sequence, snapshot_json, snapshot_digest
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.project_id,
+                        item.run_id,
+                        item.last_sequence,
+                        item.snapshot_json,
+                        item.snapshot_digest,
+                    )
+                    for item in run_projections
+                ],
+            )
+
+    def _live_head_fingerprint(self) -> IntegrityCheckpoint:
+        sequence = self.last_sequence()
+        if sequence == 0:
+            last_digest = None
+        else:
+            row = self._connection.execute(
+                "SELECT event_digest FROM events WHERE sequence = ?",
+                (sequence,),
+            ).fetchone()
+            if row is None:
+                raise EventIntegrityError(
+                    f"global event sequence is not contiguous: expected {sequence}, found none"
+                )
+            last_digest = cast(str, row[0])
+        return IntegrityCheckpoint(
+            high_water=sequence,
+            last_event_digest=last_digest,
+            schema_digest=SCHEMA_DEFINITION_DIGEST,
+            verified_event_count=sequence,
+        )
+
+    def _read_checkpoint(self) -> IntegrityCheckpoint | None:
+        try:
+            row = self._connection.execute(
+                """
+                SELECT high_water, last_event_digest, schema_digest, verified_event_count
+                FROM integrity_checkpoint
+                WHERE slot = 1
+                """
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise EventStoreError("could not read the integrity checkpoint") from exc
+        if row is None:
+            return None
+        high_water = row[0]
+        last_event_digest = row[1]
+        schema_digest = row[2]
+        verified_event_count = row[3]
+        if type(high_water) is not int or type(verified_event_count) is not int:
+            return None
+        if type(schema_digest) is not str:
+            return None
+        if last_event_digest is not None and type(last_event_digest) is not str:
+            return None
+        if high_water < 0 or verified_event_count != high_water:
+            return None
+        if high_water == 0:
+            if last_event_digest is not None:
+                return None
+        elif not last_event_digest:
+            return None
+        return IntegrityCheckpoint(
+            high_water=high_water,
+            last_event_digest=last_event_digest,
+            schema_digest=schema_digest,
+            verified_event_count=verified_event_count,
+        )
+
+    def _replace_checkpoint(
+        self,
+        *,
+        high_water: int,
+        last_event_digest: str | None,
+        verified_event_count: int,
+        recorded_at: str | None = None,
+    ) -> None:
+        stamp = recorded_at if recorded_at is not None else _recorded_timestamp(self._clock())
+        self._connection.execute(
+            """
+            INSERT INTO integrity_checkpoint(
+                slot, high_water, last_event_digest, schema_digest,
+                verified_event_count, recorded_at
+            )
+            VALUES (1, ?, ?, ?, ?, ?)
+            ON CONFLICT(slot) DO UPDATE SET
+                high_water = excluded.high_water,
+                last_event_digest = excluded.last_event_digest,
+                schema_digest = excluded.schema_digest,
+                verified_event_count = excluded.verified_event_count,
+                recorded_at = excluded.recorded_at
+            """,
+            (
+                high_water,
+                last_event_digest,
+                SCHEMA_DEFINITION_DIGEST,
+                verified_event_count,
+                stamp,
+            ),
+        )
 
     def _stored_event_from_row(self, row: sqlite3.Row) -> StoredEvent:
         event_json = cast(str, row["event_json"])

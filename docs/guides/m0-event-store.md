@@ -65,7 +65,7 @@ with EventStore("research.db") as store:
     head = store.last_sequence()
 ```
 
-Every read revalidates the frozen SQLite schema v1 canonical JSON (`legacy_canonical_json()`),
+Every read revalidates the frozen SQLite schema v2 canonical JSON (`legacy_canonical_json()`),
 the ResearchEvent contract, its `sha256:` event digest and indexed columns. That on-disk encoding
 is not the ADR-0033 JCS semantic-digest algorithm. `read_events` is a bounded storage primitive.
 Query and replay CLI commands consume it through paged reads and never load the whole store into
@@ -88,11 +88,12 @@ creates a missing path. Run cancellation requests use this mode.
 contract, digest and index columns. That is the safety default: a corrupted or rewritten row
 must not become a trusted fact.
 
-`RunControl.rebuild()` therefore pays a full integrity scan **plus** a second verified replay of
-the frozen prefix. Filling a store through that boundary is Θ(N) per append and Θ(N²) to reach
-N events. The cost is documented in [M0 RunControl](m0-run-control.md#write-cost-model). M0 does
-not cache the high-water mark; `last_sequence()` is only a CAS token and is not a substitute for
-the scan.
+`RunControl.rebuild()` freezes a high-water mark with `freeze_high_water()`
+(ADR-0041). A matching checkpoint skips the full event re-parse; a mismatch
+falls back to `verify_integrity`. Filling a store through RunControl is Θ(N)
+while that checkpoint stays valid. See [M0 RunControl](m0-run-control.md#write-cost-model).
+`last_sequence()` remains a CAS token and is not a substitute for a mismatched
+checkpoint.
 
 ## Query and replay CLI
 
@@ -106,14 +107,16 @@ uv run researchos events verify research.db --format json
 - `get` prints one verified ResearchEvent.
 - `list` returns one bounded page in global sequence order.
 - `replay` prints JSON Lines, one complete event per line. It freezes the high-water sequence with
-  `verify_integrity()` before the first line, so later appends are omitted from that run.
+  `freeze_high_water()` before the first line, so later appends are omitted from that run.
 - `verify` runs the full integrity scan and reports the event count.
 - Missing event IDs exit `1`. Database, input and integrity errors exit `2` with a ProblemReport
   on stderr.
 - These commands do not accept SQL, sort expressions or field expressions, and they do not append.
 
-In-memory projection folds consume already-verified ordered events. Persistent projection tables
-are not part of this slice.
+In-memory projection folds consume already-verified ordered events. Persistent
+projection tables (`run_projections`, `spec_revisions`, `artifacts`,
+`artifact_links`) are rebuildable consumers of `events` (ADR-0041). They are not
+a second fact source.
 
 ## Operational boundary
 

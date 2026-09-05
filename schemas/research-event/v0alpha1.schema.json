@@ -1,8 +1,18 @@
 {
   "$defs": {
+    "ActorKind": {
+      "enum": [
+        "human",
+        "ai",
+        "system",
+        "policy"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
     "EventActor": {
       "additionalProperties": false,
-      "description": "Closed actor identity. Additional actor facets are not part of v0alpha1.",
+      "description": "Actor identity. ``kind`` and ``modelId`` are optional so existing events remain valid.",
       "properties": {
         "id": {
           "maxLength": 128,
@@ -10,6 +20,32 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
           "title": "Id",
           "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "modelId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelid"
         }
       },
       "required": [

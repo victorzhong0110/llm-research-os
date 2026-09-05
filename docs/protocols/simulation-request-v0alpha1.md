@@ -41,14 +41,15 @@ other types are not coerced to strings.
 
 The only recognized `events` keys are:
 
-- `run.queued`, `run.started`, `run.completed`, `run.failed`;
+- `run.queued`, `run.started`, `run.completed`, `run.failed`, `run.cancelled`;
 - `attempt.queued`, `attempt.started`, `attempt.succeeded`,
-  `attempt.failed`, `attempt.unknown`.
+  `attempt.failed`, `attempt.unknown`, `attempt.cancelled`.
 
-The map may contain only the path needed by a specific outcome. It may also be
-empty for a terminal idempotent replay, but an empty or incomplete map cannot
-start or continue a nonterminal Run. Missing identities are an error; the CLI
-does not generate them. Explicit `null` identities and unknown lifecycle keys
+The map may contain only the path needed by a specific outcome. Cancel
+continuations also need `attempt.cancelled` and/or `run.cancelled`. The map may
+also be empty for a terminal idempotent replay, but an empty or incomplete map
+cannot start or continue a nonterminal Run. Missing identities are an error; the
+CLI does not generate them. Explicit `null` identities and unknown lifecycle keys
 are invalid.
 
 ## Normative success request
