@@ -371,6 +371,66 @@
     },
     "QuestionLedgerEntry": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "open"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "answer"
+                  ]
+                },
+                {
+                  "required": [
+                    "rights"
+                  ]
+                },
+                {
+                  "required": [
+                    "answerEventId"
+                  ]
+                },
+                {
+                  "required": [
+                    "answerSequence"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "answered"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "answer",
+              "rights",
+              "answerEventId",
+              "answerSequence"
+            ]
+          }
+        }
+      ],
       "properties": {
         "answer": {
           "$ref": "#/$defs/QuestionAnswerValue"

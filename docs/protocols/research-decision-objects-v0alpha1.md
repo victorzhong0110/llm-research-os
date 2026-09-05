@@ -106,6 +106,11 @@ A dissent is never mutated or deleted. A later decision references it (§5).
 accepted in the ledger (§8). It is not a launch credential and does not authorize
 a plan; plan authorization stays the ADR-0030 gate.
 
+A `targetKind=run` decision resolves only against a prior `run.queued` in the
+same project. `data.runId` on the decision (or on a synthetic metric) does not
+create that Run identity. An empty store MUST reject the decision before commit
+(`unknown-decision-target`).
+
 ## 6. `question.asked` and `question.answered`
 
 `question.asked`:
@@ -171,6 +176,12 @@ answer status, and the D4 counters:
 The outcome side of the metric (pre-registered prediction accuracy) is produced
 by M1-5 from evaluation events; this ledger only supplies the attention side.
 
+`QuestionLedgerEntry` is a status discriminant. `status=open` MUST omit
+`answer`, `rights`, `answerEventId`, and `answerSequence`. `status=answered`
+MUST include all four, and `answerSequence` MUST be greater than `sequence`.
+JSON Schema encodes the presence rules; the Python model also checks the
+sequence order.
+
 ## 9. CLI
 
 Each command takes a strict request document (same conventions as
@@ -223,6 +234,10 @@ Corpus under `examples/research-decisions/{valid,invalid}/` plus tests that:
 9. Non-echo: error output for invalid text fields does not contain the text.
 10. Schema check: `researchos schema --check-all` includes the new contracts
     registered in `cli/contracts.py`.
+11. Empty EventStore: a `targetKind=run` `decision.recorded` is rejected before
+    commit (`unknown-decision-target`); store head stays 0.
+12. JSON Schema rejects `QuestionLedgerEntry` with `status=answered` and no
+    answer fields, and rejects `status=open` with any answer field.
 
 ## 12. Implementation notes (non-normative)
 

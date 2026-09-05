@@ -5,10 +5,15 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from pydantic import ValidationError
 
 from llm_research_os.research.errors import ResearchRequestError
-from llm_research_os.research.models import DecisionRecordedPayload, ProposalSubmittedPayload
+from llm_research_os.research.models import (
+    DecisionRecordedPayload,
+    ProposalSubmittedPayload,
+    QuestionLedgerEntry,
+)
 from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
     DissentRecordRequestDocument,
@@ -198,3 +203,40 @@ def test_decision_target_question_is_accepted_on_the_request() -> None:
     document["targetKind"] = "question"
     document["targetId"] = "question.eval-split"
     validate_decision_record_request(document)
+
+
+def _question_entry_validator() -> Draft202012Validator:
+    root = json.loads(LEDGER_SCHEMA.read_text(encoding="utf-8"))
+    return Draft202012Validator(
+        {
+            "$schema": root["$schema"],
+            "$defs": root["$defs"],
+            **root["$defs"]["QuestionLedgerEntry"],
+        }
+    )
+
+
+def test_answered_question_entry_without_answer_fails_schema_and_model() -> None:
+    opened = {
+        "questionId": "question.eval-split",
+        "question": "Was any evaluation document used in training?",
+        "uncertainty": "Overlap is not observable from the spec.",
+        "whyNotObservable": "The store has no file list.",
+        "blocking": True,
+        "status": "open",
+        "eventId": "evt.question.1",
+        "sequence": 1,
+    }
+    _question_entry_validator().validate(opened)
+    QuestionLedgerEntry.model_validate(opened)
+    answered = dict(opened)
+    answered["status"] = "answered"
+    with pytest.raises(JsonSchemaValidationError):
+        _question_entry_validator().validate(answered)
+    with pytest.raises(ValidationError):
+        QuestionLedgerEntry.model_validate(answered)
+    opened["answer"] = {"text": "should not be here"}
+    with pytest.raises(JsonSchemaValidationError):
+        _question_entry_validator().validate(opened)
+    with pytest.raises(ValidationError):
+        QuestionLedgerEntry.model_validate(opened)
