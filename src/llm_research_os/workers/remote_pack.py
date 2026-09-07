@@ -75,6 +75,17 @@ def write_remote_worker_pack(
         "tlsFingerprint": fingerprint,
         "projectId": project_id,
         "source": source,
+        "sharedRootsForbidden": True,
+        "secondHost": "not-provisioned",
+        "liveStatus": "pending-live",
+        "liveSteps": [
+            "register",
+            "claim",
+            "download",
+            "upload",
+            "reconnect",
+            "cancel",
+        ],
     }
     (output / "STATUS.json").write_text(
         json.dumps(status, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
@@ -100,6 +111,13 @@ def write_remote_worker_pack(
         encoding="utf-8",
     )
     (output / "README.md").write_text(_pack_readme(loopback), encoding="utf-8")
+    (output / "ENVIRONMENT.json").write_text(
+        json.dumps(_environment_inventory(), ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (output / "ACCEPTANCE.md").write_text(_acceptance_markdown(), encoding="utf-8")
+    (output / "control.env.example").write_text(_control_env_example(), encoding="utf-8")
+    (output / "worker.env.example").write_text(_worker_env_example(), encoding="utf-8")
     (scripts_dir / "serve.sh").write_text(_serve_script(), encoding="utf-8")
     (scripts_dir / "run-worker.sh").write_text(_worker_script(), encoding="utf-8")
     os.chmod(scripts_dir / "serve.sh", 0o700)
@@ -146,13 +164,94 @@ def _pack_readme(loopback: bool) -> str:
         "Issue #38 stays open. This pack does not spend GPU and does not "
         "prove a second machine.\n\n"
         f"{extra}\n"
-        "The control plane and Worker MUST use different working directories "
-        "and different CAS roots. Copy `worker/tls-cert.pem` only. Never copy "
-        "`tls-key.pem`. Do not paste a private key into the Worker host.\n\n"
+        "The control plane and Worker MUST use different working directories, "
+        "different EventStore files, and different CAS roots. Copy "
+        "`worker/tls-cert.pem` only. Never copy `tls-key.pem`. Do not paste a "
+        "private key into the Worker host. This tree does not rent a second "
+        "machine.\n\n"
+        "`ENVIRONMENT.json` and `ACCEPTANCE.md` are the clean-install "
+        "checklist. Live two-host register/claim/download/upload/reconnect/"
+        "cancel stays `pending-live` until a researcher names a second host.\n\n"
         "Fill `worker/credential.template.json` with a live `ws1` session and "
         "`rg1` grant on the control-plane host, then run `scripts/run-worker.sh` "
         "on the Worker host. Auth, download, upload, and reconnect are the "
-        "ADR-0044 isolated HTTPS path.\n"
+        "ADR-0044 isolated HTTPS path (loopback tests, not a two-host proof).\n"
+    )
+
+
+def _environment_inventory() -> dict[str, object]:
+    return {
+        "apiVersion": _API_VERSION,
+        "kind": "RemoteWorkerEnvironment",
+        "crossMachine": "pending-live",
+        "secondHost": "not-provisioned",
+        "sharedRootsForbidden": True,
+        "python": ">=3.12",
+        "installer": "uv",
+        "control": {
+            "database": "control/research.db",
+            "artifacts": "control/cas",
+            "state": "control-state",
+            "workdir": "control",
+        },
+        "worker": {
+            "artifacts": "worker/cas",
+            "credential": "worker/credential.json",
+            "workdir": "worker",
+            "privateKey": "forbidden",
+        },
+        "liveSteps": [
+            "register",
+            "claim",
+            "download",
+            "upload",
+            "reconnect",
+            "cancel",
+        ],
+    }
+
+
+def _control_env_example() -> str:
+    return (
+        "# Control-plane host. Do not reuse these paths on the Worker host.\n"
+        "DATABASE=control/research.db\n"
+        "CONTROL_CAS=control/cas\n"
+        "STATE=control-state\n"
+        "PROJECT=example-minimal\n"
+        "SOURCE=https://researchos.dev/projects/example-minimal\n"
+        "HOST=127.0.0.1\n"
+        "PORT=8443\n"
+    )
+
+
+def _worker_env_example() -> str:
+    return (
+        "# Worker host. Independent CAS. Never point DATABASE at the control plane.\n"
+        "CREDENTIAL=worker/credential.json\n"
+        "WORKER_CAS=worker/cas\n"
+        "# tls-key.pem is forbidden on this host.\n"
+    )
+
+
+def _acceptance_markdown() -> str:
+    return (
+        "# Cross-machine acceptance (pending-live)\n\n"
+        "This pack is runnable. It is **not** a live two-host proof. "
+        "Do not rent a machine from this tree. Do not paste a private key.\n\n"
+        "Control plane and Worker MUST NOT share:\n\n"
+        "- EventStore / SQLite (`control/research.db` stays on the control host)\n"
+        "- CAS (`control/cas` vs `worker/cas`)\n"
+        "- working directory\n\n"
+        "Live steps after a researcher names a second host:\n\n"
+        "1. Register the Worker (`workers register` / `worker.registered`).\n"
+        "2. Claim work (`work/poll` with a live `rg1` grant).\n"
+        "3. Download inputs (`GET /v0alpha1/artifacts/...`, digest check).\n"
+        "4. Upload outputs (`POST /v0alpha1/artifacts`, digest only).\n"
+        "5. Reconnect after drop (pending complete, no second spawn).\n"
+        "6. Cancel then observe stop (ADR-0050). Container stop is not "
+        "cloud-instance stop.\n\n"
+        "Loopback isolated HTTPS already covers auth/download/upload/reconnect "
+        "in `tests/test_worker_isolate.py`. That is not this checklist.\n"
     )
 
 

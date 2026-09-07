@@ -122,8 +122,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `training snapshot`, overlay `--resume_from_checkpoint` vs `--adapters`,
   bounded CAS collect of `/work/output`; receipts stay `gpu-not-run`
   ([ADR-0057](docs/adr/0057-gpu-data-checkpoint.md)).
-- Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
-  CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
+- Remote Worker pack: TLS SAN bind policy, independent EventStore/CAS
+  workdirs, environment inventory and live step list; `secondHost` is
+  `not-provisioned`; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).
 
 ### Changed

@@ -58,7 +58,8 @@ CAS-pinned python helper, artifact + report. Isolated control-plane and
 Worker processes use pinned loopback HTTPS
 ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
 that is not a cross-machine proof. Remote Worker transport is
-[ADR-0021](docs/adr/0021-remote-worker-transport.md): a pending-live pack,
+[ADR-0021](docs/adr/0021-remote-worker-transport.md): a pending-live pack
+with independent EventStore/CAS roots (`secondHost: not-provisioned`),
 not a two-host run. CPU OCIContainerRuntime is a
 digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md));
 a missing engine fails closed and is not a mocked success. Worker

@@ -34,3 +34,6 @@ isolated HTTPS tests. Those tests stay on loopback.
 Live two-host verification stays `pending-live` until a researcher
 approves a second machine. This tree does not rent hosts and does not
 ask for a private key.
+
+Clean-install inventory and the live step list:
+[M2 cross-machine](m2-cross-machine.md).

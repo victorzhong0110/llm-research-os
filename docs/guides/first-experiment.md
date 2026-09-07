@@ -52,7 +52,8 @@ event log. Completed work reconciles Run/Attempt; a CAS object without
 CPU OCI (`researchos m2 oci`) fails closed without a live digest-pinned
 image. That failure is not a mocked container success. See
 [M2 CPU OCI](m2-oci.md). A remote Worker pack is pending-live and is
-**not** a cross-machine proof; see [M2 remote Worker](m2-remote-worker.md).
+**not** a cross-machine proof; see [M2 remote Worker](m2-remote-worker.md)
+and [M2 cross-machine](m2-cross-machine.md).
 
 ## Usage evidence (not EventStore fill)
 

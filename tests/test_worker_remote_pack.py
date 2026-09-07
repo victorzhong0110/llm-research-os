@@ -93,6 +93,31 @@ def test_remote_pack_is_pending_live_and_omits_private_key(tmp_path: Path) -> No
     assert template["grantToken"] == "REPLACE-WITH-RG1"
     assert "pending-live" in (output / "README.md").read_text(encoding="utf-8")
     assert cert_covers_host(worker / "tls-cert.pem", "192.0.2.10")
+    assert status["sharedRootsForbidden"] is True
+    assert status["secondHost"] == "not-provisioned"
+    assert status["liveSteps"] == [
+        "register",
+        "claim",
+        "download",
+        "upload",
+        "reconnect",
+        "cancel",
+    ]
+    environment = json.loads((output / "ENVIRONMENT.json").read_text(encoding="utf-8"))
+    assert environment["sharedRootsForbidden"] is True
+    assert environment["control"]["artifacts"] != environment["worker"]["artifacts"]
+    assert environment["control"]["database"] == "control/research.db"
+    assert "research.db" not in environment["worker"].values()
+    assert environment["worker"]["privateKey"] == "forbidden"
+    control_env = (output / "control.env.example").read_text(encoding="utf-8")
+    worker_env = (output / "worker.env.example").read_text(encoding="utf-8")
+    assert "CONTROL_CAS=control/cas" in control_env
+    assert "WORKER_CAS=worker/cas" in worker_env
+    assert "DATABASE=" not in worker_env
+    acceptance = (output / "ACCEPTANCE.md").read_text(encoding="utf-8")
+    assert "pending-live" in acceptance
+    assert "Do not rent" in acceptance
+    assert "private key" in acceptance
 
 
 def test_loopback_pack_is_not_cross_machine(tmp_path: Path) -> None:
