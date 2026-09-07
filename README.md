@@ -112,6 +112,8 @@ Process observation is ADR-0054 (running/exited/unknown; failed probes
 are not exited). Live OCI faults are ADR-0055: designated Linux CI runs
 every `oci_live` test; inspect failure is unknown. Independent GPU
 execution is ADR-0056 (`gpu-oci-container` / `execute.gpu`; `gpu-not-run`).
+Data snapshot and checkpoint collect is ADR-0057 (Hub revision, pending-live
+dataset SHA, overlay resume; not a CUDA result).
 
 ## M0 goals
 
@@ -564,6 +566,9 @@ an SLA and does not spend GPU.
 execute. It is not a real training run.
 `researchos training bind` prints the GPU docker argv for that plan and
 MUST NOT start a container (`gpu: not-run`).
+`researchos training snapshot` / `overlay` / `collect` pin Hub identity,
+print resume argv, and put `/work/output` files into CAS. They MUST NOT
+download, train, or claim a GPU checkpoint.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 Cancel supervision records a process or container identity and confirms

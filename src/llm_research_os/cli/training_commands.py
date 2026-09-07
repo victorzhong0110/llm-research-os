@@ -8,10 +8,22 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.cli.output import dumps_json, print_error, safe_text
 from llm_research_os.spec.io import SpecLoadError
+from llm_research_os.training.checkpoint import (
+    collect_output_artifacts,
+    inspect_snapshot,
+    load_collect_manifest,
+    load_gpu_data_checkpoint_binding,
+    require_binding_matches_plan,
+)
 from llm_research_os.training.errors import TrainingBackendError, TrainingBackendRequestError
-from llm_research_os.training.gpu_bind import bind_ms_swift_gpu_command, plan_document_digest
+from llm_research_os.training.gpu_bind import (
+    bind_ms_swift_gpu_command,
+    plan_document_digest,
+    resume_loads,
+)
 from llm_research_os.training.ms_swift import plan_ms_swift
 from llm_research_os.training.requests import load_training_backend_plan
 from llm_research_os.workers.errors import WorkerSandboxError
@@ -45,6 +57,12 @@ def run_training(args: argparse.Namespace) -> int:
         return _plan(args.request, args.format)
     if args.training_command == "bind":
         return _bind(args)
+    if args.training_command == "overlay":
+        return _overlay(args)
+    if args.training_command == "snapshot":
+        return _snapshot(args)
+    if args.training_command == "collect":
+        return _collect(args)
     raise AssertionError(f"unhandled training command: {args.training_command}")
 
 
@@ -139,4 +157,99 @@ def _bind(args: argparse.Namespace) -> int:
     print(f"executed: {prepared.executed}")
     print(f"gpu: {safe_text(prepared.gpu)}")
     print(f"command: {safe_text(' '.join(prepared.command_argv))}")
+    return 0
+
+
+def _overlay(args: argparse.Namespace) -> int:
+    try:
+        plan = load_training_backend_plan(args.request)
+        command_argv, command = bind_ms_swift_gpu_command(
+            plan,
+            resume_mode=args.resume,
+            checkpoint_path=args.checkpoint,
+        )
+    except TrainingBackendRequestError as exc:
+        print_error(exc, args.format)
+        return 2
+    except TrainingBackendError as exc:
+        print_error(exc, args.format)
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, args.format)
+        return 2
+    payload = {
+        "apiVersion": "researchos.dev/v0alpha1",
+        "kind": "GpuResumeOverlayReceipt",
+        "commandArgv": list(command_argv),
+        "commandDigest": command,
+        "resume": args.resume,
+        "loads": list(resume_loads(args.resume)),
+        "executed": False,
+        "gpu": "not-run",
+    }
+    if args.format == "json":
+        print(dumps_json(payload))
+        return 0
+    print("training overlay: recorded")
+    print(f"resume: {safe_text(args.resume)}")
+    print("gpu: not-run")
+    print(f"command: {safe_text(' '.join(command_argv))}")
+    return 0
+
+
+def _snapshot(args: argparse.Namespace) -> int:
+    try:
+        binding = load_gpu_data_checkpoint_binding(args.binding)
+        if args.plan is not None:
+            require_binding_matches_plan(binding, load_training_backend_plan(args.plan))
+        receipt = inspect_snapshot(
+            binding,
+            model_dir=args.model_dir,
+            data_dir=args.data_dir,
+        )
+    except TrainingBackendRequestError as exc:
+        print_error(exc, args.format)
+        return 2
+    except TrainingBackendError as exc:
+        print_error(exc, args.format)
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, args.format)
+        return 2
+    payload = {"apiVersion": "researchos.dev/v0alpha1", **receipt.as_json()}
+    if args.format == "json":
+        print(dumps_json(payload))
+        return 0
+    print("training snapshot: recorded")
+    print(f"fetched: {receipt.fetched}")
+    print(f"gpu: {safe_text(receipt.gpu)}")
+    print(f"model: {safe_text(receipt.model.status)}")
+    print(f"dataset: {safe_text(receipt.dataset.status)}")
+    return 0
+
+
+def _collect(args: argparse.Namespace) -> int:
+    try:
+        artifacts_root = args.artifacts
+        artifacts_root.mkdir(parents=True, exist_ok=True)
+        artifacts = LocalArtifactStore(artifacts_root)
+        prior = load_collect_manifest(args.resume_from) if args.resume_from is not None else None
+        receipt = collect_output_artifacts(args.output, artifacts, prior=prior)
+    except TrainingBackendRequestError as exc:
+        print_error(exc, args.format)
+        return 2
+    except TrainingBackendError as exc:
+        print_error(exc, args.format)
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, args.format)
+        return 2
+    payload = {"apiVersion": "researchos.dev/v0alpha1", **receipt.as_json()}
+    if args.format == "json":
+        print(dumps_json(payload))
+        return 0
+    print("training collect: recorded")
+    print(f"status: {safe_text(receipt.status)}")
+    print(f"executed: {receipt.executed}")
+    print(f"gpu: {safe_text(receipt.gpu)}")
     return 0

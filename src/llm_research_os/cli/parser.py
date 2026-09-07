@@ -773,6 +773,42 @@ def build_parser() -> argparse.ArgumentParser:
     training_bind.add_argument("--model-dir", type=Path, required=True)
     training_bind.add_argument("--output-dir", type=Path, required=True)
     add_event_format_argument(training_bind)
+    training_overlay = training_commands.add_parser(
+        "overlay",
+        help="print resume overlay argv; does not execute",
+    )
+    training_overlay.add_argument("request", type=Path, help="TrainingBackendPlan document")
+    training_overlay.add_argument(
+        "--resume",
+        choices=("none", "adapter-only", "full-checkpoint"),
+        required=True,
+    )
+    training_overlay.add_argument(
+        "--checkpoint",
+        help="container path under /work/output for adapter or full resume",
+    )
+    add_event_format_argument(training_overlay)
+    training_snapshot = training_commands.add_parser(
+        "snapshot",
+        help="verify offline model/data trees; does not download or train",
+    )
+    training_snapshot.add_argument("binding", type=Path, help="GpuDataCheckpointBinding document")
+    training_snapshot.add_argument("--plan", type=Path, help="TrainingBackendPlan document")
+    training_snapshot.add_argument("--model-dir", type=Path)
+    training_snapshot.add_argument("--data-dir", type=Path)
+    add_event_format_argument(training_snapshot)
+    training_collect = training_commands.add_parser(
+        "collect",
+        help="put persistent /work/output files into CAS; does not train",
+    )
+    training_collect.add_argument("output", type=Path, help="host directory bound to /work/output")
+    training_collect.add_argument("--artifacts", type=Path, required=True)
+    training_collect.add_argument(
+        "--resume-from",
+        type=Path,
+        help="prior GpuCheckpointCollectReceipt JSON for interrupt resume",
+    )
+    add_event_format_argument(training_collect)
     return parser
 
 

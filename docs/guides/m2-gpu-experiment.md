@@ -92,29 +92,45 @@ A100/H100 are unnecessary for 0.5B LoRA and would burn the envelope faster.
 
 Do not change the closed `TrainingBackendPlan` for resume.
 
-1. **Model.** Plan field `Qwen/Qwen2.5-0.5B-Instruct`. On the GPU host, after
-   the first ModelScope/Hub download, record the snapshot revision (commit
-   or `snapshot_download` cache path) next to the image digest. Do not
-   silently retarget a newer snapshot.
+1. **Model.** Plan field `Qwen/Qwen2.5-0.5B-Instruct`. Hugging Face revision
+   `7ae557604adf67be50417f59c2c2f167def9a775` is recorded in
+   [`examples/m2-gpu-checkpoint/data-binding.json`](../../examples/m2-gpu-checkpoint/data-binding.json).
+   After the first download on a GPU host, record `contentDigest` of that
+   local tree. Do not silently retarget a newer snapshot.
 2. **Data.** Plan field `AI-ModelScope/alpaca-gpt4-data-en#8` (first 8 rows).
-   Pin that dataset revision the same way. Eight rows exist so one step
+   ModelScope git SHA is `pending-live` until recorded on the GPU host.
+   Lineage cites Hugging Face `vicgalle/alpaca-gpt4` @
+   `f7e3ded725cb81e8e564e32feb12860f376f2b51`. Eight rows exist so one step
    finishes inside the 45 minute wall.
-3. **Output.** `--output_dir /work/output` and `--save_steps 1` so
-   `/work/output/<run>/checkpoint-1` is the inspectable CAS artifact.
-4. **Resume overlay.** Same argv plus
-   `--resume_from_checkpoint /work/output/<run>/checkpoint-1`.
-   ms-swift 4.5.2: that reloads weights, optimizer, seed, and continues
-   from the last step. `--adapters` loads adapter weights only and is
-   **not** a full resume. `--resume_only_model` is not this sheet.
+3. **Output.** `--output_dir /work/output` is a bind mount, not tmpfs.
+   `researchos training collect` puts files into CAS (1 MiB / 32 files).
+   Real LoRA weights may exceed that bound; raising it is a later review.
+4. **Resume overlay.** `researchos training overlay --resume full-checkpoint`
+   adds `--resume_from_checkpoint` and loads weights, optimizer, scheduler,
+   RNG, and `global_step`. `--resume adapter-only` adds `--adapters` and is
+   **not** a full resume. `--resume_only_model` is forbidden. Overlay is a
+   new `commandDigest`, not a silent second spawn.
 5. **Unknown.** Timeout, Worker kill, or disconnect without `work.completed`
    stays `unknown`/`lost`. Do not auto-rerun. A recovery client must not
    spawn a second 1-step job while the original executor is alive.
+6. **CPU fixture.** `examples/training-backend/cpu-snapshot` plus
+   `researchos training snapshot` / `collect` prove the protocol without a
+   GPU. That is not CUDA training or resume success.
 
 ## Command that is allowed now
 
 ```bash
 uv run researchos training plan \
   examples/training-backend/valid/ms-swift-sft.json \
+  --format json
+uv run researchos training snapshot \
+  examples/m2-gpu-checkpoint/data-binding.json \
+  --plan examples/training-backend/valid/ms-swift-sft.json \
+  --format json
+uv run researchos training overlay \
+  examples/training-backend/valid/ms-swift-sft.json \
+  --resume full-checkpoint \
+  --checkpoint /work/output/run/checkpoint-1 \
   --format json
 ```
 

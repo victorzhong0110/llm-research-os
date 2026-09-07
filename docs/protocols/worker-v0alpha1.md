@@ -181,7 +181,9 @@ and `/work/output` (read-write bind, not tmpfs). The container command
 MUST be the pinned `ms-swift==4.5.2` plan argv. Extra devices, mounts,
 and `privileged` MUST fail closed. A Worker MUST advertise `cuda`.
 `researchos training bind` and `execute_gpu_training` MUST NOT start a
-container; the receipt is `gpu: not-run`. This is not a CUDA result.
+container; the receipt is `gpu: not-run`. Persistent `/work/output` files
+are collected by `researchos training collect` (ADR-0057). This is not a
+CUDA result.
 
 ## 5. Conformance
 
@@ -190,7 +192,7 @@ uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
   tests/test_worker_recovery.py tests/test_worker_supervise.py \
   tests/test_worker_live_faults.py tests/test_worker_remote_pack.py \
-  tests/test_worker_gpu.py
+  tests/test_worker_gpu.py tests/test_training_checkpoint.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```

@@ -118,6 +118,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `execute.gpu`, closed device and mounts, pinned ms-swift argv bound;
   `researchos training bind` does not execute
   ([ADR-0056](docs/adr/0056-gpu-training-execution-profile.md)).
+- GPU data snapshot and checkpoint loop: pinned Hub revision, offline
+  `training snapshot`, overlay `--resume_from_checkpoint` vs `--adapters`,
+  bounded CAS collect of `/work/output`; receipts stay `gpu-not-run`
+  ([ADR-0057](docs/adr/0057-gpu-data-checkpoint.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).
