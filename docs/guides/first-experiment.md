@@ -37,9 +37,10 @@ uv run researchos m2 prove \
 The Markdown report cites `eventId` values. Lineage includes
 `work.completed` (artifact digest) and the Run/Attempt facts. Stop/resume
 for this slice: replay the same database; do not treat a cancel request as
-stopped. Sandbox timeout or a killed sandbox process is `unknown`, not
-`failed`. Disconnect before complete leaves the lease open (not success).
-Heartbeats do not grow the event log.
+stopped. A resumed claim MUST NOT re-run unknown work. Sandbox timeout or a
+killed sandbox process is `unknown`, not `failed`. Disconnect before
+complete leaves the lease open (not success). Heartbeats do not grow the
+event log. Host Python is not a kernel sandbox.
 
 ## What is still not a release
 

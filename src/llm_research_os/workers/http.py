@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
@@ -14,7 +15,7 @@ from llm_research_os.artifacts.errors import ArtifactPathError, ArtifactStoreErr
 from llm_research_os.artifacts.store import MAX_PUT_BYTES, LocalArtifactStore
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
-from llm_research_os.workers.plane import WorkerPlane
+from llm_research_os.workers.plane import Clock, WorkerPlane
 from llm_research_os.workers.tokens import issue_worker_session, verify_worker_session
 
 _JSON = "application/json"
@@ -34,6 +35,7 @@ class LoopbackWorkerServer:
         host: str = "127.0.0.1",
         port: int = 0,
         experiment_revision: int = 1,
+        clock: Clock | None = None,
     ) -> None:
         _require_loopback_host(host)
         self._database = database
@@ -42,6 +44,7 @@ class LoopbackWorkerServer:
         self._project_id = project_id
         self._source = source
         self._experiment_revision = experiment_revision
+        self._clock: Clock = clock if clock is not None else (lambda: datetime.now(UTC))
         handler = _handler_for(self)
         self._httpd = ThreadingHTTPServer((host, port), handler)
         bound_host, bound_port = self._httpd.server_address[:2]
@@ -72,6 +75,17 @@ class LoopbackWorkerServer:
     def session_for(self, worker_id: str) -> str:
         return issue_worker_session(self._hmac_key, worker_id=worker_id)
 
+    def _plane(self, store: EventStore) -> WorkerPlane:
+        return WorkerPlane(
+            store,
+            artifacts=self._artifacts,
+            hmac_key=self._hmac_key,
+            project_id=self._project_id,
+            source=self._source,
+            experiment_revision=self._experiment_revision,
+            clock=self._clock,
+        )
+
 
 def _require_loopback_host(host: str) -> None:
     try:
@@ -101,6 +115,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     return
                 if path == "/v0alpha1/work/complete":
                     self._complete()
+                    return
+                if path == "/v0alpha1/work/fail":
+                    self._fail()
                     return
                 if path == "/v0alpha1/artifacts":
                     self._put_artifact()
@@ -133,14 +150,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             if body.get("waitSeconds", 0) not in {0, 1, 2}:
                 raise WorkerError("waitSeconds must be 0, 1, or 2", code="http-invalid")
             with EventStore(server._database, require_existing=True) as store:
-                plane = WorkerPlane(
-                    store,
-                    artifacts=server._artifacts,
-                    hmac_key=server._hmac_key,
-                    project_id=server._project_id,
-                    source=server._source,
-                    experiment_revision=server._experiment_revision,
-                )
+                plane = server._plane(store)
                 claimed = plane.poll(worker_id=worker_id, grant_token=token)
             if claimed is None:
                 self._write(204, None)
@@ -153,7 +163,12 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     "runId": claimed.run_id,
                     "attemptId": claimed.attempt_id,
                     "imageDigest": claimed.image_digest,
+                    "configDigest": claimed.config_digest,
+                    "config": claimed.config,
+                    "inputs": claimed.inputs,
+                    "runtime": claimed.runtime,
                     "expiresAt": claimed.expires_at,
+                    "resumed": claimed.resumed,
                 },
             )
 
@@ -163,14 +178,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             lease_id = _require_str(body, "leaseId")
             session = _require_session(server, worker_id, self.headers.get("Authorization"))
             with EventStore(server._database, require_existing=True) as store:
-                plane = WorkerPlane(
-                    store,
-                    artifacts=server._artifacts,
-                    hmac_key=server._hmac_key,
-                    project_id=server._project_id,
-                    source=server._source,
-                    experiment_revision=server._experiment_revision,
-                )
+                plane = server._plane(store)
                 before = store.last_sequence()
                 plane.heartbeat(worker_id=worker_id, session=session, lease_id=lease_id)
                 after = store.last_sequence()
@@ -187,20 +195,37 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             artifact_digest = _require_str(body, "artifactDigest")
             _require_session(server, worker_id, self.headers.get("Authorization"))
             with EventStore(server._database, require_existing=True) as store:
-                plane = WorkerPlane(
-                    store,
-                    artifacts=server._artifacts,
-                    hmac_key=server._hmac_key,
-                    project_id=server._project_id,
-                    source=server._source,
-                    experiment_revision=server._experiment_revision,
-                )
+                plane = server._plane(store)
                 stored = plane.complete(
                     worker_id=worker_id,
                     grant_token=token,
                     lease_id=lease_id,
                     result_digest=result_digest,
                     artifact_digest=artifact_digest,
+                )
+            self._write(
+                200,
+                {
+                    "eventId": stored.event.id,
+                    "type": stored.event.type,
+                    "sequence": stored.sequence,
+                },
+            )
+
+        def _fail(self) -> None:
+            body = self._json_body()
+            worker_id = _require_str(body, "workerId")
+            token = _require_str(body, "grantToken")
+            lease_id = _require_str(body, "leaseId")
+            reason_code = _require_str(body, "reasonCode")
+            _require_session(server, worker_id, self.headers.get("Authorization"))
+            with EventStore(server._database, require_existing=True) as store:
+                plane = server._plane(store)
+                stored = plane.fail(
+                    worker_id=worker_id,
+                    grant_token=token,
+                    lease_id=lease_id,
+                    reason_code=reason_code,
                 )
             self._write(
                 200,

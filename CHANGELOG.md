@@ -66,9 +66,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - `researchos m1 prove`: one offline corpus chain (Mock proposal through
   simulated report, or reject without `run.queued`). Issue #38 stays open.
 - M2-0 loopback Worker plane, HMAC grants (expiry/revoke/consume), CPU
-  sandbox over a CAS-pinned brick, and `researchos m2 prove`
+  helper over a CAS-pinned brick bound to an authorized `execute.local`
+  plan, and `researchos m2 prove`
   ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Not a
-  paid GPU run and not NativeProcessRuntime.
+  paid GPU run, not NativeProcessRuntime, and not a kernel sandbox.
 
 ### Changed
 
@@ -110,3 +111,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   Committed M0 request files without that field no longer validate.
   SimulatedRuntime resume of a Run that omitted the citation fails closed
   (`authorization-citation-missing`).
+- M2-0: Worker grants cite a recorded `execute.local` authorization and the
+  CAS execution object (image, config, inputs, runtime). `simulate` cannot
+  start a brick. complete/fail bind token, grant, and lease (project, worker,
+  grant, task, run, attempt, nonce, expiry). Revoked or expired grants reject
+  new results; matching terminal complete/fail stays idempotent. Stdout/stderr
+  limits apply while pipes are read. POSIX process groups are killed after the
+  parent exits so inherited-pipe children cannot outlive the helper.

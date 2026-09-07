@@ -5,13 +5,23 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
-from llm_research_os.workers.control import LeaseRecord, WorkerControl, WorkerFold
+from llm_research_os.workers.binding import (
+    brick_execution_digest,
+    require_authorized_execution_citation,
+    require_execution_digest,
+)
+from llm_research_os.workers.control import (
+    GrantRecord,
+    LeaseRecord,
+    QueuedWork,
+    WorkerControl,
+    WorkerFold,
+)
 from llm_research_os.workers.drafts import (
     grant_consumed_draft,
     grant_recorded_draft,
@@ -48,7 +58,12 @@ class ClaimedWork:
     grant_id: str
     nonce: str
     image_digest: str
+    config_digest: str
+    config: dict[str, object]
+    inputs: dict[str, object]
+    runtime: str
     expires_at: str
+    resumed: bool
 
 
 @dataclass
@@ -106,8 +121,18 @@ class WorkerPlane:
         expires_at: str,
         actor_id: str,
         event_id: str,
+        authorization_event_id: str,
+        authorization_sequence: str,
+        image_digest: str,
+        config_digest: str,
         time: str | None = None,
     ) -> StoredEvent:
+        require_authorized_execution_citation(
+            self.store,
+            project_id=self.project_id,
+            event_id=authorization_event_id,
+            sequence=authorization_sequence,
+        )
         return self._control.append(
             grant_recorded_draft(
                 project_id=self.project_id,
@@ -122,6 +147,10 @@ class WorkerPlane:
                 time=self._stamp(time),
                 source=self.source,
                 actor_id=actor_id,
+                authorization_event_id=authorization_event_id,
+                authorization_sequence=authorization_sequence,
+                image_digest=image_digest,
+                config_digest=config_digest,
                 experiment_revision=self.experiment_revision,
             )
         )
@@ -161,9 +190,18 @@ class WorkerPlane:
         attempt_id: str,
         image_digest: str,
         event_id: str,
+        config: dict[str, object] | None = None,
+        inputs: dict[str, object] | None = None,
         required_accelerators: tuple[str, ...] = (),
         time: str | None = None,
     ) -> StoredEvent:
+        request_config = dict(config or {})
+        request_inputs = dict(inputs or {})
+        config_digest = brick_execution_digest(
+            image_digest=image_digest,
+            config=request_config,
+            inputs=request_inputs,
+        )
         return self._control.append(
             work_queued_draft(
                 project_id=self.project_id,
@@ -171,9 +209,12 @@ class WorkerPlane:
                 run_id=run_id,
                 attempt_id=attempt_id,
                 image_digest=image_digest,
+                config_digest=config_digest,
                 event_id=event_id,
                 time=self._stamp(time),
                 source=self.source,
+                config=request_config,
+                inputs=request_inputs,
                 required_accelerators=required_accelerators,
                 experiment_revision=self.experiment_revision,
             )
@@ -195,6 +236,9 @@ class WorkerPlane:
             run_id=grant.run_id,
             nonce=grant.nonce,
             expires_at=grant.expires_at,
+            project_id=self.project_id,
+            image_digest=grant.image_digest,
+            config_digest=grant.config_digest,
         )
 
     def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> None:
@@ -228,6 +272,7 @@ class WorkerPlane:
         queued = fold.queued_work(grant.task_id, grant.attempt_id)
         if queued is None:
             return None
+        self._require_execution_match(grant, queued, claims)
         existing = fold.lease_for_worker(grant.task_id, grant.attempt_id, worker_id)
         if existing is not None:
             return self._resume_or_reject(fold, existing, queued, grant, now=now)
@@ -270,23 +315,11 @@ class WorkerPlane:
         time: str | None = None,
     ) -> StoredEvent:
         now = self.clock().astimezone(UTC)
-        claims = verify_grant_token(self.hmac_key, grant_token, now=now)
-        if claims["workerId"] != worker_id:
-            raise WorkerGrantError(
-                "grant token worker does not match",
-                code="grant-worker-mismatch",
-            )
+        claims = verify_grant_token(self.hmac_key, grant_token, now=now, require_live=False)
         fold = self.rebuild()
-        lease = fold.lease(lease_id)
-        if lease is None:
-            raise WorkerCallError("leaseId is not recorded", code="unknown-lease")
-        if lease.worker_id != worker_id:
-            raise WorkerCallError(
-                "complete worker does not own the lease",
-                code="lease-worker-mismatch",
-            )
-        if parse_rfc3339(lease.expires_at) <= now:
-            raise WorkerCallError("expired lease cannot complete", code="lease-expired")
+        lease, grant = self._bind_result_authorization(
+            fold, worker_id=worker_id, lease_id=lease_id, claims=claims
+        )
         if lease.status == "completed":
             if lease.result_digest == result_digest and lease.artifact_digest == artifact_digest:
                 stored = self.store.get_event(f"evt.work.completed.{lease.lease_id}")
@@ -297,6 +330,7 @@ class WorkerPlane:
                     )
                 return stored
             raise WorkerCallError("completed lease result does not match", code="complete-mismatch")
+        self._require_live_result_grant(grant, claims, lease, now=now)
         try:
             self.artifacts.verify(artifact_digest)
         except (ArtifactNotFoundError, ArtifactStoreError):
@@ -330,16 +364,22 @@ class WorkerPlane:
         time: str | None = None,
     ) -> StoredEvent:
         now = self.clock().astimezone(UTC)
-        claims = verify_grant_token(self.hmac_key, grant_token, now=now)
-        if claims["workerId"] != worker_id:
-            raise WorkerGrantError(
-                "grant token worker does not match",
-                code="grant-worker-mismatch",
-            )
+        claims = verify_grant_token(self.hmac_key, grant_token, now=now, require_live=False)
         fold = self.rebuild()
-        lease = fold.lease(lease_id)
-        if lease is None or lease.worker_id != worker_id:
-            raise WorkerCallError("fail worker does not own the lease", code="unknown-lease")
+        lease, grant = self._bind_result_authorization(
+            fold, worker_id=worker_id, lease_id=lease_id, claims=claims
+        )
+        if lease.status == "failed":
+            if lease.reason_code == reason_code:
+                stored = self.store.get_event(f"evt.work.failed.{lease.lease_id}")
+                if stored is None:
+                    raise WorkerCallError(
+                        "failed lease is missing its fact",
+                        code="fail-missing",
+                    )
+                return stored
+            raise WorkerCallError("failed lease reason does not match", code="fail-mismatch")
+        self._require_live_result_grant(grant, claims, lease, now=now)
         return self._control.append(
             work_failed_draft(
                 project_id=self.project_id,
@@ -358,8 +398,8 @@ class WorkerPlane:
     def _open_lease(
         self,
         fold: WorkerFold,
-        queued: Any,
-        grant: Any,
+        queued: QueuedWork,
+        grant: GrantRecord,
         *,
         now: datetime,
     ) -> ClaimedWork:
@@ -371,6 +411,14 @@ class WorkerPlane:
                 "worker does not advertise required accelerators",
                 code="accelerator-missing",
             )
+        self._require_execution_match(grant, queued, None)
+        try:
+            self.artifacts.verify(queued.image_digest)
+        except (ArtifactNotFoundError, ArtifactStoreError):
+            raise WorkerCallError(
+                "authorized image digest is not in CAS",
+                code="execution-binding-mismatch",
+            ) from None
         lease_id = f"lease.{grant.grant_id}"
         expires_at = format_rfc3339(now + timedelta(seconds=self.lease_seconds))
         stamp = format_rfc3339(now)
@@ -420,7 +468,7 @@ class WorkerPlane:
             )
         )
         self.heartbeats[lease_id] = now
-        return ClaimedWork(
+        return self._claimed(
             lease_id=lease_id,
             worker_id=grant.worker_id,
             task_id=grant.task_id,
@@ -428,19 +476,21 @@ class WorkerPlane:
             attempt_id=queued.attempt_id,
             grant_id=grant.grant_id,
             nonce=grant.nonce,
-            image_digest=queued.image_digest,
+            queued=queued,
             expires_at=expires_at,
+            resumed=False,
         )
 
     def _resume_or_reject(
         self,
         fold: WorkerFold,
         existing: LeaseRecord,
-        queued: Any,
-        grant: Any,
+        queued: QueuedWork,
+        grant: GrantRecord,
         *,
         now: datetime,
     ) -> ClaimedWork | None:
+        already_claimed = existing.claimed
         if existing.status == "completed":
             return None
         if existing.status in {"failed", "expired"}:
@@ -483,7 +533,7 @@ class WorkerPlane:
                 )
             )
         self.heartbeats[existing.lease_id] = now
-        return ClaimedWork(
+        return self._claimed(
             lease_id=existing.lease_id,
             worker_id=existing.worker_id,
             task_id=existing.task_id,
@@ -491,11 +541,158 @@ class WorkerPlane:
             attempt_id=existing.attempt_id,
             grant_id=existing.grant_id,
             nonce=grant.nonce,
-            image_digest=queued.image_digest,
+            queued=queued,
             expires_at=existing.expires_at,
+            resumed=already_claimed,
         )
 
-    def _require_live_grant(self, grant: Any, claims: dict[str, str], *, now: datetime) -> None:
+    def _claimed(
+        self,
+        *,
+        lease_id: str,
+        worker_id: str,
+        task_id: str,
+        run_id: str,
+        attempt_id: str,
+        grant_id: str,
+        nonce: str,
+        queued: QueuedWork,
+        expires_at: str,
+        resumed: bool,
+    ) -> ClaimedWork:
+        return ClaimedWork(
+            lease_id=lease_id,
+            worker_id=worker_id,
+            task_id=task_id,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            grant_id=grant_id,
+            nonce=nonce,
+            image_digest=queued.image_digest,
+            config_digest=queued.config_digest,
+            config=dict(queued.config),
+            inputs=dict(queued.inputs),
+            runtime="python-sandbox",
+            expires_at=expires_at,
+            resumed=resumed,
+        )
+
+    def _bind_result_authorization(
+        self,
+        fold: WorkerFold,
+        *,
+        worker_id: str,
+        lease_id: str,
+        claims: dict[str, str],
+    ) -> tuple[LeaseRecord, GrantRecord]:
+        if claims["workerId"] != worker_id:
+            raise WorkerGrantError(
+                "grant token worker does not match",
+                code="grant-worker-mismatch",
+            )
+        if claims["projectId"] != self.project_id:
+            raise WorkerGrantError(
+                "grant token project does not match",
+                code="grant-project-mismatch",
+            )
+        grant = fold.grant(claims["grantId"])
+        if grant is None:
+            raise WorkerGrantError("grantId is not recorded", code="unknown-grant")
+        lease = fold.lease(lease_id)
+        if lease is None:
+            raise WorkerCallError("leaseId is not recorded", code="unknown-lease")
+        if lease.worker_id != worker_id:
+            raise WorkerCallError(
+                "complete worker does not own the lease",
+                code="lease-worker-mismatch",
+            )
+        if (
+            claims["taskId"] != lease.task_id
+            or claims["runId"] != lease.run_id
+            or claims["attemptId"] != lease.attempt_id
+            or grant.task_id != lease.task_id
+            or grant.run_id != lease.run_id
+            or grant.attempt_id != lease.attempt_id
+            or grant.worker_id != lease.worker_id
+            or grant.grant_id != lease.grant_id
+        ):
+            raise WorkerGrantError(
+                "grant token is not bound to this lease",
+                code="grant-task-mismatch",
+            )
+        if grant.grant_event_id != claims["grantEventId"] or grant.nonce != claims["nonce"]:
+            raise WorkerGrantError(
+                "grant token does not match the recorded grant",
+                code="grant-nonce-mismatch",
+            )
+        if (
+            claims["imageDigest"] != grant.image_digest
+            or claims["configDigest"] != grant.config_digest
+        ):
+            raise WorkerCallError(
+                "grant token execution object does not match the recorded grant",
+                code="execution-binding-mismatch",
+            )
+        return lease, grant
+
+    def _require_live_result_grant(
+        self,
+        grant: GrantRecord,
+        claims: dict[str, str],
+        lease: LeaseRecord,
+        *,
+        now: datetime,
+    ) -> None:
+        if grant.revoked:
+            raise WorkerGrantError("grantId is revoked", code="grant-revoked")
+        if parse_rfc3339(claims["exp"]) <= now or parse_rfc3339(grant.expires_at) <= now:
+            raise WorkerGrantError("grant token has expired", code="grant-expired")
+        if parse_rfc3339(lease.expires_at) <= now:
+            raise WorkerCallError("expired lease cannot complete", code="lease-expired")
+        if lease.status in {"failed", "expired"}:
+            raise WorkerCallError("terminal lease cannot be completed", code="lease-terminal")
+
+    def _require_execution_match(
+        self,
+        grant: GrantRecord,
+        queued: QueuedWork,
+        claims: dict[str, str] | None,
+    ) -> None:
+        require_execution_digest(
+            image_digest=queued.image_digest,
+            config=queued.config,
+            inputs=queued.inputs,
+            config_digest=queued.config_digest,
+        )
+        if (
+            queued.image_digest != grant.image_digest
+            or queued.config_digest != grant.config_digest
+            or queued.task_id != grant.task_id
+            or queued.run_id != grant.run_id
+            or queued.attempt_id != grant.attempt_id
+        ):
+            raise WorkerCallError(
+                "queued execution object does not match the grant",
+                code="execution-binding-mismatch",
+            )
+        if claims is None:
+            return
+        if (
+            claims["imageDigest"] != grant.image_digest
+            or claims["configDigest"] != grant.config_digest
+            or claims["taskId"] != grant.task_id
+            or claims["runId"] != grant.run_id
+            or claims["attemptId"] != grant.attempt_id
+            or claims["projectId"] != self.project_id
+        ):
+            raise WorkerGrantError(
+                "grant token is not bound to this execution object",
+                code="grant-task-mismatch",
+            )
+
+    def _require_live_grant(
+        self, grant: GrantRecord, claims: dict[str, str], *, now: datetime
+    ) -> None:
         if grant.revoked:
             raise WorkerGrantError("grantId is revoked", code="grant-revoked")
         if grant.worker_id != claims["workerId"]:
@@ -503,10 +700,32 @@ class WorkerPlane:
                 "grant token worker does not match",
                 code="grant-worker-mismatch",
             )
+        if claims["projectId"] != self.project_id:
+            raise WorkerGrantError(
+                "grant token project does not match",
+                code="grant-project-mismatch",
+            )
         if grant.grant_event_id != claims["grantEventId"]:
             raise WorkerGrantError("grant event id does not match", code="grant-event-mismatch")
         if grant.nonce != claims["nonce"]:
             raise WorkerGrantError("grant nonce does not match", code="grant-nonce-mismatch")
+        if (
+            grant.task_id != claims["taskId"]
+            or grant.run_id != claims["runId"]
+            or grant.attempt_id != claims["attemptId"]
+        ):
+            raise WorkerGrantError(
+                "grant token is not bound to this execution object",
+                code="grant-task-mismatch",
+            )
+        if (
+            grant.image_digest != claims["imageDigest"]
+            or grant.config_digest != claims["configDigest"]
+        ):
+            raise WorkerCallError(
+                "grant token execution object does not match the recorded grant",
+                code="execution-binding-mismatch",
+            )
         if parse_rfc3339(grant.expires_at) <= now:
             raise WorkerGrantError("grant token has expired", code="grant-expired")
 

@@ -15,14 +15,20 @@ from llm_research_os.execution import (
     validate_plan_authorization_event_request_document,
 )
 from llm_research_os.execution.authorization_documents import load_plan_authorization_request
-from llm_research_os.execution.models import DryRunStatus
+from llm_research_os.execution.models import DryRunStatus, PlannedTask
 from llm_research_os.internal.jsonclone import snapshot_json_document
 from llm_research_os.m2.errors import M2CheckpointError
 from llm_research_os.projections.replay import replay_events
 from llm_research_os.report import build_run_report, render_markdown
 from llm_research_os.spec.io import load_document, load_spec
+from llm_research_os.spec.models import TaskBlock
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.models import StoredEvent
+from llm_research_os.workers.binding import (
+    PYTHON_BRICK_CAPABILITY,
+    brick_execution_digest,
+    json_object,
+)
 from llm_research_os.workers.client import WorkerClient
 from llm_research_os.workers.http import LoopbackWorkerServer
 from llm_research_os.workers.plane import WorkerPlane
@@ -34,6 +40,7 @@ from llm_research_os.workers.runtime import WorkerRuntime
 from llm_research_os.workers.tokens import HMAC_KEY_BYTES
 
 _SPEC = "spec.yaml"
+_BLOCK = "block.json"
 _AUTHORIZATION_REQUEST = "authorization-request.json"
 _AUTHORIZATION_EVENT = "authorization-event.json"
 _WORKER = "worker.json"
@@ -64,7 +71,13 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             code="plan-not-ready",
         )
     workflow_id = spec.workflows[0].id
-    registry = build_registry([])
+    planned_task = spec.workflows[0].graph.nodes[0]
+    if type(planned_task) is not TaskBlock:
+        raise M2CheckpointError(
+            "checkpoint spec must contain exactly one python-brick task",
+            code="plan-not-ready",
+        )
+    registry = build_registry([_corpus_file(corpus, _BLOCK)])
     dry_run = TrustedKernel(registry).dry_run(spec, workflow_id=workflow_id)
     if dry_run.status is not DryRunStatus.READY or dry_run.digests.plan is None:
         raise M2CheckpointError(
@@ -90,6 +103,11 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             "checkpoint authorization was not granted",
             code="authorization-denied",
         )
+    if PYTHON_BRICK_CAPABILITY not in result.required_capabilities:
+        raise M2CheckpointError(
+            "checkpoint authorization does not grant execute.local",
+            code="authorization-capability-mismatch",
+        )
     worker_request = load_worker_register_request(_corpus_file(corpus, _WORKER))
     grant_request = load_authorization_grant_request(_corpus_file(corpus, _GRANT))
     identities = _load_run_events(_corpus_file(corpus, _RUN_EVENTS))
@@ -105,6 +123,44 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
     artifacts_root.mkdir(parents=True, exist_ok=True)
     artifact_store = LocalArtifactStore(artifacts_root)
     image = artifact_store.put(_corpus_file(corpus, _BRICK))
+    inner_config = json_object(planned_task.config.get("config", {}), field="config")
+    inner_inputs = json_object(planned_task.config.get("inputs", {}), field="inputs")
+    config_digest = brick_execution_digest(
+        image_digest=image.digest,
+        config=inner_config,
+        inputs=inner_inputs,
+    )
+    planned_image = planned_task.config.get("imageDigest")
+    if planned_image != image.digest:
+        raise M2CheckpointError(
+            "CAS brick digest does not match the planned imageDigest",
+            code="execution-binding-mismatch",
+        )
+    plan_nodes = [
+        node
+        for stage in (dry_run.plan.graph.stages if dry_run.plan is not None else ())
+        for node in stage.nodes
+    ]
+    if len(plan_nodes) != 1 or type(plan_nodes[0]) is not PlannedTask:
+        raise M2CheckpointError(
+            "checkpoint spec did not produce a single planned task",
+            code="plan-not-ready",
+        )
+    if plan_nodes[0].config_digest != config_digest:
+        raise M2CheckpointError(
+            "plan configDigest is not the authorized execution object",
+            code="execution-binding-mismatch",
+        )
+    if grant_request.image_digest != image.digest or grant_request.config_digest != config_digest:
+        raise M2CheckpointError(
+            "grant request is not bound to the authorized execution object",
+            code="execution-binding-mismatch",
+        )
+    if grant_request.task_id != planned_task.id:
+        raise M2CheckpointError(
+            "grant taskId does not match the planned task",
+            code="execution-binding-mismatch",
+        )
     server: LoopbackWorkerServer | None = None
     with EventStore(database) as store:
         if store.last_sequence() != 0:
@@ -150,6 +206,10 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             expires_at=grant_request.expires_at,
             actor_id=grant_request.actor.id,
             event_id=grant_request.event.id,
+            authorization_event_id=recorded.stored.event.id,
+            authorization_sequence=recorded.stored.event.sequence,
+            image_digest=image.digest,
+            config_digest=config_digest,
             time=grant_request.event.time,
         )
         runtime = WorkerRuntime(
@@ -172,12 +232,22 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             },
             revision=spec.metadata.revision,
         )
+        if (
+            grant_request.authorization_event_id != recorded.stored.event.id
+            or grant_request.authorization_sequence != recorded.stored.event.sequence
+        ):
+            raise M2CheckpointError(
+                "grant request does not cite the recorded authorization fact",
+                code="authorization-binding-mismatch",
+            )
         plane.enqueue(
             task_id=grant_request.task_id,
             run_id=grant_request.run_id,
             attempt_id=grant_request.attempt_id,
             image_digest=image.digest,
             event_id="evt.work.queued.task.cpu",
+            config=inner_config,
+            inputs=inner_inputs,
             time=grant_request.event.time,
         )
         grant_token = plane.issue_token(grant_request.grant_id)

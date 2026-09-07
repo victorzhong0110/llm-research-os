@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import dataclass
 from http.client import HTTPConnection
@@ -9,6 +10,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.workers.binding import json_object, require_execution_digest
 from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.sandbox import SandboxDisposition, execute_python_brick
 
@@ -20,7 +22,7 @@ class WorkerClient:
     session: str
     grant_token: str
 
-    def poll(self) -> dict[str, str] | None:
+    def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
             "POST",
             "/v0alpha1/work/poll",
@@ -30,7 +32,7 @@ class WorkerClient:
             return None
         if status != 200 or payload is None:
             raise WorkerError("work poll failed", code="http-poll-failed")
-        return {key: str(value) for key, value in payload.items()}
+        return payload
 
     def complete(
         self, *, lease_id: str, result_digest: str, artifact_digest: str
@@ -48,6 +50,21 @@ class WorkerClient:
         )
         if status != 200 or payload is None:
             raise WorkerError("work complete failed", code="http-complete-failed")
+        return {key: str(value) for key, value in payload.items()}
+
+    def fail(self, *, lease_id: str, reason_code: str) -> dict[str, str]:
+        status, payload = self._json(
+            "POST",
+            "/v0alpha1/work/fail",
+            {
+                "workerId": self.worker_id,
+                "grantToken": self.grant_token,
+                "leaseId": lease_id,
+                "reasonCode": reason_code,
+            },
+        )
+        if status != 200 or payload is None:
+            raise WorkerError("work fail failed", code="http-fail-failed")
         return {key: str(value) for key, value in payload.items()}
 
     def put_artifact(self, payload: bytes) -> str:
@@ -82,14 +99,43 @@ class WorkerClient:
         claimed = self.poll()
         if claimed is None:
             return None
-        result = execute_python_brick(artifacts, claimed["imageDigest"])
+        if claimed.get("resumed") is True:
+            raise WorkerError(
+                "claimed work must not be executed again",
+                code="work-already-claimed",
+            )
+        image_digest = claimed.get("imageDigest")
+        config_digest = claimed.get("configDigest")
+        if type(image_digest) is not str or type(config_digest) is not str:
+            raise WorkerError("poll omitted execution binding", code="http-invalid")
+        config = json_object(claimed.get("config", {}), field="config")
+        inputs = json_object(claimed.get("inputs", {}), field="inputs")
+        require_execution_digest(
+            image_digest=image_digest,
+            config=config,
+            inputs=inputs,
+            config_digest=config_digest,
+        )
+        result = execute_python_brick(
+            artifacts,
+            image_digest,
+            config=config,
+            inputs=inputs,
+        )
         if result.disposition is SandboxDisposition.UNKNOWN:
             raise WorkerError("sandbox outcome is unknown", code=result.reason_code)
         if result.disposition is not SandboxDisposition.SUCCEEDED or result.result_digest is None:
+            lease_id = claimed.get("leaseId")
+            if type(lease_id) is str:
+                with contextlib.suppress(WorkerError):
+                    self.fail(lease_id=lease_id, reason_code=result.reason_code)
             raise WorkerError("sandbox brick failed", code=result.reason_code)
         artifact_digest = self.put_artifact(result.stdout)
+        lease_id = claimed.get("leaseId")
+        if type(lease_id) is not str:
+            raise WorkerError("poll omitted leaseId", code="http-invalid")
         return self.complete(
-            lease_id=claimed["leaseId"],
+            lease_id=lease_id,
             result_digest=result.result_digest,
             artifact_digest=artifact_digest,
         )

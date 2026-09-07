@@ -51,8 +51,11 @@ def issue_grant_token(
     run_id: str,
     nonce: str,
     expires_at: str,
+    project_id: str,
+    image_digest: str,
+    config_digest: str,
 ) -> str:
-    """Bind grant identity to a worker and attempt. Not a JWT (Issue #53)."""
+    """Bind grant identity to a worker, attempt, and execution object. Not a JWT."""
 
     require_hmac_key(key)
     claims = {
@@ -66,17 +69,22 @@ def issue_grant_token(
         "runId": run_id,
         "nonce": nonce,
         "exp": expires_at,
+        "projectId": project_id,
+        "imageDigest": image_digest,
+        "configDigest": config_digest,
     }
     return _sign(key, GRANT_TOKEN_VERSION, claims)
 
 
-def verify_grant_token(key: bytes, token: object, *, now: datetime) -> dict[str, str]:
+def verify_grant_token(
+    key: bytes, token: object, *, now: datetime, require_live: bool = True
+) -> dict[str, str]:
     require_hmac_key(key)
     claims = _verify(key, GRANT_TOKEN_VERSION, token)
     expires_at = claims.get("exp")
     if type(expires_at) is not str:
         raise WorkerGrantError("grant token is missing exp", code="grant-token-invalid")
-    if parse_rfc3339(expires_at) <= now.astimezone(UTC):
+    if require_live and parse_rfc3339(expires_at) <= now.astimezone(UTC):
         raise WorkerGrantError("grant token has expired", code="grant-expired")
     required = (
         "grantId",
@@ -87,6 +95,9 @@ def verify_grant_token(key: bytes, token: object, *, now: datetime) -> dict[str,
         "runId",
         "nonce",
         "keyId",
+        "projectId",
+        "imageDigest",
+        "configDigest",
     )
     for field in required:
         value = claims.get(field)

@@ -11,6 +11,7 @@ from llm_research_os.cli.output import dumps_json, print_error, safe_text
 from llm_research_os.spec.io import SpecLoadError
 from llm_research_os.storage import EventStore, EventStoreError
 from llm_research_os.storage.models import StoredEvent
+from llm_research_os.workers.binding import require_authorized_execution_citation
 from llm_research_os.workers.control import WorkerControl
 from llm_research_os.workers.errors import WorkerError, WorkerRequestError
 from llm_research_os.workers.requests import (
@@ -43,6 +44,12 @@ def _record_grant(request_path: Path, database: Path, output_format: str) -> int
     try:
         request = load_authorization_grant_request(request_path)
         with EventStore(database, require_existing=True) as store:
+            require_authorized_execution_citation(
+                store,
+                project_id=request.project_id,
+                event_id=request.authorization_event_id,
+                sequence=request.authorization_sequence,
+            )
             stored = WorkerControl(store, project_id=request.project_id).append(
                 request.event_draft()
             )

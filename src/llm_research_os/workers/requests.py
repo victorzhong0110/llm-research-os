@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from pydantic import Field, ValidationError, field_serializer, field_validator
 
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
 from llm_research_os.events.models import (
     CloudEventsString,
     CloudEventsUriReference,
@@ -18,7 +19,7 @@ from llm_research_os.research.models import require_json_array
 from llm_research_os.spec.io import load_document
 from llm_research_os.workers.drafts import grant_recorded_draft, registered_draft
 from llm_research_os.workers.errors import WorkerRequestError
-from llm_research_os.workers.models import MAX_ACCELERATORS, WorkerDocumentModel
+from llm_research_os.workers.models import DIGEST_PATTERN, MAX_ACCELERATORS, WorkerDocumentModel
 
 WORKER_REGISTER_REQUEST_SCHEMA_ID = (
     "https://researchos.dev/schemas/worker-register-request/v0alpha1.schema.json"
@@ -94,6 +95,13 @@ class AuthorizationGrantRequestDocument(WorkerDocumentModel):
     attempt_id: EventIdentifier = Field(alias="attemptId")
     nonce: EventIdentifier
     expires_at: Rfc3339Timestamp = Field(alias="expiresAt")
+    authorization_event_id: CloudEventsString = Field(alias="authorizationEventId")
+    authorization_sequence: CloudEventsString = Field(alias="authorizationSequence")
+    image_digest: CloudEventsString = Field(alias="imageDigest", pattern=DIGEST_PATTERN)
+    config_digest: CloudEventsString = Field(
+        alias="configDigest",
+        pattern=SEMANTIC_DIGEST_PATTERN,
+    )
     actor: WorkerRequestActor
     event: WorkerEventIdentity
 
@@ -111,6 +119,10 @@ class AuthorizationGrantRequestDocument(WorkerDocumentModel):
             time=self.event.time,
             source=self.source,
             actor_id=self.actor.id,
+            authorization_event_id=self.authorization_event_id,
+            authorization_sequence=self.authorization_sequence,
+            image_digest=self.image_digest,
+            config_digest=self.config_digest,
             experiment_revision=self.experiment_revision,
         )
 

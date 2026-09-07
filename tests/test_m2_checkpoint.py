@@ -129,12 +129,11 @@ def test_workers_register_and_grants_record_omit_tokens(tmp_path: Path, capsys: 
                 "json",
             ]
         )
-        == 0
+        == 1
     )
-    recorded = json.loads(capsys.readouterr().out)  # type: ignore[attr-defined]
-    assert recorded["type"] == "authorization.grant.recorded"
-    assert "rg1." not in json.dumps(recorded)
-    assert recorded.get("token") is None
+    recorded = capsys.readouterr().err  # type: ignore[attr-defined]
+    assert "authorization-event-not-found" in recorded
+    assert "rg1." not in recorded
 
 
 def test_workers_register_missing_database_exits_two(tmp_path: Path, capsys: object) -> None:

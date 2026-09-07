@@ -11,7 +11,9 @@ start NativeProcessRuntime.
 ## Register and grant
 
 The database must already exist. Worker registration is a human fact.
-Grant recording does not print the HMAC token.
+Grant recording cites one authorized `execute.local` evaluation and the
+CAS execution object. It does not print the HMAC token. Recording without
+that citation fails closed.
 
 ```bash
 uv run researchos workers register \
@@ -31,11 +33,16 @@ uv run researchos m2 prove \
   --format json
 ```
 
-The command creates an empty EventStore, consumes local plan authorization,
-registers the corpus Worker, records a grant, queues a Run, serves loopback
-long poll, executes the CAS-pinned `brick.py`, stores the report object,
-appends `work.completed`, then `attempt.succeeded` / `run.completed`. It
-reopens the store and requires the same events and Markdown report.
+The command creates an empty EventStore, consumes local plan authorization
+for `execute.local`, registers the corpus Worker, records a grant bound to
+the planned brick digest, queues a Run, serves loopback long poll, executes
+the CAS-pinned `brick.py` only after re-checking that object, stores the
+report object, appends `work.completed`, then `attempt.succeeded` /
+`run.completed`. It reopens the store and requires the same events and
+Markdown report.
+
+Host Python is not kernel isolation. Byte limits apply while reading
+stdout/stderr. A claimed lease that is resumed MUST NOT run again.
 
 `--artifacts` selects the CAS root (created if missing). Default is
 `<database-stem>-artifacts` beside the database.

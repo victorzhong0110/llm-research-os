@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -55,6 +55,10 @@ class GrantRecord:
     expires_at: str
     run_id: str
     attempt_id: str
+    authorization_event_id: str
+    authorization_sequence: str
+    image_digest: str
+    config_digest: str
     revoked: bool = False
     consumed_lease_id: str | None = None
 
@@ -65,6 +69,9 @@ class QueuedWork:
     run_id: str
     attempt_id: str
     image_digest: str
+    config_digest: str
+    config: dict[str, Any]
+    inputs: dict[str, Any]
     required_accelerators: frozenset[str]
 
 
@@ -81,6 +88,7 @@ class LeaseRecord:
     status: str = "leased"
     result_digest: str | None = None
     artifact_digest: str | None = None
+    reason_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +272,10 @@ def _apply_grant_recorded(
         expires_at=payload.expires_at,
         run_id=run_id,
         attempt_id=attempt_id,
+        authorization_event_id=payload.authorization_event_id,
+        authorization_sequence=payload.authorization_sequence,
+        image_digest=payload.image_digest,
+        config_digest=payload.config_digest,
     )
     return WorkerFold(
         workers=fold.workers,
@@ -279,18 +291,7 @@ def _apply_grant_revoked(fold: WorkerFold, payload: GrantRevokedPayload) -> Work
         raise WorkerCallError("grantId is not recorded", code="unknown-grant")
     if current.revoked:
         raise WorkerCallError("grantId is already revoked", code="grant-already-revoked")
-    updated = GrantRecord(
-        grant_id=current.grant_id,
-        grant_event_id=current.grant_event_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        nonce=current.nonce,
-        expires_at=current.expires_at,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        revoked=True,
-        consumed_lease_id=current.consumed_lease_id,
-    )
+    updated = replace(current, revoked=True)
     return WorkerFold(
         workers=fold.workers,
         grants=_replace_grant(fold.grants, updated),
@@ -314,18 +315,7 @@ def _apply_grant_consumed(fold: WorkerFold, payload: GrantConsumedPayload) -> Wo
     lease = fold.lease(payload.lease_id)
     if lease is None or lease.grant_id != payload.grant_id:
         raise WorkerCallError("grant consume lease does not match", code="grant-lease-mismatch")
-    updated = GrantRecord(
-        grant_id=current.grant_id,
-        grant_event_id=current.grant_event_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        nonce=current.nonce,
-        expires_at=current.expires_at,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        revoked=current.revoked,
-        consumed_lease_id=payload.lease_id,
-    )
+    updated = replace(current, consumed_lease_id=payload.lease_id)
     return WorkerFold(
         workers=fold.workers,
         grants=_replace_grant(fold.grants, updated),
@@ -346,6 +336,9 @@ def _apply_queued(fold: WorkerFold, event: ResearchEvent, payload: WorkQueuedPay
         run_id=run_id,
         attempt_id=attempt_id,
         image_digest=payload.image_digest,
+        config_digest=payload.config_digest,
+        config=dict(payload.config),
+        inputs=dict(payload.inputs),
         required_accelerators=frozenset(payload.required_accelerators),
     )
     return WorkerFold(
@@ -412,19 +405,7 @@ def _apply_claimed(fold: WorkerFold, payload: WorkClaimedPayload) -> WorkerFold:
         raise WorkerCallError("terminal lease cannot be claimed", code="lease-terminal")
     if current.claimed:
         return fold
-    updated = LeaseRecord(
-        lease_id=current.lease_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        grant_id=current.grant_id,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        expires_at=current.expires_at,
-        claimed=True,
-        status=current.status,
-        result_digest=current.result_digest,
-        artifact_digest=current.artifact_digest,
-    )
+    updated = replace(current, claimed=True)
     return WorkerFold(
         workers=fold.workers,
         grants=fold.grants,
@@ -448,14 +429,8 @@ def _apply_completed(fold: WorkerFold, payload: WorkCompletedPayload) -> WorkerF
         raise WorkerCallError("terminal lease cannot be completed", code="lease-terminal")
     if not current.claimed:
         raise WorkerCallError("lease must be claimed before complete", code="lease-not-claimed")
-    updated = LeaseRecord(
-        lease_id=current.lease_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        grant_id=current.grant_id,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        expires_at=current.expires_at,
+    updated = replace(
+        current,
         claimed=True,
         status="completed",
         result_digest=payload.result_digest,
@@ -473,21 +448,13 @@ def _apply_failed(fold: WorkerFold, payload: WorkFailedPayload) -> WorkerFold:
     current = fold.lease(payload.lease_id)
     if current is None:
         raise WorkerCallError("leaseId is not recorded", code="unknown-lease")
+    if current.status == "failed":
+        if current.reason_code == payload.reason_code:
+            return fold
+        raise WorkerCallError("failed lease reason does not match", code="fail-mismatch")
     if current.status in _TERMINAL_LEASE:
         raise WorkerCallError("terminal lease cannot fail", code="lease-terminal")
-    updated = LeaseRecord(
-        lease_id=current.lease_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        grant_id=current.grant_id,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        expires_at=current.expires_at,
-        claimed=current.claimed,
-        status="failed",
-        result_digest=current.result_digest,
-        artifact_digest=current.artifact_digest,
-    )
+    updated = replace(current, status="failed", reason_code=payload.reason_code)
     return WorkerFold(
         workers=fold.workers,
         grants=fold.grants,
@@ -504,19 +471,7 @@ def _apply_expired(fold: WorkerFold, payload: WorkLeaseExpiredPayload) -> Worker
         if current.status == "expired":
             return fold
         raise WorkerCallError("terminal lease cannot expire", code="lease-terminal")
-    updated = LeaseRecord(
-        lease_id=current.lease_id,
-        worker_id=current.worker_id,
-        task_id=current.task_id,
-        grant_id=current.grant_id,
-        run_id=current.run_id,
-        attempt_id=current.attempt_id,
-        expires_at=current.expires_at,
-        claimed=current.claimed,
-        status="expired",
-        result_digest=current.result_digest,
-        artifact_digest=current.artifact_digest,
-    )
+    updated = replace(current, status="expired")
     return WorkerFold(
         workers=fold.workers,
         grants=fold.grants,

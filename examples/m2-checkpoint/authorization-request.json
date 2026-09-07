@@ -1,11 +1,11 @@
 {
   "apiVersion": "researchos.dev/v0alpha1",
   "kind": "PlanAuthorizationRequest",
-  "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
-  "registryDigest": "jcs-sha256:d97eed822c9897500e581f5014bb04e7adb985f7d03aa184d0f0a3ecacec741a",
-  "planDigest": "jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b",
+  "specDigest": "jcs-sha256:3f1af35512c124aa4087c2c895887cc307c82bb23b89c677714ef14876853e08",
+  "registryDigest": "jcs-sha256:02ab29999e501a24d18052ac07d90aa6c7cfa108d36c88901c8440bc9863c0a9",
+  "planDigest": "jcs-sha256:3c60e68013cef672f9b36d04711051b0a62a26d237383f00ea579fc51e8fb4dd",
   "grantedCapabilities": [
-    "simulate"
+    "execute.local"
   ],
   "grantedPermissions": [],
   "requirementDecisions": []

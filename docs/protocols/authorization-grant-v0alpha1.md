@@ -5,33 +5,49 @@
 
 This is not a JWT and not SimulatedRuntime consume. SimulatedRuntime still
 cites local `{eventId, sequence}` of `plan.authorization.evaluated`
-(ADR-0042). Worker execution consumes an HMAC grant bound to one worker and
-one attempt.
+(ADR-0042). Worker execution consumes an HMAC grant bound to one worker,
+one attempt, and one execution object.
 
 ## 1. Recorded fact
 
 `authorization.grant.recorded` payload:
 
 - `grantId`, `workerId`, `taskId`, `nonce`, `expiresAt`, `keyId`
+- `authorizationEventId`, `authorizationSequence` — citation of one
+  `plan.authorization.evaluated` fact on this EventStore
+- `imageDigest` (`sha256:`) and `configDigest` (`jcs-sha256:`) — the
+  execution object
 - Envelope `runId` / `attemptId` are required
 
-The HMAC token MUST NOT be stored on the event (TM-007).
+The cited evaluation MUST exist, MUST be `authorized=true`, MUST match the
+project, MUST have a human actor, and MUST list `execute.local` in
+`requiredCapabilities`. Citing a `simulate` authorization MUST fail
+`authorization-capability-mismatch`. The HMAC token MUST NOT be stored on
+the event (TM-007).
 
 Token form: `rg1.<urlsafe-b64-json>.<hex-hmac-sha256>` over canonical
 claims `{v, keyId, grantId, grantEventId, workerId, taskId, attemptId,
-runId, nonce, exp}`. Verify with `hmac.compare_digest`. Unknown `keyId`
-fails closed.
+runId, nonce, exp, projectId, imageDigest, configDigest}`. Verify with
+`hmac.compare_digest`. Unknown `keyId` fails closed.
 
-## 2. Expiry, revoke, consume
+## 2. Expiry, revoke, consume, results
 
-- `exp` / `expiresAt` in the past → `grant-expired`
-- `authorization.grant.revoked` → later poll/complete fail `grant-revoked`
+- `exp` / `expiresAt` in the past → `grant-expired` for poll and for a
+  **new** complete/fail
+- `authorization.grant.revoked` → later poll and new complete/fail fail
+  `grant-revoked`
+- A matching terminal complete/fail after revoke or expiry MUST return the
+  existing fact (idempotent). A different result MUST fail closed.
+- A token whose `taskId` / `runId` / `attemptId` does not match the lease
+  MUST fail `grant-task-mismatch`
 - `authorization.grant.consumed` binds `nonce` to one `leaseId`. A second
   consume with another lease is `grant-replay`. The same lease is
   idempotent.
 
 CLI: `researchos grants record REQUEST DATABASE` appends the recorded fact
-only. It does not print the token.
+only after the authorization citation verifies. It does not print the
+token. Recording without a matching `execute.local` evaluation fails
+closed.
 
 ## 3. Conformance
 

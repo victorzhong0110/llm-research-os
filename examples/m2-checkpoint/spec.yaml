@@ -3,7 +3,7 @@ kind: ResearchProject
 metadata:
   id: example-minimal
   revision: 1
-  title: Minimal simulated research project
+  title: Loopback CPU Worker brick
 questions:
   - id: rq.loss
     question: Can the simulated intervention reduce validation loss?
@@ -12,16 +12,19 @@ evidence: []
 datasets: []
 models: []
 workflows:
-  - id: workflow.simulation
+  - id: workflow.cpu
     graph:
       nodes:
         - kind: task
-          id: simulate
-          blockType: simulated.experiment
+          id: task.cpu
+          blockType: researchos.python-brick
           blockVersion: 0.1.0
           config:
-            outcome: success
-            seed: 0
+            imageDigest: sha256:08ed11a2e28bd0d286e2b202fe458ba930e9f387f603a9de0dc1f0b2cec9c535
+            imageMediaType: researchos.python-brick/v0alpha1
+            runtime: python-sandbox
+            config: {}
+            inputs: {}
       edges: []
 evaluations: []
 resources: []

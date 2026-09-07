@@ -66,6 +66,24 @@
       "title": "Attemptid",
       "type": "string"
     },
+    "authorizationEventId": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Authorizationeventid",
+      "type": "string"
+    },
+    "authorizationSequence": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Authorizationsequence",
+      "type": "string"
+    },
+    "configDigest": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Configdigest",
+      "type": "string"
+    },
     "event": {
       "$ref": "#/$defs/WorkerEventIdentity"
     },
@@ -86,6 +104,12 @@
       "minLength": 1,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
       "title": "Grantid",
+      "type": "string"
+    },
+    "imageDigest": {
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+      "title": "Imagedigest",
       "type": "string"
     },
     "kind": {
@@ -149,6 +173,10 @@
     "attemptId",
     "nonce",
     "expiresAt",
+    "authorizationEventId",
+    "authorizationSequence",
+    "imageDigest",
+    "configDigest",
     "actor",
     "event"
   ],

@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Literal
+import json
+from typing import Any, Literal
 
-from pydantic import ConfigDict, Field, ValidationError, field_serializer, field_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+)
 
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
 from llm_research_os.events.models import (
     ActorKind,
     CloudEventsString,
@@ -50,6 +59,7 @@ IMAGE_MEDIA_PYTHON_BRICK: Literal["researchos.python-brick/v0alpha1"] = (
 )
 DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
 MAX_ACCELERATORS = 8
+MAX_BRICK_OBJECT_BYTES = 16_384
 
 
 class WorkerDocumentModel(EventDocumentModel):
@@ -93,6 +103,15 @@ class WorkerRegisteredPayload(WorkerDocumentModel):
         return list(values)
 
 
+def _require_brick_object(value: object, field: str) -> dict[str, Any]:
+    if type(value) is not dict:
+        raise ValueError(f"{field} must be a JSON object")
+    encoded = json.dumps(value, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+    if len(encoded) > MAX_BRICK_OBJECT_BYTES:
+        raise ValueError(f"{field} exceeds the closed object byte limit")
+    return dict(value)
+
+
 class WorkQueuedPayload(WorkerDocumentModel):
     task_id: EventIdentifier = Field(alias="taskId")
     image_digest: CloudEventsString = Field(alias="imageDigest", pattern=DIGEST_PATTERN)
@@ -101,10 +120,22 @@ class WorkQueuedPayload(WorkerDocumentModel):
         alias="imageMediaType",
     )
     runtime: Literal["python-sandbox"] = WORKER_RUNTIME_PYTHON_SANDBOX
+    config: dict[str, Any] = Field(default_factory=dict)
+    inputs: dict[str, Any] = Field(default_factory=dict)
+    config_digest: CloudEventsString = Field(
+        alias="configDigest",
+        pattern=SEMANTIC_DIGEST_PATTERN,
+    )
     required_accelerators: tuple[EventIdentifier, ...] = Field(
         default=(),
         alias="requiredAccelerators",
     )
+
+    @field_validator("config", "inputs", mode="before")
+    @classmethod
+    def brick_objects_are_json(cls, value: object, info: ValidationInfo) -> object:
+        field = info.field_name if type(info.field_name) is str else "config"
+        return _require_brick_object(value, field)
 
     @field_validator("required_accelerators", mode="before")
     @classmethod
@@ -141,7 +172,7 @@ class WorkClaimedPayload(WorkerDocumentModel):
 
 class WorkCompletedPayload(WorkerDocumentModel):
     lease_id: EventIdentifier = Field(alias="leaseId")
-    result_digest: CloudEventsString = Field(alias="resultDigest", pattern=DIGEST_PATTERN)
+    result_digest: CloudEventsString = Field(alias="resultDigest", pattern=SEMANTIC_DIGEST_PATTERN)
     artifact_digest: CloudEventsString = Field(alias="artifactDigest", pattern=DIGEST_PATTERN)
 
 
@@ -162,6 +193,13 @@ class GrantRecordedPayload(WorkerDocumentModel):
     nonce: EventIdentifier
     expires_at: Rfc3339Timestamp = Field(alias="expiresAt")
     key_id: Literal["local.hmac.1"] = Field(alias="keyId")
+    authorization_event_id: CloudEventsString = Field(alias="authorizationEventId")
+    authorization_sequence: CloudEventsString = Field(alias="authorizationSequence")
+    image_digest: CloudEventsString = Field(alias="imageDigest", pattern=DIGEST_PATTERN)
+    config_digest: CloudEventsString = Field(
+        alias="configDigest",
+        pattern=SEMANTIC_DIGEST_PATTERN,
+    )
 
 
 class GrantRevokedPayload(WorkerDocumentModel):

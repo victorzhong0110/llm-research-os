@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import json
 import sys
+import time
 from datetime import timedelta
 from http.client import HTTPConnection
 from pathlib import Path
@@ -17,12 +18,18 @@ from test_worker_protocol import (
     FrozenClock,
     _grant_and_queue,
     _plane,
+    _record_execute_local_authorization,
 )
 
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage import EventStore
 from llm_research_os.workers.client import WorkerClient
-from llm_research_os.workers.errors import WorkerCallError, WorkerError, WorkerSandboxError
+from llm_research_os.workers.errors import (
+    WorkerCallError,
+    WorkerError,
+    WorkerGrantError,
+    WorkerSandboxError,
+)
 from llm_research_os.workers.http import LoopbackWorkerServer
 from llm_research_os.workers.plane import WorkerPlane
 from llm_research_os.workers.sandbox import SandboxDisposition, execute_python_brick
@@ -172,6 +179,7 @@ def test_http_loopback_poll_execute_complete(tmp_path: Path) -> None:
     artifacts = LocalArtifactStore(artifacts_root)
     image = artifacts.put(ROOT / "examples" / "m2-checkpoint" / "brick.py")
     with EventStore(database) as store:
+        _record_execute_local_authorization(store)
         plane = WorkerPlane(
             store,
             artifacts=artifacts,
@@ -247,6 +255,7 @@ def test_disconnect_before_complete_leaves_lease_open(tmp_path: Path) -> None:
     artifacts = LocalArtifactStore(artifacts_root)
     image = artifacts.put(ROOT / "examples" / "m2-checkpoint" / "brick.py")
     with EventStore(database) as store:
+        _record_execute_local_authorization(store)
         plane = WorkerPlane(
             store,
             artifacts=artifacts,
@@ -301,6 +310,7 @@ def test_http_heartbeat_and_unknown_path_do_not_append_facts(tmp_path: Path) -> 
     artifacts = LocalArtifactStore(artifacts_root)
     image = artifacts.put(ROOT / "examples" / "m2-checkpoint" / "brick.py")
     with EventStore(database) as store:
+        _record_execute_local_authorization(store)
         plane = WorkerPlane(
             store,
             artifacts=artifacts,
@@ -456,3 +466,278 @@ def test_http_rejects_missing_session_and_invalid_wait(tmp_path: Path) -> None:
             wait.close()
     finally:
         server.stop()
+
+
+def test_matching_complete_after_revoke_or_expiry_is_idempotent(tmp_path: Path) -> None:
+    clock = FrozenClock(NOW)
+    store, artifacts, plane, image = _plane(tmp_path, clock=clock, lease_seconds=3600)
+    try:
+        token = _grant_and_queue(plane, image, expires_at="2026-09-07T12:00:05Z")
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        result = execute_python_brick(artifacts, image)
+        assert result.result_digest is not None
+        record = artifacts.put_bytes(result.stdout)
+        first = plane.complete(
+            worker_id="worker.loopback.1",
+            grant_token=token,
+            lease_id=claimed.lease_id,
+            result_digest=result.result_digest,
+            artifact_digest=record.digest,
+        )
+        plane.revoke_grant(
+            grant_id="grant.cpu.1",
+            actor_id="researcher.alice",
+            event_id="evt.grant.revoked.1",
+        )
+        clock.instant = NOW + timedelta(seconds=120)
+        again = plane.complete(
+            worker_id="worker.loopback.1",
+            grant_token=token,
+            lease_id=claimed.lease_id,
+            result_digest=result.result_digest,
+            artifact_digest=record.digest,
+        )
+        assert again.event.id == first.event.id
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_revoke_and_expiry_reject_new_results(tmp_path: Path) -> None:
+    clock = FrozenClock(NOW)
+    store, artifacts, plane, image = _plane(tmp_path, clock=clock, lease_seconds=3600)
+    try:
+        token = _grant_and_queue(plane, image, expires_at="2026-09-07T12:00:05Z")
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        result = execute_python_brick(artifacts, image)
+        assert result.result_digest is not None
+        record = artifacts.put_bytes(result.stdout)
+        plane.revoke_grant(
+            grant_id="grant.cpu.1",
+            actor_id="researcher.alice",
+            event_id="evt.grant.revoked.1",
+        )
+        with pytest.raises(WorkerGrantError) as captured:
+            plane.complete(
+                worker_id="worker.loopback.1",
+                grant_token=token,
+                lease_id=claimed.lease_id,
+                result_digest=result.result_digest,
+                artifact_digest=record.digest,
+            )
+        assert captured.value.code == "grant-revoked"
+        with pytest.raises(WorkerGrantError) as captured:
+            plane.fail(
+                worker_id="worker.loopback.1",
+                grant_token=token,
+                lease_id=claimed.lease_id,
+                reason_code="worker.brick.failed",
+            )
+        assert captured.value.code == "grant-revoked"
+    finally:
+        store.__exit__(None, None, None)
+
+    clock = FrozenClock(NOW)
+    store, artifacts, plane, image = _plane(tmp_path / "expired", clock=clock, lease_seconds=3600)
+    try:
+        token = _grant_and_queue(plane, image, expires_at="2026-09-07T12:00:05Z")
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        result = execute_python_brick(artifacts, image)
+        assert result.result_digest is not None
+        record = artifacts.put_bytes(result.stdout)
+        clock.instant = NOW + timedelta(seconds=120)
+        with pytest.raises(WorkerGrantError) as captured:
+            plane.complete(
+                worker_id="worker.loopback.1",
+                grant_token=token,
+                lease_id=claimed.lease_id,
+                result_digest=result.result_digest,
+                artifact_digest=record.digest,
+            )
+        assert captured.value.code == "grant-expired"
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_fail_is_idempotent_for_the_same_reason(tmp_path: Path) -> None:
+    store, _artifacts, plane, image = _plane(tmp_path)
+    try:
+        token = _grant_and_queue(plane, image)
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        first = plane.fail(
+            worker_id="worker.loopback.1",
+            grant_token=token,
+            lease_id=claimed.lease_id,
+            reason_code="worker.brick.failed",
+        )
+        second = plane.fail(
+            worker_id="worker.loopback.1",
+            grant_token=token,
+            lease_id=claimed.lease_id,
+            reason_code="worker.brick.failed",
+        )
+        assert first.event.id == second.event.id
+        with pytest.raises(WorkerCallError) as captured:
+            plane.fail(
+                worker_id="worker.loopback.1",
+                grant_token=token,
+                lease_id=claimed.lease_id,
+                reason_code="worker.brick.output-too-large",
+            )
+        assert captured.value.code == "fail-mismatch"
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_complete_append_failure_retries_complete_not_execute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, artifacts, plane, image = _plane(tmp_path)
+    try:
+        token = _grant_and_queue(plane, image)
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        result = execute_python_brick(artifacts, image)
+        assert result.result_digest is not None
+        record = artifacts.put_bytes(result.stdout)
+        real_append = plane._control.append
+        calls = {"n": 0}
+
+        def _once(document: dict[str, object]) -> object:
+            calls["n"] += 1
+            if document.get("type") == "work.completed" and calls["n"] == 1:
+                raise OSError("complete fact write interrupted")
+            return real_append(document)
+
+        monkeypatch.setattr(plane._control, "append", _once)
+        with pytest.raises(OSError, match="interrupted"):
+            plane.complete(
+                worker_id="worker.loopback.1",
+                grant_token=token,
+                lease_id=claimed.lease_id,
+                result_digest=result.result_digest,
+                artifact_digest=record.digest,
+            )
+        lease = plane.rebuild().lease(claimed.lease_id)
+        assert lease is not None
+        assert lease.status != "completed"
+        monkeypatch.undo()
+        stored = plane.complete(
+            worker_id="worker.loopback.1",
+            grant_token=token,
+            lease_id=claimed.lease_id,
+            result_digest=result.result_digest,
+            artifact_digest=record.digest,
+        )
+        assert stored.event.type == "work.completed"
+        assert claimed.resumed is False
+        resumed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert resumed is None
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_resumed_poll_does_not_spawn_the_brick(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "research.db"
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    image = artifacts.put(ROOT / "examples" / "m2-checkpoint" / "brick.py")
+    with EventStore(database) as store:
+        _record_execute_local_authorization(store)
+        plane = WorkerPlane(
+            store,
+            artifacts=artifacts,
+            hmac_key=HMAC_KEY,
+            project_id=PROJECT,
+            source=SOURCE,
+            clock=FrozenClock(NOW),
+        )
+        plane.register(
+            worker_id="worker.loopback.1",
+            actor_id="researcher.alice",
+            event_id="evt.worker.registered.1",
+            time="2026-09-07T12:00:00Z",
+        )
+        token = _grant_and_queue(plane, image.digest)
+        claimed = plane.poll(worker_id="worker.loopback.1", grant_token=token)
+        assert claimed is not None
+        assert claimed.resumed is False
+    spawned: list[object] = []
+
+    def _forbid(*_args: object, **_kwargs: object) -> object:
+        spawned.append(1)
+        raise AssertionError("resume must not spawn")
+
+    monkeypatch.setattr("llm_research_os.workers.sandbox.subprocess.Popen", _forbid)
+    server = LoopbackWorkerServer(
+        database,
+        artifacts,
+        hmac_key=HMAC_KEY,
+        project_id=PROJECT,
+        source=SOURCE,
+        clock=FrozenClock(NOW),
+    )
+    try:
+        server.start()
+        client = WorkerClient(
+            base_url=server.base_url,
+            worker_id="worker.loopback.1",
+            session=server.session_for("worker.loopback.1"),
+            grant_token=token,
+        )
+        with pytest.raises(WorkerError) as captured:
+            client.run_once(artifacts)
+        assert captured.value.code == "work-already-claimed"
+        assert spawned == []
+    finally:
+        server.stop()
+
+
+def test_unbounded_stdout_is_cut_during_read(tmp_path: Path) -> None:
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    brick = tmp_path / "stream.py"
+    brick.write_text(
+        "import sys\nwhile True:\n    sys.stdout.write('x' * 4096)\n    sys.stdout.flush()\n",
+        encoding="utf-8",
+    )
+    started = time.monotonic()
+    result = execute_python_brick(artifacts, artifacts.put(brick).digest, timeout_seconds=5)
+    elapsed = time.monotonic() - started
+    assert result.reason_code == "worker.brick.output-too-large"
+    assert result.disposition is SandboxDisposition.FAILED
+    assert elapsed < 3
+
+
+def test_child_process_is_reaped_with_the_group(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("process-group reaping is POSIX")
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    marker = tmp_path / "child-marker"
+    brick = tmp_path / "fork.py"
+    brick.write_text(
+        "import json, os, sys, time\n"
+        "child = os.fork()\n"
+        "if child == 0:\n"
+        "    time.sleep(1)\n"
+        f"    open({str(marker)!r}, 'w').write('alive')\n"
+        "    os._exit(0)\n"
+        "json.dump("
+        "{'apiVersion':'researchos.dev/v0alpha1','kind':'PythonBrickReport',"
+        "'status':'ok','outputs':{'childPid': child}},"
+        " sys.stdout, separators=(',', ':'))\n",
+        encoding="utf-8",
+    )
+    result = execute_python_brick(artifacts, artifacts.put(brick).digest)
+    assert result.disposition is SandboxDisposition.SUCCEEDED
+    time.sleep(1.2)
+    assert marker.exists() is False

@@ -28,25 +28,43 @@ long-poll binding.
 1. **Identity.** `worker.registered` is a human fact. The Worker is not a
    local human actor upgraded into a credential.
 2. **Grant.** `authorization.grant.recorded` stores grant identity, worker,
-   task/attempt, nonce, expiry, and `keyId`. The HMAC token is issued in
-   process and MUST NOT appear on events (TM-007). The token is `rg1` HMAC,
-   not JWT. `authorization.grant.revoked` and `authorization.grant.consumed`
-   (nonce) fail closed on replay. This is the Issue #53 remainder for Worker
-   consume. SimulatedRuntime still uses local `{eventId, sequence}` consume.
+   task/attempt, nonce, expiry, `keyId`, a citation of one authorized
+   `plan.authorization.evaluated` fact (`authorizationEventId` /
+   `authorizationSequence`), and the execution object (`imageDigest` +
+   `configDigest`). The cited evaluation MUST be `authorized=true` on this
+   store, MUST match the project, and MUST include `execute.local` in
+   `requiredCapabilities`. A `simulate` authorization MUST NOT record an
+   execution grant. The HMAC token is issued in process and MUST NOT appear
+   on events (TM-007). Claims also bind `projectId`, `imageDigest`, and
+   `configDigest`. The token is `rg1` HMAC, not JWT.
+   `authorization.grant.revoked` and `authorization.grant.consumed` (nonce)
+   fail closed on replay. SimulatedRuntime still uses local `{eventId,
+   sequence}` consume.
 3. **Lease.** `work.queued` / `work.leased` / `work.claimed` /
-   `work.completed` / `work.failed` / `work.lease.expired`. Claim of the same
-   `(taskId, attemptId, workerId)` is idempotent. A foreign Worker cannot
-   take an active lease. An expired lease cannot complete.
+   `work.completed` / `work.failed` / `work.lease.expired`. Queued work
+   carries the same execution object as the grant. Claim of the same
+   `(taskId, attemptId, workerId)` is idempotent and returns `resumed=true`
+   after the first claim; resume MUST NOT spawn again. A foreign Worker
+   cannot take an active lease. An expired lease cannot complete. A token
+   bound to another task/run/attempt MUST NOT complete or fail this lease
+   (`grant-task-mismatch`). After revoke or expiry, a matching terminal
+   complete/fail remains idempotent; a new result is refused.
 4. **Unknown vs failed.** A sandbox wall-clock timeout or lost process is
    `attempt.unknown` / sandbox `UNKNOWN`, not `failed`. A brick that exits
    non-zero is `failed`. Cancel requested is not observed stopped.
 5. **Heartbeats.** Transport liveness only. They MUST NOT append EventStore
    facts (ADR-0041).
-6. **Runtime.** The CPU path is a host-python JSON-stdio sandbox over a
-   CAS-pinned brick (`researchos.python-brick/v0alpha1`). Image identity is
-   a `sha256:` digest so a later OCI runtime can consume the same field.
-   NativeProcessPreflight remains `launchAllowed=false`. This slice is not
-   NativeProcessRuntime and not `OCIContainerRuntime`.
+6. **Runtime.** The CPU path is a host-python JSON-stdio helper over a
+   CAS-pinned brick (`researchos.python-brick/v0alpha1`). The plan task
+   config IS the execution object (image digest, media type, runtime, nested
+   config, inputs). `configDigest` is the JCS digest of that object. Image
+   identity is a `sha256:` digest so a later OCI runtime can consume the
+   same field. Replacing the brick, config, inputs, or runtime invalidates
+   the old grant; poll MUST refuse and MUST NOT start a process. The helper
+   applies stdout/stderr byte limits while reading pipes and reaps a POSIX
+   process group. It is **not** kernel network or filesystem isolation, not
+   a general-purpose code sandbox, not `NativeProcessRuntime`, and not
+   `OCIContainerRuntime`. NativeProcessPreflight remains `launchAllowed=false`.
 7. **Bind.** The HTTP adapter listens on loopback IPs only. Non-loopback
    binds fail closed. Worker sessions are HMAC `ws1` tokens. HTTPS and
    non-loopback transport remain ADR-0021.
@@ -66,17 +84,24 @@ long-poll binding.
 ## Consequences
 
 - `researchos m2 prove` can record one loopback CPU loop and a static report
-  that cites Worker, attempt, and artifact digest.
+  that cites Worker, attempt, and artifact digest. The corpus plan is a
+  single `researchos.python-brick` task authorized for `execute.local`.
 - Control-plane restart with the same HMAC key can resume an unexpired
-  lease from the log. Heartbeats are forgotten.
+  lease from the log without re-running unknown work. Heartbeats are forgotten.
 - SQLite schema stays v2. Lease state is a fold, not a new table.
+- Host Python is a trusted local helper. It does not claim arbitrary-code
+  isolation (TM-043).
 
 ## Validation
 
 1. Protocol tests: HMAC mismatch, revoke, idempotent claim/complete, expired
    complete, accelerator refusal, loopback bind, heartbeat sequence
    unchanged, sandbox timeout or killed process → unknown, disconnect
-   before complete leaves the lease open, disk-full complete refused.
+   before complete leaves the lease open, disk-full complete refused,
+   `simulate` authorization cannot record an execution grant, swapped brick
+   cannot spawn, cross-task token cannot complete/fail, matching
+   complete/fail after revoke remains idempotent, stdout cut during read,
+   child process group reaped.
 2. `researchos m2 prove examples/m2-checkpoint …` records `work.completed`
    and `run.completed`.
 3. `researchos schema --check-all`, ruff, mypy, pytest, coverage ≥ 85%.

@@ -53,8 +53,9 @@ corpus chain (Mock proposal through simulated report, or reject without a Run).
 Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
 M2-0 is a free loopback Worker CPU loop
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)): HMAC
-grants with expiry/revoke, CAS-pinned python brick, artifact + report. It
-is not GPU completion, not NativeProcessRuntime, and not Issue #38.
+grants with expiry/revoke bound to an authorized `execute.local` brick,
+CAS-pinned python helper, artifact + report. It is not GPU completion, not
+NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -68,8 +69,8 @@ evaluation events, read-only lineage, in-process `decisionDigest`, a local
 simulated-run / cancellation-request / artifact-object / research-decision /
 mock-model-call / evidence-import / OpenAI-compat / static-report /
 M1-checkpoint CLIs, a non-launching NativeProcessPreflight, loopback Worker
-registration / HMAC grants / `researchos m2 prove`, and a CPU sandbox that
-is not NativeProcessRuntime.
+registration / HMAC grants / `researchos m2 prove`, and a host-python helper that
+is not NativeProcessRuntime and not a kernel sandbox.
 
 The tree still does not execute training jobs or real GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
