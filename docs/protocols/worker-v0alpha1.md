@@ -131,8 +131,10 @@ env slots. The first adapter is docker with `--pull=never`. A docker CLI
 without an engine MUST fail `oci-runtime-missing`. Tests MUST NOT mock a
 successful container. Ordinary pytest MAY skip `oci_live` when no engine
 is present. Designated Linux OCI CI (`RESEARCHOS_OCI_REQUIRED=1`) MUST
-fail if the engine, image build, or live brick is missing. Host Python
-remains the trusted helper path.
+run every `oci_live` test (`pytest -m oci_live`) and MUST fail if the
+engine, image build, live brick, or a live fault case is missing
+(ADR-0055). Default OCI wall is 5 seconds; the closed maximum is 30
+seconds. Host Python remains the trusted helper path.
 A Worker registered as `python-sandbox` MUST NOT lease OCI work.
 
 ## 4b. Stop, fault, and recovery
@@ -160,6 +162,9 @@ still running. Timeout/kill stay unknown; the Worker drops a reaped
 identity so a later cancel cannot rewrite unknown as cancelled.
 Live CPU fault cases (ADR-0051) MUST assert process or container state;
 calling `work.failed` without that observation is not a stop.
+Live OCI fault cases (ADR-0055) MUST assert `docker inspect` (or
+equivalent) on the recorded container. Inspect failure is
+`execution-unobserved`, not `cancel-observed`.
 Container stop is not cloud-instance stop. Same-attempt resume after
 unknown is `attempt.recovered`. An inspectable CPU checkpoint in CAS may
 complete that recovered attempt; continuing from the checkpoint is a new

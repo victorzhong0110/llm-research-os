@@ -45,6 +45,7 @@ from llm_research_os.workers.models import (
 )
 from llm_research_os.workers.oci import (
     MAX_OCI_SECRETS,
+    MAX_OCI_WALL_SECONDS,
     OCI_CONTAINER_USER,
     OCI_INPUT_DIR_MODE,
     OCI_INPUT_FILE_MODE,
@@ -152,6 +153,23 @@ def _oci_config_digest(brick_digest: str, image_digest: str = OCI_IMAGE) -> str:
         image_media_type=IMAGE_MEDIA_OCI_IMAGE,
         runtime=WORKER_RUNTIME_OCI_CONTAINER,
     )
+
+
+def test_oci_wall_time_has_a_closed_limit_above_host_python() -> None:
+    brick = "sha256:" + ("a" * 64)
+    policy = parse_oci_launch_policy(
+        image_digest=OCI_IMAGE,
+        config={"network": "denied", "wallTimeSeconds": MAX_OCI_WALL_SECONDS},
+        inputs={"brickDigest": brick},
+    )
+    assert policy.wall_time_seconds == MAX_OCI_WALL_SECONDS
+    with pytest.raises(WorkerSandboxError) as captured:
+        parse_oci_launch_policy(
+            image_digest=OCI_IMAGE,
+            config={"network": "denied", "wallTimeSeconds": MAX_OCI_WALL_SECONDS + 1},
+            inputs={"brickDigest": brick},
+        )
+    assert captured.value.code == "oci-resource-limit"
 
 
 def test_parse_oci_launch_policy_pins_digest_and_denies_host_escape() -> None:

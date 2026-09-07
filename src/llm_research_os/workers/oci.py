@@ -51,6 +51,7 @@ MAX_OCI_PIDS = 128
 DEFAULT_OCI_CPU_MILLIS = 1000
 MAX_OCI_CPU_MILLIS = 2000
 MAX_OCI_SECRETS = 8
+MAX_OCI_WALL_SECONDS = 30
 OCI_NETWORK_DENIED: Literal["denied"] = "denied"
 OCI_CONTAINER_USER = "65534:65534"
 OCI_INPUT_DIR_MODE = 0o755
@@ -186,7 +187,7 @@ def parse_oci_launch_policy(
     wall_time_seconds = _positive_int(
         config.get("wallTimeSeconds", MAX_SANDBOX_WALL_SECONDS),
         field="wallTimeSeconds",
-        maximum=MAX_SANDBOX_WALL_SECONDS,
+        maximum=MAX_OCI_WALL_SECONDS,
     )
     brick = inputs.get("brickDigest")
     if type(brick) is not str or DIGEST_PATTERN.fullmatch(brick) is None:

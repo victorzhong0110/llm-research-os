@@ -109,7 +109,8 @@ Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
 Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill).
 The GPU experiment sheet is ADR-0053 (named AutoDL 4090 combo, unpaid).
 Process observation is ADR-0054 (running/exited/unknown; failed probes
-are not exited).
+are not exited). Live OCI faults are ADR-0055: designated Linux CI runs
+every `oci_live` test; inspect failure is unknown.
 
 ## M0 goals
 
@@ -554,7 +555,8 @@ does not spend GPU and does not close Issue #38.
 `researchos m2 oci` records the digest-pinned OCI CPU loop when a live
 engine has the planned image; otherwise it fails closed and MUST NOT be
 described as a successful container run. Ordinary pytest may skip
-`oci_live`; the GitHub job `Linux OCI integration` must fail instead.
+`oci_live`; the GitHub job `Linux OCI integration` runs `-m oci_live`
+(success brick and live faults) and must fail instead of skip.
 `researchos m2 bench` records 10k or 100k EventStore timings; it is not
 an SLA and does not spend GPU.
 `researchos training plan` prints pinned `swift sft` argv and MUST NOT

@@ -56,7 +56,9 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0050](0050-observed-execution-identity.md) | Observed execution identity and cancel supervision | Accepted | Implemented; resume+cancel is not stop; pid/container identity; heartbeat supervise; container stop ≠ cloud instance stop |
 | [0051](0051-live-cpu-fault-acceptance.md) | Live CPU fault acceptance | Accepted | Implemented; observed cancel/timeout/kill/restart/disconnect; `plane.fail` is not a stop; pending complete retries without rerun |
 | [0052](0052-control-path-usage-evidence.md) | Worker/RunControl usage evidence | Accepted | Implemented; mixed research/budget/Worker control path; isolated Worker + cited report; OCI skip is labeled, not a pass in designated CI |
+| [0053](0053-gpu-experiment-sheet.md) | GPU experiment sheet without a paid run | Accepted | Named AutoDL 4090 combo and image method; unpaid; not a CUDA result |
 | [0054](0054-process-observation-tristate.md) | Process observation is running, exited, or unknown | Accepted | Failed `ps`/`proc` is unknown, not exited; stop waits for the process group; unverified start token does not kill |
+| [0055](0055-live-oci-fault-acceptance.md) | Live OCI fault acceptance | Accepted | Designated Linux CI runs every `oci_live` test; cancel/timeout/kill/restart/inspect assert real container state; inspect failure is unknown |
 
 M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel is implemented independently of that checkpoint. M2-0 is free protocol verification (ADR-0043), not GPU completion. Isolated loopback HTTPS is ADR-0044, not a cross-machine proof. Remote Worker
 transport (ADR-0021) is a pending-live pack: same HTTPS/JSON semantics, no
@@ -65,6 +67,8 @@ fault acceptance is ADR-0051. Worker/RunControl usage evidence is ADR-0052:
 `m2 usage` is not `EventStore.append` fill; isolated Worker plus a cited
 report; OCI skip is labeled. The GPU experiment sheet is ADR-0053: named
 combo and image method, unpaid, not a CUDA result. Process observation is
-ADR-0054: running/exited/unknown; failed probes are not exited.
+ADR-0054: running/exited/unknown; failed probes are not exited. Live OCI
+fault acceptance is ADR-0055: designated CI runs every `oci_live` test;
+inspect failure is unknown, not `cancel-observed`.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.

@@ -110,6 +110,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - Process observation is running/exited/unknown; a failed `ps` or `/proc`
   probe is not exited; stop waits for the process group
   ([ADR-0054](docs/adr/0054-process-observation-tristate.md)).
+- Live OCI fault acceptance: cancel, timeout, Worker kill, control-plane
+  restart, external stop, and inspect failure assert real container
+  state; designated CI runs `-m oci_live` and must not skip
+  ([ADR-0055](docs/adr/0055-live-oci-fault-acceptance.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).

@@ -65,7 +65,7 @@ jobs:
     # on developer machines and macOS CI may skip when no engine is present.
     name: Linux OCI integration
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -79,10 +79,10 @@ jobs:
         run: uv sync --locked --all-groups
       - name: Require a live docker engine
         run: docker info
-      - name: Live OCI python brick
+      - name: Live OCI brick and faults
         env:
           RESEARCHOS_OCI_REQUIRED: "1"
-        run: uv run pytest tests/test_worker_oci.py -m oci_live --tb=short
+        run: uv run pytest -m oci_live --tb=short
 
   authorship:
     name: Human authorship

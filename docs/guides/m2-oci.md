@@ -24,8 +24,11 @@ Do not run the container as root.
 
 Ordinary pytest may skip `oci_live` when no engine is present. The
 designated GitHub job `Linux OCI integration` sets
-`RESEARCHOS_OCI_REQUIRED=1` and MUST fail if docker, the image build, or
-the live brick is missing.
+`RESEARCHOS_OCI_REQUIRED=1` and runs `pytest -m oci_live` (success brick
+and live faults). It MUST fail if docker, the image build, the live
+brick, or a live fault case is missing (ADR-0055). Inspect failure is
+unknown, not `cancel-observed`. Container stop is not cloud instance
+stop.
 
 ```bash
 uv run researchos m2 oci \
