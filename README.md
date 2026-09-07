@@ -89,7 +89,8 @@ NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
 credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
 loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
-ADR-0045 and is not a live GPU proof.
+ADR-0045 and is not a live GPU proof. Designated Linux OCI CI (ADR-0049)
+must not skip; ordinary hosts without docker may skip `oci_live`.
 
 ## M0 goals
 
@@ -532,7 +533,8 @@ does not close Issue #38.
 does not spend GPU and does not close Issue #38.
 `researchos m2 oci` records the digest-pinned OCI CPU loop when a live
 engine has the planned image; otherwise it fails closed and MUST NOT be
-described as a successful container run.
+described as a successful container run. Ordinary pytest may skip
+`oci_live`; the GitHub job `Linux OCI integration` must fail instead.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends

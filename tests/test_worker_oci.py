@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NoReturn
 
 import pytest
 from pydantic import ValidationError
@@ -42,17 +45,22 @@ from llm_research_os.workers.models import (
 )
 from llm_research_os.workers.oci import (
     MAX_OCI_SECRETS,
+    OCI_CONTAINER_USER,
+    OCI_INPUT_DIR_MODE,
+    OCI_INPUT_FILE_MODE,
     OciBackend,
     _docker_run_argv,
     _image_identities,
     _resolve_secret_env,
     discover_oci_backend,
     execute_oci_python_brick,
+    oci_integration_required,
     parse_oci_launch_policy,
+    prepare_oci_input_root,
     require_pinned_docker_image,
 )
 from llm_research_os.workers.plane import WorkerPlane
-from llm_research_os.workers.sandbox import execute_python_brick
+from llm_research_os.workers.sandbox import _redacted_diagnostics, execute_python_brick
 from llm_research_os.workers.tokens import HMAC_KEY_BYTES
 
 ROOT = Path(__file__).parents[1]
@@ -694,6 +702,8 @@ def test_docker_run_argv_is_digest_pinned_and_closed(tmp_path: Path) -> None:
     assert argv[argv.index("--network") + 1] == "none"
     assert "--privileged" not in argv
     assert "--gpus" not in argv
+    assert argv[argv.index("--user") + 1] == OCI_CONTAINER_USER
+    assert "0:0" not in argv
     assert "dst=/in,readonly" in joined
     assert "/tmp:rw,noexec,nosuid" in joined
     assert "/out:rw,noexec,nosuid" in joined
@@ -805,11 +815,12 @@ def _stub_docker(
     return wrapper
 
 
-@pytest.mark.skipif(discover_oci_backend() is None, reason="OCI runtime not installed")
+@pytest.mark.oci_live
 def test_live_oci_python_brick_loop(tmp_path: Path) -> None:
-    backend = discover_oci_backend()
-    assert backend is not None
+    backend = _require_oci_backend()
     image = _build_local_python_image(backend, tmp_path)
+    diagnostic = _record_nobody_bind_diagnostic(backend, image, tmp_path)
+    (tmp_path / "oci-bind-diagnostic.txt").write_text(diagnostic, encoding="utf-8")
     artifacts_root = tmp_path / "artifacts"
     artifacts_root.mkdir()
     artifacts = LocalArtifactStore(artifacts_root)
@@ -821,9 +832,94 @@ def test_live_oci_python_brick_loop(tmp_path: Path) -> None:
         inputs={"brickDigest": brick.digest},
         backend=backend,
     )
-    assert result.reason_code == "worker.brick.ok"
+    assert result.reason_code == "worker.brick.ok", result.diagnostics
     assert result.result_digest is not None
     assert b"oci-loop" in result.stdout
+
+
+def test_prepare_oci_input_root_is_readable_by_nobody_without_world_write() -> None:
+    workspace = Path(tempfile.mkdtemp(prefix="researchos-oci-mode-"))
+    try:
+        script = workspace / "task.py"
+        script.write_text("print(0)\n", encoding="utf-8")
+        assert stat.S_IMODE(workspace.stat().st_mode) == 0o700
+        prepare_oci_input_root(workspace)
+        assert stat.S_IMODE(workspace.stat().st_mode) == OCI_INPUT_DIR_MODE
+        assert stat.S_IMODE(script.stat().st_mode) == OCI_INPUT_FILE_MODE
+        assert stat.S_IMODE(workspace.stat().st_mode) & 0o002 == 0
+        assert stat.S_IMODE(script.stat().st_mode) & 0o222 == 0
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def test_oci_required_env_is_opt_in() -> None:
+    assert oci_integration_required() is False
+
+
+def test_oci_required_converts_skip_to_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RESEARCHOS_OCI_REQUIRED", "1")
+    assert oci_integration_required() is True
+    with pytest.raises(pytest.fail.Exception, match="OCI runtime is not available"):
+        _fail_or_skip_oci("OCI runtime is not available")
+
+
+def test_oci_diagnostics_redact_known_secret_values() -> None:
+    text = _redacted_diagnostics(
+        [b"permission denied token=super-secret-oci-token\n"],
+        ("super-secret-oci-token",),
+    )
+    assert text is not None
+    assert "super-secret-oci-token" not in text
+    assert "[redacted]" in text
+    assert _redacted_diagnostics([], ("secret",)) is None
+
+
+def _require_oci_backend() -> OciBackend:
+    backend = discover_oci_backend()
+    if backend is not None:
+        return backend
+    _fail_or_skip_oci("OCI runtime is not available")
+
+
+def _fail_or_skip_oci(message: str) -> NoReturn:
+    if oci_integration_required():
+        pytest.fail(message)
+    pytest.skip(message)
+
+
+def _record_nobody_bind_diagnostic(backend: OciBackend, image: str, tmp_path: Path) -> str:
+    """Record redacted docker stderr for a 0700 /in bind as nobody (UID 65534)."""
+
+    workspace = Path(tempfile.mkdtemp(prefix="researchos-oci-diag-", dir=tmp_path))
+    (workspace / "task.py").write_text("print(0)\n", encoding="utf-8")
+    dir_mode = oct(stat.S_IMODE(workspace.stat().st_mode))
+    completed = subprocess.run(
+        [
+            backend.executable,
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--user",
+            OCI_CONTAINER_USER,
+            "--pull=never",
+            "--mount",
+            f"type=bind,src={workspace},dst=/in,readonly",
+            image,
+            "python",
+            "-B",
+            "-I",
+            "/in/task.py",
+        ],
+        check=False,
+        capture_output=True,
+        timeout=60,
+    )
+    stderr = completed.stderr.decode("utf-8", errors="replace")[:2048]
+    return (
+        f"host_dir_mode={dir_mode} container_user={OCI_CONTAINER_USER} "
+        f"returncode={completed.returncode} stderr={stderr}"
+    )
 
 
 def _build_local_python_image(backend: OciBackend, tmp_path: Path) -> str:
@@ -840,7 +936,7 @@ def _build_local_python_image(backend: OciBackend, tmp_path: Path) -> str:
         timeout=180,
     )
     if built.returncode != 0:
-        pytest.skip("OCI image build is unavailable")
+        _fail_or_skip_oci("OCI image build is unavailable")
     tag = built.stdout.decode("utf-8").strip()
     inspected = subprocess.run(
         [backend.executable, "image", "inspect", "--format", "{{json .}}", tag],
@@ -849,7 +945,7 @@ def _build_local_python_image(backend: OciBackend, tmp_path: Path) -> str:
         timeout=10,
     )
     if inspected.returncode != 0:
-        pytest.skip("OCI image inspect is unavailable")
+        _fail_or_skip_oci("OCI image inspect is unavailable")
     document = json.loads(inspected.stdout.decode("utf-8"))
     image_id = document["Id"]
     assert type(image_id) is str
