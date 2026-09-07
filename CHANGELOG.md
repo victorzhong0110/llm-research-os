@@ -99,6 +99,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   restart, and disconnect-after-upload assert real process state;
   `plane.fail` is not observed stop; pending complete retries without
   rerun ([ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md)).
+- Worker/RunControl usage evidence: mixed research/budget/Worker append,
+  claim, cancel, and coordinate; isolated Worker plus cited report;
+  `m2 bench` fill is not this path
+  ([ADR-0052](docs/adr/0052-control-path-usage-evidence.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).

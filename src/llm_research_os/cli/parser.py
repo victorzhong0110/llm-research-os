@@ -734,6 +734,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="reproducible baseline size",
     )
     add_event_format_argument(m2_bench)
+    m2_usage = m2_commands.add_parser(
+        "usage",
+        help="measure Worker/RunControl usage plus isolated Worker; not EventStore fill",
+    )
+    m2_usage.add_argument(
+        "output",
+        type=Path,
+        help="empty directory for USAGE.json, isolated Worker, and OCI receipts",
+    )
+    add_event_format_argument(m2_usage)
     training = subparsers.add_parser(
         "training",
         help="parse a pinned training-backend plan; does not launch GPU work",

@@ -37,7 +37,9 @@ Heartbeats MUST NOT be facts. Logs and metrics belong in artifacts; events
 MAY cite their digests. High-frequency series MUST use CAS `MetricChunk`
 objects ([metric chunk v0alpha1](metric-chunk-v0alpha1.md)); they MUST NOT
 append one EventStore fact per sample. `researchos m2 bench` measures 10k
-and 100k EventStore timings and is not an SLA (ADR-0047).
+and 100k EventStore timings and is not an SLA (ADR-0047). `researchos m2
+usage` measures poll/complete/cancel/coordinate on the Worker/RunControl
+path and MUST NOT substitute that fill (ADR-0052).
 
 ## 2. Lease rules
 

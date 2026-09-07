@@ -55,10 +55,13 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0049](0049-oci-nobody-bind-and-required-linux-ci.md) | Non-root OCI `/in` bind and designated Linux CI | Accepted | Implemented; 0755/0444 bind root for UID 65534; `Linux OCI integration` fails closed; ordinary pytest may skip |
 | [0050](0050-observed-execution-identity.md) | Observed execution identity and cancel supervision | Accepted | Implemented; resume+cancel is not stop; pid/container identity; heartbeat supervise; container stop ≠ cloud instance stop |
 | [0051](0051-live-cpu-fault-acceptance.md) | Live CPU fault acceptance | Accepted | Implemented; observed cancel/timeout/kill/restart/disconnect; `plane.fail` is not a stop; pending complete retries without rerun |
+| [0052](0052-control-path-usage-evidence.md) | Worker/RunControl usage evidence | Accepted | Implemented; mixed research/budget/Worker control path; isolated Worker + cited report; OCI skip is labeled, not a pass in designated CI |
 
 M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel is implemented independently of that checkpoint. M2-0 is free protocol verification (ADR-0043), not GPU completion. Isolated loopback HTTPS is ADR-0044, not a cross-machine proof. Remote Worker
 transport (ADR-0021) is a pending-live pack: same HTTPS/JSON semantics, no
 second-machine claim. CPU OCIContainerRuntime is ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046. EventStore performance baseline and metric chunks are ADR-0047. The pinned ms-swift adapter is ADR-0048 and is not a real training run. Non-root `/in` bind modes and designated Linux OCI CI are ADR-0049. Observed execution identity and cancel supervision are ADR-0050. Live CPU
-fault acceptance is ADR-0051.
+fault acceptance is ADR-0051. Worker/RunControl usage evidence is ADR-0052:
+`m2 usage` is not `EventStore.append` fill; isolated Worker plus a cited
+report; OCI skip is labeled.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.

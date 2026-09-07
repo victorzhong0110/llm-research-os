@@ -54,6 +54,18 @@ image. That failure is not a mocked container success. See
 [M2 CPU OCI](m2-oci.md). A remote Worker pack is pending-live and is
 **not** a cross-machine proof; see [M2 remote Worker](m2-remote-worker.md).
 
+## Usage evidence (not EventStore fill)
+
+`researchos m2 bench` is a storage fill. Worker/RunControl append, claim,
+cancel, and coordinate, plus an isolated Worker and cited report:
+
+```bash
+uv run researchos m2 usage /tmp/m2-usage --format json
+```
+
+See [M2 usage](m2-usage.md). OCI may be `skipped-no-runtime` here; designated
+Linux OCI CI must not skip.
+
 ## Performance baseline (not SLA)
 
 ```bash

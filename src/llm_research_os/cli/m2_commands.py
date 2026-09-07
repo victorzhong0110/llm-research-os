@@ -20,6 +20,7 @@ from llm_research_os.m2.bench import run_perf_baseline
 from llm_research_os.m2.errors import M2CheckpointError
 from llm_research_os.m2.oci_prove import prove_oci_loop
 from llm_research_os.m2.prove import M2CheckpointResult, prove_cpu_loop
+from llm_research_os.m2.usage import run_usage_evidence
 from llm_research_os.report.errors import ReportError
 from llm_research_os.runs.errors import RunStateError
 from llm_research_os.spec.io import SpecLoadError
@@ -50,6 +51,8 @@ def run_m2(args: argparse.Namespace) -> int:
         return _prove(prove_oci_loop, args.corpus, args.database, artifacts, args.format)
     if args.m2_command == "bench":
         return _bench(args.database, args.events, args.format)
+    if args.m2_command == "usage":
+        return _usage(args.output, args.format)
     raise AssertionError(f"unhandled m2 command: {args.m2_command}")
 
 
@@ -135,4 +138,30 @@ def _bench(database: Path, event_count: int, output_format: str) -> int:
     print(f"reportSeconds: {result.report_seconds}")
     print(f"peakRssBytes: {result.peak_rss_bytes}")
     print(f"lineageEvents: {result.lineage_events}")
+    return 0
+
+
+def _usage(output: Path, output_format: str) -> int:
+    try:
+        evidence = run_usage_evidence(output)
+    except M2CheckpointError as exc:
+        print_error(exc, output_format)
+        return 2
+    except (WorkerError, WorkerRequestError) as exc:
+        print_error(exc, output_format)
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, output_format)
+        return 2
+    payload = {
+        "apiVersion": "researchos.dev/v0alpha1",
+        **evidence.as_json(),
+    }
+    if output_format == "json":
+        print(dumps_json(payload))
+        return 0
+    print("m2 usage: recorded")
+    print(f"controlEvents: {evidence.control_path['eventCount']}")
+    print(f"isolated: {evidence.isolated_worker['status']}")
+    print(f"oci: {evidence.oci['status']}")
     return 0

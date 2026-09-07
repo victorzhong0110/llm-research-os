@@ -53,7 +53,9 @@ stdout/stderr. A claimed lease that is resumed MUST NOT run again.
 
 `researchos m2 bench` measures 10k or 100k EventStore append/replay/claim
 /report. It is not GPU and not an SLA. See
-[M2 performance baseline](m2-perf.md).
+[M2 performance baseline](m2-perf.md). Worker/RunControl usage is
+`researchos m2 usage` ([M2 usage](m2-usage.md), ADR-0052); that command
+MUST NOT use the EventStore fill.
 Cancel request is not observed stop
 ([ADR-0046](../adr/0046-worker-stop-fault-recovery.md)). `runs cancel`
 records `*.cancel.requested` only. Poll does not open a new lease after

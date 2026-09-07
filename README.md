@@ -90,6 +90,7 @@ is not NativeProcessRuntime and not a kernel sandbox, and a CPU
 image.
 
 `researchos m2 bench` records 10k/100k EventStore timings (not SLA).
+`researchos m2 usage` measures the Worker/RunControl path (not that fill).
 
 The tree still does not execute training jobs or real GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
@@ -105,6 +106,7 @@ ADR-0045 and is not a live GPU proof. Designated Linux OCI CI (ADR-0049)
 must not skip; ordinary hosts without docker may skip `oci_live`. Worker
 stop/fault recovery is ADR-0046. EventStore performance baseline is ADR-0047.
 Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
+Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill).
 
 ## M0 goals
 

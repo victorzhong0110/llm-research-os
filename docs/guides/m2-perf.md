@@ -7,6 +7,10 @@ Constraint record: [ADR-0047](../adr/0047-eventstore-performance-and-metric-samp
 This path does **not** close Issue #38, does not spend GPU, and is not
 an SLA.
 
+`researchos m2 usage` is the Worker/RunControl path
+([M2 usage](m2-usage.md), ADR-0052). Do not treat this EventStore fill as
+that measurement.
+
 ## Bench
 
 The database path must not already exist. Fill uses `EventStore.append`
