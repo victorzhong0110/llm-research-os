@@ -16,5 +16,5 @@ uv run researchos m2 usage /tmp/m2-usage --format json
 
 `USAGE.json` has `"usedEventStoreAppendFill": false` and
 `"gpu": "not-run"`. A loopback isolated Worker is **not** a cross-machine
-proof. OCI is `observed` or `skipped-no-runtime`; designated Linux OCI CI
-must not skip.
+proof. OCI is `observed`, `skipped-no-runtime`, or `skipped-no-image`;
+designated Linux OCI CI (`RESEARCHOS_OCI_REQUIRED=1`) must not skip.

@@ -101,7 +101,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   rerun ([ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md)).
 - Worker/RunControl usage evidence: mixed research/budget/Worker append,
   claim, cancel, and coordinate; isolated Worker plus cited report;
-  `m2 bench` fill is not this path
+  `m2 bench` fill is not this path; ordinary hosts label
+  `skipped-no-runtime` / `skipped-no-image`
   ([ADR-0052](docs/adr/0052-control-path-usage-evidence.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a

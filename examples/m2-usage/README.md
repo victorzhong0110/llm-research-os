@@ -14,7 +14,8 @@ The command:
 2. Starts an isolated control-plane process and a Worker with a private CAS.
 3. Writes a report that cites spec, registry, plan, runtime, image, config,
    and output artifact.
-4. Runs CPU OCI when docker is present; otherwise records
-   `skipped-no-runtime`. Designated Linux OCI CI must not skip.
+4. Runs CPU OCI when docker and the pinned image are present; otherwise
+   records `skipped-no-runtime` or `skipped-no-image`. Designated Linux
+   OCI CI must not skip.
 
 See [M2 usage](../../docs/guides/m2-usage.md).

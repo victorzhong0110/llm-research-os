@@ -7,8 +7,9 @@ import pytest
 
 from llm_research_os.cli import main
 from llm_research_os.m2.bench import run_perf_baseline
-from llm_research_os.m2.usage import run_usage_evidence
+from llm_research_os.m2.usage import _oci_or_skip, run_usage_evidence
 from llm_research_os.storage import EventStore
+from llm_research_os.workers.errors import WorkerSandboxError
 
 ROOT = Path(__file__).parents[1]
 
@@ -55,8 +56,8 @@ def test_usage_evidence_uses_control_path_not_eventstore_fill(tmp_path: Path) ->
     assert "Image digest" in markdown
     assert "Output artifact" in markdown
     oci = evidence.oci
-    assert oci["status"] in {"observed", "skipped-no-runtime"}
-    if oci["status"] == "skipped-no-runtime":
+    assert oci["status"] in {"observed", "skipped-no-runtime", "skipped-no-image"}
+    if oci["status"] in {"skipped-no-runtime", "skipped-no-image"}:
         assert oci["required"] is False
     with EventStore(output / "control" / "research.db", require_existing=True) as store:
         types = [item.event.type for item in store.read_events(limit=500)]
@@ -87,3 +88,30 @@ def test_m2_usage_refuses_non_empty_output(tmp_path: Path, capsys: object) -> No
 def test_eventstore_append_fill_is_a_different_command(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="10000 or 100000"):
         run_perf_baseline(tmp_path / "other.db", 4)
+
+
+def test_usage_labels_missing_pinned_image_on_ordinary_hosts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("RESEARCHOS_OCI_REQUIRED", raising=False)
+
+    def _missing_image(*_args: object, **_kwargs: object) -> None:
+        raise WorkerSandboxError("OCI image is not available", code="oci-image-missing")
+
+    monkeypatch.setattr("llm_research_os.m2.usage.prove_oci_loop", _missing_image)
+    payload = _oci_or_skip(tmp_path / "oci")
+    assert payload["status"] == "skipped-no-image"
+    assert payload["required"] is False
+
+
+def test_usage_fails_closed_when_oci_required_and_image_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RESEARCHOS_OCI_REQUIRED", "1")
+
+    def _missing_image(*_args: object, **_kwargs: object) -> None:
+        raise WorkerSandboxError("OCI image is not available", code="oci-image-missing")
+
+    monkeypatch.setattr("llm_research_os.m2.usage.prove_oci_loop", _missing_image)
+    with pytest.raises(WorkerSandboxError, match="not available"):
+        _oci_or_skip(tmp_path / "oci")
