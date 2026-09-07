@@ -1,8 +1,9 @@
-"""Loopback TLS material for the isolated Worker binding. Not a cross-machine proof."""
+"""TLS material for isolated Workers. SAN follows the bind host (ADR-0021)."""
 
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import os
 import shutil
 import ssl
@@ -58,26 +59,66 @@ def pem_fingerprint(path: Path) -> str:
 
 
 def load_or_create_loopback_tls(directory: Path) -> TlsMaterial:
+    return load_or_create_tls(directory, host="127.0.0.1")
+
+
+def load_or_create_tls(directory: Path, *, host: str) -> TlsMaterial:
     directory.mkdir(parents=True, exist_ok=True)
     cert_path = directory / _CERT_NAME
     key_path = directory / _KEY_NAME
     if cert_path.is_file() and key_path.is_file():
-        return TlsMaterial(cert_path, key_path, pem_fingerprint(cert_path))
+        material = TlsMaterial(cert_path, key_path, pem_fingerprint(cert_path))
+        if not cert_covers_host(cert_path, host):
+            raise WorkerError(
+                "TLS certificate SAN does not cover the bind host",
+                code="tls-san-mismatch",
+            )
+        return material
     if cert_path.exists() or key_path.exists():
         raise WorkerError("TLS material is incomplete", code="tls-material-invalid")
-    _generate_loopback_cert(cert_path, key_path)
+    _generate_host_cert(cert_path, key_path, host)
     _private_file(cert_path)
     _private_file(key_path)
     return TlsMaterial(cert_path, key_path, pem_fingerprint(cert_path))
 
 
-def _generate_loopback_cert(cert_path: Path, key_path: Path) -> None:
+def cert_covers_host(cert_path: Path, host: str) -> bool:
     openssl = shutil.which("openssl")
     if openssl is None:
         raise WorkerError(
-            "openssl is required to mint loopback TLS material",
+            "openssl is required to inspect TLS material",
             code="tls-openssl-missing",
         )
+    completed = subprocess.run(  # noqa: S603
+        [openssl, "x509", "-in", str(cert_path), "-noout", "-ext", "subjectAltName"],
+        check=False,
+        capture_output=True,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")},
+        close_fds=True,
+    )
+    if completed.returncode != 0:
+        return False
+    text = completed.stdout.decode("utf-8", errors="replace")
+    expected = _san_token(host)
+    return expected in text.replace("IP Address:", "IP:")
+
+
+def _san_token(host: str) -> str:
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return f"DNS:{host}"
+    return f"IP:{ip.compressed}"
+
+
+def _generate_host_cert(cert_path: Path, key_path: Path, host: str) -> None:
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise WorkerError(
+            "openssl is required to mint TLS material",
+            code="tls-openssl-missing",
+        )
+    san = _san_token(host)
     completed = subprocess.run(  # noqa: S603
         [
             openssl,
@@ -93,9 +134,9 @@ def _generate_loopback_cert(cert_path: Path, key_path: Path) -> None:
             "1",
             "-nodes",
             "-subj",
-            "/CN=127.0.0.1",
+            f"/CN={host[:64]}",
             "-addext",
-            "subjectAltName=IP:127.0.0.1",
+            f"subjectAltName={san}",
         ],
         check=False,
         capture_output=True,
@@ -103,7 +144,7 @@ def _generate_loopback_cert(cert_path: Path, key_path: Path) -> None:
         close_fds=True,
     )
     if completed.returncode != 0 or not cert_path.is_file() or not key_path.is_file():
-        raise WorkerError("could not mint loopback TLS material", code="tls-openssl-failed")
+        raise WorkerError("could not mint TLS material", code="tls-openssl-failed")
 
 
 def _read_regular_file(path: Path) -> bytes:

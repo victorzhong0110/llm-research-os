@@ -571,7 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     workers = subparsers.add_parser(
         "workers",
-        help="register Workers, serve the loopback HTTPS plane, or run an isolated Worker",
+        help="register, serve, run, or write a pending-live pack",
     )
     workers_commands = workers.add_subparsers(dest="workers_command", required=True)
     workers_register = workers_commands.add_parser(
@@ -591,7 +591,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_event_format_argument(workers_register)
     workers_serve = workers_commands.add_parser(
         "serve",
-        help="serve loopback HTTPS/JSON; does not prove a cross-machine Worker",
+        help="serve HTTPS/JSON; default host is loopback and is not a cross-machine proof",
     )
     workers_serve.add_argument(
         "database",
@@ -623,13 +623,35 @@ def build_parser() -> argparse.ArgumentParser:
     workers_serve.add_argument(
         "--host",
         default="127.0.0.1",
-        help="loopback IP; non-loopback binds fail closed",
+        help="loopback default; unspecified binds fail; TLS unicast is pending-live",
     )
     workers_serve.add_argument(
         "--port",
         type=int,
         default=0,
         help="TCP port; 0 selects an ephemeral port",
+    )
+    workers_pack = workers_commands.add_parser(
+        "pack",
+        help="write a remote Worker pack; pending-live, not a two-host proof",
+    )
+    workers_pack.add_argument(
+        "output",
+        type=Path,
+        help="empty output directory for STATUS, worker CA, and scripts",
+    )
+    workers_pack.add_argument(
+        "--url",
+        required=True,
+        help="https control-plane URL the Worker will dial; loopback is not cross-machine",
+    )
+    workers_pack.add_argument("--project", required=True, metavar="ID")
+    workers_pack.add_argument("--source", required=True, metavar="URI")
+    workers_pack.add_argument(
+        "--state",
+        type=Path,
+        metavar="DIR",
+        help="existing control-plane state; copies CA only, never tls-key.pem",
     )
     workers_run = workers_commands.add_parser(
         "run",

@@ -61,6 +61,8 @@ def run_workers(args: argparse.Namespace) -> int:
         )
     if args.workers_command == "run":
         return _run_isolated_worker(args.credential, args.artifacts)
+    if args.workers_command == "pack":
+        return _pack_remote_worker(args.output, args.url, args.project, args.source, args.state)
     raise AssertionError(f"unhandled workers command: {args.workers_command}")
 
 
@@ -187,6 +189,33 @@ def _run_isolated_worker(credential_path: Path, artifacts: Path) -> int:
             }
         )
     )
+    return 0
+
+
+def _pack_remote_worker(
+    output: Path,
+    url: str,
+    project_id: str,
+    source: str,
+    state: Path | None,
+) -> int:
+    from llm_research_os.workers.remote_pack import write_remote_worker_pack
+
+    try:
+        status = write_remote_worker_pack(
+            output,
+            control_plane_url=url,
+            project_id=project_id,
+            source=source,
+            state_dir=state,
+        )
+    except WorkerError as exc:
+        print_error(exc, "json")
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, "json")
+        return 2
+    print(dumps_json(status))
     return 0
 
 

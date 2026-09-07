@@ -7,8 +7,11 @@
 The Worker protocol is independent of byte transport. M2-0 binds it to
 loopback HTTP in-process (ADR-0043). Isolated control-plane and Worker
 processes use loopback HTTPS/JSON with a pinned CA (ADR-0044). That
-loopback TLS path is not a cross-machine proof. Non-loopback HTTPS remains
-ADR-0021.
+loopback TLS path is not a cross-machine proof. Non-loopback HTTPS is
+ADR-0021: `researchos workers pack` writes a pending-live pack. A
+loopback URL in that pack is still not a two-host proof. Unspecified
+binds (`0.0.0.0` / `::`) fail closed. The Worker MUST NOT receive
+`tls-key.pem`.
 
 The key words **MUST**, **MUST NOT**, **SHOULD** and **MAY** are normative.
 
@@ -93,7 +96,9 @@ and 100k EventStore timings and is not an SLA (ADR-0047).
 - Isolated processes (ADR-0044) MUST use HTTPS with a pinned loopback CA,
   a private Worker CAS, and MUST NOT open the control-plane SQLite file.
   In-process HTTP is a test adapter. Loopback tests MUST NOT be described
-  as cross-machine verification.
+  as cross-machine verification. A remote pack (ADR-0021) uses the same
+  transfer path; its STATUS is `pending-live` until a second host is
+  actually run.
 
 ## 4. CPU helper (not a kernel sandbox)
 
@@ -160,7 +165,7 @@ execution object.
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
   tests/test_worker_recovery.py tests/test_worker_supervise.py \
-  tests/test_worker_live_faults.py
+  tests/test_worker_live_faults.py tests/test_worker_remote_pack.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```

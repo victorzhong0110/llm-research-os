@@ -7,7 +7,6 @@ import re
 import threading
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -19,6 +18,7 @@ from llm_research_os.artifacts.errors import (
 )
 from llm_research_os.artifacts.store import MAX_PUT_BYTES, LocalArtifactStore, parse_artifact_digest
 from llm_research_os.storage.store import EventStore
+from llm_research_os.workers.bind import require_worker_bind_host
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
 from llm_research_os.workers.plane import Clock, WorkerPlane
 from llm_research_os.workers.tls import TlsMaterial
@@ -52,7 +52,6 @@ class LoopbackWorkerServer:
         clock: Clock | None = None,
         tls: TlsMaterial | None = None,
     ) -> None:
-        _require_loopback_host(host)
         self._database = database
         self._artifacts = artifacts
         self._hmac_key = hmac_key
@@ -62,9 +61,10 @@ class LoopbackWorkerServer:
         self._clock: Clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._tls = tls
         handler = _handler_for(self)
+        require_worker_bind_host(host, tls=tls is not None)
         self._httpd = _ReusableLoopbackServer((host, port), handler)
         bound_host, bound_port = self._httpd.server_address[:2]
-        _require_loopback_host(str(bound_host))
+        require_worker_bind_host(str(bound_host), tls=tls is not None)
         self.host = str(bound_host)
         self.port = int(bound_port)
         if tls is not None:
@@ -113,18 +113,6 @@ class LoopbackWorkerServer:
             experiment_revision=self._experiment_revision,
             clock=self._clock,
         )
-
-
-def _require_loopback_host(host: str) -> None:
-    try:
-        ip = ip_address(host)
-    except ValueError:
-        raise WorkerError(
-            "worker server host must be a loopback IP",
-            code="bind-not-loopback",
-        ) from None
-    if not ip.is_loopback:
-        raise WorkerError("worker server host must be a loopback IP", code="bind-not-loopback")
 
 
 def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:

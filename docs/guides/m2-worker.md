@@ -104,3 +104,7 @@ CA into the Worker directory and write a 0600 `WorkerCredential`. The Worker
 MUST NOT receive the control-plane database path. Tokens MUST NOT appear in
 logs. Reconnect retries transport disconnects; a resumed lease still MUST
 NOT run again.
+
+Remote pack (pending-live): [M2 remote Worker](m2-remote-worker.md). A
+loopback URL is not a two-host proof. Never copy `tls-key.pem` to the
+Worker.

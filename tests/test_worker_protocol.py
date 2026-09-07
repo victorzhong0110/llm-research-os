@@ -338,7 +338,7 @@ def test_loopback_bind_rejects_public_addresses(tmp_path: Path) -> None:
             source=SOURCE,
             host="0.0.0.0",
         )
-    assert captured.value.code == "bind-not-loopback"
+    assert captured.value.code == "bind-unspecified"
     with pytest.raises(WorkerError) as captured:
         LoopbackWorkerServer(
             tmp_path / "research.db",

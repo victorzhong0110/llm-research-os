@@ -12,7 +12,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0006](0006-capability-budget-approval-autonomy.md) | Capability-, budget-, and approval-based autonomy | Accepted | Written; M1-4 runtime-enforces CNY `budget.*` caps on the HTTP adapter |
 | [0007](0007-append-only-facts-rebuildable-projections.md) | Append-only facts and rebuildable projections | Accepted | Written |
 | [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; M0 milestone scope clarified by ADR-0034; non-executing native preflight implemented; M2-0 CPU sandbox is not NativeProcessRuntime (ADR-0043); CPU OCIContainerRuntime is ADR-0045 |
-| [0009](0009-worker-semantics-independent-of-transport.md) | Worker semantics independent of transport | Accepted | Written; M2-0 loopback long-poll binding (ADR-0043); isolated loopback HTTPS/JSON (ADR-0044); non-loopback remains ADR-0021 |
+| [0009](0009-worker-semantics-independent-of-transport.md) | Worker semantics independent of transport | Accepted | Written; M2-0 loopback long-poll binding (ADR-0043); isolated loopback HTTPS/JSON (ADR-0044); remote pack and TLS unicast bind (ADR-0021) are pending-live, not a two-host proof |
 | 0010 | ms-swift as provisional first real backend | Direction accepted | M2 validation pending |
 | [0011](0011-apache-2-license.md) | Apache-2.0 project license | Accepted | Written; CONTRIBUTING, fork-PR DCO and templates added by ADR-0038 E11; English-primary CONTRIBUTING and engineering standards by ADR-0040 |
 | [0012](0012-python-and-dependencies.md) | Python 3.12+, pyproject and uv | Accepted | Written |
@@ -24,7 +24,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |
 | [0019](0019-evidence-rights-by-use.md) | Evidence rights tracked by use | Accepted | Implemented for local Markdown/PDF import (M1-3); Git/web connectors pending |
 | 0020 | Capability evaluation and progressive autonomy | Direction accepted | M1 implementation pending |
-| 0021 | Remote Worker transport and connection bootstrap | Deferred | M2 experiment required |
+| [0021](0021-remote-worker-transport.md) | Remote Worker transport and connection bootstrap | Accepted | Implemented pack + TLS SAN bind policy; live two-host verification is `pending-live`; loopback is not a cross-machine proof |
 | 0022 | First cloud-provider adapter | Provisional | M2 live verification required |
 | [0023](0023-inert-manifests-and-pure-dry-run.md) | Inert manifests and pure deterministic dry-run | Accepted | Implemented |
 | [0024](0024-run-attempt-state-machine.md) | Pure Run and Attempt state machine | Accepted | Implemented |
@@ -53,9 +53,12 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0047](0047-eventstore-performance-and-metric-sampling.md) | EventStore 10k/100k baseline and CAS metric chunks | Accepted | Implemented; typed fold reads; no SQLite replacement; bench receipts are not SLA |
 | [0048](0048-pinned-ms-swift-adapter.md) | Pinned ms-swift 4.5.2 parse/plan adapter | Accepted | Implemented; no core torch/ms-swift dep; no GPU execution; experiment sheet is not a run |
 | [0049](0049-oci-nobody-bind-and-required-linux-ci.md) | Non-root OCI `/in` bind and designated Linux CI | Accepted | Implemented; 0755/0444 bind root for UID 65534; `Linux OCI integration` fails closed; ordinary pytest may skip |
+| [0050](0050-observed-execution-identity.md) | Observed execution identity and cancel supervision | Accepted | Implemented; resume+cancel is not stop; pid/container identity; heartbeat supervise; container stop ≠ cloud instance stop |
 | [0051](0051-live-cpu-fault-acceptance.md) | Live CPU fault acceptance | Accepted | Implemented; observed cancel/timeout/kill/restart/disconnect; `plane.fail` is not a stop; pending complete retries without rerun |
 
-M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel is implemented independently of that checkpoint. M2-0 is free protocol verification (ADR-0043), not GPU completion. Isolated loopback HTTPS is ADR-0044, not a cross-machine proof. CPU OCIContainerRuntime is ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046. EventStore performance baseline and metric chunks are ADR-0047. The pinned ms-swift adapter is ADR-0048 and is not a real training run. Non-root `/in` bind modes and designated Linux OCI CI are ADR-0049. Observed execution identity and cancel supervision are ADR-0050. Live CPU
+M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel is implemented independently of that checkpoint. M2-0 is free protocol verification (ADR-0043), not GPU completion. Isolated loopback HTTPS is ADR-0044, not a cross-machine proof. Remote Worker
+transport (ADR-0021) is a pending-live pack: same HTTPS/JSON semantics, no
+second-machine claim. CPU OCIContainerRuntime is ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046. EventStore performance baseline and metric chunks are ADR-0047. The pinned ms-swift adapter is ADR-0048 and is not a real training run. Non-root `/in` bind modes and designated Linux OCI CI are ADR-0049. Observed execution identity and cancel supervision are ADR-0050. Live CPU
 fault acceptance is ADR-0051.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.

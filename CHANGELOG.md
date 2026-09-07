@@ -99,6 +99,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   restart, and disconnect-after-upload assert real process state;
   `plane.fail` is not observed stop; pending complete retries without
   rerun ([ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md)).
+- Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
+  CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
+  cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).
 
 ### Changed
 

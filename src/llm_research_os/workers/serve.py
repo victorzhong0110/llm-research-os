@@ -10,7 +10,7 @@ from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage import EventStore
 from llm_research_os.workers.credentials import load_or_create_hmac_key
 from llm_research_os.workers.http import LoopbackWorkerServer
-from llm_research_os.workers.tls import TlsMaterial, load_or_create_loopback_tls
+from llm_research_os.workers.tls import TlsMaterial, load_or_create_tls
 
 
 def bind_isolated_control_plane(
@@ -31,7 +31,7 @@ def bind_isolated_control_plane(
     with EventStore(database, require_existing=True):
         pass
     hmac_key = load_or_create_hmac_key(state_dir)
-    tls = load_or_create_loopback_tls(state_dir)
+    tls = load_or_create_tls(state_dir, host=host)
     server = LoopbackWorkerServer(
         database,
         LocalArtifactStore(artifacts_root),
@@ -57,7 +57,7 @@ def serve_isolated_control_plane(
     host: str = "127.0.0.1",
     port: int = 0,
 ) -> None:
-    """Bind loopback HTTPS, print one URL receipt, then serve. Not a cross-machine proof."""
+    """Bind HTTPS, print one URL receipt, then serve. Loopback is not a cross-machine proof."""
 
     server, tls = bind_isolated_control_plane(
         database=database,
