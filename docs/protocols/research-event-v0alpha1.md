@@ -141,7 +141,9 @@ generic envelope remains open. `plan.authorization.evaluated` is currently defin
 [PlanAuthorizationEventRequest v0alpha1](plan-authorization-event-v0alpha1.md); its payload is
 audit-only and is not executable authority. Locating those facts by plan identity is defined by
 [PlanAuthorizationLineage v0alpha1](plan-authorization-lineage-v0alpha1.md) and likewise is not
-executable authority.
+executable authority. `ai.call.started` / `ai.call.completed` / `ai.call.failed` are defined by
+[ModelProvider v0alpha1](model-provider-v0alpha1.md); payloads store prompt and output digests
+and optional artifact refs, never inline text.
 
 ## 6. Conformance commands
 

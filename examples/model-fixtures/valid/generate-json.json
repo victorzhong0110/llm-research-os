@@ -1,0 +1,15 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ModelFixture",
+  "id": "generate-json",
+  "prompt": {
+    "role": "user",
+    "task": "propose-revision",
+    "token": "MOCK_PROMPT_UNIQUE_TOKEN_alpha"
+  },
+  "output": {
+    "kind": "proposal-draft",
+    "revision": "eval-split",
+    "token": "MOCK_OUTPUT_UNIQUE_TOKEN_omega"
+  }
+}

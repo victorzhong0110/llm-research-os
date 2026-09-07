@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ModelFixture",
+  "id": "generate-json",
+  "prompt": {
+    "role": "user"
+  },
+  "output": {
+    "kind": "proposal-draft"
+  },
+  "extra": true
+}

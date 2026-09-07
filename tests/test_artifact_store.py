@@ -58,6 +58,18 @@ def test_put_empty_and_ordinary_files(tmp_path: Path) -> None:
         assert handle.read() == b"hello artifacts"
 
 
+def test_put_bytes_matches_file_put_and_rejects_oversize(tmp_path: Path) -> None:
+    store, _root = _store(tmp_path)
+    payload = b"hello artifacts"
+    source = tmp_path / "hello.bin"
+    source.write_bytes(payload)
+    assert store.put_bytes(payload) == store.put(source)
+    with pytest.raises(ArtifactPathError, match="must be bytes"):
+        store.put_bytes("not-bytes")  # type: ignore[arg-type]
+    with pytest.raises(ArtifactPathError, match="exceeds put_bytes limit"):
+        store.put_bytes(b"x" * (artifact_store.MAX_PUT_BYTES + 1))
+
+
 def test_put_large_file_is_chunked_and_matches_hashlib(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
