@@ -40,3 +40,6 @@ metrics belong in CAS metric chunks; events cite digests
 ([ADR-0047](../adr/0047-eventstore-performance-and-metric-sampling.md)).
 Do not write a training-step fact per optimizer step. `researchos m2 bench`
 records 10k/100k EventStore timings; those numbers are not SLA.
+
+The pinned parse/plan adapter and the unpaid experiment sheet live in
+[M2 GPU experiment](m2-gpu-experiment.md). That sheet is not a CUDA result.

@@ -86,6 +86,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - EventStore 10k/100k append/replay/claim/report baseline and CAS metric
   chunks (`researchos m2 bench`); receipts are not SLA
   ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).
+- Pinned `ms-swift==4.5.2` parse/plan adapter (`researchos training plan`);
+  argv only, no GPU execution
+  ([ADR-0048](docs/adr/0048-pinned-ms-swift-adapter.md)).
 
 ### Changed
 

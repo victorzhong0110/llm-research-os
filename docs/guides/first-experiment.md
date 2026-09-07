@@ -67,6 +67,17 @@ uv run researchos report run.worker.cpu \
   --format markdown
 ```
 
+Pinned training-backend parse (no GPU):
+
+```bash
+uv run researchos training plan \
+  examples/training-backend/valid/ms-swift-sft.json \
+  --format json
+```
+
+See [M2 GPU experiment](m2-gpu-experiment.md). That command is not a
+training run.
+
 ## What is still not a release
 
 - Paid GPU / cloud provisioner

@@ -173,6 +173,11 @@ from llm_research_os.secrets.schema import write_schema as write_secret_ref_sche
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
+from llm_research_os.training.schema import (
+    canonical_training_backend_plan_schema,
+    training_backend_plan_schema_matches,
+    write_training_backend_plan_schema,
+)
 from llm_research_os.workers.schema import (
     authorization_grant_request_schema_matches,
     canonical_authorization_grant_request_schema,
@@ -401,6 +406,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         authorization_grant_request_schema_matches,
         write_authorization_grant_request_schema,
         "schemas/authorization-grant-request/v0alpha1.schema.json",
+    ),
+    "training-backend-plan": _contract(
+        canonical_training_backend_plan_schema,
+        training_backend_plan_schema_matches,
+        write_training_backend_plan_schema,
+        "schemas/training-backend-plan/v0alpha1.schema.json",
     ),
 }
 

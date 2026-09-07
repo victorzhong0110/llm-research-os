@@ -1,0 +1,20 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "TrainingBackendPlan",
+  "backendId": "ms-swift",
+  "backendVersion": "4.5.2",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dataset": "AI-ModelScope/alpaca-gpt4-data-en#8",
+  "tunerType": "lora",
+  "torchDtype": "bfloat16",
+  "maxSteps": 1,
+  "perDeviceTrainBatchSize": 1,
+  "gradientAccumulationSteps": 1,
+  "learningRate": "1e-4",
+  "loraRank": 8,
+  "loraAlpha": 16,
+  "outputDir": "/work/output",
+  "saveSteps": 1,
+  "loggingSteps": 1,
+  "maxLength": 512
+}

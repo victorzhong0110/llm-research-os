@@ -712,6 +712,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="reproducible baseline size",
     )
     add_event_format_argument(m2_bench)
+    training = subparsers.add_parser(
+        "training",
+        help="parse a pinned training-backend plan; does not launch GPU work",
+    )
+    training_commands = training.add_subparsers(dest="training_command", required=True)
+    training_plan = training_commands.add_parser(
+        "plan",
+        help="validate one pinned ms-swift SFT plan and print argv; does not execute",
+    )
+    training_plan.add_argument(
+        "request",
+        type=Path,
+        help="TrainingBackendPlan document",
+    )
+    add_event_format_argument(training_plan)
     return parser
 
 

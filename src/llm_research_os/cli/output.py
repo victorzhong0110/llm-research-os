@@ -17,6 +17,7 @@ from llm_research_os.providers.errors import ModelProviderError, ModelRequestErr
 from llm_research_os.report.errors import ReportError
 from llm_research_os.research.errors import ResearchDecisionError, ResearchRequestError
 from llm_research_os.runs import RunCancellationRequestError
+from llm_research_os.training.errors import TrainingBackendError, TrainingBackendRequestError
 from llm_research_os.workers.errors import WorkerError, WorkerRequestError
 
 
@@ -63,6 +64,7 @@ def problem_report(exc: Exception) -> ProblemReport:
         ModelRequestError,
         ResearchRequestError,
         RunCancellationRequestError,
+        TrainingBackendRequestError,
         WorkerRequestError,
     )
     coded_errors = (
@@ -72,6 +74,7 @@ def problem_report(exc: Exception) -> ProblemReport:
         ReportError,
         ResearchDecisionError,
         SimulationError,
+        TrainingBackendError,
         WorkerError,
     )
     if isinstance(exc, request_errors):

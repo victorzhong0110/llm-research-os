@@ -29,6 +29,13 @@ from llm_research_os.cli.runs_commands import run_runs
 from llm_research_os.cli.spec_commands import run_diff, run_dry_run, run_schema, run_validate
 from llm_research_os.cli.worker_commands import run_grants, run_workers
 
+
+def _run_training(args: argparse.Namespace) -> int:
+    from llm_research_os.cli.training_commands import run_training
+
+    return run_training(args)
+
+
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "validate": run_validate,
     "schema": run_schema,
@@ -54,6 +61,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "grants": run_grants,
     "workers": run_workers,
     "m2": run_m2,
+    "training": _run_training,
 }
 
 

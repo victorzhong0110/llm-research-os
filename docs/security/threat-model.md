@@ -13,7 +13,8 @@ or Darwin kernel-namespace proof. Worker stop/fault recovery (ADR-0046) keeps
 cancel requests distinct from observed stop, refuses success without
 `work.completed`, and does not auto-rerun unknown work. EventStore 10k/100k
 folds and CAS metric chunks (ADR-0047) keep heartbeats and per-step series
-off the fact log; bench receipts are not SLA.
+off the fact log; bench receipts are not SLA. The pinned ms-swift adapter
+(ADR-0048) parses one SFT plan to argv and does not execute GPU work.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -178,6 +179,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-043 | A swapped brick, config, inputs or runtime runs under an old authorization, or host Python is treated as a kernel sandbox | Unreviewed code execution; false isolation claims | Grant recording rebuilds the cited plan from spec+registry and binds project/revision/workflow/planned task/execution object; `simulate` cannot grant; Worker re-checks before spawn; swapped object fails closed without `Popen`; stdout/stderr limits apply during pipe reads; POSIX process groups are reaped. No seccomp, landlock, or network/filesystem jail is claimed | Binding, script-A-not-B, swapped-brick, cross-task token, output-cap, and child-reap tests in M2-0. Kernel isolation remains out of scope |
 | TM-046 | A cancel request is treated as stopped, unknown work is marked success or auto-rerun, or a CAS object without `work.completed` completes the Attempt | False stop/success; duplicate execution | Poll does not open a new lease after a request; resumed poll does not spawn; heartbeat returns `cancelRequested` without appending facts; observed stop is `cancel-observed` then cancelled outcomes; reconcile requires `work.completed` to succeed; unknown stays unknown; CPU checkpoint JSON is inspectable (ADR-0046) | Cancel-request-vs-stop, unknown-not-success, complete-reconcile, restart, and checkpoint tests in `tests/test_worker_recovery.py` |
 | TM-047 | Per-step metrics or transport heartbeats fill EventStore, or a static report/claim fold materializes the whole log, or bench timings are treated as a contract | Log blow-up; false SLA; OOM on report | Heartbeats stay off the log; `read_events(event_types=)` is a post-high-water fold filter, not a substitute for contiguous replay; reports keep lineage on the matching Run; series use CAS `MetricChunk` with 1024/32 caps; `m2 bench` receipts are measurements not golden files (ADR-0047) | 10k/100k bench, typed Worker rebuild, metric-chunk cap, and report lineage tests in `tests/test_m2_perf.py` / `tests/test_metric_chunk.py` |
+| TM-048 | A training-backend plan is treated as a GPU run, or ms-swift/torch enter the core environment, or deleting the adapter breaks the CPU loop | False training success; core/CUDA coupling | Closed `TrainingBackendPlan` for `ms-swift==4.5.2` only; `training plan` prints argv with `executed: false` / `gpu: not-run` and MUST NOT subprocess; core `project.dependencies` stay free of ms-swift/torch; CPU prove/sandbox must not import `llm_research_os.training` (ADR-0048) | Pinned-plan, reject-unpinned, and core-isolation tests in `tests/test_training_backend.py` |
 
 ## 7. M0 security gates
 
@@ -248,6 +250,8 @@ Before merging executable capability, the following gates apply:
   availability or latency contracts. Metric chunks are CAS JSON, not a
   second fact source. Typed `read_events` filters may skip sequences and
   must not replace contiguous replay.
+- The ms-swift adapter (ADR-0048) is parse/plan only. `backendInstalled`
+  is not execution. The GPU experiment sheet is not a paid-run approval.
 - Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a
   host administrator who replaces object bytes and updates the digest in lockstep. Dirfd anchoring
   stops intermediate symlink escape and root-path substitution; it does not stop a privileged

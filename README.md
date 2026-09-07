@@ -98,6 +98,7 @@ credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
 loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
 ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046.
 EventStore performance baseline is ADR-0047.
+Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
 
 ## M0 goals
 
@@ -544,6 +545,8 @@ engine has the planned image; otherwise it fails closed and MUST NOT be
 described as a successful container run.
 `researchos m2 bench` records 10k or 100k EventStore timings; it is not
 an SLA and does not spend GPU.
+`researchos training plan` prints pinned `swift sft` argv and MUST NOT
+execute. It is not a real training run.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
