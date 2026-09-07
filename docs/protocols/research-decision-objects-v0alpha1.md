@@ -1,10 +1,16 @@
-# Research Decision Objects v0alpha1 (Draft)
+# Research Decision Objects v0alpha1
 
-> Status: **Draft for M1-1. Not implemented. Not yet an external contract.**
-> Becomes normative when the Pydantic models, generated JSON Schema, valid/invalid
-> corpus and tests land and this header is replaced.
-> Authority: [ADR-0039](../adr/0039-human-help-period-purpose.md) D2–D3, [ADR-0038](../adr/0038-charter-errata-after-m0.md) E1–E4, [ADR-0005](../adr/0005-researcher-final-decision.md).
-> Tracking: Issues #41 (proposal / dissent / decision + ledger) and #42 (question channel).
+> Status: Experimental external contract for `proposal.submitted`,
+> `dissent.recorded`, `decision.recorded`, and `ResearchLedger`.
+> `question.asked` / `question.answered` remain Issue #42 and are not implemented.
+> JSON Schema: `schemas/proposal-submit-request/v0alpha1.schema.json`,
+> `schemas/dissent-record-request/v0alpha1.schema.json`,
+> `schemas/decision-record-request/v0alpha1.schema.json`,
+> `schemas/research-ledger/v0alpha1.schema.json`.
+> Authority: [ADR-0039](../adr/0039-human-help-period-purpose.md) D2–D3,
+> [ADR-0038](../adr/0038-charter-errata-after-m0.md) E1–E4,
+> [ADR-0005](../adr/0005-researcher-final-decision.md).
+> Tracking: Issues #41 (this slice) and #42 (question channel).
 
 This document fixes the payloads of five ResearchEvent types through which a
 human teaches the system what observation cannot supply, and through which an AI
@@ -22,10 +28,10 @@ the Run/Attempt reducer (ADR-0024).
 | `question.asked` | `ai`, `system` | The only sanctioned request for information from the researcher |
 | `question.answered` | `human` | The researcher's answer, recorded as a fact with rights |
 
-Actor kind is the M1-0 extension of `data.actor`. Until M1-0 lands, the
-implementation validates kind from the document and fails closed if absent for
-these five types. An `ai` actor MUST NOT emit `decision.recorded` or
-`question.answered`; a `human` actor MUST NOT emit `question.asked`.
+Actor kind is required on these event types. An `ai` actor MUST NOT emit
+`decision.recorded` or `question.answered`; a `human` actor MUST NOT emit
+`question.asked`. M1-1 enforces the three implemented types; the question pair
+waits for Issue #42.
 
 All five reuse the ResearchEvent v0alpha1 envelope unchanged: caller-owned `id`,
 `time`, `source`, `subject`, `streamid`; store-owned `sequence`, `sequencetype`,
@@ -74,7 +80,8 @@ live in artifacts). A proposal does not change any revision state by itself.
 | Field | Type | Rule |
 |---|---|---|
 | `dissentId` | identifier | Unique per project |
-| `targetKind` | `proposal` \| `decision` \| `conclusion` | Closed enum |
+| `targetKind` | `proposal` \| `decision` | Closed enum for M1-1. `conclusion` is reserved until that aggregate exists |
+| `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `objections` | list of `{kind, statement}` | ≥ 1 item |
 | `objections[].kind` | closed enum | `falsifiability`, `alternative-explanation`, `data-leakage`, `baseline-or-ablation`, `metric-validity`, `cost-benefit`, `negative-result-value`, `other` — the charter §9.3 checklist |
@@ -87,7 +94,7 @@ A dissent is never mutated or deleted. A later decision references it (§5).
 | Field | Type | Rule |
 |---|---|---|
 | `decisionId` | identifier | Unique per project; the value later cited by `run.reviewed.decisionId` and `attempt.queued.retryDecisionId` |
-| `targetKind` | `proposal` \| `run` \| `question` \| `dissent` | Closed enum |
+| `targetKind` | `proposal` \| `run` \| `dissent` | Closed enum for M1-1. `question` is reserved for Issue #42 |
 | `targetId` | identifier | Must resolve in the same project (projection-level check) |
 | `outcome` | `accept` \| `reject` \| `modify` \| `continue` \| `defer` | Closed enum |
 | `rationale` | text | **Required, non-empty.** A decision without rationale is invalid (ADR-0039 D2) |
@@ -169,12 +176,12 @@ Each command takes a strict request document (same conventions as
 `RunCancellationRequest`: caller-owned identity and time, explicit `evidenceRefs`,
 existing database required, one RunControl-style CAS append, no retry):
 
+`researchos questions ask` / `questions answer` are Issue #42. M1-1 ships:
+
 ```text
 researchos proposals submit  REQUEST research.db
 researchos dissents record   REQUEST research.db
 researchos decisions record  REQUEST research.db
-researchos questions ask     REQUEST research.db
-researchos questions answer  REQUEST research.db
 researchos research ledger   research.db --project ID [--format json]
 ```
 

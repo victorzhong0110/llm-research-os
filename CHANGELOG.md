@@ -22,16 +22,17 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - `src/llm_research_os/py.typed`.
 - Hypothesis properties for JCS stability, Run/Attempt folds that ignore foreign
   runs, and Pydantic round-trips of valid spec/event examples.
-<<<<<<< HEAD
 - [NOTICE](NOTICE) names copyright owner `victorzhong0110`. `LICENSE` stays the
   unmodified Apache-2.0 text.
-=======
 - M1-0: SQLite schema v2 verified high-water cache and rebuildable query tables
   ([ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md);
   Issues #39 / #40). Typed [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)
   and redaction. Optional ResearchEvent actor `kind` / `modelId`. SimulatedRuntime
   emits `attempt.cancelled` / `run.cancelled` from a recorded cancel request.
->>>>>>> 86a5352 (feat: land M1-0 verified cache, SecretRef, and cancel observations)
+- M1-1: `proposal.submitted`, `dissent.recorded`, `decision.recorded`, rebuildable
+  [`ResearchLedger`](docs/protocols/research-decision-objects-v0alpha1.md), and CLI
+  `proposals submit` / `dissents record` / `decisions record` / `research ledger`
+  (Issue #41). Question channel remains Issue #42.
 
 ### Changed
 
@@ -41,3 +42,7 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   recreate when writable). `RunControl` always folds the frozen prefix from
   sequence 0; the snapshot cache is not fold authority. A cache-write failure
   after a committed lifecycle fact does not fail the append.
+- M1-1: `ResearchControl` validates the complete prospective ledger before the
+  CAS append. The 33rd override of one dissent is rejected before commit.
+  Dissent/decision `targetKind` values `conclusion` and `question` are reserved
+  until those aggregates exist (Issue #42 for questions).

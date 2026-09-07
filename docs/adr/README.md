@@ -42,7 +42,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0036](0036-in-process-run-decision-digest.md) | In-process plan-authorization decisionDigest on RunSnapshot | Accepted | Implemented |
 | [0037](0037-m0-kernel-proof-closure.md) | M0 kernel-proof closure | Accepted | Written |
 | [0038](0038-charter-errata-after-m0.md) | Charter v0.1 errata after M0; M0 debts, M1 order, checkpoint and budget; errata method and ADR granularity | Accepted | Written |
-| [0039](0039-human-help-period-purpose.md) | The OS serves the period in which human help remains necessary; researcher modeled as teacher; sanctioned AI→researcher question channel; human-attention metric; gated persistence into parameters | Accepted | Written; M1-1 draft protocol `research-decision-objects-v0alpha1` pending implementation |
+| [0039](0039-human-help-period-purpose.md) | The OS serves the period in which human help remains necessary; researcher modeled as teacher; sanctioned AI→researcher question channel; human-attention metric; gated persistence into parameters | Accepted | Written; M1-1 implements proposal/dissent/decision + ResearchLedger; question channel is Issue #42 |
 | [0040](0040-english-primary-and-engineering-standards.md) | English is the working language; comments record invariants, not a ratio; coverage floor 85%; typed package; commit-msg hook; Dependabot | Accepted | Written; operational checklist in `docs/engineering-standards.md` |
 | [0041](0041-verified-high-water-cache-and-query-tables.md) | Verified high-water cache and rebuildable SQLite query tables | Accepted | Implemented; schema v2 (`integrity_checkpoint`, `run_projections`, `spec_revisions`, `artifacts` / `artifact_links`) |
 

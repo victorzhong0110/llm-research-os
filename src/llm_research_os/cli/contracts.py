@@ -107,6 +107,24 @@ from llm_research_os.execution.schema import write_schema as write_dry_run_schem
 from llm_research_os.problem_schema import canonical_schema as canonical_problem_schema
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
+from llm_research_os.research.schema import (
+    canonical_decision_record_request_schema,
+    canonical_dissent_record_request_schema,
+    canonical_proposal_submit_request_schema,
+    decision_record_request_schema_matches,
+    dissent_record_request_schema_matches,
+    proposal_submit_request_schema_matches,
+    write_decision_record_request_schema,
+    write_dissent_record_request_schema,
+    write_proposal_submit_request_schema,
+)
+from llm_research_os.research.schema import (
+    canonical_schema as canonical_research_ledger_schema,
+)
+from llm_research_os.research.schema import (
+    schema_matches as research_ledger_schema_matches,
+)
+from llm_research_os.research.schema import write_schema as write_research_ledger_schema
 from llm_research_os.runs.cancellation_schema import (
     canonical_schema as canonical_run_cancellation_request_schema,
 )
@@ -261,6 +279,30 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         secret_ref_schema_matches,
         write_secret_ref_schema,
         "schemas/secret-ref/v0alpha1.schema.json",
+    ),
+    "research-ledger": _contract(
+        canonical_research_ledger_schema,
+        research_ledger_schema_matches,
+        write_research_ledger_schema,
+        "schemas/research-ledger/v0alpha1.schema.json",
+    ),
+    "proposal-submit-request": _contract(
+        canonical_proposal_submit_request_schema,
+        proposal_submit_request_schema_matches,
+        write_proposal_submit_request_schema,
+        "schemas/proposal-submit-request/v0alpha1.schema.json",
+    ),
+    "dissent-record-request": _contract(
+        canonical_dissent_record_request_schema,
+        dissent_record_request_schema_matches,
+        write_dissent_record_request_schema,
+        "schemas/dissent-record-request/v0alpha1.schema.json",
+    ),
+    "decision-record-request": _contract(
+        canonical_decision_record_request_schema,
+        decision_record_request_schema_matches,
+        write_decision_record_request_schema,
+        "schemas/decision-record-request/v0alpha1.schema.json",
     ),
 }
 

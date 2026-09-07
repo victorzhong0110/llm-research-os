@@ -1,0 +1,39 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ProposalSubmitRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "proposal.revise-eval",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai",
+    "modelId": "mock.deterministic"
+  },
+  "event": {
+    "id": "evt.proposal.1",
+    "time": "2026-09-04T12:00:00Z"
+  },
+  "proposalId": "proposal.revise-eval",
+  "specDiffDigest": "jcs-sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "proposedSpecDigest": "jcs-sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "rationale": "Tighten the evaluation split.",
+  "predictions": [
+    {
+      "id": "pred.1",
+      "statement": "Held-out loss decreases.",
+      "expectedDirection": "decrease"
+    }
+  ],
+  "falsificationConditions": [
+    "Held-out loss does not decrease."
+  ],
+  "riskAssessment": {
+    "data": "",
+    "method": "split change",
+    "safety": "",
+    "cost": ""
+  },
+  "evidenceRefs": []
+}
