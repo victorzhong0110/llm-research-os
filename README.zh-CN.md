@@ -27,7 +27,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 当前仍不执行任何训练任务或真实 GPU 工作负载。授权事件、预检报告、lineage 重建与
 `decisionDigest` 都不是签名回执或启动许可。SimulatedRuntime 会消费本机 EventStore 上
 一条 `{eventId, sequence}` 引用（ADR-0042）；lineage 仍为 `not-consumed`。取消请求 CLI 仍不发送进程信号；
-观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。远程 Worker 传输是 ADR-0021：验收包标 `pending-live`，回环 URL 不是跨机器证明。CPU OCI 是 ADR-0045，不是 GPU 实测。指定的 Linux OCI CI（ADR-0049）不得靠 skip 过关；无 docker 的普通开发环境可以跳过 `oci_live`。真实 OCI 故障验收是 ADR-0055：取消、超时、Worker 被杀、控制面重启与 inspect 失败必须断言容器状态；inspect 失败是 unknown。Worker 停止/故障恢复是 ADR-0046。观察到的执行身份与取消监督是 ADR-0050：`cancel-observed` 必须确认进程或容器已退出。真实 CPU 故障验收是 ADR-0051：`plane.fail` 不是观察到的停止。EventStore 性能基线是 ADR-0047。Worker/RunControl 使用证据是 ADR-0052：`m2 usage` 不是 `EventStore.append` 填充。GPU 实验单是 ADR-0053：已点名 AutoDL 4090 与 ¥20 上限，未执行、未花费。进程观察是 ADR-0054：running/exited/unknown，探测失败不得推断已退出。钉死的 ms-swift 解析/计划适配器是 ADR-0048，不是 GPU 实测。
+观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。远程 Worker 传输是 ADR-0021：验收包标 `pending-live`，回环 URL 不是跨机器证明。CPU OCI 是 ADR-0045，不是 GPU 实测。指定的 Linux OCI CI（ADR-0049）不得靠 skip 过关；无 docker 的普通开发环境可以跳过 `oci_live`。真实 OCI 故障验收是 ADR-0055：取消、超时、Worker 被杀、控制面重启与 inspect 失败必须断言容器状态；inspect 失败是 unknown。Worker 停止/故障恢复是 ADR-0046。观察到的执行身份与取消监督是 ADR-0050：`cancel-observed` 必须确认进程或容器已退出。真实 CPU 故障验收是 ADR-0051：`plane.fail` 不是观察到的停止。EventStore 性能基线是 ADR-0047。Worker/RunControl 使用证据是 ADR-0052：`m2 usage` 不是 `EventStore.append` 填充。GPU 实验单是 ADR-0053：已点名 AutoDL 4090 与 ¥20 上限，未执行、未花费。进程观察是 ADR-0054：running/exited/unknown，探测失败不得推断已退出。独立 GPU 执行 profile 是 ADR-0056：`gpu-oci-container` / `execute.gpu`，`training bind` 不启动容器，`gpu-not-run`。钉死的 ms-swift 解析/计划适配器是 ADR-0048，不是 GPU 实测。
 
 ## M0 目标
 
@@ -413,6 +413,7 @@ OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `Secret
 `researchos m2 oci` 在本机已有按摘要钉死的镜像时记录 CPU OCI 闭环；否则失败关闭，不得表述为容器实测成功。普通环境可以跳过 `oci_live`；GitHub 作业 `Linux OCI integration` 跑全部 `-m oci_live`（成功积木与故障），必须失败关闭。
 `researchos m2 bench` 记录 1 万或 10 万事件的 EventStore 耗时；它不是 SLA，也不花费 GPU。`researchos m2 usage` 走 Worker/RunControl 路径，不是这次填充。
 `researchos training plan` 打印钉死的 `swift sft` argv，且不得执行；它不是真实训练。
+`researchos training bind` 打印该计划的 GPU docker argv，且不得启动容器（`gpu: not-run`）。
 `researchos workers serve` / `workers run` 把该闭环拆成两个进程、经钉死的回环 HTTPS 通信；它们不证明远端 Worker。取消监督记录进程或容器身份并确认退出；它不停止云实例。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
 PDF 抽取在子进程中设上限且不继承进程密钥；未知权利不能授权训练。

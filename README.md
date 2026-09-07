@@ -110,7 +110,8 @@ Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill)
 The GPU experiment sheet is ADR-0053 (named AutoDL 4090 combo, unpaid).
 Process observation is ADR-0054 (running/exited/unknown; failed probes
 are not exited). Live OCI faults are ADR-0055: designated Linux CI runs
-every `oci_live` test; inspect failure is unknown.
+every `oci_live` test; inspect failure is unknown. Independent GPU
+execution is ADR-0056 (`gpu-oci-container` / `execute.gpu`; `gpu-not-run`).
 
 ## M0 goals
 
@@ -561,6 +562,8 @@ described as a successful container run. Ordinary pytest may skip
 an SLA and does not spend GPU.
 `researchos training plan` prints pinned `swift sft` argv and MUST NOT
 execute. It is not a real training run.
+`researchos training bind` prints the GPU docker argv for that plan and
+MUST NOT start a container (`gpu: not-run`).
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 Cancel supervision records a process or container identity and confirms

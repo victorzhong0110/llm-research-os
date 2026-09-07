@@ -53,7 +53,8 @@ WORKER_EVENT_TYPES = frozenset(
 )
 WORKER_RUNTIME_PYTHON_SANDBOX: Literal["python-sandbox"] = "python-sandbox"
 WORKER_RUNTIME_OCI_CONTAINER: Literal["oci-container"] = "oci-container"
-WORKER_RUNTIME_NAME = Literal["python-sandbox", "oci-container"]
+WORKER_RUNTIME_GPU_OCI: Literal["gpu-oci-container"] = "gpu-oci-container"
+WORKER_RUNTIME_NAME = Literal["python-sandbox", "oci-container", "gpu-oci-container"]
 WORKER_PROTOCOL_LONGPOLL: Literal["researchos.worker-longpoll/v0alpha1"] = (
     "researchos.worker-longpoll/v0alpha1"
 )
@@ -170,7 +171,11 @@ class WorkQueuedPayload(WorkerDocumentModel):
             self.runtime == WORKER_RUNTIME_OCI_CONTAINER
             and self.image_media_type == IMAGE_MEDIA_OCI_IMAGE
         )
-        if python_pair or oci_pair:
+        gpu_pair = (
+            self.runtime == WORKER_RUNTIME_GPU_OCI
+            and self.image_media_type == IMAGE_MEDIA_OCI_IMAGE
+        )
+        if python_pair or oci_pair or gpu_pair:
             return self
         raise ValueError("runtime does not match imageMediaType")
 

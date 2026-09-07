@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import importlib
 import json
 import ssl
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.models import (
     IMAGE_MEDIA_OCI_IMAGE,
     IMAGE_MEDIA_PYTHON_BRICK,
+    WORKER_RUNTIME_GPU_OCI,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -217,6 +219,19 @@ class WorkerClient:
                 identity_dir=self.identity_dir,
                 lease_id=lease_id,
                 should_cancel=_cancel_requested,
+            )
+        elif runtime == WORKER_RUNTIME_GPU_OCI and media == IMAGE_MEDIA_OCI_IMAGE:
+            plan_artifact = inputs.get("planArtifactDigest")
+            if type(plan_artifact) is not str:
+                raise WorkerError("GPU poll omitted planArtifactDigest", code="http-invalid")
+            self.fetch_image(artifacts, plan_artifact)
+            gpu = importlib.import_module("llm_research_os.workers.gpu")
+            result = gpu.execute_gpu_training(
+                artifacts,
+                image_digest,
+                config=config,
+                inputs=inputs,
+                advertised_accelerators=("cuda",),
             )
         else:
             raise WorkerError("poll runtime is not supported", code="runtime-mismatch")

@@ -95,7 +95,8 @@
       "default": "python-sandbox",
       "enum": [
         "python-sandbox",
-        "oci-container"
+        "oci-container",
+        "gpu-oci-container"
       ],
       "title": "Runtime",
       "type": "string"

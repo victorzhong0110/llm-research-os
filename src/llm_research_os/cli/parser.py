@@ -759,6 +759,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="TrainingBackendPlan document",
     )
     add_event_format_argument(training_plan)
+    training_bind = training_commands.add_parser(
+        "bind",
+        help="bind a pinned ms-swift plan to the GPU launch profile; does not execute",
+    )
+    training_bind.add_argument("request", type=Path, help="TrainingBackendPlan document")
+    training_bind.add_argument(
+        "--image",
+        required=True,
+        help="digest-pinned GPU image identity (sha256:…)",
+    )
+    training_bind.add_argument("--data-dir", type=Path, required=True)
+    training_bind.add_argument("--model-dir", type=Path, required=True)
+    training_bind.add_argument("--output-dir", type=Path, required=True)
+    add_event_format_argument(training_bind)
     return parser
 
 

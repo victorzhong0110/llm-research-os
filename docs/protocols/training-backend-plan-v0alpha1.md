@@ -41,6 +41,11 @@ closed. The generated JSON Schema is
 
 The command MUST NOT start a process.
 
+`researchos training bind REQUEST --image sha256:… --data-dir DIR
+--model-dir DIR --output-dir DIR` MUST print `GpuLaunchPreparation`
+with docker argv, the same command argv, `executed: false`, and
+`gpu: not-run`. It MUST NOT start docker.
+
 The GPU experiment sheet ([ADR-0053](../adr/0053-gpu-experiment-sheet.md))
 names AutoDL RTX 4090, a 45 minute wall, and a proposed ¥20 cap. It is not
 a launch token. Resume overlay is `--resume_from_checkpoint` on the same

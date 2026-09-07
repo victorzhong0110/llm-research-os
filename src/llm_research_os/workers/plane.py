@@ -39,6 +39,7 @@ from llm_research_os.workers.drafts import (
 from llm_research_os.workers.errors import WorkerCallError, WorkerGrantError
 from llm_research_os.workers.models import (
     IMAGE_MEDIA_PYTHON_BRICK,
+    WORKER_RUNTIME_GPU_OCI,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -827,18 +828,26 @@ class WorkerPlane:
 def _cas_fetch_digest(image_digest: str, queued: QueuedWork | None) -> str:
     if queued is None or queued.runtime == WORKER_RUNTIME_PYTHON_SANDBOX:
         return image_digest
-    if queued.runtime != WORKER_RUNTIME_OCI_CONTAINER:
-        raise WorkerCallError(
-            "queued runtime is not supported",
-            code="execution-binding-mismatch",
-        )
-    brick = queued.inputs.get("brickDigest")
-    if type(brick) is not str:
-        raise WorkerCallError(
-            "OCI work is missing the CAS brick digest",
-            code="execution-binding-mismatch",
-        )
-    return brick
+    if queued.runtime == WORKER_RUNTIME_OCI_CONTAINER:
+        brick = queued.inputs.get("brickDigest")
+        if type(brick) is not str:
+            raise WorkerCallError(
+                "OCI work is missing the CAS brick digest",
+                code="execution-binding-mismatch",
+            )
+        return brick
+    if queued.runtime == WORKER_RUNTIME_GPU_OCI:
+        artifact = queued.inputs.get("planArtifactDigest")
+        if type(artifact) is not str:
+            raise WorkerCallError(
+                "GPU work is missing the CAS training-plan digest",
+                code="execution-binding-mismatch",
+            )
+        return artifact
+    raise WorkerCallError(
+        "queued runtime is not supported",
+        code="execution-binding-mismatch",
+    )
 
 
 def _stale_lease(

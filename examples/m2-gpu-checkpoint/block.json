@@ -1,0 +1,126 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "Block",
+  "metadata": {
+    "id": "researchos.gpu-ms-swift",
+    "version": "0.1.0",
+    "title": "GPU ms-swift launch profile",
+    "description": "Corpus declaration for a digest-pinned CUDA image running the pinned ms-swift plan. The kernel does not import the entrypoint."
+  },
+  "runtime": {
+    "type": "container",
+    "entrypoint": "researchos.gpu-ms-swift"
+  },
+  "inputs": [],
+  "outputs": [],
+  "configSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "config",
+      "imageDigest",
+      "imageMediaType",
+      "inputs",
+      "runtime"
+    ],
+    "properties": {
+      "config": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commandDigest",
+          "device",
+          "network"
+        ],
+        "properties": {
+          "commandDigest": {
+            "type": "string",
+            "minLength": 75,
+            "maxLength": 75
+          },
+          "cpuMillis": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8000
+          },
+          "dataMount": {
+            "const": "/work/data"
+          },
+          "device": {
+            "const": "nvidia.com/gpu=0"
+          },
+          "diskBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 34359738368
+          },
+          "memoryBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25769803776
+          },
+          "modelMount": {
+            "const": "/work/model"
+          },
+          "network": {
+            "const": "denied"
+          },
+          "outputMount": {
+            "const": "/work/output"
+          },
+          "pidsLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 512
+          },
+          "wallTimeSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2700
+          }
+        }
+      },
+      "imageDigest": {
+        "maxLength": 71,
+        "minLength": 71,
+        "type": "string"
+      },
+      "imageMediaType": {
+        "const": "researchos.oci-image/v0alpha1"
+      },
+      "inputs": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "planArtifactDigest",
+          "planDigest"
+        ],
+        "properties": {
+          "planArtifactDigest": {
+            "maxLength": 71,
+            "minLength": 71,
+            "type": "string"
+          },
+          "planDigest": {
+            "maxLength": 75,
+            "minLength": 75,
+            "type": "string"
+          }
+        }
+      },
+      "runtime": {
+        "const": "gpu-oci-container"
+      }
+    }
+  },
+  "capabilities": [
+    "execute.gpu"
+  ],
+  "permissions": [],
+  "telemetry": [],
+  "reproducibility": {
+    "deterministicWhenSeeded": true
+  },
+  "extensions": {}
+}

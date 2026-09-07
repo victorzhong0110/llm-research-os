@@ -22,7 +22,8 @@ one attempt, and one execution object.
 The cited evaluation MUST exist, MUST be `authorized=true`, MUST match the
 project, MUST have a human actor, and MUST list the planned execution
 capability in `requiredCapabilities` (`execute.local` for host-python
-bricks, `execute.oci` for OCI images). Citing a `simulate` authorization
+bricks, `execute.oci` for CPU OCI images, `execute.gpu` for
+`gpu-oci-container` training). Citing a `simulate` authorization
 MUST fail `authorization-capability-mismatch`. An `execute.local`
 evaluation MUST NOT issue an executable grant for an OCI plan.
 

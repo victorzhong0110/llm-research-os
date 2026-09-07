@@ -51,7 +51,7 @@ Unknown work MUST NOT auto-rerun (ADR-0046, ADR-0051).
 | Model | `Qwen/Qwen2.5-0.5B-Instruct` (ModelScope / Hub id; pin the snapshot after first download) | Not downloaded here |
 | Data | `AI-ModelScope/alpaca-gpt4-data-en#8` (first 8 rows) | Not downloaded here |
 | Image | Build [examples/m2-gpu-image](../../examples/m2-gpu-image/README.md); pin `sha256:` after `docker build`. Tag is not identity | Digest TBD until built |
-| Runtime | `OCIContainerRuntime` + `execute.oci` (ADR-0045) with `requiredAccelerators: ["cuda"]` | CPU path exists; CUDA not run |
+| Runtime | `gpu-oci-container` + `execute.gpu` (ADR-0056) with `requiredAccelerators: ["cuda"]` | Profile in tree; CUDA not run |
 | GPU | **AutoDL RTX 4090 24GB**, 1 card, Ubuntu, no extra disks beyond the instance disk | Not rented |
 | CUDA | Image ships CUDA 12.4 toolkit; host must expose one NVIDIA GPU (`nvidia-smi`) | Not verified on a GPU host |
 | Estimated wall time | **45 minutes** (pull image + 0.5B weights + 8-row dataset + 1 step). GPU-hours ≈ 0.75 | Not measured |

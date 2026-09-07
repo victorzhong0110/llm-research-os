@@ -114,6 +114,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   restart, external stop, and inspect failure assert real container
   state; designated CI runs `-m oci_live` and must not skip
   ([ADR-0055](docs/adr/0055-live-oci-fault-acceptance.md)).
+- Independent GPU training execution profile: `gpu-oci-container` /
+  `execute.gpu`, closed device and mounts, pinned ms-swift argv bound;
+  `researchos training bind` does not execute
+  ([ADR-0056](docs/adr/0056-gpu-training-execution-profile.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).

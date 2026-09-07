@@ -170,13 +170,27 @@ unknown is `attempt.recovered`. An inspectable CPU checkpoint in CAS may
 complete that recovered attempt; continuing from the checkpoint is a new
 execution object.
 
+## 4c. GPU training execution profile
+
+`runtime: gpu-oci-container` with `imageMediaType: researchos.oci-image/v0alpha1`
+is the GPU launch profile (ADR-0056). It is not the CPU OCI shape.
+`execute.gpu` is required. The only authorized device is
+`nvidia.com/gpu=0` (`--gpus device=0`). Network MUST be `denied`.
+Allowed mounts are `/work/data` (read-only), `/work/model` (read-only),
+and `/work/output` (read-write bind, not tmpfs). The container command
+MUST be the pinned `ms-swift==4.5.2` plan argv. Extra devices, mounts,
+and `privileged` MUST fail closed. A Worker MUST advertise `cuda`.
+`researchos training bind` and `execute_gpu_training` MUST NOT start a
+container; the receipt is `gpu: not-run`. This is not a CUDA result.
+
 ## 5. Conformance
 
 ```bash
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
   tests/test_worker_recovery.py tests/test_worker_supervise.py \
-  tests/test_worker_live_faults.py tests/test_worker_remote_pack.py
+  tests/test_worker_live_faults.py tests/test_worker_remote_pack.py \
+  tests/test_worker_gpu.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```

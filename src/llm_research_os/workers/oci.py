@@ -57,6 +57,9 @@ OCI_CONTAINER_USER = "65534:65534"
 OCI_INPUT_DIR_MODE = 0o755
 OCI_INPUT_FILE_MODE = 0o444
 OCI_REQUIRED_ENV = "RESEARCHOS_OCI_REQUIRED"
+_CPU_LAUNCH_KEYS = frozenset(
+    {"network", "memoryBytes", "pidsLimit", "cpuMillis", "wallTimeSeconds", "secrets"}
+)
 _FORBIDDEN_LAUNCH_KEYS = frozenset(
     {
         "capAdd",
@@ -166,6 +169,12 @@ def parse_oci_launch_policy(
             "OCI launch requested a forbidden host mapping",
             code="oci-mount-forbidden",
         )
+    unknown = set(config) - _CPU_LAUNCH_KEYS
+    if unknown:
+        raise WorkerSandboxError(
+            "OCI launch requested a forbidden host mapping",
+            code="oci-mount-forbidden",
+        )
     network = config.get("network", OCI_NETWORK_DENIED)
     if network != OCI_NETWORK_DENIED:
         raise WorkerSandboxError("OCI network must be denied", code="oci-network-forbidden")
@@ -219,11 +228,6 @@ def execute_oci_python_brick(
 
     request_config = dict(config or {})
     request_inputs = dict(inputs or {})
-    policy = parse_oci_launch_policy(
-        image_digest=image_digest,
-        config=request_config,
-        inputs=request_inputs,
-    )
     try:
         payload = json.dumps(
             brick_stdin_document(config=request_config, inputs=request_inputs),
@@ -242,6 +246,11 @@ def execute_oci_python_brick(
             "python brick request exceeds size limit",
             code="brick-request-too-large",
         )
+    policy = parse_oci_launch_policy(
+        image_digest=image_digest,
+        config=request_config,
+        inputs=request_inputs,
+    )
     resolved_backend = backend if backend is not None else discover_oci_backend()
     if resolved_backend is None:
         raise WorkerSandboxError("OCI runtime is not available", code="oci-runtime-missing")
