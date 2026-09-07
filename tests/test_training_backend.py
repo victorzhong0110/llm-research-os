@@ -19,6 +19,7 @@ _CORE_PATHS = (
     ROOT / "src" / "llm_research_os" / "m2" / "prove.py",
     ROOT / "src" / "llm_research_os" / "m2" / "oci_prove.py",
     ROOT / "src" / "llm_research_os" / "m2" / "bench.py",
+    ROOT / "src" / "llm_research_os" / "m2" / "usage.py",
     ROOT / "src" / "llm_research_os" / "workers" / "sandbox.py",
     ROOT / "src" / "llm_research_os" / "workers" / "client.py",
     ROOT / "src" / "llm_research_os" / "cli" / "m2_commands.py",

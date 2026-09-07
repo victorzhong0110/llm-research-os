@@ -103,6 +103,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   claim, cancel, and coordinate; isolated Worker plus cited report;
   `m2 bench` fill is not this path
   ([ADR-0052](docs/adr/0052-control-path-usage-evidence.md)).
+- GPU experiment sheet: AutoDL RTX 4090, 45 minute wall, proposed ¥20 cap,
+  CUDA image method, instance 关机 ≠ container stop; `gpu: not-run`
+  ([ADR-0053](docs/adr/0053-gpu-experiment-sheet.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).

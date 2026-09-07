@@ -12,21 +12,13 @@ M2-0 already carries the fields a later GPU Worker needs:
 - `attempt.unknown` / `attempt.lost` when stop is requested but outcome is
   not observed
 
-## Future verification combo (unpinned)
+## Named combo (unpaid)
 
-Until a human names an image digest, stop method, and bill, budget for GPU
-work stays **unknown**. A request cannot invent a CNY cap. Uncertain
+The named sheet is [M2 GPU experiment](m2-gpu-experiment.md) (ADR-0053):
+AutoDL RTX 4090, 45 minute wall, proposed ¥20 cap, CUDA image method.
+That is a reviewable combo, not a recorded `budget.limit.recorded` and not
+开. Cost stays unknown until the researcher records the cap. Uncertain
 transport after dispatch keeps any reservation (M1-4).
-
-Suggested later combo (not executed here):
-
-| Item | Status |
-|---|---|
-| Image | OCI digest TBD; do not train against a mutable tag |
-| Runtime | `OCIContainerRuntime` behind the same Worker protocol |
-| Framework | one pinned training library after the OCI stop/resume loop works |
-| Stop | lease cancel + local timeout; cancel request ≠ stopped |
-| Bill | unknown until the provider invoice path is named |
 
 `researchos m2 prove` is the CPU stand-in. A Worker without `cuda` MUST NOT
 claim `requiredAccelerators: ["cuda"]`. That refusal is tested. CUDA itself
@@ -42,4 +34,5 @@ Do not write a training-step fact per optimizer step. `researchos m2 bench`
 records 10k/100k EventStore timings; those numbers are not SLA.
 
 The pinned parse/plan adapter and the unpaid experiment sheet live in
-[M2 GPU experiment](m2-gpu-experiment.md). That sheet is not a CUDA result.
+[M2 GPU experiment](m2-gpu-experiment.md). ADR-0053 names AutoDL RTX 4090,
+a 45 minute wall, and a proposed ¥20 cap. That sheet is not a CUDA result.

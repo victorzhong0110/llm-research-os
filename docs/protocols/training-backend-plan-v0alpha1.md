@@ -41,6 +41,11 @@ closed. The generated JSON Schema is
 
 The command MUST NOT start a process.
 
+The GPU experiment sheet ([ADR-0053](../adr/0053-gpu-experiment-sheet.md))
+names AutoDL RTX 4090, a 45 minute wall, and a proposed ¥20 cap. It is not
+a launch token. Resume overlay is `--resume_from_checkpoint` on the same
+argv.
+
 ## Isolation
 
 CPU Worker paths (`m2 prove`, host-python brick, OCI adapter) MUST NOT

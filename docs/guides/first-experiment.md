@@ -93,8 +93,9 @@ uv run researchos training plan \
   --format json
 ```
 
-See [M2 GPU experiment](m2-gpu-experiment.md). That command is not a
-training run.
+See [M2 GPU experiment](m2-gpu-experiment.md). Named combo: AutoDL RTX 4090,
+45 minute wall, proposed ¥20 cap. That sheet is not a training run and does
+not spend.
 
 ## What is still not a release
 
