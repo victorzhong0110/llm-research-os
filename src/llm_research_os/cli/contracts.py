@@ -26,6 +26,11 @@ from llm_research_os.blocks.report_schema import write_schema as write_block_rep
 from llm_research_os.blocks.schema import canonical_schema as canonical_block_schema
 from llm_research_os.blocks.schema import schema_matches as block_schema_matches
 from llm_research_os.blocks.schema import write_schema as write_block_schema
+from llm_research_os.budget.schema import (
+    budget_limit_request_schema_matches,
+    canonical_budget_limit_request_schema,
+    write_budget_limit_request_schema,
+)
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
@@ -340,6 +345,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         openai_compat_generate_request_schema_matches,
         write_openai_compat_generate_request_schema,
         "schemas/openai-compat-generate-request/v0alpha1.schema.json",
+    ),
+    "budget-limit-request": _contract(
+        canonical_budget_limit_request_schema,
+        budget_limit_request_schema_matches,
+        write_budget_limit_request_schema,
+        "schemas/budget-limit-request/v0alpha1.schema.json",
     ),
     "evidence-import-request": _contract(
         canonical_evidence_import_request_schema,

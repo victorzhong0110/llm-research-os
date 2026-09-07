@@ -307,6 +307,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_event_format_argument(models_generate)
 
+    budget = subparsers.add_parser(
+        "budget",
+        help="record project CNY budget limits as EventStore facts",
+    )
+    budget_commands = budget.add_subparsers(dest="budget_command", required=True)
+    budget_limit = budget_commands.add_parser(
+        "record-limit",
+        help="append one human-recorded project budget cap",
+    )
+    budget_limit.add_argument(
+        "request",
+        type=Path,
+        help="BudgetLimitRequest v0alpha1 YAML or JSON file",
+    )
+    budget_limit.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(budget_limit)
+
     evidence = subparsers.add_parser(
         "evidence",
         help="import local Markdown or PDF notes as EventStore facts",

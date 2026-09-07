@@ -64,8 +64,9 @@ capability or fixture refusal leaves the log empty. Conflicts are not retried.
 `callId` is unique per project.
 
 The deterministic mock does not write `ai.call.failed`. The OpenAI-compatible
-HTTP adapter writes it after `ai.call.started` when transport fails, together
-with `budget.released`.
+HTTP adapter writes it after `ai.call.started` when transport fails. It appends
+`budget.released` only when the request can be shown not to have left this
+process.
 
 ## 5. Non-goals
 

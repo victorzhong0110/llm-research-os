@@ -20,8 +20,15 @@ TYPE_BUDGET_RESERVED = "budget.reserved"
 TYPE_BUDGET_CONSUMED = "budget.consumed"
 TYPE_BUDGET_EXCEEDED = "budget.exceeded"
 TYPE_BUDGET_RELEASED = "budget.released"
+TYPE_BUDGET_LIMIT_RECORDED = "budget.limit.recorded"
 BUDGET_EVENT_TYPES = frozenset(
-    {TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED, TYPE_BUDGET_RELEASED}
+    {
+        TYPE_BUDGET_RESERVED,
+        TYPE_BUDGET_CONSUMED,
+        TYPE_BUDGET_EXCEEDED,
+        TYPE_BUDGET_RELEASED,
+        TYPE_BUDGET_LIMIT_RECORDED,
+    }
 )
 
 
@@ -74,11 +81,17 @@ class BudgetReleasedPayload(BudgetDocumentModel):
     reason_code: CloudEventsString = Field(alias="reasonCode")
 
 
+class BudgetLimitPayload(BudgetDocumentModel):
+    currency: Literal["CNY"] = "CNY"
+    cap: MoneyAmount
+
+
 PAYLOAD_MODELS: dict[str, type[EventDocumentModel]] = {
     TYPE_BUDGET_RESERVED: BudgetReservedPayload,
     TYPE_BUDGET_CONSUMED: BudgetConsumedPayload,
     TYPE_BUDGET_EXCEEDED: BudgetExceededPayload,
     TYPE_BUDGET_RELEASED: BudgetReleasedPayload,
+    TYPE_BUDGET_LIMIT_RECORDED: BudgetLimitPayload,
 }
 
 if set(PAYLOAD_MODELS) != BUDGET_EVENT_TYPES:
@@ -112,7 +125,8 @@ def require_budget_actor(event: ResearchEvent) -> None:
             f"actor kind is required for {event.type} (event id {event.id})",
             code="actor-kind-required",
         )
-    if kind is not ActorKind.SYSTEM:
+    allowed = ActorKind.HUMAN if event.type == TYPE_BUDGET_LIMIT_RECORDED else ActorKind.SYSTEM
+    if kind is not allowed:
         raise BudgetPayloadError(
             f"actor kind is not allowed for {event.type} (event id {event.id})",
             code="actor-kind-forbidden",

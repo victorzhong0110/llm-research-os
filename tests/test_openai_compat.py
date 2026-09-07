@@ -13,6 +13,7 @@ from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 from llm_research_os.budget.control import BudgetControl
 from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError
+from llm_research_os.budget.requests import budget_limit_draft
 from llm_research_os.canonical import content_digest
 from llm_research_os.cli import main
 from llm_research_os.providers.compat import CompatHttpProvider
@@ -61,6 +62,14 @@ def _validator() -> Draft202012Validator:
 def _init_store(path: Path) -> None:
     with EventStore(path) as store:
         assert store.last_sequence() == 0
+
+
+def _approve(
+    store: EventStore, project_id: str, cap: str, event_id: str = "evt.budget.limit.1"
+) -> None:
+    BudgetControl(store, project_id=project_id).append(
+        budget_limit_draft(project_id=project_id, cap=cap, event_id=event_id)
+    )
 
 
 def _completion(content: str) -> dict[str, object]:
@@ -259,6 +268,7 @@ def test_injected_remote_transport_redacts_secret_and_enforces_cap(
         transport=transport,
     )
     with EventStore(database) as store:
+        _approve(store, request.project_id, "1.00")
         first = ModelCallControl(store, project_id=request.project_id).record_http_generate(
             request,
             fixture,
@@ -285,6 +295,7 @@ def test_injected_remote_transport_redacts_secret_and_enforces_cap(
         assert types[-1] == "budget.exceeded"
         assert types.count("ai.call.started") == 1
         assert types == [
+            "budget.limit.recorded",
             "budget.reserved",
             "ai.call.started",
             "ai.call.completed",
@@ -315,7 +326,7 @@ def test_tools_capability_writes_no_events(tmp_path: Path) -> None:
         assert store.last_sequence() == 0
 
 
-def test_transport_error_releases_reservation_and_records_failed(
+def test_transport_error_after_dispatch_keeps_reservation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
@@ -326,7 +337,7 @@ def test_transport_error_releases_reservation_and_records_failed(
     fixture = load_model_fixture(FIXTURE)
 
     def transport(url: str, payload: bytes, headers: dict[str, str]) -> dict[str, object]:
-        raise ModelTransportError("model endpoint could not be reached", code="transport")
+        raise ModelTransportError("model endpoint timed out", code="transport-timeout")
 
     provider = CompatHttpProvider(
         endpoint=request.endpoint,
@@ -335,23 +346,25 @@ def test_transport_error_releases_reservation_and_records_failed(
         transport=transport,
     )
     with EventStore(database) as store:
+        _approve(store, request.project_id, "1.00")
         with pytest.raises(ModelTransportError) as captured:
             ModelCallControl(store, project_id=request.project_id).record_http_generate(
                 request,
                 fixture,
                 provider,
             )
-        assert captured.value.code == "transport"
+        assert captured.value.code == "transport-timeout"
+        assert captured.value.dispatched is True
         types = [item.event.type for item in store.read_events(limit=10)]
         assert types == [
+            "budget.limit.recorded",
             "budget.reserved",
             "ai.call.started",
-            "budget.released",
             "ai.call.failed",
         ]
         fold = BudgetControl(store, project_id=request.project_id).rebuild().fold
-        assert fold.outstanding == 0
-        assert fold.open == ()
+        assert str(fold.outstanding) == "0.60"
+        assert str(fold.consumed) == "0.00"
         encoded = json.dumps(
             [
                 item.event.model_dump(mode="json", by_alias=True)
@@ -360,6 +373,60 @@ def test_transport_error_releases_reservation_and_records_failed(
             ensure_ascii=False,
         )
         assert SECRET not in encoded
+        second = validate_compat_generate_request(
+            _remote_document(suffix="fail-2", cap="1.00", reserve="0.60", consume="0.60")
+        )
+        with pytest.raises(BudgetExceededError):
+            ModelCallControl(store, project_id=request.project_id).record_http_generate(
+                second,
+                fixture,
+                provider,
+            )
+        later = [item.event.type for item in store.read_events(limit=20)]
+        assert later.count("ai.call.started") == 1
+        assert later[-1] == "budget.exceeded"
+
+
+def test_transport_error_before_dispatch_releases_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
+    database = tmp_path / "research.db"
+    request = validate_compat_generate_request(
+        _remote_document(suffix="pre-dispatch", cap="1.00", reserve="0.60", consume="0.60")
+    )
+    fixture = load_model_fixture(FIXTURE)
+
+    def transport(url: str, payload: bytes, headers: dict[str, str]) -> dict[str, object]:
+        raise ModelTransportError("endpoint host is blocked", code="endpoint-host")
+
+    provider = CompatHttpProvider(
+        endpoint=request.endpoint,
+        model_id=request.actor.model_id,
+        secret=SECRET,
+        transport=transport,
+    )
+    with EventStore(database) as store:
+        _approve(store, request.project_id, "1.00")
+        with pytest.raises(ModelTransportError) as captured:
+            ModelCallControl(store, project_id=request.project_id).record_http_generate(
+                request,
+                fixture,
+                provider,
+            )
+        assert captured.value.code == "endpoint-host"
+        assert captured.value.dispatched is False
+        types = [item.event.type for item in store.read_events(limit=10)]
+        assert types == [
+            "budget.limit.recorded",
+            "budget.reserved",
+            "ai.call.started",
+            "budget.released",
+            "ai.call.failed",
+        ]
+        fold = BudgetControl(store, project_id=request.project_id).rebuild().fold
+        assert str(fold.outstanding) == "0.00"
+        assert str(fold.consumed) == "0.00"
 
 
 def test_digest_mismatch_after_http_does_not_release(
@@ -389,6 +456,7 @@ def test_digest_mismatch_after_http_does_not_release(
         transport=lambda url, payload, headers: _completion(OUTPUT_TOKEN),
     )
     with EventStore(database) as store:
+        _approve(store, request.project_id, "1.00")
         with pytest.raises(ModelCallError, match="prompt digest"):
             ModelCallControl(store, project_id=request.project_id).record_http_generate(
                 request,
@@ -396,7 +464,7 @@ def test_digest_mismatch_after_http_does_not_release(
                 provider,
             )
         types = [item.event.type for item in store.read_events(limit=10)]
-        assert types == ["budget.reserved", "ai.call.started"]
+        assert types == ["budget.limit.recorded", "budget.reserved", "ai.call.started"]
         fold = BudgetControl(store, project_id=request.project_id).rebuild().fold
         assert str(fold.outstanding) == "0.60"
 
@@ -407,6 +475,8 @@ def test_concurrent_reservations_only_affordable_call_hits_transport(
     monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
     database = tmp_path / "research.db"
     _init_store(database)
+    with EventStore(database) as store:
+        _approve(store, "example-minimal", "1.00")
     fixture = load_model_fixture(FIXTURE)
     transports: list[str] = []
     lock = Lock()
@@ -467,6 +537,8 @@ def test_concurrent_reserve_uses_one_frozen_head(
     monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
     database = tmp_path / "research.db"
     _init_store(database)
+    with EventStore(database) as store:
+        _approve(store, "example-minimal", "1.00")
     fixture = load_model_fixture(FIXTURE)
     transports: list[str] = []
     lock = Lock()

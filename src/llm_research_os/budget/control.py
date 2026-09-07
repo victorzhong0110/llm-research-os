@@ -10,12 +10,12 @@ from pydantic import ValidationError
 
 from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError, BudgetPayloadError
 from llm_research_os.budget.models import (
-    TYPE_BUDGET_CONSUMED,
+    BUDGET_EVENT_TYPES,
     TYPE_BUDGET_EXCEEDED,
-    TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
     BudgetConsumedPayload,
     BudgetExceededPayload,
+    BudgetLimitPayload,
     BudgetReleasedPayload,
     BudgetReservedPayload,
     parse_budget_payload,
@@ -49,6 +49,7 @@ class BudgetFold:
     open: tuple[OpenReservation, ...] = ()
     closed_ids: frozenset[str] = frozenset()
     consumed: Decimal = Decimal("0.00")
+    approved_cap: Decimal | None = None
 
     @property
     def outstanding(self) -> Decimal:
@@ -111,6 +112,7 @@ class BudgetControl:
             )
         requested = parse_money(payload.amount)
         cap = parse_money(payload.cap)
+        _require_reservation_within_approved_limit(head.fold, requested, cap)
         if reservation_would_exceed(head.fold, requested, cap):
             exceeded_event = self._preflight_event(head, exceeded_document)
             if exceeded_event.type != TYPE_BUDGET_EXCEEDED:
@@ -159,9 +161,7 @@ class BudgetControl:
         return preflight_event
 
 
-BUDGET_TYPES = frozenset(
-    {TYPE_BUDGET_RESERVED, TYPE_BUDGET_CONSUMED, TYPE_BUDGET_EXCEEDED, TYPE_BUDGET_RELEASED}
-)
+BUDGET_TYPES = BUDGET_EVENT_TYPES
 
 
 def apply_budget_fold(fold: BudgetFold, event: ResearchEvent, *, project_id: str) -> BudgetFold:
@@ -179,6 +179,8 @@ def apply_budget_fold(fold: BudgetFold, event: ResearchEvent, *, project_id: str
         return _close_reservation(fold, payload, add_consumed=False)
     if isinstance(payload, BudgetExceededPayload):
         return _apply_exceeded(fold, payload)
+    if isinstance(payload, BudgetLimitPayload):
+        return _apply_limit(fold, payload)
     raise BudgetCallError("budget payload type is not foldable", code="unknown-budget-type")
 
 
@@ -190,11 +192,29 @@ def reservation_would_exceed(fold: BudgetFold, requested: Decimal, cap: Decimal)
     return fold.consumed + fold.outstanding + requested > cap
 
 
+def _require_reservation_within_approved_limit(
+    fold: BudgetFold, requested: Decimal, cap: Decimal
+) -> None:
+    if cap == Decimal("0.00") and requested == Decimal("0.00"):
+        return
+    if fold.approved_cap is None:
+        raise BudgetCallError(
+            "positive budget requires a recorded project limit",
+            code="budget-limit-missing",
+        )
+    if cap != fold.approved_cap:
+        raise BudgetCallError(
+            "request budgetCap does not match the recorded project limit",
+            code="budget-limit-mismatch",
+        )
+
+
 def _apply_reserved(fold: BudgetFold, payload: BudgetReservedPayload) -> BudgetFold:
     if payload.budget_id in _known_ids(fold):
         raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
     amount = parse_money(payload.amount)
     cap = parse_money(payload.cap)
+    _require_reservation_within_approved_limit(fold, amount, cap)
     if reservation_would_exceed(fold, amount, cap):
         raise BudgetCallError(
             "reservation would exceed the declared cap",
@@ -211,6 +231,7 @@ def _apply_reserved(fold: BudgetFold, payload: BudgetReservedPayload) -> BudgetF
         open=(*fold.open, reservation),
         closed_ids=fold.closed_ids,
         consumed=fold.consumed,
+        approved_cap=fold.approved_cap,
     )
 
 
@@ -264,18 +285,31 @@ def _close_reservation(
         open=remaining,
         closed_ids=fold.closed_ids | {payload.budget_id},
         consumed=consumed,
+        approved_cap=fold.approved_cap,
     )
 
 
 def _apply_exceeded(fold: BudgetFold, payload: BudgetExceededPayload) -> BudgetFold:
     if payload.budget_id in _known_ids(fold):
         raise BudgetCallError("budgetId is already recorded", code="duplicate-budget-id")
-    parse_money(payload.attempted)
-    parse_money(payload.cap)
+    attempted = parse_money(payload.attempted)
+    cap = parse_money(payload.cap)
+    _require_reservation_within_approved_limit(fold, attempted, cap)
     return BudgetFold(
         open=fold.open,
         closed_ids=fold.closed_ids | {payload.budget_id},
         consumed=fold.consumed,
+        approved_cap=fold.approved_cap,
+    )
+
+
+def _apply_limit(fold: BudgetFold, payload: BudgetLimitPayload) -> BudgetFold:
+    cap = parse_money(payload.cap)
+    return BudgetFold(
+        open=fold.open,
+        closed_ids=fold.closed_ids,
+        consumed=fold.consumed,
+        approved_cap=cap,
     )
 
 

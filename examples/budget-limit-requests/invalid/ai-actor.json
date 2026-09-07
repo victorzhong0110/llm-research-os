@@ -1,0 +1,19 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "BudgetLimitRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "budget.limit.example-minimal",
+  "streamid": "stream.budget",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai"
+  },
+  "event": {
+    "id": "evt.budget.limit.ai",
+    "time": "2026-09-07T00:00:00Z"
+  },
+  "cap": "1.00",
+  "evidenceRefs": []
+}

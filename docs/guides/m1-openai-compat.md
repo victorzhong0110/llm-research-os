@@ -15,15 +15,17 @@ uv run researchos models generate \
 ```
 
 Loopback calls MUST use cap `0.00` CNY and MUST NOT carry a `secretRef`.
-Remote calls require `SecretRef` (`env`), `read.external_api`, HTTPS, and a
-positive CNY cap and reserve. Reservation vs exceed is one `BudgetControl`
+Remote calls require `SecretRef` (`env`), `read.external_api`, HTTPS, a
+recorded project CNY limit, and a request cap that matches that limit.
+Reservation vs exceed is one `BudgetControl`
 decision on a frozen head; a CAS conflict does not open a socket. Exit `0` on
 loopback commits reserved, started, consumed, and completed.
 Remote success commits reserved, started, and completed; the reservation stays
 open because cost is unknown. Exit `1` is a domain refusal (missing secret,
 disallowed capability, budget exceeded). Exit `2` is invalid input or a CAS
-conflict. A transport error after reserve+start commits released and
-`ai.call.failed`, then exits `1`.
+conflict. A transport error after reserve+start commits `ai.call.failed`.
+It commits `budget.released` only when the request can be shown not to have
+left this process; timeout and malformed responses keep the reservation.
 
 JSON stdout is still `ModelCallReceipt` (ids and digests). It does not echo
 prompt, completion, or secret values.

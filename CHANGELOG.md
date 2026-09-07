@@ -43,8 +43,11 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   subprocess-isolated with page, character, wall-clock, and best-effort
   memory limits (TM-041).
 - M1-4: OpenAI-compatible HTTP adapter (loopback default). Remote endpoints
-  require `SecretRef`, `read.external_api`, and HTTPS. First runtime-enforced
-  CNY caps: `budget.reserved` / `consumed` / `exceeded` / `released`.
+  require `SecretRef`, `read.external_api`, HTTPS, a recorded project CNY
+  limit, and a matching request cap. First runtime-enforced CNY caps:
+  `budget.limit.recorded` / `reserved` / `consumed` / `exceeded` / `released`.
+- `budget.limit.recorded` as a human-only project CNY cap. Positive reservations
+  must repeat that cap; a request cannot raise it by itself.
 
 ### Changed
 
@@ -61,8 +64,15 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - M1-3: PDF text extraction no longer parses every page in-process before
   applying the character cap. A compressed PDF that expands past the work
   bounds fails closed without echoing extracted text.
-- M1-4: HTTP generate CAS-appends `budget.reserved` and `ai.call.started`
-  before opening a socket. Outstanding reservations hold the cap. Loopback
-  consumes only when cost is known; remote leaves the reservation open.
-  Transport failure after start writes `budget.released` and `ai.call.failed`.
-  Consume/release must match the reservation (`callId`, currency, cap, amount).
+- M1-4: HTTP generate decides reserve-or-exceed on one frozen budget head
+  (`BudgetControl.reserve_or_exceed`) and CAS-appends `budget.reserved` or
+  `budget.exceeded` before opening a socket. `_apply_reserved` itself rejects a
+  reservation that would break `consumed + outstanding + requested <= cap`.
+  Outstanding reservations hold the cap. Loopback consumes only when cost is
+  known; remote leaves the reservation open and must declare a positive cap and
+  reserve. Transport failure after start keeps the reservation when the request
+  may already have left this process (`dispatched=true`; timeout, oversized, or
+  malformed responses). `budget.released` is only appended when the adapter can
+  prove the request was not dispatched, or when `ai.call.started` itself failed
+  to commit. Consume/release must match the reservation (`callId`,
+  currency, cap, amount).

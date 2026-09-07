@@ -5,14 +5,16 @@ from pathlib import Path
 import pytest
 
 from llm_research_os.budget.control import BudgetControl
-from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError
+from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError, BudgetPayloadError
 from llm_research_os.budget.models import (
     TYPE_BUDGET_CONSUMED,
     TYPE_BUDGET_EXCEEDED,
+    TYPE_BUDGET_LIMIT_RECORDED,
     TYPE_BUDGET_RELEASED,
     TYPE_BUDGET_RESERVED,
 )
 from llm_research_os.budget.money import CURRENCY_CNY
+from llm_research_os.budget.requests import budget_limit_draft
 from llm_research_os.providers.compat_requests import (
     OpenAICompatGenerateRequestDocument,
     validate_compat_generate_request,
@@ -22,6 +24,14 @@ from llm_research_os.storage import EventStore
 
 ROOT = Path(__file__).parents[1]
 REMOTE_REQUEST = ROOT / "examples" / "openai-compat-requests" / "valid" / "remote.json"
+
+
+def _approve(
+    store: EventStore, project_id: str, cap: str, event_id: str = "evt.budget.limit.1"
+) -> None:
+    BudgetControl(store, project_id=project_id).append(
+        budget_limit_draft(project_id=project_id, cap=cap, event_id=event_id)
+    )
 
 
 def _terms(**overrides: str) -> dict[str, str]:
@@ -41,6 +51,7 @@ def test_consume_and_release_must_match_reservation(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
         budget = BudgetControl(store, project_id=request.project_id)
+        _approve(store, request.project_id, "30.00")
         budget.append(request.budget_draft(TYPE_BUDGET_RESERVED, _terms()))
         mismatches = (
             (_terms(callId="call.compat-remote.other"), "reservation-mismatch"),
@@ -59,7 +70,7 @@ def test_consume_and_release_must_match_reservation(tmp_path: Path) -> None:
                 )
             )
         assert captured.value.code == "reservation-mismatch"
-        assert store.last_sequence() == 1
+        assert store.last_sequence() == 2
         consumed = budget.append(request.budget_draft(TYPE_BUDGET_CONSUMED, _terms()))
         assert consumed.event.type == TYPE_BUDGET_CONSUMED
         fold = budget.rebuild().fold
@@ -83,6 +94,7 @@ def test_append_reserved_after_peer_reservation_is_rejected_by_fold(tmp_path: Pa
     database = tmp_path / "research.db"
     with EventStore(database) as store:
         budget = BudgetControl(store, project_id=first.project_id)
+        _approve(store, first.project_id, "30.00")
         budget.append(
             first.budget_draft(
                 TYPE_BUDGET_RESERVED,
@@ -109,7 +121,7 @@ def test_append_reserved_after_peer_reservation_is_rejected_by_fold(tmp_path: Pa
                 )
             )
         assert captured.value.code == "reservation-exceeds-cap"
-        assert store.last_sequence() == 1
+        assert store.last_sequence() == 2
         fold = budget.rebuild().fold
         assert str(fold.outstanding) == "20.00"
 
@@ -142,6 +154,7 @@ def test_reserve_or_exceed_records_exceeded_after_peer_reservation(tmp_path: Pat
     database = tmp_path / "research.db"
     with EventStore(database) as store:
         budget = BudgetControl(store, project_id=first.project_id)
+        _approve(store, first.project_id, "30.00")
         reserved = budget.reserve_or_exceed(
             first.budget_draft(
                 TYPE_BUDGET_RESERVED,
@@ -177,6 +190,84 @@ def test_reserve_or_exceed_records_exceeded_after_peer_reservation(tmp_path: Pat
                 ),
             )
         types = [item.event.type for item in store.read_events(limit=10)]
-        assert types == [TYPE_BUDGET_RESERVED, TYPE_BUDGET_EXCEEDED]
+        assert types == [TYPE_BUDGET_LIMIT_RECORDED, TYPE_BUDGET_RESERVED, TYPE_BUDGET_EXCEEDED]
         fold = budget.rebuild().fold
         assert str(fold.outstanding) == "20.00"
+
+
+def test_positive_reservation_requires_recorded_limit(tmp_path: Path) -> None:
+    request = validate_compat_generate_request(load_document(REMOTE_REQUEST))
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        budget = BudgetControl(store, project_id=request.project_id)
+        with pytest.raises(BudgetCallError) as captured:
+            budget.append(request.budget_draft(TYPE_BUDGET_RESERVED, _terms()))
+        assert captured.value.code == "budget-limit-missing"
+        assert store.last_sequence() == 0
+
+
+def test_request_cannot_raise_cap_without_a_new_limit(tmp_path: Path) -> None:
+    request = validate_compat_generate_request(load_document(REMOTE_REQUEST))
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        budget = BudgetControl(store, project_id=request.project_id)
+        _approve(store, request.project_id, "1.00")
+        with pytest.raises(BudgetCallError) as captured:
+            budget.reserve_or_exceed(
+                request.budget_draft(
+                    TYPE_BUDGET_RESERVED,
+                    _reserve_terms(request, amount="1.00", cap="100.00"),
+                ),
+                request.budget_draft(
+                    TYPE_BUDGET_EXCEEDED,
+                    {
+                        "budgetId": request.budget_id,
+                        "callId": request.call_id,
+                        "currency": CURRENCY_CNY,
+                        "attempted": "1.00",
+                        "cap": "100.00",
+                    },
+                ),
+            )
+        assert captured.value.code == "budget-limit-mismatch"
+        assert store.last_sequence() == 1
+        _approve(store, request.project_id, "100.00", event_id="evt.budget.limit.2")
+        raised = budget.append(
+            request.budget_draft(
+                TYPE_BUDGET_RESERVED,
+                _reserve_terms(request, amount="1.00", cap="100.00"),
+            )
+        )
+        assert raised.event.type == TYPE_BUDGET_RESERVED
+        fold = budget.rebuild().fold
+        assert str(fold.approved_cap) == "100.00"
+
+
+def test_zero_reservation_does_not_require_a_recorded_limit(tmp_path: Path) -> None:
+    request = validate_compat_generate_request(load_document(REMOTE_REQUEST))
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        budget = BudgetControl(store, project_id=request.project_id)
+        reserved = budget.append(
+            request.budget_draft(
+                TYPE_BUDGET_RESERVED,
+                _reserve_terms(request, amount="0.00", cap="0.00"),
+            )
+        )
+        assert reserved.event.type == TYPE_BUDGET_RESERVED
+        fold = budget.rebuild().fold
+        assert fold.approved_cap is None
+        assert str(fold.outstanding) == "0.00"
+
+
+def test_limit_fact_requires_a_human_actor(tmp_path: Path) -> None:
+    request = validate_compat_generate_request(load_document(REMOTE_REQUEST))
+    database = tmp_path / "research.db"
+    draft = budget_limit_draft(project_id=request.project_id, cap="1.00")
+    draft["data"]["actor"]["kind"] = "system"
+    with EventStore(database) as store:
+        budget = BudgetControl(store, project_id=request.project_id)
+        with pytest.raises(BudgetPayloadError) as captured:
+            budget.append(draft)
+        assert captured.value.code == "actor-kind-forbidden"
+        assert store.last_sequence() == 0

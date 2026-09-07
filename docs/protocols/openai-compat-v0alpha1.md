@@ -2,7 +2,7 @@
 
 > Status: Experimental external contract for `OpenAICompatGenerateRequest`,
 > loopback-default HTTP generate, and `budget.reserved` / `budget.consumed` /
-> `budget.exceeded` / `budget.released`. JSON Schema files are the structural
+> `budget.exceeded` / `budget.released` / `budget.limit.recorded`. JSON Schema files are the structural
 > contracts.
 
 This slice realises [ADR-0017](../adr/0017-minimal-model-interface.md) for an
@@ -42,10 +42,14 @@ provider MUST NOT treat a zero reservation as proof that the call is free.
 
 ## 2. Recording order
 
-Capability refusal leaves the log empty. `BudgetControl.reserve_or_exceed`
+Capability refusal leaves the log empty. A positive reservation requires a
+prior human `budget.limit.recorded` fact on this project. The request
+`budgetCap` MUST equal that recorded cap; a later request cannot raise the
+project limit by itself. `BudgetControl.reserve_or_exceed`
 rebuilds one frozen head, then on that same head either CAS-appends
 `budget.reserved` or CAS-appends `budget.exceeded`. The cap check is
-`consumed + outstanding + requested <= cap`. A CAS conflict is not retried;
+`consumed + outstanding + requested <= cap`. A mismatched request cap is
+rejected before either fact. A CAS conflict is not retried;
 the caller MUST NOT open a socket. `_apply_reserved` itself rejects a
 reservation that would break the cap, so a direct `budget.append` cannot
 bypass the HTTP adapter.
@@ -59,9 +63,13 @@ On HTTP success with cost known: `budget.consumed` (amount ≤ reserved; same
 `ai.call.completed`. On HTTP success with cost unknown: `ai.call.completed`
 only; the reservation stays open and continues to hold the cap.
 
-On `ModelTransportError` after reserve+start: `budget.released` (full reserved
-amount) then `ai.call.failed`, then the transport error is re-raised. A digest
-mismatch after HTTP 200 does not release: the call may already be billed.
+On `ModelTransportError` after reserve+start: `ai.call.failed` is always
+appended. `budget.released` is appended only when `dispatched` is false (the
+adapter can prove the request never left this process: blocked endpoint,
+missing secret, forbidden proxy). Timeout, oversized, and malformed responses
+default to `dispatched=true` and MUST keep the reservation; actual cost is
+unknown until reconciliation. A digest mismatch after HTTP 200 does not
+release: the call may already be billed.
 
 `consumeAmount` / `callId` / currency / cap that do not match the open
 reservation are rejected before commit (`reservation-mismatch` or

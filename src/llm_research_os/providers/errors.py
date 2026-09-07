@@ -40,5 +40,39 @@ class ModelRequestError(ValueError):
         self.code = "model-request"
 
 
+_PRE_DISPATCH_TRANSPORT_CODES = frozenset(
+    {
+        "dns-rebinding",
+        "endpoint-blocked",
+        "endpoint-dns",
+        "endpoint-host",
+        "endpoint-scheme",
+        "endpoint-url",
+        "endpoint-userinfo",
+        "local-secret-forbidden",
+        "proxy-forbidden",
+        "remote-secret-required",
+        "secret-unavailable",
+    }
+)
+
+
 class ModelTransportError(ModelProviderError):
-    """The HTTP adapter could not complete a request without leaking vendor objects."""
+    """The HTTP adapter could not complete a request without leaking vendor objects.
+
+    ``dispatched`` is false only when the adapter can prove the request never left
+    this process. Timeout, oversized, and malformed responses default to true.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "model-provider",
+        *,
+        dispatched: bool | None = None,
+    ) -> None:
+        super().__init__(message, code)
+        if dispatched is None:
+            self.dispatched = code not in _PRE_DISPATCH_TRANSPORT_CODES
+        else:
+            self.dispatched = dispatched

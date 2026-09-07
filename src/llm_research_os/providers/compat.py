@@ -243,6 +243,7 @@ class CompatHttpProvider(ModelProvider):
             raise ModelTransportError(
                 message_without_secrets(str(exc), self._secret or ""),
                 code=exc.code,
+                dispatched=exc.dispatched,
             ) from None
         output_payload: dict[str, object] = {"text": text}
         return GenerateResult(
@@ -341,7 +342,8 @@ def record_compat_generate(
     try:
         result = provider.generate_fixture(fixture)
     except ModelTransportError as exc:
-        budget.append(_release_draft(request, reason_code=exc.code))
+        if not exc.dispatched:
+            budget.append(_release_draft(request, reason_code=exc.code))
         append_call(request.failed_draft(reason_code=exc.code))
         raise
     if result.prompt_digest != content_digest(fixture.prompt):
