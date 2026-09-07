@@ -643,11 +643,19 @@ def _oci_or_skip(root: Path) -> dict[str, object]:
         result = prove_oci_loop(_OCI_CORPUS, database, artifacts)
     except (WorkerSandboxError, M2CheckpointError, WorkerError) as exc:
         code = getattr(exc, "code", "worker")
-        if code == "oci-runtime-missing" and not oci_integration_required():
+        if oci_integration_required():
+            raise
+        if code == "oci-runtime-missing":
             return {
                 "status": "skipped-no-runtime",
                 "required": False,
                 "note": "ordinary hosts may skip; designated Linux OCI CI must not",
+            }
+        if code == "oci-image-missing":
+            return {
+                "status": "skipped-no-image",
+                "required": False,
+                "note": "pinned image is local-only; designated Linux OCI CI must not skip",
             }
         raise
     return {

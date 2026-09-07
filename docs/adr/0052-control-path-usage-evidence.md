@@ -35,9 +35,12 @@ failure in designated Linux OCI CI (ADR-0049).
    process MUST use different CAS roots. The static report MUST cite spec,
    registry, plan, runtime, image, config, and output artifact. Loopback
    HTTPS is not a cross-machine proof (ADR-0021).
-5. **OCI is labeled.** Observed on a live engine; `skipped-no-runtime` when
-   docker is absent and `RESEARCHOS_OCI_REQUIRED` is unset; fail closed when
-   that env is `1`.
+5. **OCI is labeled.** Observed on a live engine with the pinned image;
+   `skipped-no-runtime` when docker is absent; `skipped-no-image` when docker
+   is present but the digest is not local and `RESEARCHOS_OCI_REQUIRED` is
+   unset; fail closed when that env is `1`. Ordinary Ubuntu CI with docker
+   but without the brick image is `skipped-no-image`, not a pass by skip of
+   the designated Linux OCI job.
 
 ## Consequences
 

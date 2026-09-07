@@ -63,8 +63,8 @@ cancel, and coordinate, plus an isolated Worker and cited report:
 uv run researchos m2 usage /tmp/m2-usage --format json
 ```
 
-See [M2 usage](m2-usage.md). OCI may be `skipped-no-runtime` here; designated
-Linux OCI CI must not skip.
+See [M2 usage](m2-usage.md). OCI may be `skipped-no-runtime` or
+`skipped-no-image` here; designated Linux OCI CI must not skip.
 
 ## Performance baseline (not SLA)
 
