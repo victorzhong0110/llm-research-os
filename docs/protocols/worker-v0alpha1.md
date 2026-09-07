@@ -113,10 +113,16 @@ for arbitrary code.
 is `OCIContainerRuntime` (ADR-0045). `imageDigest` is the OCI image
 identity. Tags and pull-by-name are forbidden. The CAS python brick is
 `inputs.brickDigest`. Network MUST be `denied`. Allowed mounts are `/in`
-(read-only brick), `/tmp`, and `/out`. Secrets inject only as `SecretRef`
+(read-only brick), `/tmp`, and `/out`. The container user is UID/GID
+65534. The host bind root for `/in` is mode 0755 with brick file 0444 so
+nobody can traverse it; it MUST NOT be 0700, 0777, or run as root
+(ADR-0049). Secrets inject only as `SecretRef`
 env slots. The first adapter is docker with `--pull=never`. A docker CLI
 without an engine MUST fail `oci-runtime-missing`. Tests MUST NOT mock a
-successful container. Host Python remains the trusted helper path.
+successful container. Ordinary pytest MAY skip `oci_live` when no engine
+is present. Designated Linux OCI CI (`RESEARCHOS_OCI_REQUIRED=1`) MUST
+fail if the engine, image build, or live brick is missing. Host Python
+remains the trusted helper path.
 A Worker registered as `python-sandbox` MUST NOT lease OCI work.
 
 ## 4b. Stop, fault, and recovery

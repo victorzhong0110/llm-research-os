@@ -43,6 +43,10 @@ DEFAULT_OCI_CPU_MILLIS = 1000
 MAX_OCI_CPU_MILLIS = 2000
 MAX_OCI_SECRETS = 8
 OCI_NETWORK_DENIED: Literal["denied"] = "denied"
+OCI_CONTAINER_USER = "65534:65534"
+OCI_INPUT_DIR_MODE = 0o755
+OCI_INPUT_FILE_MODE = 0o444
+OCI_REQUIRED_ENV = "RESEARCHOS_OCI_REQUIRED"
 _FORBIDDEN_LAUNCH_KEYS = frozenset(
     {
         "capAdd",
@@ -106,6 +110,32 @@ def discover_oci_backend() -> OciBackend | None:
     if version == "":
         return None
     return OciBackend(kind="docker", executable=executable)
+
+
+def oci_integration_required() -> bool:
+    """True in the designated Linux OCI CI job. Ordinary pytest may skip."""
+
+    return os.environ.get(OCI_REQUIRED_ENV) == "1"
+
+
+def prepare_oci_input_root(workspace: Path) -> None:
+    """Make `/in` traversable by UID 65534 without world-writable bits or root.
+
+    `tempfile.mkdtemp` is mode 0700. Bind-mounting that directory at `/in` for
+    `--user 65534:65534` yields EACCES (`worker.brick.failed`) on Linux docker.
+    Host-python sandboxes keep 0700. Do not chmod 0777 and do not run as root.
+    """
+
+    workspace.chmod(OCI_INPUT_DIR_MODE)
+    for child in workspace.iterdir():
+        if child.is_file() and not child.is_symlink():
+            child.chmod(OCI_INPUT_FILE_MODE)
+    dir_mode = workspace.stat().st_mode & 0o777
+    if dir_mode != OCI_INPUT_DIR_MODE or dir_mode & 0o002:
+        raise WorkerSandboxError(
+            "OCI input root must be 0755 and not world-writable",
+            code="oci-mount-forbidden",
+        )
 
 
 def parse_oci_launch_policy(
@@ -206,6 +236,7 @@ def execute_oci_python_brick(
     secret_env = _resolve_secret_env(policy.secrets, environ)
     script = _materialize_brick(artifacts, policy.brick_digest)
     workspace = script.parent
+    prepare_oci_input_root(workspace)
     process: subprocess.Popen[bytes] | None = None
     pgid: int | None = None
     argv = _docker_run_argv(
@@ -234,7 +265,13 @@ def execute_oci_python_brick(
                 reason_code="worker.process.lost",
             )
         pgid = _process_group(process)
-        return _run_bounded(process, payload, policy.wall_time_seconds, pgid)
+        return _run_bounded(
+            process,
+            payload,
+            policy.wall_time_seconds,
+            pgid,
+            secret_values=tuple(secret_env.values()),
+        )
     finally:
         if process is not None:
             _reap_process_group(process, pgid)
@@ -303,7 +340,7 @@ def _docker_run_argv(
         "none",
         "--read-only",
         "--user",
-        "65534:65534",
+        OCI_CONTAINER_USER,
         "--security-opt",
         "no-new-privileges",
         "--memory",
