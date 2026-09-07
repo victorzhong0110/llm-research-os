@@ -186,3 +186,9 @@ def format_consumed(fold: BudgetFold) -> str:
 
 def format_outstanding(fold: BudgetFold) -> str:
     return format_money(fold.outstanding)
+
+
+def format_approved_cap(fold: BudgetFold) -> str:
+    if fold.approved_cap is None:
+        return "0.00"
+    return format_money(fold.approved_cap)

@@ -5,7 +5,13 @@ from __future__ import annotations
 import html
 from urllib.parse import quote
 
-from llm_research_os.report.fold import RunReport, format_consumed, format_outstanding
+from llm_research_os.budget.models import TYPE_BUDGET_LIMIT_RECORDED
+from llm_research_os.report.fold import (
+    RunReport,
+    format_approved_cap,
+    format_consumed,
+    format_outstanding,
+)
 
 
 def render_markdown(report: RunReport) -> str:
@@ -113,6 +119,11 @@ def _cost_markdown(report: RunReport) -> list[str]:
         f"- Consumed `{_md(format_consumed(report.budget))}` CNY "
         f"{_md_link(report.budget_events[-1].event.id)}."
     ]
+    if report.budget.approved_cap is not None:
+        lines.append(
+            f"- Approved cap `{_md(format_approved_cap(report.budget))}` CNY "
+            f"{_md_link(_budget_limit_event_id(report))}."
+        )
     if report.budget.outstanding > 0:
         lines.append(
             f"- Outstanding `{_md(format_outstanding(report.budget))}` CNY still reserved; "
@@ -218,6 +229,12 @@ def _cost_html(report: RunReport) -> list[str]:
         f"{_html(format_consumed(report.budget))}</code> CNY "
         f"{_html_link(report.budget_events[-1].event.id)}.</li>"
     ]
+    if report.budget.approved_cap is not None:
+        items.append(
+            "<li>Approved cap <code>"
+            f"{_html(format_approved_cap(report.budget))}</code> CNY "
+            f"{_html_link(_budget_limit_event_id(report))}.</li>"
+        )
     if report.budget.outstanding > 0:
         items.append(
             "<li>Outstanding <code>"
@@ -280,8 +297,15 @@ def _ledger_event_ids(report: RunReport) -> tuple[str, ...]:
     )
 
 
+def _budget_limit_event_id(report: RunReport) -> str:
+    for stored in report.budget_events:
+        if stored.event.type == TYPE_BUDGET_LIMIT_RECORDED:
+            return stored.event.id
+    return report.budget_events[-1].event.id
+
+
 def _budget_amount(payload: dict[str, object]) -> str:
-    for key in ("amount", "attempted"):
+    for key in ("amount", "attempted", "cap"):
         value = payload.get(key)
         if type(value) is str:
             return value
