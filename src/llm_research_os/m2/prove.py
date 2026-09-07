@@ -210,7 +210,10 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             authorization_sequence=recorded.stored.event.sequence,
             image_digest=image.digest,
             config_digest=config_digest,
+            spec=spec,
+            registry=registry,
             time=grant_request.event.time,
+            workflow_id=workflow_id,
         )
         runtime = WorkerRuntime(
             store,

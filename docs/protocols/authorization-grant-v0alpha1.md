@@ -22,8 +22,21 @@ one attempt, and one execution object.
 The cited evaluation MUST exist, MUST be `authorized=true`, MUST match the
 project, MUST have a human actor, and MUST list `execute.local` in
 `requiredCapabilities`. Citing a `simulate` authorization MUST fail
-`authorization-capability-mismatch`. The HMAC token MUST NOT be stored on
-the event (TM-007).
+`authorization-capability-mismatch`.
+
+Grant recording MUST rebuild the cited plan from the caller-supplied
+ResearchSpec and registry at a shared trust boundary used by
+`WorkerPlane.record_grant` and `researchos grants record`. Request, grant,
+and queue agreeing with each other is not sufficient. The rebuilt plan
+MUST match the cited event's spec/registry/plan/decision digests, project,
+revision, and workflow. `taskId` is the **planned** graph node id and MUST
+exist in that plan. `runId` and `attemptId` are the **runtime** attempt
+identity. The grant `imageDigest` / `configDigest` MUST equal the planned
+task's execution object. Script A's authorization MUST NOT issue an
+executable grant for script B. Changing config, inputs, runtime, planned
+task, or revision MUST fail closed.
+
+The HMAC token MUST NOT be stored on the event (TM-007).
 
 Token form: `rg1.<urlsafe-b64-json>.<hex-hmac-sha256>` over canonical
 claims `{v, keyId, grantId, grantEventId, workerId, taskId, attemptId,
@@ -44,10 +57,10 @@ runId, nonce, exp, projectId, imageDigest, configDigest}`. Verify with
   consume with another lease is `grant-replay`. The same lease is
   idempotent.
 
-CLI: `researchos grants record REQUEST DATABASE` appends the recorded fact
-only after the authorization citation verifies. It does not print the
-token. Recording without a matching `execute.local` evaluation fails
-closed.
+CLI: `researchos grants record SPEC REQUEST DATABASE --registry PATH`
+rebuilds the plan, then appends the recorded fact. It does not print the
+token. Recording without a matching `execute.local` evaluation, or with an
+execution object that is not the planned task, fails closed.
 
 ## 3. Conformance
 

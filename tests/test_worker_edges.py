@@ -21,13 +21,16 @@ from test_worker_protocol import (
     TOKEN_IMAGE,
     FrozenClock,
     _citation,
+    _cpu_spec_with_image,
     _grant_and_queue,
+    _plan_args,
     _plane,
     _record_execute_local_authorization,
     _token_args,
 )
 
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.blocks.registry import build_registry
 from llm_research_os.cli.m2_commands import run_m2
 from llm_research_os.cli.worker_commands import run_grants, run_workers
 from llm_research_os.events.models import validate_event_document
@@ -173,6 +176,7 @@ def test_plane_unknown_revoke_revoked_issue_and_empty_poll(tmp_path: Path) -> No
                 authorization_sequence=sequence,
                 image_digest=_empty_image,
                 config_digest=brick_execution_digest(image_digest=_empty_image),
+                **_plan_args(),
             )
             idle_token = empty_plane.issue_token("grant.cpu.1")
             assert empty_plane.poll(worker_id="worker.loopback.1", grant_token=idle_token) is None
@@ -244,6 +248,7 @@ def test_heartbeat_and_complete_ownership_edges(tmp_path: Path) -> None:
             authorization_sequence=sequence,
             image_digest=image,
             config_digest=brick_execution_digest(image_digest=image),
+            **_plan_args(),
         )
         other_token = plane.issue_token("grant.cpu.2")
         with pytest.raises(WorkerCallError) as captured:
@@ -312,6 +317,7 @@ def test_stale_lease_is_expired_before_foreign_claim(tmp_path: Path) -> None:
             authorization_sequence=sequence,
             image_digest=image,
             config_digest=brick_execution_digest(image_digest=image),
+            **_plan_args(),
         )
         clock.instant = NOW + timedelta(seconds=120)
         other_token = plane.issue_token("grant.cpu.2")
@@ -444,6 +450,7 @@ def test_duplicate_grant_and_work_and_actor_kind(tmp_path: Path) -> None:
                 authorization_sequence=sequence,
                 image_digest=image,
                 config_digest=brick_execution_digest(image_digest=image),
+                **_plan_args(),
             )
         assert captured.value.code == "duplicate-grant-id"
         with pytest.raises(WorkerCallError) as captured:
@@ -461,6 +468,7 @@ def test_duplicate_grant_and_work_and_actor_kind(tmp_path: Path) -> None:
                 authorization_sequence=sequence,
                 image_digest=image,
                 config_digest=brick_execution_digest(image_digest=image),
+                **_plan_args(),
             )
         assert captured.value.code == "unknown-worker"
         with pytest.raises(WorkerCallError) as captured:
@@ -523,6 +531,7 @@ def test_http_poll_empty_and_client_error_codes(tmp_path: Path) -> None:
             authorization_sequence=sequence,
             image_digest=image.digest,
             config_digest=brick_execution_digest(image_digest=image.digest),
+            **_plan_args(),
         )
         token = plane.issue_token("grant.cpu.1")
     server = LoopbackWorkerServer(
@@ -682,8 +691,10 @@ def test_run_once_failed_and_unknown_sandbox(
     fail_brick = tmp_path / "fail.py"
     fail_brick.write_text("import sys\nsys.exit(2)\n", encoding="utf-8")
     image = artifacts.put(fail_brick)
+    spec = _cpu_spec_with_image(image.digest)
+    registry = build_registry([CORPUS / "block.json"])
     with EventStore(database) as store:
-        _record_execute_local_authorization(store)
+        _record_execute_local_authorization(store, spec, registry)
         plane = WorkerPlane(
             store,
             artifacts=artifacts,
@@ -697,7 +708,7 @@ def test_run_once_failed_and_unknown_sandbox(
             actor_id="researcher.alice",
             event_id="evt.worker.registered.1",
         )
-        token = _grant_and_queue(plane, image.digest)
+        token = _grant_and_queue(plane, image.digest, spec=spec, registry=registry)
     server = LoopbackWorkerServer(
         database,
         artifacts,
@@ -731,7 +742,7 @@ def test_run_once_failed_and_unknown_sandbox(
     )
     database_b = tmp_path / "unknown.db"
     with EventStore(database_b) as store:
-        _record_execute_local_authorization(store)
+        _record_execute_local_authorization(store, spec, registry)
         plane = WorkerPlane(
             store,
             artifacts=artifacts,
@@ -745,7 +756,7 @@ def test_run_once_failed_and_unknown_sandbox(
             actor_id="researcher.alice",
             event_id="evt.worker.registered.1",
         )
-        token = _grant_and_queue(plane, image.digest)
+        token = _grant_and_queue(plane, image.digest, spec=spec, registry=registry)
     server = LoopbackWorkerServer(
         database_b,
         artifacts,
@@ -901,7 +912,20 @@ def test_cli_duplicate_register_is_worker_error(tmp_path: Path, capsys: object) 
     assert main(["workers", "register", str(CORPUS / "worker.json"), str(database)]) == 1
     err = capsys.readouterr().err  # type: ignore[attr-defined]
     assert "error:" in err
-    assert main(["grants", "record", str(CORPUS / "grant.json"), str(database)]) == 1
+    assert (
+        main(
+            [
+                "grants",
+                "record",
+                str(CORPUS / "spec.yaml"),
+                str(CORPUS / "grant.json"),
+                str(database),
+                "--registry",
+                str(CORPUS / "block.json"),
+            ]
+        )
+        == 1
+    )
     capsys.readouterr()  # type: ignore[attr-defined]
     bad_worker = tmp_path / "bad-worker.json"
     bad_worker.write_text("{}", encoding="utf-8")

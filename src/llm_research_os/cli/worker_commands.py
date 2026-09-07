@@ -7,11 +7,13 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from llm_research_os.blocks.io import ManifestLoadError
+from llm_research_os.blocks.registry import RegistryError, build_registry
 from llm_research_os.cli.output import dumps_json, print_error, safe_text
-from llm_research_os.spec.io import SpecLoadError
+from llm_research_os.spec.io import SpecLoadError, load_spec
 from llm_research_os.storage import EventStore, EventStoreError
 from llm_research_os.storage.models import StoredEvent
-from llm_research_os.workers.binding import require_authorized_execution_citation
+from llm_research_os.workers.binding import require_authorized_execution_binding
 from llm_research_os.workers.control import WorkerControl
 from llm_research_os.workers.errors import WorkerError, WorkerRequestError
 from llm_research_os.workers.requests import (
@@ -21,7 +23,9 @@ from llm_research_os.workers.requests import (
 
 _INPUT_ERRORS = (
     EventStoreError,
+    ManifestLoadError,
     OSError,
+    RegistryError,
     SpecLoadError,
     ValidationError,
     ValueError,
@@ -30,7 +34,14 @@ _INPUT_ERRORS = (
 
 def run_grants(args: argparse.Namespace) -> int:
     if args.grants_command == "record":
-        return _record_grant(args.request, args.database, args.format)
+        return _record_grant(
+            args.spec,
+            args.request,
+            args.database,
+            args.format,
+            args.registry,
+            args.workflow,
+        )
     raise AssertionError(f"unhandled grants command: {args.grants_command}")
 
 
@@ -40,15 +51,31 @@ def run_workers(args: argparse.Namespace) -> int:
     raise AssertionError(f"unhandled workers command: {args.workers_command}")
 
 
-def _record_grant(request_path: Path, database: Path, output_format: str) -> int:
+def _record_grant(
+    spec_path: Path,
+    request_path: Path,
+    database: Path,
+    output_format: str,
+    registry_paths: list[Path],
+    workflow_id: str | None,
+) -> int:
     try:
         request = load_authorization_grant_request(request_path)
+        spec = load_spec(spec_path)
+        registry = build_registry(registry_paths)
         with EventStore(database, require_existing=True) as store:
-            require_authorized_execution_citation(
+            require_authorized_execution_binding(
                 store,
+                spec,
+                registry,
                 project_id=request.project_id,
+                experiment_revision=request.experiment_revision,
+                planned_task_id=request.task_id,
                 event_id=request.authorization_event_id,
                 sequence=request.authorization_sequence,
+                image_digest=request.image_digest,
+                config_digest=request.config_digest,
+                workflow_id=workflow_id,
             )
             stored = WorkerControl(store, project_id=request.project_id).append(
                 request.event_draft()

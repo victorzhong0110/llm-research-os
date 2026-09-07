@@ -543,6 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
         "record",
         help="append one human-recorded HMAC grant; the token is not stored",
     )
+    grants_record.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
     grants_record.add_argument(
         "request",
         type=Path,
@@ -552,6 +553,19 @@ def build_parser() -> argparse.ArgumentParser:
         "database",
         type=Path,
         help="existing SQLite event store; missing paths are not created",
+    )
+    grants_record.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="must match the cited authorization workflow when supplied",
+    )
+    grants_record.add_argument(
+        "--registry",
+        type=Path,
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="manifest file or non-recursive directory; repeat to add more",
     )
     add_event_format_argument(grants_record)
 

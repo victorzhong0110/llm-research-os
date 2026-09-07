@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from llm_research_os.artifacts.store import LocalArtifactStore
-from llm_research_os.blocks.registry import build_registry
+from llm_research_os.blocks.registry import BlockRegistry, build_registry
 from llm_research_os.execution import (
     TrustedKernel,
     authorize_plan,
@@ -16,6 +16,7 @@ from llm_research_os.execution import (
 from llm_research_os.execution.authorization import PlanAuthorizationPolicy
 from llm_research_os.internal.jsonclone import snapshot_json_document
 from llm_research_os.spec.io import load_document, load_spec
+from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage import EventStore
 from llm_research_os.workers.binding import brick_execution_digest
 from llm_research_os.workers.errors import WorkerCallError, WorkerError, WorkerGrantError
@@ -49,11 +50,29 @@ TOKEN_IMAGE = "sha256:" + ("0" * 64)
 TOKEN_CONFIG = "jcs-sha256:" + ("0" * 64)
 
 
-def _record_execute_local_authorization(store: EventStore) -> tuple[str, str]:
-    spec = load_spec(CORPUS / "spec.yaml")
-    report = TrustedKernel(build_registry([CORPUS / "block.json"])).dry_run(
-        spec, workflow_id=spec.workflows[0].id
-    )
+def _cpu_plan() -> tuple[ResearchSpec, BlockRegistry]:
+    return load_spec(CORPUS / "spec.yaml"), build_registry([CORPUS / "block.json"])
+
+
+def _plan_args() -> dict[str, object]:
+    spec, registry = _cpu_plan()
+    return {"spec": spec, "registry": registry}
+
+
+def _cpu_spec_with_image(image_digest: str) -> ResearchSpec:
+    payload = load_spec(CORPUS / "spec.yaml").model_dump(mode="json", by_alias=True)
+    payload["workflows"][0]["graph"]["nodes"][0]["config"]["imageDigest"] = image_digest
+    return ResearchSpec.model_validate(payload)
+
+
+def _record_execute_local_authorization(
+    store: EventStore,
+    spec: ResearchSpec | None = None,
+    registry: BlockRegistry | None = None,
+) -> tuple[str, str]:
+    spec = spec if spec is not None else load_spec(CORPUS / "spec.yaml")
+    registry = registry if registry is not None else build_registry([CORPUS / "block.json"])
+    report = TrustedKernel(registry).dry_run(spec, workflow_id=spec.workflows[0].id)
     assert report.digests.plan is not None
     policy = PlanAuthorizationPolicy(
         spec_digest=report.digests.spec,
@@ -163,8 +182,13 @@ def _grant_and_queue(
     event_id: str = "evt.grant.recorded.1",
     queued_event_id: str = "evt.work.queued.task.cpu",
     required_accelerators: tuple[str, ...] = (),
+    spec: ResearchSpec | None = None,
+    registry: BlockRegistry | None = None,
 ) -> str:
     event_id_value, sequence = _citation(plane)
+    plan_spec, plan_registry = (spec, registry) if spec is not None else _cpu_plan()
+    if plan_registry is None:
+        plan_registry = _cpu_plan()[1]
     plane.record_grant(
         grant_id=grant_id,
         worker_id=worker_id,
@@ -180,6 +204,8 @@ def _grant_and_queue(
         image_digest=image_digest,
         config_digest=brick_execution_digest(image_digest=image_digest),
         time="2026-09-07T12:00:00Z",
+        spec=plan_spec,
+        registry=plan_registry,
     )
     plane.enqueue(
         task_id=task_id,
@@ -286,7 +312,6 @@ def test_cuda_work_is_refused_without_accelerator_advertisement(tmp_path: Path) 
             plane,
             image,
             grant_id="grant.gpu.1",
-            task_id="task.gpu",
             run_id="run.worker.gpu",
             attempt_id="attempt.worker.gpu",
             nonce="nonce.gpu.1",
@@ -487,6 +512,7 @@ def test_simulate_authorization_cannot_record_an_execution_grant(tmp_path: Path)
                 authorization_sequence=recorded.stored.event.sequence,
                 image_digest=image,
                 config_digest=brick_execution_digest(image_digest=image),
+                **_plan_args(),
             )
         assert captured.value.code == "authorization-capability-mismatch"
     finally:
@@ -514,6 +540,7 @@ def test_swapped_brick_does_not_start_a_process(
             image_digest=image,
             config_digest=brick_execution_digest(image_digest=image),
             time="2026-09-07T12:00:00Z",
+            **_plan_args(),
         )
         other = tmp_path / "other.py"
         other.write_text("raise SystemExit(2)\n", encoding="utf-8")
@@ -552,7 +579,7 @@ def test_cross_task_token_cannot_complete_or_fail_current_lease(tmp_path: Path) 
             plane,
             image,
             grant_id="grant.cpu.2",
-            task_id="task.other",
+            task_id="task.cpu",
             run_id="run.worker.other",
             attempt_id="attempt.worker.other",
             nonce="nonce.cpu.2",
@@ -584,5 +611,128 @@ def test_cross_task_token_cannot_complete_or_fail_current_lease(tmp_path: Path) 
         lease = plane.rebuild().lease(claimed_b.lease_id)
         assert lease is not None
         assert lease.status == "leased"
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_script_a_authorization_cannot_grant_script_b(tmp_path: Path) -> None:
+    store, artifacts, plane, _image_a = _plane(tmp_path)
+    try:
+        other = tmp_path / "brick-b.py"
+        other.write_text("raise SystemExit(2)\n", encoding="utf-8")
+        image_b = artifacts.put(other).digest
+        spec_a, registry = _cpu_plan()
+        payload = spec_a.model_dump(mode="json", by_alias=True)
+        payload["workflows"][0]["graph"]["nodes"][0]["config"]["imageDigest"] = image_b
+        spec_b = ResearchSpec.model_validate(payload)
+        event_id, sequence = _citation(plane)
+        with pytest.raises(WorkerCallError) as captured:
+            plane.record_grant(
+                grant_id="grant.cpu.b",
+                worker_id="worker.loopback.1",
+                task_id="task.cpu",
+                run_id="run.worker.cpu",
+                attempt_id="attempt.worker.1",
+                nonce="nonce.cpu.b",
+                expires_at="2099-01-01T00:00:00Z",
+                actor_id="researcher.alice",
+                event_id="evt.grant.recorded.b",
+                authorization_event_id=event_id,
+                authorization_sequence=sequence,
+                image_digest=image_b,
+                config_digest=brick_execution_digest(image_digest=image_b),
+                spec=spec_b,
+                registry=registry,
+            )
+        assert captured.value.code == "authorization-binding-mismatch"
+    finally:
+        store.__exit__(None, None, None)
+
+
+def test_grant_rejects_swapped_object_task_and_revision(tmp_path: Path) -> None:
+    store, artifacts, plane, image = _plane(tmp_path)
+    try:
+        spec, registry = _cpu_plan()
+        event_id, sequence = _citation(plane)
+        other = tmp_path / "brick-b.py"
+        other.write_text("raise SystemExit(2)\n", encoding="utf-8")
+        image_b = artifacts.put(other).digest
+        with pytest.raises(WorkerCallError) as captured:
+            plane.record_grant(
+                grant_id="grant.cpu.swap",
+                worker_id="worker.loopback.1",
+                task_id="task.cpu",
+                run_id="run.worker.cpu",
+                attempt_id="attempt.worker.1",
+                nonce="nonce.cpu.swap",
+                expires_at="2099-01-01T00:00:00Z",
+                actor_id="researcher.alice",
+                event_id="evt.grant.recorded.swap",
+                authorization_event_id=event_id,
+                authorization_sequence=sequence,
+                image_digest=image_b,
+                config_digest=brick_execution_digest(image_digest=image_b),
+                spec=spec,
+                registry=registry,
+            )
+        assert captured.value.code == "execution-binding-mismatch"
+        with pytest.raises(WorkerCallError) as captured:
+            plane.record_grant(
+                grant_id="grant.cpu.config",
+                worker_id="worker.loopback.1",
+                task_id="task.cpu",
+                run_id="run.worker.cpu",
+                attempt_id="attempt.worker.1",
+                nonce="nonce.cpu.config",
+                expires_at="2099-01-01T00:00:00Z",
+                actor_id="researcher.alice",
+                event_id="evt.grant.recorded.config",
+                authorization_event_id=event_id,
+                authorization_sequence=sequence,
+                image_digest=image,
+                config_digest=brick_execution_digest(image_digest=image, config={"k": "v"}),
+                spec=spec,
+                registry=registry,
+            )
+        assert captured.value.code == "execution-binding-mismatch"
+        with pytest.raises(WorkerCallError) as captured:
+            plane.record_grant(
+                grant_id="grant.cpu.missing-task",
+                worker_id="worker.loopback.1",
+                task_id="task.missing",
+                run_id="run.worker.cpu",
+                attempt_id="attempt.worker.1",
+                nonce="nonce.cpu.missing-task",
+                expires_at="2099-01-01T00:00:00Z",
+                actor_id="researcher.alice",
+                event_id="evt.grant.recorded.missing-task",
+                authorization_event_id=event_id,
+                authorization_sequence=sequence,
+                image_digest=image,
+                config_digest=brick_execution_digest(image_digest=image),
+                spec=spec,
+                registry=registry,
+            )
+        assert captured.value.code == "planned-task-mismatch"
+        plane.experiment_revision = 2
+        with pytest.raises(WorkerCallError) as captured:
+            plane.record_grant(
+                grant_id="grant.cpu.revision",
+                worker_id="worker.loopback.1",
+                task_id="task.cpu",
+                run_id="run.worker.cpu",
+                attempt_id="attempt.worker.1",
+                nonce="nonce.cpu.revision",
+                expires_at="2099-01-01T00:00:00Z",
+                actor_id="researcher.alice",
+                event_id="evt.grant.recorded.revision",
+                authorization_event_id=event_id,
+                authorization_sequence=sequence,
+                image_digest=image,
+                config_digest=brick_execution_digest(image_digest=image),
+                spec=spec,
+                registry=registry,
+            )
+        assert captured.value.code == "authorization-project-mismatch"
     finally:
         store.__exit__(None, None, None)

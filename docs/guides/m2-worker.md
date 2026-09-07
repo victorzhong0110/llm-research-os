@@ -11,17 +11,21 @@ start NativeProcessRuntime.
 ## Register and grant
 
 The database must already exist. Worker registration is a human fact.
-Grant recording cites one authorized `execute.local` evaluation and the
-CAS execution object. It does not print the HMAC token. Recording without
-that citation fails closed.
+Grant recording rebuilds the cited `execute.local` plan from spec and
+registry, then binds the CAS execution object. `taskId` is the planned
+graph node; `runId` / `attemptId` are the runtime attempt. It does not
+print the HMAC token. Recording without that plan binding fails closed.
 
 ```bash
 uv run researchos workers register \
   examples/m2-checkpoint/worker.json \
   research.db --format json
 uv run researchos grants record \
+  examples/m2-checkpoint/spec.yaml \
   examples/m2-checkpoint/grant.json \
-  research.db --format json
+  research.db \
+  --registry examples/m2-checkpoint/block.json \
+  --format json
 ```
 
 ## One-command CPU loop

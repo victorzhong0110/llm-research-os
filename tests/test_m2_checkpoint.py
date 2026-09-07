@@ -123,8 +123,11 @@ def test_workers_register_and_grants_record_omit_tokens(tmp_path: Path, capsys: 
             [
                 "grants",
                 "record",
+                str(CORPUS / "spec.yaml"),
                 str(CORPUS / "grant.json"),
                 str(database),
+                "--registry",
+                str(CORPUS / "block.json"),
                 "--format",
                 "json",
             ]
@@ -160,7 +163,7 @@ def test_workers_register_text_and_invalid_grant_request(tmp_path: Path, capsys:
     assert "worker.registered" in text
     bad = tmp_path / "bad-grant.json"
     bad.write_text("{}", encoding="utf-8")
-    assert main(["grants", "record", str(bad), str(database)]) == 2
+    assert main(["grants", "record", str(CORPUS / "spec.yaml"), str(bad), str(database)]) == 2
     err = capsys.readouterr().err  # type: ignore[attr-defined]
     assert "error:" in err
 
@@ -179,10 +182,97 @@ def test_grants_record_missing_database_exits_two(tmp_path: Path, capsys: object
             [
                 "grants",
                 "record",
+                str(CORPUS / "spec.yaml"),
                 str(CORPUS / "grant.json"),
                 str(tmp_path / "missing.db"),
+                "--registry",
+                str(CORPUS / "block.json"),
             ]
         )
         == 2
     )
     capsys.readouterr()  # type: ignore[attr-defined]
+
+
+def test_grants_record_cli_binds_the_rebuilt_plan(tmp_path: Path, capsys: object) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database):
+        pass
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(CORPUS / "spec.yaml"),
+                str(CORPUS / "authorization-request.json"),
+                str(CORPUS / "authorization-event.json"),
+                str(database),
+                "--registry",
+                str(CORPUS / "block.json"),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert (
+        main(
+            [
+                "workers",
+                "register",
+                str(CORPUS / "worker.json"),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert (
+        main(
+            [
+                "grants",
+                "record",
+                str(CORPUS / "spec.yaml"),
+                str(CORPUS / "grant.json"),
+                str(database),
+                "--registry",
+                str(CORPUS / "block.json"),
+                "--workflow",
+                "workflow.cpu",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    recorded = json.loads(capsys.readouterr().out)  # type: ignore[attr-defined]
+    assert recorded["type"] == "authorization.grant.recorded"
+    assert "rg1." not in json.dumps(recorded)
+    swapped = json.loads((CORPUS / "grant.json").read_text(encoding="utf-8"))
+    swapped["grantId"] = "grant.cpu.swapped"
+    swapped["nonce"] = "nonce.cpu.swapped"
+    swapped["event"] = {"id": "evt.grant.recorded.swapped", "time": "2026-09-07T12:00:00Z"}
+    swapped["imageDigest"] = "sha256:" + ("b" * 64)
+    swapped_path = tmp_path / "grant-swapped.json"
+    swapped_path.write_text(json.dumps(swapped), encoding="utf-8")
+    assert (
+        main(
+            [
+                "grants",
+                "record",
+                str(CORPUS / "spec.yaml"),
+                str(swapped_path),
+                str(database),
+                "--registry",
+                str(CORPUS / "block.json"),
+                "--format",
+                "json",
+            ]
+        )
+        == 1
+    )
+    err = capsys.readouterr().err  # type: ignore[attr-defined]
+    assert "execution-binding-mismatch" in err

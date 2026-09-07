@@ -31,12 +31,19 @@ long-poll binding.
    task/attempt, nonce, expiry, `keyId`, a citation of one authorized
    `plan.authorization.evaluated` fact (`authorizationEventId` /
    `authorizationSequence`), and the execution object (`imageDigest` +
-   `configDigest`). The cited evaluation MUST be `authorized=true` on this
-   store, MUST match the project, and MUST include `execute.local` in
-   `requiredCapabilities`. A `simulate` authorization MUST NOT record an
-   execution grant. The HMAC token is issued in process and MUST NOT appear
-   on events (TM-007). Claims also bind `projectId`, `imageDigest`, and
-   `configDigest`. The token is `rg1` HMAC, not JWT.
+   `configDigest`). Every public entry (Python `WorkerPlane.record_grant` and
+   CLI `grants record`) rebuilds the cited plan from spec+registry and binds
+   the grant to that plan: project, revision, workflow, planned task node,
+   and the planned execution object. `taskId` is that planned graph node id.
+   `runId` / `attemptId` are the runtime attempt identity. Matching
+   request/grant/queue digests is not enough: script A's authorization MUST
+   NOT issue an executable grant for script B, nor for a swapped config,
+   input set, runtime, task, or revision. The cited evaluation MUST be
+   `authorized=true` on this store, MUST match the project, and MUST include
+   `execute.local` in `requiredCapabilities`. A `simulate` authorization
+   MUST NOT record an execution grant. The HMAC token is issued in process
+   and MUST NOT appear on events (TM-007). Claims also bind `projectId`,
+   `imageDigest`, and `configDigest`. The token is `rg1` HMAC, not JWT.
    `authorization.grant.revoked` and `authorization.grant.consumed` (nonce)
    fail closed on replay. SimulatedRuntime still uses local `{eventId,
    sequence}` consume.
@@ -99,9 +106,10 @@ long-poll binding.
    unchanged, sandbox timeout or killed process → unknown, disconnect
    before complete leaves the lease open, disk-full complete refused,
    `simulate` authorization cannot record an execution grant, swapped brick
-   cannot spawn, cross-task token cannot complete/fail, matching
-   complete/fail after revoke remains idempotent, stdout cut during read,
-   child process group reaped.
+   cannot spawn, script A's authorization cannot grant script B, a swapped
+   config/input/runtime/task/revision cannot record a grant, cross-task token
+   cannot complete/fail, matching complete/fail after revoke remains
+   idempotent, stdout cut during read, child process group reaped.
 2. `researchos m2 prove examples/m2-checkpoint …` records `work.completed`
    and `run.completed`.
 3. `researchos schema --check-all`, ruff, mypy, pytest, coverage ≥ 85%.

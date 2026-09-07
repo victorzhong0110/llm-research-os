@@ -112,9 +112,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   SimulatedRuntime resume of a Run that omitted the citation fails closed
   (`authorization-citation-missing`).
 - M2-0: Worker grants cite a recorded `execute.local` authorization and the
-  CAS execution object (image, config, inputs, runtime). `simulate` cannot
-  start a brick. complete/fail bind token, grant, and lease (project, worker,
-  grant, task, run, attempt, nonce, expiry). Revoked or expired grants reject
-  new results; matching terminal complete/fail stays idempotent. Stdout/stderr
-  limits apply while pipes are read. POSIX process groups are killed after the
-  parent exits so inherited-pipe children cannot outlive the helper.
+  CAS execution object (image, config, inputs, runtime). Grant recording
+  rebuilds that plan from spec+registry and binds project, revision,
+  workflow, planned task, and execution object. `simulate` cannot start a
+  brick. Script A's authorization cannot grant script B. complete/fail bind
+  token, grant, and lease (project, worker, grant, task, run, attempt,
+  nonce, expiry). Revoked or expired grants reject new results; matching
+  terminal complete/fail stays idempotent. Stdout/stderr limits apply while
+  pipes are read. POSIX process groups are killed after the parent exits so
+  inherited-pipe children cannot outlive the helper.

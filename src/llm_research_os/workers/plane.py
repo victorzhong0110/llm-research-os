@@ -8,11 +8,13 @@ from datetime import UTC, datetime, timedelta
 
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.blocks.registry import BlockRegistry
+from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.binding import (
     brick_execution_digest,
-    require_authorized_execution_citation,
+    require_authorized_execution_binding,
     require_execution_digest,
 )
 from llm_research_os.workers.control import (
@@ -125,13 +127,23 @@ class WorkerPlane:
         authorization_sequence: str,
         image_digest: str,
         config_digest: str,
+        spec: ResearchSpec,
+        registry: BlockRegistry,
         time: str | None = None,
+        workflow_id: str | None = None,
     ) -> StoredEvent:
-        require_authorized_execution_citation(
+        require_authorized_execution_binding(
             self.store,
+            spec,
+            registry,
             project_id=self.project_id,
+            experiment_revision=self.experiment_revision,
+            planned_task_id=task_id,
             event_id=authorization_event_id,
             sequence=authorization_sequence,
+            image_digest=image_digest,
+            config_digest=config_digest,
+            workflow_id=workflow_id,
         )
         return self._control.append(
             grant_recorded_draft(
