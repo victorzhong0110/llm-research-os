@@ -11,7 +11,9 @@ Isolated processes use pinned loopback HTTPS (ADR-0044). CPU OCIContainerRuntime
 is a digest-pinned docker adapter for `execute.oci` (ADR-0045) and is not a GPU
 or Darwin kernel-namespace proof. Worker stop/fault recovery (ADR-0046) keeps
 cancel requests distinct from observed stop, refuses success without
-`work.completed`, and does not auto-rerun unknown work.
+`work.completed`, and does not auto-rerun unknown work. EventStore 10k/100k
+folds and CAS metric chunks (ADR-0047) keep heartbeats and per-step series
+off the fact log; bench receipts are not SLA.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -75,7 +77,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + recorded CNY limit; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
-| Local/remote Workers | Partially trusted execution nodes | M2-0 loopback long poll + HMAC grants bound to `execute.local` + CPU helper without kernel isolation (ADR-0043, TM-043); isolated processes use pinned loopback HTTPS and a private CAS (ADR-0044, TM-044) and are not a cross-machine proof; CPU OCIContainerRuntime is docker + digest pin + `execute.oci` (ADR-0045, TM-045) and is not a live GPU or Darwin-namespace proof; cancel request ≠ stop, unknown cannot auto-succeed, CAS without `work.completed` is not success (ADR-0046, TM-046); non-loopback remains ADR-0021 |
+| Local/remote Workers | Partially trusted execution nodes | M2-0 loopback long poll + HMAC grants bound to `execute.local` + CPU helper without kernel isolation (ADR-0043, TM-043); isolated processes use pinned loopback HTTPS and a private CAS (ADR-0044, TM-044) and are not a cross-machine proof; CPU OCIContainerRuntime is docker + digest pin + `execute.oci` (ADR-0045, TM-045) and is not a live GPU or Darwin-namespace proof; cancel request ≠ stop, unknown cannot auto-succeed, CAS without `work.completed` is not success (ADR-0046, TM-046); EventStore claim/report folds skip heartbeat volume and metric series live in CAS (ADR-0047, TM-047); non-loopback remains ADR-0021 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented |
 | RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented; SimulatedRuntime is a caller and does not auto-retry |
 | SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion; optional synthetic metrics are `kind: synthetic` |
@@ -175,6 +177,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-042 | A model endpoint hostname is used for SSRF, DNS rebinding, or a private/metadata address, or a zero remote reservation is treated as a free call | Host/network compromise; unmetered paid API use | Literal classification plus one-shot DNS pin; query/fragment/userinfo forbidden; loopback, private, link-local, multicast, reserved, CGNAT, and cloud-metadata addresses fail closed; mixed loopback/public answers are `dns-rebinding`; remote `costKnown=false` requires `budgetCap > 0` and `reserveAmount > 0`; that cap MUST match a recorded `budget.limit.recorded` fact; outstanding remote reservations stay visible on the report, including after uncertain transport | Endpoint, pin, remote-zero-budget, recorded-limit, uncertain-transport, and concurrent reserve tests in M1-4 |
 | TM-043 | A swapped brick, config, inputs or runtime runs under an old authorization, or host Python is treated as a kernel sandbox | Unreviewed code execution; false isolation claims | Grant recording rebuilds the cited plan from spec+registry and binds project/revision/workflow/planned task/execution object; `simulate` cannot grant; Worker re-checks before spawn; swapped object fails closed without `Popen`; stdout/stderr limits apply during pipe reads; POSIX process groups are reaped. No seccomp, landlock, or network/filesystem jail is claimed | Binding, script-A-not-B, swapped-brick, cross-task token, output-cap, and child-reap tests in M2-0. Kernel isolation remains out of scope |
 | TM-046 | A cancel request is treated as stopped, unknown work is marked success or auto-rerun, or a CAS object without `work.completed` completes the Attempt | False stop/success; duplicate execution | Poll does not open a new lease after a request; resumed poll does not spawn; heartbeat returns `cancelRequested` without appending facts; observed stop is `cancel-observed` then cancelled outcomes; reconcile requires `work.completed` to succeed; unknown stays unknown; CPU checkpoint JSON is inspectable (ADR-0046) | Cancel-request-vs-stop, unknown-not-success, complete-reconcile, restart, and checkpoint tests in `tests/test_worker_recovery.py` |
+| TM-047 | Per-step metrics or transport heartbeats fill EventStore, or a static report/claim fold materializes the whole log, or bench timings are treated as a contract | Log blow-up; false SLA; OOM on report | Heartbeats stay off the log; `read_events(event_types=)` is a post-high-water fold filter, not a substitute for contiguous replay; reports keep lineage on the matching Run; series use CAS `MetricChunk` with 1024/32 caps; `m2 bench` receipts are measurements not golden files (ADR-0047) | 10k/100k bench, typed Worker rebuild, metric-chunk cap, and report lineage tests in `tests/test_m2_perf.py` / `tests/test_metric_chunk.py` |
 
 ## 7. M0 security gates
 
@@ -241,6 +244,10 @@ Before merging executable capability, the following gates apply:
   `runs cancel`. Observed stop is a later Worker fail or complete. A control
   plane that records `work.completed` still needs reconcile (or `m2 prove`)
   to append Run/Attempt outcomes when event identities are caller-owned.
+- EventStore 10k/100k measurements (ADR-0047) are host timings, not
+  availability or latency contracts. Metric chunks are CAS JSON, not a
+  second fact source. Typed `read_events` filters may skip sequences and
+  must not replace contiguous replay.
 - Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a
   host administrator who replaces object bytes and updates the digest in lockstep. Dirfd anchoring
   stops intermediate symlink escape and root-path substitution; it does not stop a privileged

@@ -16,6 +16,7 @@ from llm_research_os.execution.errors import (
     SimulationError,
 )
 from llm_research_os.execution.planner import PlanningInputError
+from llm_research_os.m2.bench import run_perf_baseline
 from llm_research_os.m2.errors import M2CheckpointError
 from llm_research_os.m2.oci_prove import prove_oci_loop
 from llm_research_os.m2.prove import M2CheckpointResult, prove_cpu_loop
@@ -47,6 +48,8 @@ def run_m2(args: argparse.Namespace) -> int:
         if artifacts is None:
             artifacts = args.database.with_name(f"{args.database.stem}-artifacts")
         return _prove(prove_oci_loop, args.corpus, args.database, artifacts, args.format)
+    if args.m2_command == "bench":
+        return _bench(args.database, args.events, args.format)
     raise AssertionError(f"unhandled m2 command: {args.m2_command}")
 
 
@@ -109,3 +112,27 @@ def _print_receipt(result: M2CheckpointResult, output_format: str) -> None:
     print(f"events: {safe_text(len(result.event_types))}")
     print()
     print(result.report_markdown, end="")
+
+
+def _bench(database: Path, event_count: int, output_format: str) -> int:
+    try:
+        result = run_perf_baseline(database, event_count)
+    except _INPUT_ERRORS as exc:
+        print_error(exc, output_format)
+        return 2
+    payload = {
+        "apiVersion": "researchos.dev/v0alpha1",
+        **result.as_json(),
+    }
+    if output_format == "json":
+        print(dumps_json(payload))
+        return 0
+    print("m2 bench: recorded")
+    print(f"events: {result.event_count}")
+    print(f"appendSeconds: {result.append_seconds}")
+    print(f"replaySeconds: {result.replay_seconds}")
+    print(f"workerRebuildSeconds: {result.worker_rebuild_seconds}")
+    print(f"reportSeconds: {result.report_seconds}")
+    print(f"peakRssBytes: {result.peak_rss_bytes}")
+    print(f"lineageEvents: {result.lineage_events}")
+    return 0

@@ -695,6 +695,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="local artifact root; created if missing",
     )
     add_event_format_argument(m2_oci)
+    m2_bench = m2_commands.add_parser(
+        "bench",
+        help="measure 10k or 100k EventStore append/replay/claim/report; not GPU",
+    )
+    m2_bench.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; must not already exist",
+    )
+    m2_bench.add_argument(
+        "--events",
+        type=int,
+        choices=(10_000, 100_000),
+        default=10_000,
+        help="reproducible baseline size",
+    )
+    add_event_format_argument(m2_bench)
     return parser
 
 

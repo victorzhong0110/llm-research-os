@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+from dataclasses import dataclass
 from urllib.parse import quote
 
 from llm_research_os.budget.models import TYPE_BUDGET_LIMIT_RECORDED
@@ -151,6 +152,56 @@ def _cost_markdown(report: RunReport) -> list[str]:
     return lines
 
 
+@dataclass(frozen=True, slots=True)
+class _BindingCite:
+    label: str
+    value: str
+    event_id: str | None = None
+
+
+def _payload_text(payload: object, key: str) -> str | None:
+    if type(payload) is not dict:
+        return None
+    value = payload.get(key)
+    return value if type(value) is str and value != "" else None
+
+
+def _binding_cites(report: RunReport) -> tuple[_BindingCite, ...]:
+    cites: list[_BindingCite] = []
+    snapshot = report.snapshot
+    if snapshot is not None:
+        queued = next(
+            (item for item in report.lineage if item.event.type == "run.queued"),
+            None,
+        )
+        queued_id = None if queued is None else queued.event.id
+        cites.append(_BindingCite("Spec digest", snapshot.digests.spec, queued_id))
+        cites.append(_BindingCite("Registry digest", snapshot.digests.registry, queued_id))
+        cites.append(_BindingCite("Plan digest", snapshot.digests.plan, queued_id))
+    for stored in report.lineage:
+        payload = stored.event.data.payload
+        event_id = stored.event.id
+        if stored.event.type == "worker.registered":
+            runtime = _payload_text(payload, "runtime")
+            if runtime is not None:
+                cites.append(_BindingCite("Worker runtime", runtime, event_id))
+        elif stored.event.type == "work.queued":
+            runtime = _payload_text(payload, "runtime")
+            image = _payload_text(payload, "imageDigest")
+            config = _payload_text(payload, "configDigest")
+            if runtime is not None:
+                cites.append(_BindingCite("Worker runtime", runtime, event_id))
+            if image is not None:
+                cites.append(_BindingCite("Image digest", image, event_id))
+            if config is not None:
+                cites.append(_BindingCite("Config digest", config, event_id))
+        elif stored.event.type == "work.completed":
+            artifact = _payload_text(payload, "artifactDigest")
+            if artifact is not None:
+                cites.append(_BindingCite("Output artifact", artifact, event_id))
+    return tuple(cites)
+
+
 def _lineage_markdown(report: RunReport) -> list[str]:
     if report.snapshot is None:
         status = "none"
@@ -165,6 +216,11 @@ def _lineage_markdown(report: RunReport) -> list[str]:
             f"- Consumed authorization `{_md(stored.event.type)}` "
             f"sequence {stored.sequence} {_md_link(stored.event.id)}."
         )
+    for cite in _binding_cites(report):
+        if cite.event_id is None:
+            lines.append(f"- {cite.label} `{_md(cite.value)}`.")
+        else:
+            lines.append(f"- {cite.label} `{_md(cite.value)}` {_md_link(cite.event_id)}.")
     for stored in report.lineage:
         lines.append(
             f"- `{_md(stored.event.type)}` sequence {stored.sequence} {_md_link(stored.event.id)}."
@@ -302,6 +358,14 @@ def _lineage_html(report: RunReport) -> list[str]:
             f"<li>Consumed authorization <code>{_html(stored.event.type)}</code> "
             f"sequence {stored.sequence} {_html_link(stored.event.id)}.</li>"
         )
+    for cite in _binding_cites(report):
+        if cite.event_id is None:
+            items.append(f"<li>{_html(cite.label)} <code>{_html(cite.value)}</code>.</li>")
+        else:
+            items.append(
+                f"<li>{_html(cite.label)} <code>{_html(cite.value)}</code> "
+                f"{_html_link(cite.event_id)}.</li>"
+            )
     for stored in report.lineage:
         items.append(
             f"<li><code>{_html(stored.event.type)}</code> sequence {stored.sequence} "

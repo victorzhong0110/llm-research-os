@@ -90,6 +90,9 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     assert '<a href="#evt.training.step"><code>evt.training.step</code></a>' in output
     assert '<a href="#evt.evaluation.metric"><code>evt.evaluation.metric</code></a>' in output
     assert '<a href="#evt.6.run.completed"><code>evt.6.run.completed</code></a>' in output
+    assert "Spec digest" in output
+    assert "Registry digest" in output
+    assert "Plan digest" in output
     assert (
         '<a href="#evt.authorization.example-minimal.1">'
         "<code>evt.authorization.example-minimal.1</code></a>"

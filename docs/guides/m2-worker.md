@@ -48,6 +48,12 @@ Markdown report.
 
 Host Python is not kernel isolation. Byte limits apply while reading
 stdout/stderr. A claimed lease that is resumed MUST NOT run again.
+
+## Performance baseline
+
+`researchos m2 bench` measures 10k or 100k EventStore append/replay/claim
+/report. It is not GPU and not an SLA. See
+[M2 performance baseline](m2-perf.md).
 Cancel request is not observed stop
 ([ADR-0046](../adr/0046-worker-stop-fault-recovery.md)). `runs cancel`
 records `*.cancel.requested` only. Poll does not open a new lease after

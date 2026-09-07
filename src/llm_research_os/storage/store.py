@@ -82,6 +82,29 @@ def _validate_expected_last_sequence(value: int | None) -> int | None:
     return value
 
 
+def _validate_until_sequence(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("until_sequence must be an integer")
+    if value < 0 or value > CLOUD_EVENTS_INTEGER_MAX:
+        raise ValueError("until_sequence is outside the supported sequence range")
+    return value
+
+
+def _validate_event_types(value: frozenset[str] | None) -> frozenset[str] | None:
+    if value is None:
+        return None
+    if type(value) is not frozenset:
+        raise ValueError("event_types must be a frozenset of event type strings")
+    if len(value) > 32:
+        raise ValueError("event_types exceeds the closed list limit")
+    for item in value:
+        if type(item) is not str or item == "":
+            raise ValueError("event_types entries must be non-empty strings")
+    return value
+
+
 def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
     source = Path(path).absolute()
     if str(path) == ":memory:":
@@ -620,8 +643,14 @@ class EventStore:
         *,
         after_sequence: int = 0,
         limit: int = 100,
+        until_sequence: int | None = None,
+        event_types: frozenset[str] | None = None,
     ) -> list[StoredEvent]:
-        """Read a bounded page in global append order, verifying every row."""
+        """Read a bounded page in global append order, verifying every row.
+
+        ``event_types`` is a fold filter after a verified high-water mark. It
+        MAY skip sequences and is not a substitute for ``replay_events``.
+        """
 
         if isinstance(after_sequence, bool) or not isinstance(after_sequence, int):
             raise ValueError("after_sequence must be an integer")
@@ -633,9 +662,24 @@ class EventStore:
             or not 1 <= limit <= MAX_READ_PAGE_SIZE
         ):
             raise ValueError(f"limit must be an integer in 1..{MAX_READ_PAGE_SIZE}")
+        upper = _validate_until_sequence(until_sequence)
+        types = _validate_event_types(event_types)
+        clauses = ["sequence > ?"]
+        params: list[object] = [after_sequence]
+        if upper is not None:
+            clauses.append("sequence <= ?")
+            params.append(upper)
+        if types is not None:
+            if not types:
+                return []
+            ordered = tuple(sorted(types))
+            placeholders = ", ".join("?" for _ in ordered)
+            clauses.append(f"event_type IN ({placeholders})")
+            params.extend(ordered)
+        params.append(limit)
         rows = self._connection.execute(
-            f"{_SELECT_EVENT_COLUMNS} WHERE sequence > ? ORDER BY sequence LIMIT ?",
-            (after_sequence, limit),
+            f"{_SELECT_EVENT_COLUMNS} WHERE {' AND '.join(clauses)} ORDER BY sequence LIMIT ?",
+            tuple(params),
         ).fetchall()
         return [self._stored_event_from_row(row) for row in rows]
 

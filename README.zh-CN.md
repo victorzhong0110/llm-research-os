@@ -22,12 +22,12 @@ M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓�
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
 全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、SimulatedRuntime 对本机 `{eventId, sequence}` 的消费、显式模拟 Run /
-取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 / M1 检查点 CLI，不可启动的 NativeProcessPreflight，以及回环 Worker 注册 / HMAC 授权 / `researchos m2 prove`（宿主 Python 助手不是 NativeProcessRuntime，也不是内核沙箱）与失败关闭的 CPU OCI 适配器。
+取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 / M1 检查点 CLI，不可启动的 NativeProcessPreflight，以及回环 Worker 注册 / HMAC 授权 / `researchos m2 prove`（宿主 Python 助手不是 NativeProcessRuntime，也不是内核沙箱）与失败关闭的 CPU OCI 适配器和 `researchos m2 bench`（1 万/10 万事件耗时，不是 SLA）。
 
 当前仍不执行任何训练任务或真实 GPU 工作负载。授权事件、预检报告、lineage 重建与
 `decisionDigest` 都不是签名回执或启动许可。SimulatedRuntime 会消费本机 EventStore 上
 一条 `{eventId, sequence}` 引用（ADR-0042）；lineage 仍为 `not-consumed`。取消请求 CLI 仍不发送进程信号；
-观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。CPU OCI 是 ADR-0045，不是 GPU 实测。Worker 停止/故障恢复是 ADR-0046。
+观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。CPU OCI 是 ADR-0045，不是 GPU 实测。Worker 停止/故障恢复是 ADR-0046。EventStore 性能基线是 ADR-0047。
 
 ## M0 目标
 
@@ -310,7 +310,8 @@ uv run researchos m2 prove \
 ```
 
 见 [M2 Worker CLI](docs/guides/m2-worker.md)、
-[M2 CPU OCI](docs/guides/m2-oci.md) 与
+[M2 CPU OCI](docs/guides/m2-oci.md)、
+[M2 性能基线](docs/guides/m2-perf.md) 与
 [首次实验](docs/guides/first-experiment.md)。
 
 研究提案、异议、决定与提问是独立的 EventStore 事实。数据库必须已存在。`accept` 不是启动凭证。回答是带权利的数据，不是指令：
@@ -410,6 +411,7 @@ OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `Secret
 `researchos m1 prove` 从语料向空库记录一条研究链；它不会关闭 Issue #38。
 `researchos m2 prove` 从语料记录一条回环 Worker CPU 闭环；它不花费 GPU，不是内核沙箱，也不会关闭 Issue #38。
 `researchos m2 oci` 在本机已有按摘要钉死的镜像时记录 CPU OCI 闭环；否则失败关闭，不得表述为容器实测成功。
+`researchos m2 bench` 记录 1 万或 10 万事件的 EventStore 耗时；它不是 SLA，也不花费 GPU。
 `researchos workers serve` / `workers run` 把该闭环拆成两个进程、经钉死的回环 HTTPS 通信；它们不证明远端 Worker。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
 PDF 抽取在子进程中设上限且不继承进程密钥；未知权利不能授权训练。

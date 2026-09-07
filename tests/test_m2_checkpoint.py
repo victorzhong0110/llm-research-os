@@ -43,6 +43,29 @@ def test_m2_prove_cli_records_worker_artifact_and_report(tmp_path: Path, capsys:
     with EventStore(database, require_existing=True) as store:
         types = [item.event.type for item in store.read_events(limit=40)]
         assert types == payload["eventTypes"]
+    assert (
+        main(
+            [
+                "report",
+                payload["runId"],
+                "--database",
+                str(database),
+                "--format",
+                "markdown",
+            ]
+        )
+        == 0
+    )
+    report = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "Spec digest" in report
+    assert "Registry digest" in report
+    assert "Plan digest" in report
+    assert "Worker runtime" in report
+    assert "Image digest" in report
+    assert "Config digest" in report
+    assert "Output artifact" in report
+    assert payload["imageDigest"] in report
+    assert payload["artifactDigest"] in report
     text_db = tmp_path / "text.db"
     text_artifacts = tmp_path / "text-artifacts"
     assert (

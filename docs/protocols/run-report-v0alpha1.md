@@ -77,6 +77,10 @@ The report freezes EventStore high-water `H` once and folds every section from
 that prefix, including consumed `plan.authorization.evaluated`. Facts appended
 after `H` are omitted. Authorization citations are resolved from the frozen
 prefix by event id; the report MUST NOT re-query the live store.
+Lineage also cites plan identity (spec/registry/plan digests from
+`run.queued`) and, when present on the Run, Worker runtime, image digest,
+config digest, and output artifact digest from `work.queued` /
+`work.completed`.
 
 A resumed synthetic metric with the same event id MUST match the canonical
 caller document (type, Run, payload). Id+type agreement is not enough.
@@ -95,3 +99,4 @@ Lineage also cites the consumed authorization row when
 - React Flow / editable canvas (`9-UIA` unchanged)
 - Real trainer metrics, GPU telemetry, or treating `kind: synthetic` as evaluation
 - JSON report schema
+- Checking `m2 bench` host timings in as golden SLA files

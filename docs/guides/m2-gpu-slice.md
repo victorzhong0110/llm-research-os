@@ -36,6 +36,7 @@ adapter; it is not this GPU slice.
 ## Event volume
 
 Heartbeats MUST NOT enter the EventStore (ADR-0041). Per-step training
-metrics belong in artifacts; events cite digests. M2-0 does not claim
-10k/100k event append latency. `WorkerControl` still folds from sequence 0
-(Θ(N²) fill). Do not write a training-step fact per optimizer step.
+metrics belong in CAS metric chunks; events cite digests
+([ADR-0047](../adr/0047-eventstore-performance-and-metric-sampling.md)).
+Do not write a training-step fact per optimizer step. `researchos m2 bench`
+records 10k/100k EventStore timings; those numbers are not SLA.

@@ -14,7 +14,6 @@ from llm_research_os.events.models import (
     validate_event_document,
 )
 from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
-from llm_research_os.projections.replay import replay_events
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 from llm_research_os.workers.errors import WorkerCallError, WorkerPayloadError
@@ -161,13 +160,19 @@ class WorkerControl:
     def rebuild(self) -> WorkerHead:
         high_water = self._store.freeze_high_water()
         fold = WorkerFold()
-        for stored in replay_events(
-            self._store,
-            page_size=self._page_size,
-            freeze_high_water=False,
-            until_sequence=high_water,
-        ):
-            fold = apply_worker_fold(fold, stored.event, project_id=self._project_id)
+        after = 0
+        while after < high_water:
+            page = self._store.read_events(
+                after_sequence=after,
+                limit=self._page_size,
+                until_sequence=high_water,
+                event_types=WORKER_EVENT_TYPES,
+            )
+            if not page:
+                break
+            for stored in page:
+                fold = apply_worker_fold(fold, stored.event, project_id=self._project_id)
+                after = stored.sequence
         return WorkerHead(last_sequence=high_water, fold=fold)
 
     def append(self, document: dict[str, Any]) -> StoredEvent:

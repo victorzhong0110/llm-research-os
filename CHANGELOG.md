@@ -83,6 +83,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `work.completed` reconciles Run/Attempt; unknown cannot auto-succeed or
   rerun; CPU checkpoint JSON is inspectable
   ([ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md)).
+- EventStore 10k/100k append/replay/claim/report baseline and CAS metric
+  chunks (`researchos m2 bench`); receipts are not SLA
+  ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).
 
 ### Changed
 
@@ -134,3 +137,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   terminal complete/fail stays idempotent. Stdout/stderr limits apply while
   pipes are read. POSIX process groups are killed after the parent exits so
   inherited-pipe children cannot outlive the helper.
+- Worker claim-path rebuild folds only Worker event types after a verified
+  high-water. Static reports stream the frozen prefix and keep lineage on
+  the matching Run; they cite spec/runtime/image/config/output digests.
+  High-frequency metrics go to CAS chunks, not one EventStore fact per
+  step ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).

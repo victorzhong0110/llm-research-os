@@ -62,7 +62,9 @@ digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime
 a missing engine fails closed and is not a mocked success. Worker
 stop/fault recovery is [ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md):
 a cancel request is not a stopped process; completed work reconciles
-Run/Attempt; unknown cannot auto-succeed. It is not GPU
+Run/Attempt; unknown cannot auto-succeed. EventStore 10k/100k baseline
+and CAS metric chunks are [ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md);
+bench receipts are not SLA. It is not GPU
 completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
@@ -82,6 +84,8 @@ is not NativeProcessRuntime and not a kernel sandbox, and a CPU
 `OCIContainerRuntime` adapter that fails closed without a live digest-pinned
 image.
 
+`researchos m2 bench` records 10k/100k EventStore timings (not SLA).
+
 The tree still does not execute training jobs or real GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
 receipts or launch permits. SimulatedRuntime does consume one local
@@ -93,6 +97,7 @@ credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
 loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
 ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046.
+EventStore performance baseline is ADR-0047.
 
 ## M0 goals
 
@@ -409,7 +414,8 @@ uv run researchos m2 prove \
 ```
 
 See [M2 Worker CLI](docs/guides/m2-worker.md),
-[M2 CPU OCI](docs/guides/m2-oci.md), and
+[M2 CPU OCI](docs/guides/m2-oci.md),
+[M2 performance baseline](docs/guides/m2-perf.md), and
 [first experiment](docs/guides/first-experiment.md).
 
 Research proposals, dissents, decisions, and questions are separate EventStore
@@ -536,6 +542,8 @@ does not spend GPU and does not close Issue #38.
 `researchos m2 oci` records the digest-pinned OCI CPU loop when a live
 engine has the planned image; otherwise it fails closed and MUST NOT be
 described as a successful container run.
+`researchos m2 bench` records 10k or 100k EventStore timings; it is not
+an SLA and does not spend GPU.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends

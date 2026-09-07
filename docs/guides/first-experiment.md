@@ -48,6 +48,25 @@ CPU OCI (`researchos m2 oci`) fails closed without a live digest-pinned
 image. That failure is not a mocked container success. See
 [M2 CPU OCI](m2-oci.md).
 
+## Performance baseline (not SLA)
+
+```bash
+uv run researchos m2 bench research-bench-10k.db \
+  --events 10000 --format json
+```
+
+`--events 100000` is the larger reproducible size. Receipts are host
+measurements. See [M2 performance baseline](m2-perf.md).
+
+After prove, the static report cites spec, runtime, image, config, and
+output artifact:
+
+```bash
+uv run researchos report run.worker.cpu \
+  --database research-m2.db \
+  --format markdown
+```
+
 ## What is still not a release
 
 - Paid GPU / cloud provisioner
