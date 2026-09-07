@@ -115,6 +115,9 @@ every `oci_live` test; inspect failure is unknown. Independent GPU
 execution is ADR-0056 (`gpu-oci-container` / `execute.gpu`; `gpu-not-run`).
 Data snapshot and checkpoint collect is ADR-0057 (Hub revision, pending-live
 dataset SHA, overlay resume; not a CUDA result).
+GPU execution-chain acceptance is
+[docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)
+(not M2 close, not a CUDA result).
 
 ## M0 goals
 

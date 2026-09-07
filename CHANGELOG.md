@@ -126,6 +126,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   workdirs, environment inventory and live step list; `secondHost` is
   `not-provisioned`; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).
+- GPU execution-chain acceptance checklist: PR stack, stop/resume/artifact
+  matrix, Linux OCI live evidence, pending-live two-host, unpaid experiment
+  sheet ([docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)).
 
 ### Changed
 

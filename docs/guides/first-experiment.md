@@ -54,6 +54,8 @@ image. That failure is not a mocked container success. See
 [M2 CPU OCI](m2-oci.md). A remote Worker pack is pending-live and is
 **not** a cross-machine proof; see [M2 remote Worker](m2-remote-worker.md)
 and [M2 cross-machine](m2-cross-machine.md).
+GPU chain checklist: [M2 GPU execution-chain acceptance](m2-gpu-chain-acceptance.md).
+Paid GPU remains the [experiment sheet](m2-gpu-experiment.md) after 开.
 
 ## Usage evidence (not EventStore fill)
 

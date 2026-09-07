@@ -1,5 +1,11 @@
 # M2 GPU experiment sheet (not executed)
 
+**Single-approval sheet.** One researcher 开 covers this document only.
+Do not treat `training plan` / `training bind` / coverage percent as
+approval. Do not boot, recharge, or start `swift sft` until
+`budget.limit.recorded` is ¥20 on this project and 开 is said for this
+run.
+
 This sheet is the unpaid GPU run design. It is **not** a GPU result, **not**
 M2 acceptance, and **not** authorization to spend.
 
