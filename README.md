@@ -27,14 +27,19 @@ charter errata, M0 debt, and the M1 slice order, security gates, checkpoint, and
 budget are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23.
 The field-level draft for M1-1 research decision objects is
 [research-decision-objects-v0alpha1 (draft)](docs/protocols/research-decision-objects-v0alpha1.md).
-M1 has not started delivering code.
+M1-0 is in tree: schema v2 query tables and a verified high-water cache
+([ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)), typed
+[`SecretRef`](docs/protocols/secret-ref-v0alpha1.md), optional ResearchEvent
+actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
+`run.cancelled`. M1-1 decision objects are not implemented.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
-fact store, a local content-addressed artifact object layer, a pure Run/Attempt
-state machine, RunControl that preflights before write with global CAS, a
-GPU-free and network-free deterministic SimulatedRuntime, a plan-authorization
-gate bound to three digests, a non-credential authorization CLI, audit-only
+fact store with rebuildable query tables, a local content-addressed artifact
+object layer, a pure Run/Attempt state machine, RunControl that preflights
+before write with global CAS, a GPU-free and network-free deterministic
+SimulatedRuntime that can consume a cancel request, a plan-authorization gate
+bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
 simulated-run / cancellation-request / artifact-object CLIs, and a non-launching
 NativeProcessPreflight.
@@ -42,9 +47,10 @@ NativeProcessPreflight.
 The tree still does not execute training jobs or real GPU workloads, and it does
 not treat authorization, a preflight report, a lineage rebuild, or
 `decisionDigest` as an authenticated receipt, a launch permit, or the audit fact
-a Run consumed, nor does it report a cancellation request as already stopped.
-A real NativeProcessRuntime, remote Workers, a SQLite artifact index, and
-authenticated launch credentials are not M0 deliverables.
+a Run consumed. A cancellation-request CLI still does not send a process signal;
+the observed cancelled outcome is a later SimulatedRuntime fact. A real
+NativeProcessRuntime, remote Workers, and authenticated launch credentials are
+not M0 or M1-0 deliverables.
 
 ## M0 goals
 
@@ -78,6 +84,7 @@ acceptance checklist of that milestone.
 - [Changelog](CHANGELOG.md)
 - [ResearchSpec v0alpha1](docs/protocols/research-spec-v0alpha1.md)
 - [ResearchEvent v0alpha1](docs/protocols/research-event-v0alpha1.md)
+- [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)

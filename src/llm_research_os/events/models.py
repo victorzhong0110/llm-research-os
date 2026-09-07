@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
@@ -18,6 +19,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    field_validator,
     model_validator,
 )
 
@@ -252,10 +254,35 @@ class EventDocumentModel(StrictModel):
     )
 
 
+class ActorKind(StrEnum):
+    HUMAN = "human"
+    AI = "ai"
+    SYSTEM = "system"
+    POLICY = "policy"
+
+
 class EventActor(EventDocumentModel):
-    """Closed actor identity. Additional actor facets are not part of v0alpha1."""
+    """Actor identity. ``kind`` and ``modelId`` are optional so existing events remain valid."""
 
     id: EventIdentifier
+    kind: ActorKind | None = None
+    model_id: EventIdentifier | None = Field(default=None, alias="modelId")
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def coerce_actor_kind(cls, value: object) -> object:
+        if type(value) is str:
+            try:
+                return ActorKind(value)
+            except ValueError:
+                return value
+        return value
+
+    @model_validator(mode="after")
+    def model_id_requires_ai_kind(self) -> Self:
+        if self.model_id is not None and self.kind is not ActorKind.AI:
+            raise ValueError("modelId is only valid when actor kind is ai")
+        return self
 
 
 class ResearchEventData(EventDocumentModel):

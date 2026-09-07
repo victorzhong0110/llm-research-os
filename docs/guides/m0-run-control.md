@@ -46,57 +46,57 @@ Run and is not `streamversion`. Stream identity remains undecided.
 M0 prefers fail-closed integrity over incremental speed. That choice is
 deliberate and has a known cost.
 
-Each `rebuild()`, including the one at the start of every `append()`, does two
-verified passes over the **global** log, then folds only this Run:
+Each `rebuild()`, including the one at the start of every `append()`, freezes a
+verified high-water mark and folds this Run:
 
-1. `replay_events(..., freeze_high_water=True)` first calls
-   `EventStore.verify_integrity()`. That scan runs `PRAGMA integrity_check`,
-   reads every stored event in sequence order, re-parses canonical JSON,
-   re-validates the ResearchEvent contract, recomputes the `sha256:` digest, and
-   checks index columns. The returned count is the frozen high-water mark.
-2. The iterator then pages `read_events` up to that mark. Each page verifies
-   every row again through the same decoder. `page_size` bounds **memory**, not
-   CPU or I/O: the second pass is still Θ(N) in the global event count.
+1. `replay_events(..., freeze_high_water=True)` calls
+   `EventStore.freeze_high_water()`. That re-reads live `MAX(sequence)`, the last
+   event digest, and the schema digest. If they match the stored checkpoint, the
+   full `verify_integrity` scan is skipped. If they disagree, the store falls
+   back to `PRAGMA integrity_check` plus a complete event re-parse and rewrites
+   the checkpoint (ADR-0041, TM-011).
+2. Fold this Run from sequence 0 through that high-water mark. A cached
+   `run_projections` row is **not** a fold start: canonical JSON plus digest
+   only prove the row agrees with itself. Wrong `projectId`/`runId`, an
+   impossible `last_sequence`, or a parse failure drops the row. The iterator
+   pages `read_events` up to the frozen mark; each page still verifies every
+   row through the decoder. `page_size` bounds **memory**.
 3. `RunStateProjection.apply` folds only events for the configured
-   `(projectId, runId)`. Folding is linear in this Run, but it happens after
-   the two global verification passes.
+   `(projectId, runId)`. A successful rebuild or append rewrites the cached
+   snapshot when the store is writable. A cache-write failure does not convert
+   a committed fact into an append failure. The row is a consumer, not a fact.
 
 Therefore:
 
-- One `append` against a store of N events costs Θ(N) verification work.
+- One `append` against a matching integrity checkpoint skips the full
+  `verify_integrity` scan, then folds the frozen prefix from sequence 0.
 - Filling a store from empty to N events exclusively through `RunControl.append`
-  costs Θ(N²) verification work: the *k*-th append re-verifies the previous
-  *k* − 1 facts.
-- A CAS conflict retry pays the same full rebuild against the new head.
-- Cost tracks the **global** sequence, not this Run's event count. Events for
-  other projects, Runs, or authorization audits still sit on the scanned prefix.
+  is Θ(N) checkpoint work while the checkpoint stays valid, plus Θ(N²) fold
+  work over the growing prefix.
+- A CAS conflict retry rebuilds against the new head; a mismatched or missing
+  checkpoint pays a full scan once, then continues.
+- Cost still tracks the **global** sequence. Events for other projects, Runs,
+  or authorization audits still sit on the scanned prefix.
 
-This is the correct M0 default for a local, single-host control plane. It is
-not a SQLite write-path defect. If append latency grows with store size, start
-here, not with WAL settings.
+Schema v1 (M0) paid Θ(N) per append and Θ(N²) to fill N events. That model is
+historical; do not use it to explain current append latency.
 
 ### Applicable scale
 
-- Intended for local development, tests, and small research logs: tens to low
-  thousands of events. A SimulatedRuntime success path writes six lifecycle
-  facts; each of those six rebuilds the whole prefix.
-- Do not use M0 RunControl as a high-throughput ingest path. Around 10⁵ events,
-  every append re-verifies the entire history twice. That slowdown is this
-  cost model, and it will keep growing with N.
-- `events verify` is the same full `verify_integrity` scan.
-  `events replay` freezes a high-water mark the same way. Neither is a cheaper
-  substitute for `rebuild()`.
+- Intended for local development, tests, and research logs that grow into the
+  M1 event catalog (proposal, dissent, decision, `ai.call`, evidence, budget).
+- `events verify` is still the full `verify_integrity` scan.
+  `events replay` freezes a high-water mark through `freeze_high_water()`.
+- Call `rebuild_query_tables()` after administrative SQL or when comparing
+  `spec_revisions` / artifact index rows to the event prefix.
 
 ### What this slice does not add
 
-M0 does **not** remember a verified `(sequence, last digest)` checkpoint, skip
-`verify_integrity` on a later rebuild, or persist a Run projection table.
-Charter decision `6-DBC` and [ADR-0015](../adr/0015-sqlite-event-source-projections-and-artifacts.md)
-still treat persistent projections as rebuildable consumers, not as a second
-fact source.
+Query tables and the high-water cache are rebuildable consumers. Charter
+decision `6-DBC` and [ADR-0015](../adr/0015-sqlite-event-source-projections-and-artifacts.md)
+still treat EventStore `events` as the only fact source.
 
-A later slice may introduce a verified high-water cache or a projection table.
-If it does, that work needs its own ADR and must:
+[ADR-0041](../adr/0041-verified-high-water-cache-and-query-tables.md) requires:
 
 - treat any remembered head as untrusted until revalidated;
 - fall back to a full `verify_integrity` when the remembered sequence, last
@@ -148,8 +148,11 @@ their EventStore meanings and are not translated into success.
 ## Authority
 
 - EventStore is the only fact source.
-- `RunSnapshot` is a rebuildable in-memory projection. RunControl does not
-  persist it and does not add a Run table.
+- `RunSnapshot` is a rebuildable projection. RunControl may cache it in
+  `run_projections` after a full prefix fold; the cache is never fold
+  authority. Identity, sequence, canonical JSON, and digest mismatches drop
+  the row. A cache-write failure after a committed fact does not fail the
+  append.
 - JSON Schema for `RunSnapshot` is available as
   `researchos schema --contract run-state`.
 

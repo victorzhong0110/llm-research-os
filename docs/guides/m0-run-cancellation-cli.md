@@ -32,10 +32,11 @@ process signal sent: false
 cancellation outcome: not observed
 ```
 
-The command sends no signal and has no Worker connection. Only a later observed
-`attempt.cancelled` followed by a legal `run.cancelled` can establish the
-cancelled outcome. Completion or failure may still win a race already in
-progress, as defined by the Run/Attempt state protocol.
+The command sends no signal and has no Worker connection. SimulatedRuntime
+consumes a recorded request on the next `runs simulate` / `run()` and emits
+`attempt.cancelled` and, when the Run-level request is present, `run.cancelled`.
+Completion or failure may still win a race already in progress, as defined by
+the Run/Attempt state protocol. `unknown` is not collapsed to cancelled.
 
 ## Errors and concurrency
 

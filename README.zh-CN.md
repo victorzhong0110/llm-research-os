@@ -16,17 +16,18 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表；M1-1 研究决定对象的字段级草案见
 [research-decision-objects-v0alpha1（草案）](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1 尚未开始交付代码。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 决定对象尚未实现。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
-SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
-全局 CAS 的 RunControl、无需 GPU 与网络的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
+SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
+全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、显式模拟 Run /
 取消请求 / 制品对象 CLI，以及不可启动的 NativeProcessPreflight。
 
 当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告、lineage 重建或
-`decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实，或把取消请求误报为已停止。
-真实 NativeProcessRuntime、远程 Worker、SQLite 制品索引与认证启动凭证均不属于 M0 已交付能力。
+`decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实。取消请求 CLI 仍不发送进程信号；
+观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、远程 Worker
+与认证启动凭证均不属于 M0 或 M1-0 已交付能力。
 
 ## M0 目标
 
@@ -55,6 +56,7 @@ SQLite 追加式事件事实源、本地内容寻址制品对象层、纯 Run/At
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
 - [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
 - [ResearchEvent v0alpha1规范说明](docs/protocols/research-event-v0alpha1.md)
+- [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)

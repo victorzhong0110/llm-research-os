@@ -1,0 +1,7 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "SecretRef",
+  "backend": "env",
+  "name": "OPENAI_API_KEY",
+  "value": "sk-not-a-real-secret"
+}

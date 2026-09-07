@@ -55,11 +55,13 @@ TYPE_RUN_QUEUED = "run.queued"
 TYPE_RUN_STARTED = "run.started"
 TYPE_RUN_COMPLETED = "run.completed"
 TYPE_RUN_FAILED = "run.failed"
+TYPE_RUN_CANCELLED = "run.cancelled"
 TYPE_ATTEMPT_QUEUED = "attempt.queued"
 TYPE_ATTEMPT_STARTED = "attempt.started"
 TYPE_ATTEMPT_SUCCEEDED = "attempt.succeeded"
 TYPE_ATTEMPT_FAILED = "attempt.failed"
 TYPE_ATTEMPT_UNKNOWN = "attempt.unknown"
+TYPE_ATTEMPT_CANCELLED = "attempt.cancelled"
 
 SUCCESS_PATH = (
     TYPE_RUN_QUEUED,
@@ -91,6 +93,7 @@ _ATTEMPT_TYPES = frozenset(
         TYPE_ATTEMPT_SUCCEEDED,
         TYPE_ATTEMPT_FAILED,
         TYPE_ATTEMPT_UNKNOWN,
+        TYPE_ATTEMPT_CANCELLED,
     }
 )
 
@@ -99,6 +102,7 @@ class SimulationDisposition(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     UNKNOWN = "unknown"
+    CANCELLED = "cancelled"
     UNRESOLVED = "unresolved"
 
 
@@ -513,6 +517,11 @@ def _emitted_types(snapshot: RunSnapshot) -> tuple[str, ...]:
     if attempt.status is AttemptStatus.UNKNOWN:
         emitted.append(TYPE_ATTEMPT_UNKNOWN)
         return tuple(emitted)
+    if attempt.status is AttemptStatus.CANCELLED:
+        emitted.append(TYPE_ATTEMPT_CANCELLED)
+        if snapshot.status is RunStatus.CANCELLED:
+            emitted.append(TYPE_RUN_CANCELLED)
+        return tuple(emitted)
     _reject_run_mismatch("unexpected-attempt-status")
 
 
@@ -527,9 +536,14 @@ def _continuation(
         return (), SimulationDisposition.COMPLETED
     if snapshot.status is RunStatus.FAILED:
         return (), SimulationDisposition.FAILED
-    if snapshot.status in {RunStatus.UNKNOWN, RunStatus.LOST, RunStatus.CANCELLED}:
+    if snapshot.status in {RunStatus.UNKNOWN, RunStatus.LOST}:
         return (), SimulationDisposition.UNRESOLVED
-    if _unresolved_cancellation(snapshot):
+    if snapshot.status is RunStatus.CANCELLED:
+        return (), SimulationDisposition.CANCELLED
+    if not _outcome_already_observed(snapshot) and _cancellation_actionable(snapshot):
+        remaining = _cancel_remaining(snapshot)
+        if remaining:
+            return remaining, None
         return (), SimulationDisposition.UNRESOLVED
     emitted = _emitted_types(snapshot)
     if emitted != full[: len(emitted)]:
@@ -540,7 +554,14 @@ def _continuation(
     return remaining, None
 
 
-def _unresolved_cancellation(snapshot: RunSnapshot) -> bool:
+def _outcome_already_observed(snapshot: RunSnapshot) -> bool:
+    if not snapshot.attempts:
+        return False
+    latest = snapshot.attempts[-1]
+    return latest.status in {AttemptStatus.SUCCEEDED, AttemptStatus.FAILED}
+
+
+def _cancellation_actionable(snapshot: RunSnapshot) -> bool:
     if snapshot.cancellation_requested:
         return True
     active_id = snapshot.active_attempt_id
@@ -554,6 +575,26 @@ def _unresolved_cancellation(snapshot: RunSnapshot) -> bool:
     return bool(snapshot.attempts and snapshot.attempts[-1].status is AttemptStatus.CANCELLED)
 
 
+def _cancel_remaining(snapshot: RunSnapshot) -> tuple[str, ...]:
+    remaining: list[str] = []
+    active_id = snapshot.active_attempt_id
+    active = None
+    if active_id is not None:
+        active = next(
+            (item for item in snapshot.attempts if item.attempt_id == active_id),
+            None,
+        )
+    if (
+        active is not None
+        and active.status is not AttemptStatus.CANCELLED
+        and (snapshot.cancellation_requested or active.cancellation_requested)
+    ):
+        remaining.append(TYPE_ATTEMPT_CANCELLED)
+    if snapshot.cancellation_requested:
+        remaining.append(TYPE_RUN_CANCELLED)
+    return tuple(remaining)
+
+
 def _disposition_for_snapshot(snapshot: RunSnapshot) -> SimulationDisposition:
     if snapshot.status is RunStatus.COMPLETED:
         return SimulationDisposition.COMPLETED
@@ -561,6 +602,8 @@ def _disposition_for_snapshot(snapshot: RunSnapshot) -> SimulationDisposition:
         return SimulationDisposition.FAILED
     if snapshot.status is RunStatus.UNKNOWN:
         return SimulationDisposition.UNKNOWN
+    if snapshot.status is RunStatus.CANCELLED:
+        return SimulationDisposition.CANCELLED
     return SimulationDisposition.UNRESOLVED
 
 

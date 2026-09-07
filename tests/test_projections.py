@@ -116,6 +116,9 @@ class _NeverEmptyStore:
     def verify_integrity(self) -> int:
         return 3
 
+    def freeze_high_water(self) -> int:
+        return self.verify_integrity()
+
     def read_events(self, *, after_sequence: int = 0, limit: int = 100) -> list[_FakeStoredEvent]:
         self.read_calls += 1
         if self.read_calls > 8:

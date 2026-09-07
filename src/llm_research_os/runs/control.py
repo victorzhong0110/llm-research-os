@@ -1,28 +1,31 @@
 """Atomic RunControl boundary over EventStore and RunStateProjection.
 
-EventStore remains the only fact source. RunSnapshot is a rebuildable in-memory
-projection. This module does not generate caller-owned event fields, retry CAS
-conflicts, persist snapshots, or execute blocks.
+EventStore remains the only fact source. RunSnapshot is a rebuildable
+projection: an in-memory fold, optionally cached in SQLite and discarded when
+the cache disagrees with the verified event prefix.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import ValidationError
 
+from llm_research_os.canonical import legacy_canonical_json, legacy_content_digest
 from llm_research_os.events.models import (
     CLOUD_EVENTS_INTEGER_MAX,
     ResearchEvent,
     validate_event_document,
 )
 from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
-from llm_research_os.projections import replay_events
+from llm_research_os.projections.replay import replay_events
 from llm_research_os.runs.errors import RunControlError
-from llm_research_os.runs.models import LIFECYCLE_TYPES, RunSnapshot
+from llm_research_os.runs.models import LIFECYCLE_TYPES, RunSnapshot, run_snapshot_document
 from llm_research_os.runs.reducer import RunStateProjection
-from llm_research_os.storage.models import StoredEvent
+from llm_research_os.storage.errors import EventStoreError
+from llm_research_os.storage.models import RunProjectionRecord, StoredEvent
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 
 _STORE_ASSIGNED_FIELDS = frozenset({"sequence", "sequencetype", "streamversion"})
@@ -50,7 +53,11 @@ class RunControl:
     ``last_sequence`` is the global EventStore head used as the CAS token. It is
     not a per-Run event count and is not ``streamversion``. Conflicts are not
     retried; the caller must invoke ``append`` again so replay and preflight run
-    against the new head.
+    against the new head. Cached Run rows are a performance hint: rebuild
+    always folds the frozen prefix from sequence 0. A row with the wrong
+    aggregate identity, an impossible sequence, or a failed canonical/digest
+    check is dropped. A cache-write failure after a committed fact does not
+    fail the append.
     """
 
     def __init__(
@@ -70,16 +77,19 @@ class RunControl:
     def rebuild(self) -> RunControlHead:
         """Replay the frozen global log and fold only this Run's events."""
 
-        snapshot: RunSnapshot | None = None
-        last_sequence = 0
+        high_water = self._store.freeze_high_water()
+        self._discard_untrusted_cache(high_water)
+        snapshot = None
         for stored in replay_events(
             self._store,
-            freeze_high_water=True,
+            after_sequence=0,
             page_size=self._page_size,
+            freeze_high_water=False,
+            until_sequence=high_water,
         ):
-            last_sequence = stored.sequence
             snapshot = self._projection.apply(snapshot, stored.event)
-        return RunControlHead(last_sequence=last_sequence, snapshot=snapshot)
+        self._persist_projection(high_water, snapshot)
+        return RunControlHead(last_sequence=high_water, snapshot=snapshot)
 
     def append(self, document: dict[str, Any]) -> RunControlResult:
         """Preflight one lifecycle draft, then append it at the frozen head."""
@@ -117,7 +127,51 @@ class RunControl:
         committed_snapshot = self._projection.apply(snapshot, stored.event)
         if committed_snapshot is None:
             raise RunControlError("committed lifecycle event produced no snapshot")
+        self._persist_projection(stored.sequence, committed_snapshot)
         return RunControlResult(stored=stored, snapshot=committed_snapshot)
+
+    def _discard_untrusted_cache(self, high_water: int) -> None:
+        cached = self._store.get_run_projection(self._project_id, self._run_id)
+        if cached is None:
+            return
+        if not _cache_row_is_plausible(cached, self._project_id, self._run_id, high_water):
+            self._drop_projection_cache()
+
+    def _persist_projection(self, last_sequence: int, snapshot: RunSnapshot | None) -> None:
+        if not self._store.writable:
+            return
+        try:
+            if last_sequence == 0:
+                self._store.delete_run_projection(self._project_id, self._run_id)
+                return
+            if snapshot is None:
+                record = RunProjectionRecord(
+                    project_id=self._project_id,
+                    run_id=self._run_id,
+                    last_sequence=last_sequence,
+                    snapshot_json=None,
+                    snapshot_digest=None,
+                )
+            else:
+                payload = run_snapshot_document(snapshot)
+                record = RunProjectionRecord(
+                    project_id=self._project_id,
+                    run_id=self._run_id,
+                    last_sequence=last_sequence,
+                    snapshot_json=legacy_canonical_json(payload),
+                    snapshot_digest=legacy_content_digest(payload),
+                )
+            self._store.upsert_run_projection(record)
+        except EventStoreError:
+            self._drop_projection_cache()
+
+    def _drop_projection_cache(self) -> None:
+        if not self._store.writable:
+            return
+        try:
+            self._store.delete_run_projection(self._project_id, self._run_id)
+        except EventStoreError:
+            return
 
 
 def _require_page_size(page_size: int) -> int:
@@ -143,3 +197,46 @@ def _validate_preflight_event(document: dict[str, Any]) -> ResearchEvent:
     else:
         return validated
     raise payload_error
+
+
+def _cache_row_is_plausible(
+    cached: RunProjectionRecord,
+    project_id: str,
+    run_id: str,
+    high_water: int,
+) -> bool:
+    """Return whether a cache row may remain; never used as fold authority."""
+
+    if cached.project_id != project_id or cached.run_id != run_id:
+        return False
+    if cached.last_sequence > high_water or cached.last_sequence < 1:
+        return False
+    try:
+        snapshot = _require_cached_snapshot(cached)
+    except (ValueError, ValidationError, json.JSONDecodeError):
+        return False
+    if snapshot is None:
+        return True
+    if snapshot.project_id != project_id or snapshot.run_id != run_id:
+        return False
+    return snapshot.last_sequence <= cached.last_sequence and snapshot.last_sequence <= high_water
+
+
+def _require_cached_snapshot(cached: RunProjectionRecord) -> RunSnapshot | None:
+    """Decode a cached snapshot or raise ``ValueError`` if the row is not canonical."""
+
+    if cached.snapshot_json is None:
+        if cached.snapshot_digest is not None:
+            raise ValueError("run projection digest is present without snapshot JSON")
+        return None
+    if cached.snapshot_digest is None:
+        raise ValueError("run projection JSON is present without a digest")
+    decoded: object = json.loads(cached.snapshot_json)
+    if type(decoded) is not dict:
+        raise ValueError("run projection JSON root is not an object")
+    document = decoded
+    if legacy_canonical_json(document) != cached.snapshot_json:
+        raise ValueError("run projection JSON is not canonical")
+    if legacy_content_digest(document) != cached.snapshot_digest:
+        raise ValueError("run projection digest mismatch")
+    return RunSnapshot.model_validate(document)

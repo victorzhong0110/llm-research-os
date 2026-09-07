@@ -69,7 +69,11 @@ def _request(
     attempt_id: str = ATTEMPT,
     workflow_id: str = WORKFLOW,
     stream_id: str = "stream.simulated",
+    extra_events: dict[str, SimulationEventIdentity] | None = None,
 ) -> SimulationRequest:
+    events = _identities(path, prefix=prefix)
+    if extra_events:
+        events.update(extra_events)
     return SimulationRequest(
         workflow_id=workflow_id,
         attempt_id=attempt_id,
@@ -77,8 +81,15 @@ def _request(
         subject=RUN,
         stream_id=stream_id,
         actor_id="researcher.alice",
-        events=_identities(path, prefix=prefix),
+        events=events,
     )
+
+
+def _cancel_identities() -> dict[str, SimulationEventIdentity]:
+    return {
+        "attempt.cancelled": SimulationEventIdentity(id="evt.cancel.attempt.cancelled", time=TIME),
+        "run.cancelled": SimulationEventIdentity(id="evt.cancel.run.cancelled", time=TIME),
+    }
 
 
 def _spec_document(*, outcome: object | None = "success") -> dict[str, Any]:
@@ -725,9 +736,10 @@ def test_integrity_and_duplicate_errors_are_not_success(tmp_path: Path) -> None:
         _runtime(store).run(spec, _request(prefix="ok"))
     with sqlite3.connect(broken, autocommit=True) as connection:
         connection.execute("DROP TRIGGER events_reject_update")
+        last = connection.execute("SELECT MAX(sequence) FROM events").fetchone()[0]
         connection.execute(
-            "UPDATE events SET event_digest = ? WHERE sequence = 1",
-            ("sha256:" + "00" * 32,),
+            "UPDATE events SET event_digest = ? WHERE sequence = ?",
+            ("sha256:" + "00" * 32, last),
         )
         connection.execute(_trigger_statement("events_reject_update"))
     with EventStore(broken) as store, pytest.raises(EventIntegrityError):
@@ -792,7 +804,83 @@ def test_simulated_runtime_module_has_no_clock_or_io_imports() -> None:
         assert forbidden not in source
 
 
-def test_cancellation_requested_stops_without_inferring_outcome(tmp_path: Path) -> None:
+def test_cancellation_requested_emits_cancelled_facts(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    request = _request(extra_events=_cancel_identities())
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        RunControl(store, project_id=PROJECT, run_id=RUN).append(
+            _lifecycle_draft(
+                "run.cancel.requested",
+                "evt.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+            )
+        )
+        result = _runtime(store).run(spec, request)
+        assert [item.event.type for item in result.stored] == [
+            "attempt.cancelled",
+            "run.cancelled",
+        ]
+        assert result.disposition is SimulationDisposition.CANCELLED
+        assert store.last_sequence() == 7
+        assert result.snapshot.status is RunStatus.CANCELLED
+        assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
+        assert result.snapshot.cancellation_requested is True
+
+
+def test_attempt_cancel_requested_emits_attempt_cancelled_only(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    request = _request(extra_events=_cancel_identities())
+    with EventStore(database) as store:
+        _limit_appends(store, 4)
+        with pytest.raises(_Stopped):
+            _runtime(store).run(spec, request)
+    with EventStore(database) as store:
+        RunControl(store, project_id=PROJECT, run_id=RUN).append(
+            _lifecycle_draft(
+                "attempt.cancel.requested",
+                "evt.attempt.cancel.requested",
+                payload={"reasonCode": "operator.requested"},
+                attempt_id=ATTEMPT,
+            )
+        )
+        result = _runtime(store).run(spec, request)
+        assert [item.event.type for item in result.stored] == ["attempt.cancelled"]
+        assert result.disposition is SimulationDisposition.UNRESOLVED
+        assert store.last_sequence() == 6
+        assert result.snapshot.cancellation_requested is False
+        assert result.snapshot.attempts[0].cancellation_requested is True
+        assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
+        assert result.snapshot.status is RunStatus.RUNNING
+
+
+def test_unknown_is_not_collapsed_to_cancelled(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    spec = _spec_document(outcome="unknown")
+    request = _request(UNKNOWN_PATH, extra_events=_cancel_identities())
+    with EventStore(database) as store:
+        result = _runtime(store).run(spec, request)
+        assert result.disposition is SimulationDisposition.UNKNOWN
+        RunControl(store, project_id=PROJECT, run_id=RUN).append(
+            _lifecycle_draft(
+                "run.cancel.requested",
+                "evt.run.cancel.requested.after.unknown",
+                payload={"reasonCode": "operator.requested"},
+            )
+        )
+        resumed = _runtime(store).run(spec, request)
+        assert resumed.disposition is SimulationDisposition.UNRESOLVED
+        assert resumed.stored == ()
+        assert resumed.snapshot.status is RunStatus.UNKNOWN
+        assert store.last_sequence() == 6
+
+
+def test_cancel_path_requires_caller_owned_identities(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     request = _request()
@@ -808,18 +896,15 @@ def test_cancellation_requested_stops_without_inferring_outcome(tmp_path: Path) 
                 payload={"reasonCode": "operator.requested"},
             )
         )
-        result = _runtime(store).run(spec, request)
-        assert result.disposition is SimulationDisposition.UNRESOLVED
-        assert result.stored == ()
+        with pytest.raises(SimulationError, match="incomplete"):
+            _runtime(store).run(spec, request)
         assert store.last_sequence() == 3
-        assert result.snapshot.cancellation_requested is True
-        assert result.snapshot.status is RunStatus.RUNNING
 
 
-def test_attempt_cancel_requested_writes_nothing(tmp_path: Path) -> None:
+def test_cancelled_run_is_idempotent(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
+    request = _request(extra_events=_cancel_identities())
     with EventStore(database) as store:
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
@@ -827,20 +912,17 @@ def test_attempt_cancel_requested_writes_nothing(tmp_path: Path) -> None:
     with EventStore(database) as store:
         RunControl(store, project_id=PROJECT, run_id=RUN).append(
             _lifecycle_draft(
-                "attempt.cancel.requested",
-                "evt.attempt.cancel.requested",
+                "run.cancel.requested",
+                "evt.cancel.requested",
                 payload={"reasonCode": "operator.requested"},
-                attempt_id=ATTEMPT,
             )
         )
-        result = _runtime(store).run(spec, request)
-        assert result.disposition is SimulationDisposition.UNRESOLVED
-        assert result.stored == ()
-        assert store.last_sequence() == 5
-        assert result.snapshot.cancellation_requested is False
-        assert result.snapshot.attempts[0].cancellation_requested is True
-        assert result.snapshot.attempts[0].status is AttemptStatus.RUNNING
-        assert result.snapshot.status is RunStatus.RUNNING
+        first = _runtime(store).run(spec, request)
+        assert first.disposition is SimulationDisposition.CANCELLED
+        second = _runtime(store).run(spec, request)
+        assert second.disposition is SimulationDisposition.CANCELLED
+        assert second.stored == ()
+        assert store.last_sequence() == 7
 
 
 def test_attempt_cancelled_writes_nothing(tmp_path: Path) -> None:

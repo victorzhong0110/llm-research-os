@@ -100,7 +100,10 @@ v0alpha1 does not implement CloudEvents HTTP, Kafka, AMQP or binary-mode binding
 `data` MUST contain the versioned ResearchEvent payload:
 
 - `schemaVersion` MUST be `v0alpha1`;
-- `actor` is a closed object whose only v0alpha1 field is `id`;
+- `actor` is a closed object with required `id`. It MAY include `kind` (`human`,
+  `ai`, `system`, or `policy`). It MAY include `modelId` only when `kind` is
+  `ai`. Omitting `kind` remains valid so existing v0alpha1 events still
+  validate. Role and display-name fields remain open;
 - `projectId` identifies the research project;
 - `experimentRevision` is the positive ResearchSpec revision the fact refers to;
 - `runId`, `attemptId` and `blockId` MAY be omitted;
@@ -158,7 +161,7 @@ rejected by the committed JSON Schema MUST also be rejected by the reference val
 The following items remain undecided and MUST NOT be filled in by adapters:
 
 - a complete catalog of `type` values beyond types frozen by individual domain protocols;
-- actor kind, role or display-name fields;
+- actor role or display-name fields;
 - stream identity (per project, run, attempt or other);
 - charset parameters on `datacontenttype`;
 - UUID-only `id` syntax;

@@ -16,16 +16,21 @@ def replay_events(
     after_sequence: int = 0,
     page_size: int = 100,
     freeze_high_water: bool = True,
+    until_sequence: int | None = None,
 ) -> Iterator[StoredEvent]:
     """Yield verified events in global sequence order using bounded pages.
 
-    When ``freeze_high_water`` is true, ``verify_integrity()`` snapshots the
-    contiguous event count before the first yield. Events appended after that
-    snapshot are omitted. The iterator never materializes the full store in memory.
+    When ``freeze_high_water`` is true, ``EventStore.freeze_high_water()``
+    snapshots the contiguous event count before the first yield. Events appended
+    after that snapshot are omitted. The iterator never materializes the full
+    store in memory.
     """
 
     _require_replay_bounds(after_sequence, page_size)
-    until_sequence = store.verify_integrity() if freeze_high_water else None
+    if freeze_high_water:
+        if until_sequence is not None:
+            raise ValueError("until_sequence cannot be combined with freeze_high_water")
+        until_sequence = store.freeze_high_water()
     yield from _iter_stored_events(
         store,
         after_sequence=after_sequence,

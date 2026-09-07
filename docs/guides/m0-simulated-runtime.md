@@ -134,18 +134,21 @@ not mean training succeeded, metrics are valid, or a hypothesis is supported.
 `run.queued`. A legal prefix continues with the next event on the frozen
 outcome path. `completed` / `failed` return the existing snapshot with zero new
 facts, including when a prior Run cancellation request is still recorded.
-`unknown` / `lost` / cancelled, a nonterminal Run-level
-`cancellationRequested`, an active Attempt cancellation request, or a latest
-cancelled Attempt return `unresolved` without inferring an outcome.
+`unknown` / `lost` return `unresolved` and are never collapsed to cancelled.
+A nonterminal Run-level `cancellationRequested` with a still-running Attempt
+emits `attempt.cancelled` then `run.cancelled` through RunControl, using
+caller-owned identities from the SimulationRequest. An Attempt-only cancel
+request emits `attempt.cancelled` and leaves the Run running. A latest
+cancelled Attempt without a Run-level request returns `unresolved`. Identities
+are not minted.
 
 The six (or five) events are **not** one SQLite transaction. An interrupted
 invocation leaves the committed prefix. Reopening the database and calling
 `run()` again continues from replay, using the same caller-owned identities for
 events that have not yet been written.
 
-Each write still goes through RunControl replay, preflight, and global CAS,
-so each of the six (or five) facts re-verifies the whole frozen prefix. See
-[M0 RunControl](m0-run-control.md#write-cost-model).
+Each write still goes through RunControl replay, preflight, and global CAS.
+See [M0 RunControl](m0-run-control.md#write-cost-model).
 `EventSequenceConflictError` is not caught, slept, or retried, and a conflict
 is not success. `DuplicateEventError`, `EventIntegrityError`, and schema errors
 keep their EventStore meanings.
@@ -159,7 +162,7 @@ change the outcome or digests that will be written.
 - Multi-node scheduling and data-port values
 - LoopBlock expansion or `until` evaluation
 - ApprovalBlock, paid resources, metrics, artifacts
-- Automatic retry, cancel, heartbeat, or lost/recovered policy
+- Automatic retry, heartbeat, or lost/recovered policy
 - Process/Worker stop adapters and NativeProcessRuntime
 - Minting `id`, `time`, `streamid`, `correlationid`, or `causationid`
 

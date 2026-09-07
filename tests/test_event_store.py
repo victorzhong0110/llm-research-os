@@ -26,16 +26,20 @@ from llm_research_os.storage.schema import (
     APPLICATION_ID,
     EXPECTED_SCHEMA_DEFINITIONS,
     EXPECTED_SCHEMA_OBJECTS,
-    MIGRATION_NAME,
     MIGRATION_STATEMENTS,
     SCHEMA_DEFINITION_DIGEST,
     SCHEMA_VERSION,
+    V1_MIGRATION,
+    expected_migration_history,
     normalize_schema_sql,
 )
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "events"
 FIXED_TIME = datetime(2026, 8, 28, 6, 0, 0, 123456, tzinfo=UTC)
 FROZEN_SCHEMA_DEFINITION_DIGEST = (
+    "sha256:426fff7eaf173d703e1c0910b1237558bf99aac4d187a39f96bab55a563e202b"
+)
+FROZEN_V1_MIGRATION_DIGEST = (
     "sha256:dfdfe1bc8233723bfd164f488779428eeae72e4d4b0efa7128abf25e333bd1f1"
 )
 
@@ -76,11 +80,12 @@ def test_store_initializes_versioned_wal_database_and_reopens(tmp_path: Path) ->
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert connection.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
         assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
-        migration = connection.execute(
-            "SELECT version, name, schema_digest FROM schema_migrations"
-        ).fetchone()
-        assert migration == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        migrations = connection.execute(
+            "SELECT version, name, schema_digest FROM schema_migrations ORDER BY version"
+        ).fetchall()
+        assert [tuple(row) for row in migrations] == expected_migration_history()
         assert SCHEMA_DEFINITION_DIGEST == FROZEN_SCHEMA_DEFINITION_DIGEST
+        assert V1_MIGRATION.digest == FROZEN_V1_MIGRATION_DIGEST
         assert SCHEMA_DEFINITION_DIGEST.startswith("sha256:")
         assert not SCHEMA_DEFINITION_DIGEST.startswith("jcs-sha256:")
 
@@ -755,10 +760,10 @@ def test_cas_precondition_does_not_change_schema_or_event_contract(tmp_path: Pat
             ).fetchall()
         }
         assert definitions == EXPECTED_SCHEMA_DEFINITIONS
-        migration = store._connection.execute(
-            "SELECT version, name, schema_digest FROM schema_migrations"
-        ).fetchone()
-        assert tuple(migration) == (SCHEMA_VERSION, MIGRATION_NAME, SCHEMA_DEFINITION_DIGEST)
+        migrations = store._connection.execute(
+            "SELECT version, name, schema_digest FROM schema_migrations ORDER BY version"
+        ).fetchall()
+        assert [tuple(row) for row in migrations] == expected_migration_history()
         assert SCHEMA_DEFINITION_DIGEST == FROZEN_SCHEMA_DEFINITION_DIGEST
         columns = [
             row[1] for row in store._connection.execute("PRAGMA table_info(events)").fetchall()
@@ -772,3 +777,143 @@ def test_cas_precondition_does_not_change_schema_or_event_contract(tmp_path: Pat
         persisted = json.loads(event_json)
     assert "expected_last_sequence" not in persisted
     assert persisted["sequence"] == "1"
+
+
+def _write_v1_database(path: Path) -> None:
+    applied_at = "2026-08-28T06:00:00.123456Z"
+    with sqlite3.connect(path) as connection:
+        connection.execute("PRAGMA journal_mode = WAL")
+        for statement in V1_MIGRATION.statements:
+            connection.execute(statement)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations(version, name, applied_at, schema_digest)
+            VALUES (?, ?, ?, ?)
+            """,
+            (V1_MIGRATION.version, V1_MIGRATION.name, applied_at, V1_MIGRATION.digest),
+        )
+        connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 1")
+        connection.commit()
+
+
+def test_v1_database_upgrades_to_schema_v2(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    _write_v1_database(database)
+    with EventStore(database, require_existing=True, clock=_clock) as store:
+        assert store.schema_version == SCHEMA_VERSION
+        assert store.verify_integrity() == 0
+        history = store._connection.execute(
+            "SELECT version, name, schema_digest FROM schema_migrations ORDER BY version"
+        ).fetchall()
+        assert [tuple(row) for row in history] == expected_migration_history()
+        assert store._schema_objects() == EXPECTED_SCHEMA_OBJECTS
+
+
+def test_read_only_open_rejects_unmigrated_v1_database(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    _write_v1_database(database)
+    with pytest.raises(EventStoreSchemaError, match="writable open to apply migration 2"):
+        EventStore(database, create=False, clock=_clock)
+
+
+def test_matching_checkpoint_skips_full_event_scan(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1))
+        calls = {"count": 0}
+        original = EventStore.verify_integrity
+
+        def wrapped(self: EventStore) -> int:
+            calls["count"] += 1
+            return original(self)
+
+        store.verify_integrity = wrapped.__get__(store, EventStore)  # type: ignore[method-assign]
+        assert store.freeze_high_water() == 1
+        assert calls["count"] == 0
+
+
+def test_stale_or_tampered_checkpoint_falls_back_to_full_scan(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        first = store.append(_event_draft(1))
+        store.append(_event_draft(2))
+        store._connection.execute(
+            """
+            UPDATE integrity_checkpoint
+            SET high_water = 1, last_event_digest = ?, verified_event_count = 1
+            WHERE slot = 1
+            """,
+            (first.digest,),
+        )
+        assert store.freeze_high_water() == 2
+        checkpoint = store.read_integrity_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint.high_water == 2
+        assert checkpoint.last_event_digest is not None
+        assert checkpoint.last_event_digest != first.digest
+
+
+def test_truncated_log_invalidates_checkpoint(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+        assert store.freeze_high_water() == 2
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DROP TRIGGER events_reject_delete")
+        connection.execute("DELETE FROM events WHERE sequence = 2")
+        connection.execute(_trigger_statement("events_reject_delete"))
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.freeze_high_water() == 1
+        checkpoint = store.read_integrity_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint.high_water == 1
+
+
+def test_wrong_schema_digest_on_checkpoint_forces_rescan(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        stored = store.append(_event_draft(1))
+        store._connection.execute(
+            """
+            UPDATE integrity_checkpoint
+            SET schema_digest = ?
+            WHERE slot = 1
+            """,
+            ("sha256:" + "ab" * 32,),
+        )
+        assert store.freeze_high_water() == 1
+        checkpoint = store.read_integrity_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint.schema_digest == SCHEMA_DEFINITION_DIGEST
+        assert checkpoint.last_event_digest == stored.digest
+
+
+def test_missing_checkpoint_reopens_writable_and_read_only(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database, clock=_clock) as store:
+        store.append(_event_draft(1))
+        store.append(_event_draft(2))
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DELETE FROM integrity_checkpoint")
+        assert connection.execute("SELECT COUNT(*) FROM integrity_checkpoint").fetchone()[0] == 0
+
+    with EventStore(database, clock=_clock) as store:
+        assert store.freeze_high_water() == 2
+        checkpoint = store.read_integrity_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint.high_water == 2
+        assert checkpoint.verified_event_count == 2
+
+    with sqlite3.connect(database, autocommit=True) as connection:
+        connection.execute("DELETE FROM integrity_checkpoint")
+
+    with EventStore(database, create=False, clock=_clock) as readonly:
+        assert readonly.verify_integrity() == 2
+        assert readonly.read_integrity_checkpoint() is None
+        assert readonly.freeze_high_water() == 2
+        assert readonly.read_integrity_checkpoint() is None
