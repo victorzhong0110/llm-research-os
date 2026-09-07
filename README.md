@@ -108,6 +108,8 @@ stop/fault recovery is ADR-0046. EventStore performance baseline is ADR-0047.
 Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
 Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill).
 The GPU experiment sheet is ADR-0053 (named AutoDL 4090 combo, unpaid).
+Process observation is ADR-0054 (running/exited/unknown; failed probes
+are not exited).
 
 ## M0 goals
 

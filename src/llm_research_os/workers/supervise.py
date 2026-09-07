@@ -27,6 +27,10 @@ KIND_OCI: Literal["oci-container"] = "oci-container"
 OBSERVED_STOP = "observed-stop"
 UNOBSERVED = "execution-unobserved"
 CLOUD_INSTANCE_STOP = "cloud-instance-stop"
+OBSERVATION_RUNNING: Literal["running"] = "running"
+OBSERVATION_EXITED: Literal["exited"] = "exited"
+OBSERVATION_UNKNOWN: Literal["unknown"] = "unknown"
+ProcessObservation = Literal["running", "exited", "unknown"]
 _IDENTITY_MODE = 0o600
 _IDENTITY_DIR_MODE = 0o700
 _STOP_WAIT_SECONDS = 3
@@ -104,64 +108,107 @@ def load_execution_identity(identity_dir: Path, lease_id: str) -> ExecutionIdent
 def posix_start_token(pid: int) -> str | None:
     """Linux starttime from /proc. None on Darwin — PID-only is weaker."""
 
-    path = Path(f"/proc/{pid}/stat")
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
-    close = text.rfind(")")
-    if close < 0:
-        return None
-    fields = text[close + 1 :].split()
-    if len(fields) < 20:
+    fields = _proc_stat_fields(pid)
+    if fields is None or len(fields) < 20:
         return None
     return fields[19]
 
 
-def process_still_running(pid: int) -> bool:
-    """True when the pid is a live, non-zombie process."""
+def observe_process(pid: int) -> ProcessObservation:
+    """running, exited, or unknown. Failed probes MUST NOT become exited."""
 
+    if pid <= 0:
+        return OBSERVATION_UNKNOWN
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
-        return False
+        return OBSERVATION_EXITED
     except PermissionError:
-        return True
-    path = Path(f"/proc/{pid}/stat")
-    try:
-        text = path.read_text(encoding="utf-8")
+        return OBSERVATION_RUNNING
     except OSError:
-        return _ps_process_running(pid)
-    close = text.rfind(")")
-    if close < 0:
-        return True
-    fields = text[close + 1 :].split()
-    if not fields:
-        return True
-    return fields[0] not in {"Z", "X"}
+        return OBSERVATION_UNKNOWN
+    fields = _proc_stat_fields(pid)
+    if fields is not None:
+        return _state_observation(fields[0] if fields else "")
+    if _procfs_present():
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return OBSERVATION_EXITED
+        except OSError:
+            return OBSERVATION_UNKNOWN
+        return OBSERVATION_UNKNOWN
+    return _ps_observe_process(pid)
 
 
-def _ps_process_running(pid: int) -> bool:
-    """Darwin/other hosts without /proc: treat zombie as not running."""
+def process_still_running(pid: int) -> bool:
+    """True only when observation is running. Unknown is not running."""
 
-    executable = shutil.which("ps")
-    if executable is None:
-        return True
+    return observe_process(pid) == OBSERVATION_RUNNING
+
+
+def observe_process_group(pgid: int | None, leader_pid: int | None) -> ProcessObservation:
+    """Group is running if any member runs. Empty confirmed group is exited."""
+
+    if pgid is None and leader_pid is None:
+        return OBSERVATION_UNKNOWN
+    if pgid is not None:
+        present = _process_group_present(pgid)
+        if present is False:
+            if leader_pid is None:
+                return OBSERVATION_EXITED
+            leader = observe_process(leader_pid)
+            if leader == OBSERVATION_RUNNING:
+                return OBSERVATION_RUNNING
+            if leader == OBSERVATION_UNKNOWN:
+                return OBSERVATION_UNKNOWN
+            return OBSERVATION_EXITED
+        members = list_process_group(pgid)
+        if members is None:
+            if present is True:
+                return OBSERVATION_RUNNING
+            if leader_pid is None:
+                return OBSERVATION_UNKNOWN
+            leader = observe_process(leader_pid)
+            if leader == OBSERVATION_RUNNING:
+                return OBSERVATION_RUNNING
+            return OBSERVATION_UNKNOWN
+        if not members:
+            if leader_pid is None:
+                return OBSERVATION_EXITED
+            return observe_process(leader_pid)
+        states = [observe_process(member) for member in members]
+        if any(state == OBSERVATION_RUNNING for state in states):
+            return OBSERVATION_RUNNING
+        if any(state == OBSERVATION_UNKNOWN for state in states):
+            return OBSERVATION_UNKNOWN
+        return OBSERVATION_EXITED
+    if leader_pid is None:
+        return OBSERVATION_UNKNOWN
+    return observe_process(leader_pid)
+
+
+def _process_group_present(pgid: int) -> bool | None:
     try:
-        completed = subprocess.run(  # noqa: S603
-            [executable, "-p", str(pid), "-o", "state="],
-            check=False,
-            capture_output=True,
-            timeout=1,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return True
-    if completed.returncode != 0:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
         return False
-    text = completed.stdout.decode("utf-8", errors="replace").strip()
-    if text == "":
-        return False
-    return text[:1] not in {"Z", "X"}
+    except OSError:
+        return None
+    return True
+
+
+def list_process_group(pgid: int) -> frozenset[int] | None:
+    """Member pids, empty if none, or None when the probe cannot be interpreted."""
+
+    if pgid <= 0:
+        return None
+    proc_members = _proc_group_members(pgid)
+    if proc_members is not None:
+        return proc_members
+    if _procfs_present():
+        return None
+    return _pgrep_group_members(pgid)
 
 
 def observe_and_stop(identity: ExecutionIdentity | None) -> str:
@@ -260,23 +307,40 @@ def _stop_posix_group(identity: ExecutionIdentity) -> str:
     pid = identity.pid
     if pgid is None and pid is None:
         return UNOBSERVED
-    if pid is not None and identity.start_token is not None:
-        current = posix_start_token(pid)
-        if current is not None and current != identity.start_token:
-            return UNOBSERVED
+    if not _identity_may_be_signaled(identity):
+        return UNOBSERVED
     target = pgid if pgid is not None else pid
     if target is None:
         return UNOBSERVED
     if not _signal_group(target, pid, signal.SIGTERM):
-        return OBSERVED_STOP if pid is None or not process_still_running(pid) else UNOBSERVED
-    wait_pid = pid if pid is not None else target
-    if _wait_pid_gone(wait_pid):
+        return _observed_if_group_exited(pgid, pid)
+    if _wait_group_exited(pgid, pid):
         return OBSERVED_STOP
     if not _signal_group(target, pid, signal.SIGKILL):
-        return OBSERVED_STOP if not process_still_running(wait_pid) else UNOBSERVED
-    if _wait_pid_gone(wait_pid):
+        return _observed_if_group_exited(pgid, pid)
+    if _wait_group_exited(pgid, pid):
         return OBSERVED_STOP
     return UNOBSERVED
+
+
+def _identity_may_be_signaled(identity: ExecutionIdentity) -> bool:
+    """False when a live pid cannot be matched to the recorded start token."""
+
+    pid = identity.pid
+    token = identity.start_token
+    if pid is None or token is None:
+        return True
+    state = observe_process(pid)
+    if state == OBSERVATION_EXITED:
+        return True
+    if state != OBSERVATION_RUNNING:
+        return False
+    current = posix_start_token(pid)
+    return current is not None and current == token
+
+
+def _observed_if_group_exited(pgid: int | None, pid: int | None) -> str:
+    return OBSERVED_STOP if observe_process_group(pgid, pid) == OBSERVATION_EXITED else UNOBSERVED
 
 
 def _signal_group(target: int, pid: int | None, sig: signal.Signals) -> bool:
@@ -299,13 +363,143 @@ def _signal_group(target: int, pid: int | None, sig: signal.Signals) -> bool:
             return False
 
 
-def _wait_pid_gone(pid: int, timeout: float = _STOP_WAIT_SECONDS) -> bool:
+def _wait_group_exited(
+    pgid: int | None,
+    pid: int | None,
+    timeout: float = _STOP_WAIT_SECONDS,
+) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if not process_still_running(pid):
+        if observe_process_group(pgid, pid) == OBSERVATION_EXITED:
             return True
         time.sleep(0.05)
-    return not process_still_running(pid)
+    return observe_process_group(pgid, pid) == OBSERVATION_EXITED
+
+
+def _procfs_present() -> bool:
+    return _proc_root().is_dir()
+
+
+def _proc_root() -> Path:
+    return Path("/proc")
+
+
+def _proc_stat_fields(pid: int) -> tuple[str, ...] | None:
+    path = _proc_root() / str(pid) / "stat"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    close = text.rfind(")")
+    if close < 0:
+        return None
+    fields = text[close + 1 :].split()
+    if not fields:
+        return None
+    return tuple(fields)
+
+
+def _state_observation(state: str) -> ProcessObservation:
+    if state == "":
+        return OBSERVATION_UNKNOWN
+    if state[:1] in {"Z", "X"}:
+        return OBSERVATION_EXITED
+    return OBSERVATION_RUNNING
+
+
+def _ps_observe_process(pid: int) -> ProcessObservation:
+    executable = shutil.which("ps")
+    if executable is None:
+        return OBSERVATION_UNKNOWN
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [executable, "-p", str(pid), "-o", "state="],
+            check=False,
+            capture_output=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return _recheck_kill(pid, OBSERVATION_UNKNOWN)
+    if completed.returncode != 0:
+        return _recheck_kill(pid, OBSERVATION_UNKNOWN)
+    text = completed.stdout.decode("utf-8", errors="replace").strip()
+    if text == "":
+        return _recheck_kill(pid, OBSERVATION_UNKNOWN)
+    observation = _state_observation(text)
+    if observation == OBSERVATION_UNKNOWN:
+        return _recheck_kill(pid, OBSERVATION_UNKNOWN)
+    return observation
+
+
+def _recheck_kill(pid: int, fallback: ProcessObservation) -> ProcessObservation:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return OBSERVATION_EXITED
+    except PermissionError:
+        return OBSERVATION_RUNNING
+    except OSError:
+        return OBSERVATION_UNKNOWN
+    return fallback
+
+
+def _proc_group_members(pgid: int) -> frozenset[int] | None:
+    proc = _proc_root()
+    if not proc.is_dir():
+        return None
+    members: set[int] = set()
+    try:
+        entries = list(proc.iterdir())
+    except OSError:
+        return None
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        fields = _proc_stat_fields(int(entry.name))
+        if fields is None or len(fields) < 3:
+            continue
+        try:
+            group = int(fields[2])
+        except ValueError:
+            continue
+        if group == pgid:
+            members.add(int(entry.name))
+    return frozenset(members)
+
+
+def _pgrep_group_members(pgid: int) -> frozenset[int] | None:
+    executable = shutil.which("pgrep")
+    argv: list[str]
+    if executable is not None:
+        argv = [executable, "-g", str(pgid)]
+    else:
+        ps = shutil.which("ps")
+        if ps is None:
+            return None
+        argv = [ps, "-g", str(pgid), "-o", "pid="]
+    try:
+        completed = subprocess.run(  # noqa: S603
+            argv,
+            check=False,
+            capture_output=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    text = completed.stdout.decode("utf-8", errors="replace")
+    if completed.returncode not in {0, 1}:
+        return None
+    if completed.returncode == 1 and text.strip() == "":
+        return frozenset()
+    members: set[int] = set()
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "" or not stripped.isdigit():
+            continue
+        members.add(int(stripped))
+    if completed.returncode == 0 and not members:
+        return None
+    return frozenset(members)
 
 
 def _stop_oci_container(identity: ExecutionIdentity) -> str:

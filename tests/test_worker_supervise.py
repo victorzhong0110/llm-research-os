@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import stat
 import subprocess
@@ -659,13 +660,18 @@ def test_killpg_error_falls_back_to_pid(monkeypatch: pytest.MonkeyPatch) -> None
         process.wait(timeout=3)
 
 
-def test_ps_helper_handles_missing_binary_and_zombie(
+def test_ps_probe_failure_is_unknown_not_exited(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from llm_research_os.workers.supervise import _ps_process_running
+    from llm_research_os.workers.supervise import (
+        OBSERVATION_EXITED,
+        OBSERVATION_UNKNOWN,
+        _ps_observe_process,
+        observe_process,
+    )
 
     monkeypatch.setattr("llm_research_os.workers.supervise.shutil.which", lambda _name: None)
-    assert _ps_process_running(os.getpid()) is True
+    assert _ps_observe_process(os.getpid()) == OBSERVATION_UNKNOWN
 
     class _Ps:
         def __init__(self, returncode: int, stdout: bytes) -> None:
@@ -680,14 +686,215 @@ def test_ps_helper_handles_missing_binary_and_zombie(
         "llm_research_os.workers.supervise.subprocess.run",
         lambda *_a, **_k: _Ps(0, b"Z\n"),
     )
-    assert _ps_process_running(1) is False
+    assert _ps_observe_process(os.getpid()) == OBSERVATION_EXITED
     monkeypatch.setattr(
         "llm_research_os.workers.supervise.subprocess.run",
         lambda *_a, **_k: _Ps(1, b""),
     )
-    assert _ps_process_running(1) is False
+    assert _ps_observe_process(os.getpid()) == OBSERVATION_UNKNOWN
     monkeypatch.setattr(
         "llm_research_os.workers.supervise.subprocess.run",
         lambda *_a, **_k: _Ps(0, b""),
     )
-    assert _ps_process_running(1) is False
+    assert _ps_observe_process(os.getpid()) == OBSERVATION_UNKNOWN
+
+    process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        start_new_session=True,
+    )
+    try:
+        monkeypatch.setattr(
+            "llm_research_os.workers.supervise._procfs_present",
+            lambda: False,
+        )
+        monkeypatch.setattr(
+            "llm_research_os.workers.supervise._proc_stat_fields",
+            lambda _pid: None,
+        )
+
+        def _fail_run(*_a: object, **_k: object) -> None:
+            raise OSError("ps failed")
+
+        monkeypatch.setattr(
+            "llm_research_os.workers.supervise.subprocess.run",
+            _fail_run,
+        )
+        assert process.poll() is None
+        os.kill(process.pid, 0)
+        assert observe_process(process.pid) == OBSERVATION_UNKNOWN
+        assert observe_process(process.pid) != OBSERVATION_EXITED
+        assert process_still_running(process.pid) is False
+    finally:
+        process.kill()
+        process.wait(timeout=3)
+
+
+def test_unreadable_start_token_does_not_kill_live_pid() -> None:
+    process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        start_new_session=True,
+    )
+    try:
+        identity = ExecutionIdentity(
+            lease_id="lease.token.unknown.1",
+            kind=KIND_POSIX,
+            pid=process.pid,
+            pgid=os.getpgid(process.pid),
+            start_token="99",
+            container_id=None,
+            docker_executable=None,
+        )
+        assert observe_and_stop(identity) == UNOBSERVED
+        assert process.poll() is None
+    finally:
+        process.kill()
+        process.wait(timeout=3)
+
+
+def test_observe_and_stop_reaps_orphaned_process_group_child() -> None:
+    from llm_research_os.workers.supervise import (
+        OBSERVATION_EXITED,
+        OBSERVATION_RUNNING,
+        list_process_group,
+        observe_process,
+        observe_process_group,
+    )
+
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import os, time\n"
+            "child = os.fork()\n"
+            "if child == 0:\n"
+            "    time.sleep(60)\n"
+            "    os._exit(0)\n"
+            "os._exit(0)\n",
+        ],
+        start_new_session=True,
+    )
+    assert process.pid is not None
+    pgid = os.getpgid(process.pid)
+    leader = process.pid
+    process.wait(timeout=3)
+    child = _wait_for_group_child(pgid, leader)
+    try:
+        assert observe_process(leader) == OBSERVATION_EXITED
+        assert observe_process(child) == OBSERVATION_RUNNING
+        assert observe_process_group(pgid, leader) == OBSERVATION_RUNNING
+        identity = ExecutionIdentity(
+            lease_id="lease.group.child.1",
+            kind=KIND_POSIX,
+            pid=leader,
+            pgid=pgid,
+            start_token=None,
+            container_id=None,
+            docker_executable=None,
+        )
+        assert observe_and_stop(identity) == OBSERVED_STOP
+        assert observe_process(child) == OBSERVATION_EXITED
+        assert observe_process_group(pgid, leader) == OBSERVATION_EXITED
+    finally:
+        listed = list_process_group(pgid)
+        if listed:
+            for member in listed:
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.kill(member, 9)
+
+
+def _write_proc_stat(proc_root: Path, pid: int, state: str, pgrp: int) -> None:
+    directory = proc_root / str(pid)
+    directory.mkdir(parents=True, exist_ok=True)
+    rest = [state, "1", str(pgrp), *["0"] * 20]
+    (directory / "stat").write_text(f"{pid} (python) {' '.join(rest)}\n", encoding="utf-8")
+
+
+def test_procfs_observation_and_group_listing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.workers.supervise import (
+        OBSERVATION_EXITED,
+        OBSERVATION_RUNNING,
+        OBSERVATION_UNKNOWN,
+        list_process_group,
+        observe_process,
+        observe_process_group,
+    )
+
+    proc_root = tmp_path / "proc"
+    monkeypatch.setattr("llm_research_os.workers.supervise._proc_root", lambda: proc_root)
+    assert observe_process(os.getpid()) in {OBSERVATION_RUNNING, OBSERVATION_UNKNOWN}
+
+    _write_proc_stat(proc_root, 4242, "S", 4242)
+    _write_proc_stat(proc_root, 4243, "S", 4242)
+    _write_proc_stat(proc_root, 7, "S", 1)
+    members = list_process_group(4242)
+    assert members == frozenset({4242, 4243})
+
+    def _kill(pid: int, _sig: int) -> None:
+        if pid not in {8, 4242, 4243}:
+            raise ProcessLookupError
+
+    monkeypatch.setattr("llm_research_os.workers.supervise.os.kill", _kill)
+    assert observe_process(4242) == OBSERVATION_RUNNING
+    _write_proc_stat(proc_root, 4242, "Z", 4242)
+    assert observe_process(4242) == OBSERVATION_EXITED
+    (proc_root / "8").mkdir()
+    assert observe_process(8) == OBSERVATION_UNKNOWN
+
+    monkeypatch.setattr("llm_research_os.workers.supervise.os.killpg", lambda _pgid, _sig: None)
+    assert observe_process_group(4242, 4242) == OBSERVATION_RUNNING
+
+
+def test_pgrep_group_probe_errors_are_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    from llm_research_os.workers.supervise import _pgrep_group_members
+
+    class _Done:
+        def __init__(self, returncode: int, stdout: bytes) -> None:
+            self.returncode = returncode
+            self.stdout = stdout
+
+    monkeypatch.setattr("llm_research_os.workers.supervise.shutil.which", lambda _name: None)
+    assert _pgrep_group_members(1) is None
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.shutil.which",
+        lambda name: "/usr/bin/pgrep" if name == "pgrep" else None,
+    )
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.subprocess.run",
+        lambda *_a, **_k: _Done(2, b""),
+    )
+    assert _pgrep_group_members(1) is None
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.subprocess.run",
+        lambda *_a, **_k: _Done(1, b""),
+    )
+    assert _pgrep_group_members(1) == frozenset()
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.subprocess.run",
+        lambda *_a, **_k: _Done(0, b"10\n11\n"),
+    )
+    assert _pgrep_group_members(1) == frozenset({10, 11})
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.subprocess.run",
+        lambda *_a, **_k: _Done(0, b""),
+    )
+    assert _pgrep_group_members(1) is None
+
+
+def _wait_for_group_child(pgid: int, leader: int) -> int:
+    from llm_research_os.workers.supervise import (
+        OBSERVATION_RUNNING,
+        list_process_group,
+        observe_process,
+    )
+
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        members = list_process_group(pgid)
+        if members:
+            for member in members:
+                if member != leader and observe_process(member) == OBSERVATION_RUNNING:
+                    return member
+        time.sleep(0.05)
+    pytest.fail("process group child did not appear")

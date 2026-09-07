@@ -107,6 +107,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - GPU experiment sheet: AutoDL RTX 4090, 45 minute wall, proposed ¥20 cap,
   CUDA image method, instance 关机 ≠ container stop; `gpu: not-run`
   ([ADR-0053](docs/adr/0053-gpu-experiment-sheet.md)).
+- Process observation is running/exited/unknown; a failed `ps` or `/proc`
+  probe is not exited; stop waits for the process group
+  ([ADR-0054](docs/adr/0054-process-observation-tristate.md)).
 - Remote Worker pack: TLS SAN bind policy, `researchos workers pack`,
   CA-only Worker copy; STATUS is `pending-live`. A loopback URL is not a
   cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).

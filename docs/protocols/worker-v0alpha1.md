@@ -147,7 +147,11 @@ MUST NOT append facts; they MUST be polled during execute so a cancel
 request can be observed. A Worker records a 0600 execution identity
 (pid/pgid plus Linux starttime, or OCI container id from `--cidfile`).
 `docker run` MUST NOT use `--rm` before inspect. PID reuse MUST NOT
-stop another task. After a successful brick and artifact upload, the
+stop another task. Process observation is `running`, `exited`, or
+`unknown` (ADR-0054). A failed `/proc` or `ps` probe is unknown, not
+exited. Stop confirmation waits for the process group, not only the
+leader. A live pid whose recorded start token cannot be re-read MUST
+NOT be signaled. After a successful brick and artifact upload, the
 Worker writes a pending complete receipt. Disconnect before
 `work.completed` retries that complete and MUST NOT re-execute. Unknown or lost work, including
 `execution-unobserved`, MUST NOT be marked success or auto-rerun.
