@@ -185,6 +185,23 @@ container; the receipt is `gpu: not-run`. Persistent `/work/output` files
 are collected by `researchos training collect` (ADR-0057). This is not a
 CUDA result.
 
+## 4d. macOS/MPS training execution profile
+
+`runtime: macos-mps-process` with
+`imageMediaType: researchos.mps-swift-env/v0alpha1` is the Apple Silicon
+profile (ADR-0058). It is not the CPU or GPU OCI shape.
+`execute.mps` is required. Isolation is a POSIX process group, an
+environment allowlist, a closed workspace cwd, offline Hub flags,
+`TMPDIR=/tmp`, and a 1800 s wall. The profile MUST NOT claim namespaces,
+cgroup, seccomp, OCI mounts, or NativeProcessRuntime. `privileged`,
+`gpus`, and `mounts` MUST fail closed. A probe that is not `mps` MUST fail
+`mps-unavailable`. The live environment artifact MUST include
+`sitecustomizeDigest` so a shim change is a new `imageDigest`.
+`researchos training plan` prints argv with `executed: false`.
+`researchos m2 mps` MUST go through authorization, lease, execute, collect,
+and `work.completed`. Collect `--profile mps` allows 256 MiB; GPU collect
+stays 1 MiB. This is not a CUDA result.
+
 ## 5. Conformance
 
 ```bash
@@ -192,9 +209,11 @@ uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
   tests/test_worker_recovery.py tests/test_worker_supervise.py \
   tests/test_worker_live_faults.py tests/test_worker_remote_pack.py \
-  tests/test_worker_gpu.py tests/test_training_checkpoint.py
+  tests/test_worker_gpu.py tests/test_training_checkpoint.py \
+  tests/test_worker_mps.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
+uv run researchos m2 mps examples/m2-mps-checkpoint /tmp/m2-mps.db --format json
 ```
 
 The OCI command fails closed (`oci-runtime-missing` or `oci-image-missing`)

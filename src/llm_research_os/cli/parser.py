@@ -717,6 +717,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="local artifact root; created if missing",
     )
     add_event_format_argument(m2_oci)
+    m2_mps = m2_commands.add_parser(
+        "mps",
+        help="record one macOS/MPS Worker training loop; process-group isolation, not OCI",
+    )
+    m2_mps.add_argument(
+        "corpus",
+        type=Path,
+        help="MPS checkpoint corpus directory",
+    )
+    m2_mps.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_mps.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_mps)
     m2_bench = m2_commands.add_parser(
         "bench",
         help="measure 10k or 100k EventStore append/replay/claim/report; not GPU",
@@ -785,7 +806,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     training_overlay.add_argument(
         "--checkpoint",
-        help="container path under /work/output for adapter or full resume",
+        help="resume path under /work/output or output/ depending on the plan kind",
     )
     add_event_format_argument(training_overlay)
     training_snapshot = training_commands.add_parser(
@@ -807,6 +828,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--resume-from",
         type=Path,
         help="prior GpuCheckpointCollectReceipt JSON for interrupt resume",
+    )
+    training_collect.add_argument(
+        "--profile",
+        choices=("gpu", "mps"),
+        default="gpu",
+        help="gpu keeps the 1 MiB CAS bound; mps allows real LoRA checkpoint bytes",
     )
     add_event_format_argument(training_collect)
     return parser

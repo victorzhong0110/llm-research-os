@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "PlanAuthorizationRequest",
+  "specDigest": "jcs-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "registryDigest": "jcs-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "planDigest": "jcs-sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "grantedCapabilities": [
+    "execute.mps"
+  ],
+  "grantedPermissions": [],
+  "requirementDecisions": []
+}

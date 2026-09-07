@@ -175,10 +175,13 @@ from llm_research_os.spec.schema import schema_matches as research_schema_matche
 from llm_research_os.spec.schema import write_schema as write_research_schema
 from llm_research_os.training.schema import (
     canonical_gpu_data_checkpoint_schema,
+    canonical_mac_mps_training_plan_schema,
     canonical_training_backend_plan_schema,
     gpu_data_checkpoint_schema_matches,
+    mac_mps_training_plan_schema_matches,
     training_backend_plan_schema_matches,
     write_gpu_data_checkpoint_schema,
+    write_mac_mps_training_plan_schema,
     write_training_backend_plan_schema,
 )
 from llm_research_os.workers.schema import (
@@ -421,6 +424,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         gpu_data_checkpoint_schema_matches,
         write_gpu_data_checkpoint_schema,
         "schemas/gpu-data-checkpoint/v0alpha1.schema.json",
+    ),
+    "mac-mps-training-plan": _contract(
+        canonical_mac_mps_training_plan_schema,
+        mac_mps_training_plan_schema_matches,
+        write_mac_mps_training_plan_schema,
+        "schemas/mac-mps-training-plan/v0alpha1.schema.json",
     ),
 }
 

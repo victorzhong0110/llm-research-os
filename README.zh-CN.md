@@ -24,10 +24,10 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、SimulatedRuntime 对本机 `{eventId, sequence}` 的消费、显式模拟 Run /
 取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 / M1 检查点 CLI，不可启动的 NativeProcessPreflight，以及回环 Worker 注册 / HMAC 授权 / `researchos m2 prove`（宿主 Python 助手不是 NativeProcessRuntime，也不是内核沙箱）与失败关闭的 CPU OCI 适配器和 `researchos m2 bench`（1 万/10 万事件耗时，不是 SLA）。
 
-当前仍不执行任何训练任务或真实 GPU 工作负载。授权事件、预检报告、lineage 重建与
+当前可在 Apple Silicon 上通过 `researchos m2 mps` 跑封闭 LoRA（ADR-0058）；仍不执行 CUDA/OCI 训练或付费 GPU 工作负载。授权事件、预检报告、lineage 重建与
 `decisionDigest` 都不是签名回执或启动许可。SimulatedRuntime 会消费本机 EventStore 上
 一条 `{eventId, sequence}` 引用（ADR-0042）；lineage 仍为 `not-consumed`。取消请求 CLI 仍不发送进程信号；
-观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。远程 Worker 传输是 ADR-0021：验收包标 `pending-live`，回环 URL 不是跨机器证明。CPU OCI 是 ADR-0045，不是 GPU 实测。指定的 Linux OCI CI（ADR-0049）不得靠 skip 过关；无 docker 的普通开发环境可以跳过 `oci_live`。真实 OCI 故障验收是 ADR-0055：取消、超时、Worker 被杀、控制面重启与 inspect 失败必须断言容器状态；inspect 失败是 unknown。Worker 停止/故障恢复是 ADR-0046。观察到的执行身份与取消监督是 ADR-0050：`cancel-observed` 必须确认进程或容器已退出。真实 CPU 故障验收是 ADR-0051：`plane.fail` 不是观察到的停止。EventStore 性能基线是 ADR-0047。Worker/RunControl 使用证据是 ADR-0052：`m2 usage` 不是 `EventStore.append` 填充。GPU 实验单是 ADR-0053：已点名 AutoDL 4090 与 ¥20 上限，未执行、未花费。进程观察是 ADR-0054：running/exited/unknown，探测失败不得推断已退出。独立 GPU 执行 profile 是 ADR-0056：`gpu-oci-container` / `execute.gpu`，`training bind` 不启动容器，`gpu-not-run`。数据快照与 checkpoint 收集是 ADR-0057：Hugging Face 模型 revision 已钉死，ModelScope 数据集 git SHA 为 `pending-live`，`training overlay` / `collect` 不是 CUDA 恢复成功。钉死的 ms-swift 解析/计划适配器是 ADR-0048，不是 GPU 实测。GPU 执行链验收清单见 [m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)；不关闭 Issue #38，不宣称 CUDA 训练成功。
+观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。远程 Worker 传输是 ADR-0021：验收包标 `pending-live`，回环 URL 不是跨机器证明。CPU OCI 是 ADR-0045，不是 GPU 实测。指定的 Linux OCI CI（ADR-0049）不得靠 skip 过关；无 docker 的普通开发环境可以跳过 `oci_live`。真实 OCI 故障验收是 ADR-0055：取消、超时、Worker 被杀、控制面重启与 inspect 失败必须断言容器状态；inspect 失败是 unknown。Worker 停止/故障恢复是 ADR-0046。观察到的执行身份与取消监督是 ADR-0050：`cancel-observed` 必须确认进程或容器已退出。真实 CPU 故障验收是 ADR-0051：`plane.fail` 不是观察到的停止。EventStore 性能基线是 ADR-0047。Worker/RunControl 使用证据是 ADR-0052：`m2 usage` 不是 `EventStore.append` 填充。GPU 实验单是 ADR-0053：已点名 AutoDL 4090 与 ¥20 上限，未执行、未花费。进程观察是 ADR-0054：running/exited/unknown，探测失败不得推断已退出。独立 GPU 执行 profile 是 ADR-0056：`gpu-oci-container` / `execute.gpu`，`training bind` 不启动容器，`gpu-not-run`。数据快照与 checkpoint 收集是 ADR-0057：Hugging Face 模型 revision 已钉死，ModelScope 数据集 git SHA 为 `pending-live`，`training overlay` / `collect` 不是 CUDA 恢复成功。钉死的 ms-swift 解析/计划适配器是 ADR-0048，不是 GPU 实测。GPU 执行链验收清单见 [m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)；不关闭 Issue #38，不宣称 CUDA 训练成功。独立 macOS/MPS 训练 profile 是 ADR-0058：`macos-mps-process` / `execute.mps`，隔离是进程组而非 OCI；三列矩阵见 [m2-mps-acceptance.md](docs/guides/m2-mps-acceptance.md)（Mac/MPS 实测、CUDA/OCI pending-live、两机 pending-live）。
 
 ## M0 目标
 
@@ -98,6 +98,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [M2 Worker CLI](docs/guides/m2-worker.md)
 - [M2 CPU OCI](docs/guides/m2-oci.md)
 - [M2 GPU 切片（仅方向）](docs/guides/m2-gpu-slice.md)
+- [M2 Mac/MPS 验收](docs/guides/m2-mps-acceptance.md)
 - [首次实验](docs/guides/first-experiment.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
@@ -309,8 +310,18 @@ uv run researchos m2 prove \
   --format json
 ```
 
+Mac/MPS Worker 闭环（进程组隔离，不是 OCI）：
+
+```bash
+uv run researchos m2 mps \
+  examples/m2-mps-checkpoint \
+  research-mps.db \
+  --format json
+```
+
 见 [M2 Worker CLI](docs/guides/m2-worker.md)、
 [M2 CPU OCI](docs/guides/m2-oci.md)、
+[M2 Mac/MPS 验收](docs/guides/m2-mps-acceptance.md)、
 [M2 性能基线](docs/guides/m2-perf.md) 与
 [首次实验](docs/guides/first-experiment.md)。
 
@@ -410,6 +421,7 @@ OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `Secret
 已记录的项目 CNY 上限，以及与该上限一致的请求 cap。派发后结果不确定时保留预留。
 `researchos m1 prove` 从语料向空库记录一条研究链；它不会关闭 Issue #38。
 `researchos m2 prove` 从语料记录一条回环 Worker CPU 闭环；它不花费 GPU，不是内核沙箱，也不会关闭 Issue #38。
+`researchos m2 mps` 记录一条 macOS/MPS Worker 训练闭环（`execute.mps`，进程组隔离）。普通 pytest 使用 stub，不要求 Apple GPU。真实 extras 解释器必须探测 MPS，CPU fallback 失败关闭。它不继承 OCI 隔离，不花费云 GPU，也不关闭 Issue #38。
 `researchos m2 oci` 在本机已有按摘要钉死的镜像时记录 CPU OCI 闭环；否则失败关闭，不得表述为容器实测成功。普通环境可以跳过 `oci_live`；GitHub 作业 `Linux OCI integration` 跑全部 `-m oci_live`（成功积木与故障），必须失败关闭。
 `researchos m2 bench` 记录 1 万或 10 万事件的 EventStore 耗时；它不是 SLA，也不花费 GPU。`researchos m2 usage` 走 Worker/RunControl 路径，不是这次填充。
 `researchos training plan` 打印钉死的 `swift sft` argv，且不得执行；它不是真实训练。

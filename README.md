@@ -93,7 +93,10 @@ image.
 `researchos m2 bench` records 10k/100k EventStore timings (not SLA).
 `researchos m2 usage` measures the Worker/RunControl path (not that fill).
 
-The tree still does not execute training jobs or real GPU workloads. Authorization
+The tree can run a closed Apple Silicon LoRA through
+`researchos m2 mps` when extras `ms-swift==4.5.2` is installed
+([ADR-0058](docs/adr/0058-macos-mps-training-profile.md)). It still does
+not execute CUDA/OCI training or paid GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
 receipts or launch permits. SimulatedRuntime does consume one local
 `{eventId, sequence}` citation of the audit fact on this EventStore (ADR-0042);
@@ -117,7 +120,11 @@ Data snapshot and checkpoint collect is ADR-0057 (Hub revision, pending-live
 dataset SHA, overlay resume; not a CUDA result).
 GPU execution-chain acceptance is
 [docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)
-(not M2 close, not a CUDA result).
+(not M2 close, not a CUDA result). Independent macOS/MPS training is
+ADR-0058 (`macos-mps-process` / `execute.mps`; process-group isolation,
+not OCI). The three-column matrix is
+[docs/guides/m2-mps-acceptance.md](docs/guides/m2-mps-acceptance.md):
+Mac/MPS live, CUDA/OCI pending-live, two-host pending-live.
 
 ## M0 goals
 
@@ -193,6 +200,7 @@ acceptance checklist of that milestone.
 - [M2 Worker CLI](docs/guides/m2-worker.md)
 - [M2 CPU OCI](docs/guides/m2-oci.md)
 - [M2 GPU slice (direction only)](docs/guides/m2-gpu-slice.md)
+- [M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md)
 - [First experiment](docs/guides/first-experiment.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
@@ -433,8 +441,18 @@ uv run researchos m2 prove \
   --format json
 ```
 
+Mac/MPS Worker loop (process-group isolation, not OCI):
+
+```bash
+uv run researchos m2 mps \
+  examples/m2-mps-checkpoint \
+  research-mps.db \
+  --format json
+```
+
 See [M2 Worker CLI](docs/guides/m2-worker.md),
 [M2 CPU OCI](docs/guides/m2-oci.md),
+[M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md),
 [M2 performance baseline](docs/guides/m2-perf.md), and
 [first experiment](docs/guides/first-experiment.md).
 
@@ -559,6 +577,11 @@ matches that limit. Uncertain transport after dispatch keeps the reservation.
 does not close Issue #38.
 `researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
 does not spend GPU and does not close Issue #38.
+`researchos m2 mps` records one macOS/MPS Worker training loop
+(`execute.mps`, process-group isolation). Stub pytest does not require
+Apple GPU. A live extras interpreter must probe MPS and fail closed on
+CPU. It does not inherit OCI isolation, does not spend cloud GPU, and
+does not close Issue #38.
 `researchos m2 oci` records the digest-pinned OCI CPU loop when a live
 engine has the planned image; otherwise it fails closed and MUST NOT be
 described as a successful container run. Ordinary pytest may skip

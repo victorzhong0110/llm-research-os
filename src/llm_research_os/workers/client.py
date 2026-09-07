@@ -18,9 +18,11 @@ from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
 from llm_research_os.workers.binding import json_object, require_execution_digest
 from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.models import (
+    IMAGE_MEDIA_MPS_ENV,
     IMAGE_MEDIA_OCI_IMAGE,
     IMAGE_MEDIA_PYTHON_BRICK,
     WORKER_RUNTIME_GPU_OCI,
+    WORKER_RUNTIME_MACOS_MPS,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -58,6 +60,10 @@ class WorkerClient:
     retries: int = _DEFAULT_RETRIES
     identity_dir: Path | None = None
     timeout_seconds: int = MAX_SANDBOX_WALL_SECONDS
+    mps_data_dir: Path | None = None
+    mps_model_dir: Path | None = None
+    mps_output_dir: Path | None = None
+    mps_interpreter: Path | None = None
 
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
@@ -232,6 +238,28 @@ class WorkerClient:
                 config=config,
                 inputs=inputs,
                 advertised_accelerators=("cuda",),
+            )
+        elif runtime == WORKER_RUNTIME_MACOS_MPS and media == IMAGE_MEDIA_MPS_ENV:
+            plan_artifact = inputs.get("planArtifactDigest")
+            if type(plan_artifact) is not str:
+                raise WorkerError("MPS poll omitted planArtifactDigest", code="http-invalid")
+            self.fetch_image(artifacts, image_digest)
+            self.fetch_image(artifacts, plan_artifact)
+            mps = importlib.import_module("llm_research_os.workers.mps")
+            result = mps.execute_mps_training(
+                artifacts,
+                image_digest,
+                config=config,
+                inputs=inputs,
+                advertised_accelerators=("mps",),
+                data_dir=self.mps_data_dir,
+                model_dir=self.mps_model_dir,
+                output_dir=self.mps_output_dir,
+                interpreter=self.mps_interpreter,
+                identity_dir=self.identity_dir,
+                lease_id=lease_id,
+                should_cancel=_cancel_requested,
+                timeout_seconds=self.timeout_seconds,
             )
         else:
             raise WorkerError("poll runtime is not supported", code="runtime-mismatch")

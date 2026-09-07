@@ -135,7 +135,11 @@ network defense are not M1-delivered.
 - Two-host Worker (`secondHost` named)
 - ModelScope dataset git SHA (now `pending-live`)
 - CUDA image `sha256:` after build
-- CAS put bound for real LoRA files
+- CAS put bound for real LoRA files on the **GPU** profile (MPS collect is 256 MiB)
 - NativeProcessRuntime (not this stage)
+
+Mac/MPS live is a **separate** row:
+[m2-mps-acceptance.md](m2-mps-acceptance.md). Do not copy a Mac pass
+onto CUDA/OCI or two-host.
 
 Coverage percent and test counts are not substitutes for the rows above.

@@ -129,6 +129,15 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - GPU execution-chain acceptance checklist: PR stack, stop/resume/artifact
   matrix, Linux OCI live evidence, pending-live two-host, unpaid experiment
   sheet ([docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)).
+- Independent macOS/MPS training profile: `macos-mps-process` /
+  `execute.mps`, closed `MacMpsTrainingPlan`, process-group isolation,
+  `researchos m2 mps` Worker loop, 256 MiB checkpoint collect
+  ([ADR-0058](docs/adr/0058-macos-mps-training-profile.md)). Live Apple M4
+  evidence: [`examples/m2-mps-checkpoint/live-evidence.json`](examples/m2-mps-checkpoint/live-evidence.json)
+  (train / cancel-observed / full resume 10→20 with optimizer and scheduler
+  byte change / CAS verify). Environment artifact includes
+  `sitecustomizeDigest`. Worker RSS is not MPS allocation. Not CUDA, not
+  NativeProcessRuntime, not Issue #38 close.
 
 ### Changed
 

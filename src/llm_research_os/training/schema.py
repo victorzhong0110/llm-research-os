@@ -12,7 +12,9 @@ from llm_research_os.training.checkpoint import (
     GpuDataCheckpointBinding,
 )
 from llm_research_os.training.requests import (
+    MAC_MPS_TRAINING_PLAN_SCHEMA_ID,
     TRAINING_BACKEND_PLAN_SCHEMA_ID,
+    MacMpsTrainingPlan,
     TrainingBackendPlan,
 )
 
@@ -71,5 +73,32 @@ def gpu_data_checkpoint_schema_matches(path: str | Path) -> bool:
     candidate = Path(path)
     try:
         return candidate.read_text(encoding="utf-8") == canonical_gpu_data_checkpoint_schema()
+    except OSError:
+        return False
+
+
+def build_mac_mps_training_plan_schema() -> dict[str, Any]:
+    generated = MacMpsTrainingPlan.model_json_schema(
+        by_alias=True,
+        mode="validation",
+        ref_template="#/$defs/{model}",
+    )
+    return {"$schema": SCHEMA_DIALECT, "$id": MAC_MPS_TRAINING_PLAN_SCHEMA_ID, **generated}
+
+
+def canonical_mac_mps_training_plan_schema() -> str:
+    return _canonical(build_mac_mps_training_plan_schema())
+
+
+def write_mac_mps_training_plan_schema(path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(canonical_mac_mps_training_plan_schema(), encoding="utf-8")
+
+
+def mac_mps_training_plan_schema_matches(path: str | Path) -> bool:
+    candidate = Path(path)
+    try:
+        return candidate.read_text(encoding="utf-8") == canonical_mac_mps_training_plan_schema()
     except OSError:
         return False

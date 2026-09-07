@@ -60,6 +60,7 @@ addopts = "-ra --strict-markers"
 testpaths = ["tests"]
 markers = [
   "oci_live: live docker engine; designated Linux OCI CI must fail instead of skip",
+  "mps_live: live Apple MPS + extras/ms-swift-mps; skip unless RESEARCHOS_MPS_REQUIRED=1",
 ]
 
 [tool.coverage.run]

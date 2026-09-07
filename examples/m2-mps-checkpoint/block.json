@@ -1,0 +1,121 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "Block",
+  "metadata": {
+    "id": "researchos.macos-mps-ms-swift",
+    "version": "0.1.0",
+    "title": "macOS MPS ms-swift native process",
+    "description": "Corpus declaration for a digest-pinned ms-swift environment running the closed Mac/MPS plan. Isolation is a process group, not OCI."
+  },
+  "runtime": {
+    "type": "python",
+    "entrypoint": "researchos.macos-mps-ms-swift"
+  },
+  "inputs": [],
+  "outputs": [],
+  "configSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "config",
+      "imageDigest",
+      "imageMediaType",
+      "inputs",
+      "runtime"
+    ],
+    "properties": {
+      "config": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accDevice",
+          "commandDigest",
+          "isolation",
+          "network"
+        ],
+        "properties": {
+          "accDevice": {
+            "const": "mps"
+          },
+          "checkpoint": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "commandDigest": {
+            "type": "string",
+            "minLength": 75,
+            "maxLength": 75
+          },
+          "isolation": {
+            "const": "process-group"
+          },
+          "network": {
+            "const": "denied"
+          },
+          "resume": {
+            "enum": ["none", "full-checkpoint", "adapter-only"]
+          },
+          "wallTimeSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800
+          }
+        }
+      },
+      "imageDigest": {
+        "maxLength": 71,
+        "minLength": 71,
+        "type": "string"
+      },
+      "imageMediaType": {
+        "const": "researchos.mps-swift-env/v0alpha1"
+      },
+      "inputs": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "datasetDigest",
+          "modelDigest",
+          "planArtifactDigest",
+          "planDigest"
+        ],
+        "properties": {
+          "datasetDigest": {
+            "maxLength": 75,
+            "minLength": 75,
+            "type": "string"
+          },
+          "modelDigest": {
+            "maxLength": 75,
+            "minLength": 75,
+            "type": "string"
+          },
+          "planArtifactDigest": {
+            "maxLength": 71,
+            "minLength": 71,
+            "type": "string"
+          },
+          "planDigest": {
+            "maxLength": 75,
+            "minLength": 75,
+            "type": "string"
+          }
+        }
+      },
+      "runtime": {
+        "const": "macos-mps-process"
+      }
+    }
+  },
+  "capabilities": [
+    "execute.mps"
+  ],
+  "permissions": [],
+  "telemetry": [],
+  "reproducibility": {
+    "deterministicWhenSeeded": true
+  },
+  "extensions": {}
+}

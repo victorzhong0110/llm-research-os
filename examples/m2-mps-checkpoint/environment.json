@@ -1,0 +1,9 @@
+{
+  "kind": "MacMpsEnvironment",
+  "backendId": "ms-swift",
+  "backendVersion": "4.5.2",
+  "python": "stub",
+  "torch": "stub",
+  "accelerator": "mps",
+  "stub": true
+}

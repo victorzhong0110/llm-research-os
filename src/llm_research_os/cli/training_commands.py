@@ -10,8 +10,10 @@ from pydantic import ValidationError
 
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.cli.output import dumps_json, print_error, safe_text
-from llm_research_os.spec.io import SpecLoadError
+from llm_research_os.spec.io import SpecLoadError, load_document
 from llm_research_os.training.checkpoint import (
+    MAX_MPS_CHECKPOINT_FILES,
+    MAX_MPS_CHECKPOINT_UPLOAD_BYTES,
     collect_output_artifacts,
     inspect_snapshot,
     load_collect_manifest,
@@ -24,8 +26,9 @@ from llm_research_os.training.gpu_bind import (
     plan_document_digest,
     resume_loads,
 )
+from llm_research_os.training.mps_bind import bind_ms_swift_mps_command, plan_ms_swift_mps
 from llm_research_os.training.ms_swift import plan_ms_swift
-from llm_research_os.training.requests import load_training_backend_plan
+from llm_research_os.training.requests import load_mac_mps_training_plan, load_training_backend_plan
 from llm_research_os.workers.errors import WorkerSandboxError
 from llm_research_os.workers.gpu import (
     DEFAULT_GPU_CPU_MILLIS,
@@ -68,7 +71,11 @@ def run_training(args: argparse.Namespace) -> int:
 
 def _plan(request_path: Path, output_format: str) -> int:
     try:
-        receipt = plan_ms_swift(load_training_backend_plan(request_path))
+        document = load_document(request_path)
+        if type(document) is dict and document.get("kind") == "MacMpsTrainingPlan":
+            receipt = plan_ms_swift_mps(load_mac_mps_training_plan(request_path))
+        else:
+            receipt = plan_ms_swift(load_training_backend_plan(request_path))
     except TrainingBackendRequestError as exc:
         print_error(exc, output_format)
         return 2
@@ -162,12 +169,19 @@ def _bind(args: argparse.Namespace) -> int:
 
 def _overlay(args: argparse.Namespace) -> int:
     try:
-        plan = load_training_backend_plan(args.request)
-        command_argv, command = bind_ms_swift_gpu_command(
-            plan,
-            resume_mode=args.resume,
-            checkpoint_path=args.checkpoint,
-        )
+        document = load_document(args.request)
+        if type(document) is dict and document.get("kind") == "MacMpsTrainingPlan":
+            command_argv, command = bind_ms_swift_mps_command(
+                load_mac_mps_training_plan(args.request),
+                resume_mode=args.resume,
+                checkpoint_path=args.checkpoint,
+            )
+        else:
+            command_argv, command = bind_ms_swift_gpu_command(
+                load_training_backend_plan(args.request),
+                resume_mode=args.resume,
+                checkpoint_path=args.checkpoint,
+            )
     except TrainingBackendRequestError as exc:
         print_error(exc, args.format)
         return 2
@@ -234,7 +248,17 @@ def _collect(args: argparse.Namespace) -> int:
         artifacts_root.mkdir(parents=True, exist_ok=True)
         artifacts = LocalArtifactStore(artifacts_root)
         prior = load_collect_manifest(args.resume_from) if args.resume_from is not None else None
-        receipt = collect_output_artifacts(args.output, artifacts, prior=prior)
+        if args.profile == "mps":
+            receipt = collect_output_artifacts(
+                args.output,
+                artifacts,
+                prior=prior,
+                max_files=MAX_MPS_CHECKPOINT_FILES,
+                max_file_bytes=MAX_MPS_CHECKPOINT_UPLOAD_BYTES,
+                max_upload_bytes=MAX_MPS_CHECKPOINT_UPLOAD_BYTES,
+            )
+        else:
+            receipt = collect_output_artifacts(args.output, artifacts, prior=prior)
     except TrainingBackendRequestError as exc:
         print_error(exc, args.format)
         return 2

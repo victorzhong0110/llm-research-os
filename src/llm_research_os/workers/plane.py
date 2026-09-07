@@ -40,6 +40,7 @@ from llm_research_os.workers.errors import WorkerCallError, WorkerGrantError
 from llm_research_os.workers.models import (
     IMAGE_MEDIA_PYTHON_BRICK,
     WORKER_RUNTIME_GPU_OCI,
+    WORKER_RUNTIME_MACOS_MPS,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -841,6 +842,14 @@ def _cas_fetch_digest(image_digest: str, queued: QueuedWork | None) -> str:
         if type(artifact) is not str:
             raise WorkerCallError(
                 "GPU work is missing the CAS training-plan digest",
+                code="execution-binding-mismatch",
+            )
+        return artifact
+    if queued.runtime == WORKER_RUNTIME_MACOS_MPS:
+        artifact = queued.inputs.get("planArtifactDigest")
+        if type(artifact) is not str:
+            raise WorkerCallError(
+                "MPS work is missing the CAS training-plan digest",
                 code="execution-binding-mismatch",
             )
         return artifact

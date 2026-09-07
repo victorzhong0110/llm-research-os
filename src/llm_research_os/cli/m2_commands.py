@@ -49,6 +49,13 @@ def run_m2(args: argparse.Namespace) -> int:
         if artifacts is None:
             artifacts = args.database.with_name(f"{args.database.stem}-artifacts")
         return _prove(prove_oci_loop, args.corpus, args.database, artifacts, args.format)
+    if args.m2_command == "mps":
+        from llm_research_os.m2.mps_prove import prove_mps_loop
+
+        artifacts = args.artifacts
+        if artifacts is None:
+            artifacts = args.database.with_name(f"{args.database.stem}-artifacts")
+        return _prove(prove_mps_loop, args.corpus, args.database, artifacts, args.format)
     if args.m2_command == "bench":
         return _bench(args.database, args.events, args.format)
     if args.m2_command == "usage":

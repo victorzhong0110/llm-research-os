@@ -51,6 +51,7 @@ def apply_resume_overlay(
     *,
     mode: ResumeMode = "none",
     checkpoint_path: str | None = None,
+    output_prefix: str = _OUTPUT_MOUNT,
 ) -> tuple[str, ...]:
     """Append resume flags. This is a new execution object, not a silent rerun."""
 
@@ -71,7 +72,8 @@ def apply_resume_overlay(
                 code="resume-overlay-conflict",
             )
         return argv
-    if checkpoint_path is None or not checkpoint_path.startswith(f"{_OUTPUT_MOUNT}/"):
+    prefix = f"{output_prefix}/"
+    if checkpoint_path is None or not checkpoint_path.startswith(prefix):
         raise TrainingBackendError(
             "resume checkpoint is not under the authorized output mount",
             code="gpu-mount-forbidden",

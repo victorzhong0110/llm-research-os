@@ -40,6 +40,9 @@ PINNED_DATASET_ID: Literal["AI-ModelScope/alpaca-gpt4-data-en"] = (
 )
 MAX_CHECKPOINT_FILES = 32
 MAX_CHECKPOINT_UPLOAD_BYTES = MAX_PUT_BYTES
+MAX_MPS_CHECKPOINT_FILES = 64
+MAX_MPS_CHECKPOINT_UPLOAD_BYTES = 268_435_456
+MAX_MPS_SNAPSHOT_FILE_BYTES = 8_589_934_592
 
 
 class GpuModelSnapshot(EventDocumentModel):
@@ -186,7 +189,12 @@ def require_binding_matches_plan(
         )
 
 
-def list_tree_files(root: Path) -> tuple[TreeFile, ...]:
+def list_tree_files(
+    root: Path,
+    *,
+    max_files: int = MAX_CHECKPOINT_FILES,
+    max_file_bytes: int = MAX_PUT_BYTES,
+) -> tuple[TreeFile, ...]:
     if not root.exists():
         return ()
     if root.is_symlink() or not root.is_dir():
@@ -205,25 +213,14 @@ def list_tree_files(root: Path) -> tuple[TreeFile, ...]:
                 "snapshot tree contains a non-regular file",
                 code="snapshot-path-invalid",
             )
-        if len(found) >= MAX_CHECKPOINT_FILES:
+        if len(found) >= max_files:
             raise TrainingBackendError(
                 "snapshot tree exceeds the closed file bound",
                 code="gpu-resource-limit",
             )
-        payload = path.read_bytes()
-        if len(payload) > MAX_PUT_BYTES:
-            raise TrainingBackendError(
-                "snapshot file exceeds the closed CAS put bound",
-                code="gpu-resource-limit",
-            )
+        digest, size = _hash_regular_file(path, max_file_bytes=max_file_bytes)
         relative = path.relative_to(root).as_posix()
-        found.append(
-            TreeFile(
-                path=relative,
-                digest="sha256:" + hashlib.sha256(payload).hexdigest(),
-                size=len(payload),
-            )
-        )
+        found.append(TreeFile(path=relative, digest=digest, size=size))
     return tuple(found)
 
 
@@ -287,16 +284,19 @@ def collect_output_artifacts(
     artifacts: LocalArtifactStore,
     *,
     prior: Mapping[str, str] | None = None,
+    max_files: int = MAX_CHECKPOINT_FILES,
+    max_file_bytes: int = MAX_PUT_BYTES,
+    max_upload_bytes: int = MAX_CHECKPOINT_UPLOAD_BYTES,
 ) -> CollectReceipt:
     """Put checkpoint files into CAS. Output is a bind mount, not tmpfs."""
 
-    files = list_tree_files(output_dir)
+    files = list_tree_files(output_dir, max_files=max_files, max_file_bytes=max_file_bytes)
     total = 0
     uploaded: list[TreeFile] = []
     known = dict(prior or {})
     for item in files:
         total += item.size
-        if total > MAX_CHECKPOINT_UPLOAD_BYTES:
+        if total > max_upload_bytes:
             raise TrainingBackendError(
                 "checkpoint upload exceeds the closed byte bound",
                 code="gpu-resource-limit",
@@ -412,3 +412,21 @@ def _status_for(
     if digest != expected:
         return SnapshotStatus(role=role, status="mismatch", digest=digest, revision=revision)
     return SnapshotStatus(role=role, status="present", digest=digest, revision=revision)
+
+
+def _hash_regular_file(path: Path, *, max_file_bytes: int) -> tuple[str, int]:
+    hasher = hashlib.sha256()
+    size = 0
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(65_536)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > max_file_bytes:
+                raise TrainingBackendError(
+                    "snapshot file exceeds the closed CAS put bound",
+                    code="gpu-resource-limit",
+                )
+            hasher.update(chunk)
+    return "sha256:" + hasher.hexdigest(), size

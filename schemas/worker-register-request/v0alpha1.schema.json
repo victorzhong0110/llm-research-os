@@ -96,7 +96,8 @@
       "enum": [
         "python-sandbox",
         "oci-container",
-        "gpu-oci-container"
+        "gpu-oci-container",
+        "macos-mps-process"
       ],
       "title": "Runtime",
       "type": "string"
