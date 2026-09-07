@@ -21,7 +21,7 @@ Each slice carries the upstream fix. Do not land only the tip.
 | C | [#68](https://github.com/victorzhong0110/llm-research-os/pull/68) | `384b264726fb25a0ec3f93d97c814f6f7d84ad40` | #67 | Independent `gpu-oci-container` / `execute.gpu` |
 | D | [#69](https://github.com/victorzhong0110/llm-research-os/pull/69) | `9abdc4586df835052e98282fb36519bc2d915051` | #68 | Snapshot, overlay resume, bounded CAS collect |
 | E | [#70](https://github.com/victorzhong0110/llm-research-os/pull/70) | `8e2059a80dbd9e92161500fb1a9143ee5278b085` | #69 | Two-root pack; `secondHost: not-provisioned` |
-| F | this branch | (this commit) | #70 | This checklist |
+| F | this PR | `8cacc7a5e3d5530eaddded1cabd566d29cdb4d2e` | #70 | This checklist |
 
 Required CI on the **tip after merge** (not a substitute for the rows
 below): `uv run pytest --cov=llm_research_os --cov-fail-under=85` and
