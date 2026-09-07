@@ -63,6 +63,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   and report attention cost (Issue #42). Answers are data with rights, not
   instructions. `QuestionLedgerEntry` is a status discriminant: `open` forbids
   answer fields; `answered` requires them.
+- `researchos m1 prove`: one offline corpus chain (Mock proposal through
+  simulated report, or reject without `run.queued`). Issue #38 stays open.
 
 ### Changed
 

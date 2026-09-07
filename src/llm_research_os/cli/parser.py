@@ -506,6 +506,33 @@ def build_parser() -> argparse.ArgumentParser:
         default="markdown",
         help="static HTML or Markdown; every summary cites an eventId",
     )
+
+    m1 = subparsers.add_parser(
+        "m1",
+        help="run M1 integration paths; does not close Issue #38",
+    )
+    m1_commands = m1.add_subparsers(dest="m1_command", required=True)
+    m1_prove = m1_commands.add_parser(
+        "prove",
+        help="record one offline research chain from a corpus",
+    )
+    m1_prove.add_argument(
+        "corpus",
+        type=Path,
+        help="checkpoint corpus directory",
+    )
+    m1_prove.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m1_prove.add_argument(
+        "--decision",
+        choices=("accept", "reject"),
+        default="accept",
+        help="researcher outcome; reject must not queue a Run",
+    )
+    add_registry_arguments(m1_prove)
     return parser
 
 

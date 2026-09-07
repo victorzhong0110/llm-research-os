@@ -48,8 +48,9 @@ one local `{eventId, sequence}` citation of `plan.authorization.evaluated`
 is not a signed launch JWT. Issue #19's local consume is delivered; signatures,
 expiry, and revocation are [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53).
 The question channel is `question.asked` / `question.answered` with
-`questions ask` / `questions answer`. Umbrella #38 stays open. Numbered slices
-are not the M1 checkpoint.
+`questions ask` / `questions answer`. `researchos m1 prove` records one offline
+corpus chain (Mock proposal through simulated report, or reject without a Run).
+Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -61,7 +62,8 @@ bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, a local
 `{eventId, sequence}` consume on SimulatedRuntime, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
-mock-model-call / evidence-import / OpenAI-compat / static-report CLIs,
+mock-model-call / evidence-import / OpenAI-compat / static-report /
+M1-checkpoint CLIs,
 and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads. Authorization
@@ -357,6 +359,19 @@ The database must already exist; a missing path is not created. Exit `0` only
 means the cancellation-request fact was committed. Inspect
 `RunSnapshot.cancellationRequested`; do not claim the job has stopped.
 
+One command records the offline research chain the M1 checkpoint names. It does
+not close Issue #38:
+
+```bash
+uv run researchos m1 prove \
+  examples/m1-checkpoint \
+  research.db \
+  --format json
+```
+
+`--decision reject` records the same research facts and must not queue a Run.
+See [M1 checkpoint CLI](docs/guides/m1-checkpoint.md).
+
 Research proposals, dissents, decisions, and questions are separate EventStore
 facts. The database must already exist. `accept` is not a launch credential.
 An answer is data with rights, not an instruction:
@@ -472,7 +487,10 @@ object bodies and they do not build an index or lineage.
 `models generate` records digest-only `ai.call.*` facts from a local fixture.
 The mock path does not open a network connection. The OpenAI-compatible path
 defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`,
-`read.external_api`, HTTPS, and a positive CNY cap and reserve.
+`read.external_api`, HTTPS, a recorded project CNY limit, and a request cap that
+matches that limit. Uncertain transport after dispatch keeps the reservation.
+`researchos m1 prove` records one empty-store research chain from a corpus; it
+does not close Issue #38.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
 minimal worker environment; unknown
