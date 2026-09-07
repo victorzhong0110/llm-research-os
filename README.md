@@ -54,7 +54,10 @@ Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
 M2-0 is a free loopback Worker CPU loop
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)): HMAC
 grants with expiry/revoke bound to an authorized `execute.local` brick,
-CAS-pinned python helper, artifact + report. It is not GPU completion, not
+CAS-pinned python helper, artifact + report. Isolated control-plane and
+Worker processes use pinned loopback HTTPS
+([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
+that is not a cross-machine proof. It is not GPU completion, not
 NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
@@ -80,7 +83,8 @@ lineage stays `not-consumed`. A cancellation-request CLI still does not send a p
 the observed cancelled outcome is a later SimulatedRuntime fact. A real
 NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
 credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
-([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)).
+([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
+loopback HTTPS is ADR-0044 and is not a cross-machine Worker.
 
 ## M0 goals
 
@@ -519,6 +523,8 @@ matches that limit. Uncertain transport after dispatch keeps the reservation.
 does not close Issue #38.
 `researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
 does not spend GPU and does not close Issue #38.
+`researchos workers serve` / `workers run` split that loop across two
+processes over pinned loopback HTTPS; they do not prove a remote Worker.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
 minimal worker environment; unknown

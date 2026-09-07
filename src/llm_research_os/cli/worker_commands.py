@@ -48,6 +48,19 @@ def run_grants(args: argparse.Namespace) -> int:
 def run_workers(args: argparse.Namespace) -> int:
     if args.workers_command == "register":
         return _register_worker(args.request, args.database, args.format)
+    if args.workers_command == "serve":
+        return _serve_worker_plane(
+            args.database,
+            args.artifacts,
+            args.state,
+            args.project,
+            args.source,
+            args.revision,
+            args.host,
+            args.port,
+        )
+    if args.workers_command == "run":
+        return _run_isolated_worker(args.credential, args.artifacts)
     raise AssertionError(f"unhandled workers command: {args.workers_command}")
 
 
@@ -110,6 +123,70 @@ def _register_worker(request_path: Path, database: Path, output_format: str) -> 
         print_error(exc, output_format)
         return 2
     _print_receipt(stored, output_format)
+    return 0
+
+
+def _serve_worker_plane(
+    database: Path,
+    artifacts: Path,
+    state: Path,
+    project_id: str,
+    source: str,
+    revision: int,
+    host: str,
+    port: int,
+) -> int:
+    from llm_research_os.workers.serve import serve_isolated_control_plane
+
+    try:
+        serve_isolated_control_plane(
+            database=database,
+            artifacts_root=artifacts,
+            state_dir=state,
+            project_id=project_id,
+            source=source,
+            experiment_revision=revision,
+            host=host,
+            port=port,
+        )
+    except WorkerError as exc:
+        print_error(exc, "json")
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, "json")
+        return 2
+    return 0
+
+
+def _run_isolated_worker(credential_path: Path, artifacts: Path) -> int:
+    from llm_research_os.workers.credentials import load_worker_credential, redact_worker_log
+    from llm_research_os.workers.isolated import run_isolated_worker
+
+    secrets: tuple[str, ...] = ()
+    try:
+        secrets = load_worker_credential(credential_path).secrets()
+        completed = run_isolated_worker(
+            credential_path=credential_path,
+            artifacts_root=artifacts,
+        )
+    except WorkerError as exc:
+        print_error(
+            WorkerError(redact_worker_log(str(exc), *secrets), code=exc.code),
+            "text",
+        )
+        return 1
+    except _INPUT_ERRORS as exc:
+        print_error(exc, "text")
+        return 2
+    print(
+        dumps_json(
+            {
+                "eventId": completed["eventId"],
+                "type": completed["type"],
+                "sequence": completed["sequence"],
+            }
+        )
+    )
     return 0
 
 

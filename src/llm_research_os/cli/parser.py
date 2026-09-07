@@ -571,7 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     workers = subparsers.add_parser(
         "workers",
-        help="register loopback Workers as EventStore facts",
+        help="register Workers, serve the loopback HTTPS plane, or run an isolated Worker",
     )
     workers_commands = workers.add_subparsers(dest="workers_command", required=True)
     workers_register = workers_commands.add_parser(
@@ -589,6 +589,64 @@ def build_parser() -> argparse.ArgumentParser:
         help="existing SQLite event store; missing paths are not created",
     )
     add_event_format_argument(workers_register)
+    workers_serve = workers_commands.add_parser(
+        "serve",
+        help="serve loopback HTTPS/JSON; does not prove a cross-machine Worker",
+    )
+    workers_serve.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    workers_serve.add_argument(
+        "--artifacts",
+        type=Path,
+        required=True,
+        metavar="ROOT",
+        help="control-plane CAS root",
+    )
+    workers_serve.add_argument(
+        "--state",
+        type=Path,
+        required=True,
+        metavar="DIR",
+        help="HMAC key and loopback TLS material; created if missing",
+    )
+    workers_serve.add_argument("--project", required=True, metavar="ID")
+    workers_serve.add_argument("--source", required=True, metavar="URI")
+    workers_serve.add_argument(
+        "--revision",
+        type=int,
+        default=1,
+        help="experiment revision matching the grant",
+    )
+    workers_serve.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="loopback IP; non-loopback binds fail closed",
+    )
+    workers_serve.add_argument(
+        "--port",
+        type=int,
+        default=0,
+        help="TCP port; 0 selects an ephemeral port",
+    )
+    workers_run = workers_commands.add_parser(
+        "run",
+        help="run one isolated Worker from a credential file and a private CAS",
+    )
+    workers_run.add_argument(
+        "credential",
+        type=Path,
+        help="WorkerCredential file; tokens must not be logged",
+    )
+    workers_run.add_argument(
+        "--artifacts",
+        type=Path,
+        required=True,
+        metavar="ROOT",
+        help="Worker-private CAS root; must not be the control-plane CAS",
+    )
 
     m2 = subparsers.add_parser(
         "m2",

@@ -5,7 +5,10 @@
 > Domain version: `v0alpha1`
 
 The Worker protocol is independent of byte transport. M2-0 binds it to
-loopback HTTP. Non-loopback HTTPS remains ADR-0021.
+loopback HTTP in-process (ADR-0043). Isolated control-plane and Worker
+processes use loopback HTTPS/JSON with a pinned CA (ADR-0044). That
+loopback TLS path is not a cross-machine proof. Non-loopback HTTPS remains
+ADR-0021.
 
 The key words **MUST**, **MUST NOT**, **SHOULD** and **MAY** are normative.
 
@@ -62,7 +65,14 @@ MAY cite their digests.
 - Heartbeats: `POST /v0alpha1/work/heartbeat`. Transport liveness only;
   MUST NOT append EventStore facts.
 - Complete: `POST /v0alpha1/work/complete`. Fail: `POST /v0alpha1/work/fail`.
-- Artifact bytes: `POST /v0alpha1/artifacts`; response is digest only.
+- Artifact upload: `POST /v0alpha1/artifacts`; response is digest only.
+- Artifact download: `GET /v0alpha1/artifacts/sha256/<64 lowercase hex>`
+  with `X-ResearchOS-Grant`. The digest MUST equal the grant's
+  `imageDigest`. The Worker MUST hash the bytes and refuse a mismatch.
+- Isolated processes (ADR-0044) MUST use HTTPS with a pinned loopback CA,
+  a private Worker CAS, and MUST NOT open the control-plane SQLite file.
+  In-process HTTP is a test adapter. Loopback tests MUST NOT be described
+  as cross-machine verification.
 
 ## 4. CPU helper (not a kernel sandbox)
 
@@ -80,6 +90,7 @@ for arbitrary code. A later OCI runtime MUST keep the same digest field.
 ## 5. Conformance
 
 ```bash
-uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py
+uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
+  tests/test_worker_isolate.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 ```

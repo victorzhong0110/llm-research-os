@@ -253,6 +253,33 @@ class WorkerPlane:
             config_digest=grant.config_digest,
         )
 
+    def authorize_image_fetch(
+        self,
+        *,
+        worker_id: str,
+        grant_token: str,
+        image_digest: str,
+    ) -> None:
+        """Permit GET of the grant's planned image. Does not open a lease."""
+
+        now = self.clock().astimezone(UTC)
+        claims = verify_grant_token(self.hmac_key, grant_token, now=now)
+        if claims["workerId"] != worker_id:
+            raise WorkerGrantError(
+                "grant token worker does not match",
+                code="grant-worker-mismatch",
+            )
+        fold = self.rebuild()
+        grant = fold.grant(claims["grantId"])
+        if grant is None:
+            raise WorkerGrantError("grantId is not recorded", code="unknown-grant")
+        self._require_live_grant(grant, claims, now=now)
+        if grant.image_digest != image_digest or claims["imageDigest"] != image_digest:
+            raise WorkerCallError(
+                "image digest is not the authorized execution object",
+                code="execution-binding-mismatch",
+            )
+
     def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> None:
         """Transport liveness only. Must not append EventStore facts (ADR-0041)."""
 

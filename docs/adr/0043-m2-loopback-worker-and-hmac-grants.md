@@ -72,9 +72,10 @@ long-poll binding.
    process group. It is **not** kernel network or filesystem isolation, not
    a general-purpose code sandbox, not `NativeProcessRuntime`, and not
    `OCIContainerRuntime`. NativeProcessPreflight remains `launchAllowed=false`.
-7. **Bind.** The HTTP adapter listens on loopback IPs only. Non-loopback
-   binds fail closed. Worker sessions are HMAC `ws1` tokens. HTTPS and
-   non-loopback transport remain ADR-0021.
+7. **Bind.** The in-process HTTP adapter listens on loopback IPs only.
+   Non-loopback binds fail closed. Isolated processes use loopback HTTPS
+   with a pinned CA (ADR-0044). Worker sessions are HMAC `ws1` tokens.
+   Non-loopback transport remains ADR-0021.
 8. **Accelerators.** Workers advertise `accelerators`. Work may require
    `cuda`. Missing advertisement refuses the lease. No paid GPU is spent.
 
@@ -82,7 +83,8 @@ long-poll binding.
 
 - Paid cloud GPU, billing adapters, or spending the ¥1000 envelope
 - Docker / runc / ms-swift as a prerequisite of the CPU loop
-- Non-loopback Worker transport (ADR-0021)
+- Non-loopback Worker transport (ADR-0021). Isolated loopback HTTPS is
+  ADR-0044 and is not a cross-machine proof.
 - JWT launch credentials
 - NativeProcessRuntime (preflight stays non-launching)
 - Charter v0.2, tag `v0.1.0-m1`, Issue #38 closure

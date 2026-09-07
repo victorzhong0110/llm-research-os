@@ -3,7 +3,8 @@
 Loopback Worker registration, HMAC grants, and the CPU prove path.
 Protocol: [Worker v0alpha1](../protocols/worker-v0alpha1.md),
 [Authorization grant v0alpha1](../protocols/authorization-grant-v0alpha1.md).
-Constraint record: [ADR-0043](../adr/0043-m2-loopback-worker-and-hmac-grants.md).
+Constraint record: [ADR-0043](../adr/0043-m2-loopback-worker-and-hmac-grants.md),
+[ADR-0044](../adr/0044-isolated-control-plane-and-loopback-https.md).
 
 This path does **not** close Issue #38, does not spend GPU, and does not
 start NativeProcessRuntime.
@@ -53,3 +54,27 @@ stdout/stderr. A claimed lease that is resumed MUST NOT run again.
 
 Exit `0` is a recorded CPU loop, not scientific success and not GPU
 completion. JSON stdout is `M2CheckpointReceipt` (ids and digests only).
+
+## Isolated control plane and Worker
+
+[ADR-0044](../adr/0044-isolated-control-plane-and-loopback-https.md) splits
+the control plane and Worker into two processes, two working directories,
+and two CAS roots. The Worker talks loopback HTTPS/JSON with a pinned CA.
+This is **not** a cross-machine proof. `openssl` is required to mint the
+loopback certificate.
+
+```bash
+uv run researchos workers serve research.db \
+  --artifacts control-artifacts \
+  --state control-state \
+  --project example-minimal \
+  --source https://researchos.dev/projects/example-minimal
+uv run researchos workers run worker/credential.json \
+  --artifacts worker-artifacts
+```
+
+`workers serve` prints one JSON receipt (`url`, `tlsFingerprint`). Copy the
+CA into the Worker directory and write a 0600 `WorkerCredential`. The Worker
+MUST NOT receive the control-plane database path. Tokens MUST NOT appear in
+logs. Reconnect retries transport disconnects; a resumed lease still MUST
+NOT run again.

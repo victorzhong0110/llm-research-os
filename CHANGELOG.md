@@ -70,6 +70,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   plan, and `researchos m2 prove`
   ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Not a
   paid GPU run, not NativeProcessRuntime, and not a kernel sandbox.
+- Isolated control plane and Worker processes with private CAS, pinned
+  loopback HTTPS/JSON, credential files, and reconnect
+  ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md)).
+  Not a cross-machine proof.
 
 ### Changed
 
