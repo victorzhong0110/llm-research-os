@@ -74,6 +74,11 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   loopback HTTPS/JSON, credential files, and reconnect
   ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md)).
   Not a cross-machine proof.
+- CPU `OCIContainerRuntime` with digest-pinned docker, `execute.oci`, and
+  a CAS python brick inside the container
+  ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md)). Host Python
+  stays the trusted helper. A missing engine fails closed and is not a
+  mocked container success. Not GPU.
 
 ### Changed
 

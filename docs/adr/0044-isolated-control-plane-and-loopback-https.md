@@ -51,7 +51,7 @@ download, upload, credential, and reconnect paths.
   isolated path. `researchos m2 prove` remains the in-process CPU corpus
   loop from ADR-0043.
 - Heartbeats stay off the EventStore (ADR-0041).
-- OCI, non-loopback transport, and paid GPU remain later slices.
+- OCI CPU execution is ADR-0045. Non-loopback transport and paid GPU remain later slices.
 
 ## Validation
 

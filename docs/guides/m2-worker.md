@@ -49,6 +49,10 @@ Markdown report.
 Host Python is not kernel isolation. Byte limits apply while reading
 stdout/stderr. A claimed lease that is resumed MUST NOT run again.
 
+CPU OCI execution is a separate path: [M2 CPU OCI](m2-oci.md),
+[ADR-0045](../adr/0045-cpu-oci-container-runtime.md). `researchos m2 oci`
+fails closed without a live digest-pinned image.
+
 `--artifacts` selects the CAS root (created if missing). Default is
 `<database-stem>-artifacts` beside the database.
 

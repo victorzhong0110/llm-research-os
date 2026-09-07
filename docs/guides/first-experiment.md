@@ -42,6 +42,10 @@ killed sandbox process is `unknown`, not `failed`. Disconnect before
 complete leaves the lease open (not success). Heartbeats do not grow the
 event log. Host Python is not a kernel sandbox.
 
+CPU OCI (`researchos m2 oci`) fails closed without a live digest-pinned
+image. That failure is not a mocked container success. See
+[M2 CPU OCI](m2-oci.md).
+
 ## What is still not a release
 
 - Paid GPU / cloud provisioner

@@ -1,0 +1,138 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "Block",
+  "metadata": {
+    "id": "researchos.oci-python-brick",
+    "version": "0.1.0",
+    "title": "OCI JSON-stdio brick",
+    "description": "Corpus declaration for a digest-pinned OCI image running a CAS brick. The kernel does not import the entrypoint."
+  },
+  "runtime": {
+    "type": "container",
+    "entrypoint": "researchos.oci-python-brick"
+  },
+  "inputs": [],
+  "outputs": [],
+  "configSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "config",
+      "imageDigest",
+      "imageMediaType",
+      "inputs",
+      "runtime"
+    ],
+    "properties": {
+      "config": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "cpuMillis": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000
+          },
+          "memoryBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 268435456
+          },
+          "network": {
+            "const": "denied"
+          },
+          "pidsLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 128
+          },
+          "secrets": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "env",
+                "secretRef"
+              ],
+              "properties": {
+                "env": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "secretRef": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "apiVersion",
+                    "kind",
+                    "backend",
+                    "name"
+                  ],
+                  "properties": {
+                    "apiVersion": {
+                      "const": "researchos.dev/v0alpha1"
+                    },
+                    "backend": {
+                      "const": "env"
+                    },
+                    "kind": {
+                      "const": "SecretRef"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "wallTimeSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        }
+      },
+      "imageDigest": {
+        "maxLength": 71,
+        "minLength": 71,
+        "type": "string"
+      },
+      "imageMediaType": {
+        "const": "researchos.oci-image/v0alpha1"
+      },
+      "inputs": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "brickDigest"
+        ],
+        "properties": {
+          "brickDigest": {
+            "maxLength": 71,
+            "minLength": 71,
+            "type": "string"
+          }
+        }
+      },
+      "runtime": {
+        "const": "oci-container"
+      }
+    }
+  },
+  "capabilities": [
+    "execute.oci"
+  ],
+  "permissions": [],
+  "telemetry": [],
+  "reproducibility": {
+    "deterministicWhenSeeded": true
+  },
+  "extensions": {}
+}

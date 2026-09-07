@@ -23,12 +23,20 @@ from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.errors import WorkerCallError
 from llm_research_os.workers.models import (
+    IMAGE_MEDIA_OCI_IMAGE,
     IMAGE_MEDIA_PYTHON_BRICK,
+    WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
 
 PYTHON_BRICK_CAPABILITY = "execute.local"
+OCI_BRICK_CAPABILITY = "execute.oci"
+EXECUTION_CAPABILITIES = frozenset({PYTHON_BRICK_CAPABILITY, OCI_BRICK_CAPABILITY})
 MAX_BRICK_REQUEST_JSON_BYTES = 16_384
+_RUNTIME_MEDIA = {
+    (WORKER_RUNTIME_PYTHON_SANDBOX, IMAGE_MEDIA_PYTHON_BRICK): PYTHON_BRICK_CAPABILITY,
+    (WORKER_RUNTIME_OCI_CONTAINER, IMAGE_MEDIA_OCI_IMAGE): OCI_BRICK_CAPABILITY,
+}
 
 
 def brick_execution_document(
@@ -36,13 +44,20 @@ def brick_execution_document(
     image_digest: str,
     config: Mapping[str, object] | None = None,
     inputs: Mapping[str, object] | None = None,
+    image_media_type: str = IMAGE_MEDIA_PYTHON_BRICK,
+    runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
 ) -> dict[str, object]:
+    if (runtime, image_media_type) not in _RUNTIME_MEDIA:
+        raise WorkerCallError(
+            "execution object runtime does not match imageMediaType",
+            code="execution-binding-mismatch",
+        )
     return {
         "config": dict(config or {}),
         "imageDigest": image_digest,
-        "imageMediaType": IMAGE_MEDIA_PYTHON_BRICK,
+        "imageMediaType": image_media_type,
         "inputs": dict(inputs or {}),
-        "runtime": WORKER_RUNTIME_PYTHON_SANDBOX,
+        "runtime": runtime,
     }
 
 
@@ -51,9 +66,17 @@ def brick_execution_digest(
     image_digest: str,
     config: Mapping[str, object] | None = None,
     inputs: Mapping[str, object] | None = None,
+    image_media_type: str = IMAGE_MEDIA_PYTHON_BRICK,
+    runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
 ) -> str:
     return content_digest(
-        brick_execution_document(image_digest=image_digest, config=config, inputs=inputs)
+        brick_execution_document(
+            image_digest=image_digest,
+            config=config,
+            inputs=inputs,
+            image_media_type=image_media_type,
+            runtime=runtime,
+        )
     )
 
 
@@ -76,8 +99,16 @@ def require_execution_digest(
     config: Mapping[str, object],
     inputs: Mapping[str, object],
     config_digest: str,
+    image_media_type: str = IMAGE_MEDIA_PYTHON_BRICK,
+    runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
 ) -> None:
-    actual = brick_execution_digest(image_digest=image_digest, config=config, inputs=inputs)
+    actual = brick_execution_digest(
+        image_digest=image_digest,
+        config=config,
+        inputs=inputs,
+        image_media_type=image_media_type,
+        runtime=runtime,
+    )
     if actual != config_digest:
         raise WorkerCallError(
             "execution object digest does not match the authorized binding",
@@ -92,7 +123,7 @@ def require_authorized_execution_citation(
     event_id: str,
     sequence: str,
 ) -> tuple[PlanAuthorizationEvaluatedPayload, StoredEvent]:
-    """Load one authorized execute.local evaluation on this store."""
+    """Load one authorized evaluation. Simulate-only citations cannot record a grant."""
 
     stored = store.get_event(event_id)
     if stored is None:
@@ -132,9 +163,9 @@ def require_authorized_execution_citation(
             "authorization event does not match this project",
             code="authorization-project-mismatch",
         )
-    if PYTHON_BRICK_CAPABILITY not in payload.required_capabilities:
+    if not EXECUTION_CAPABILITIES.intersection(payload.required_capabilities):
         raise WorkerCallError(
-            "authorization event does not grant execute.local",
+            "authorization event does not grant an execution capability",
             code="authorization-capability-mismatch",
         )
     return payload, stored
@@ -180,6 +211,15 @@ def require_authorized_execution_binding(
             "authorization event does not match this project revision",
             code="authorization-project-mismatch",
         )
+    requested_capability = _requested_task_capability(spec, planned_task_id)
+    if (
+        requested_capability is not None
+        and requested_capability not in payload.required_capabilities
+    ):
+        raise WorkerCallError(
+            "authorization event does not grant the planned execution capability",
+            code="authorization-capability-mismatch",
+        )
     try:
         report = TrustedKernel(registry).dry_run(spec, workflow_id=payload.workflow_id)
     except (PlanningError, RegistryError):
@@ -223,7 +263,12 @@ def require_authorized_execution_binding(
         )
     spec_task = _spec_task(spec, payload.workflow_id, planned_task_id)
     planned = _planned_task(report, planned_task_id)
-    planned_image, planned_digest = _planned_execution_object(spec_task)
+    planned_image, planned_digest, capability = _planned_execution_object(spec_task)
+    if capability not in payload.required_capabilities:
+        raise WorkerCallError(
+            "authorization event does not grant the planned execution capability",
+            code="authorization-capability-mismatch",
+        )
     if (
         planned.config_digest != planned_digest
         or planned_image != image_digest
@@ -240,6 +285,26 @@ def json_object(value: object, *, field: str) -> dict[str, Any]:
     if type(value) is not dict:
         raise ValueError(f"{field} must be a JSON object")
     return dict(value)
+
+
+def _requested_task_capability(spec: ResearchSpec, planned_task_id: str) -> str | None:
+    found: list[TaskBlock] = []
+    pending = [workflow.graph.nodes for workflow in spec.workflows]
+    while pending:
+        nodes = pending.pop()
+        for node in nodes:
+            if type(node) is TaskBlock and node.id == planned_task_id:
+                found.append(node)
+            elif type(node) is LoopBlock:
+                pending.append(node.body.nodes)
+    if len(found) == 0:
+        return None
+    if len(found) != 1:
+        raise WorkerCallError(
+            "planned task is not in the authorized plan",
+            code="planned-task-mismatch",
+        )
+    return _planned_execution_object(found[0])[2]
 
 
 def _spec_task(spec: ResearchSpec, workflow_id: str, planned_task_id: str) -> TaskBlock:
@@ -290,7 +355,7 @@ def _planned_task(report: DryRunReport, planned_task_id: str) -> PlannedTask:
     return found[0]
 
 
-def _planned_execution_object(task: TaskBlock) -> tuple[str, str]:
+def _planned_execution_object(task: TaskBlock) -> tuple[str, str, str]:
     try:
         inner = json_object(task.config.get("config", {}), field="config")
         inputs = json_object(task.config.get("inputs", {}), field="inputs")
@@ -302,13 +367,25 @@ def _planned_execution_object(task: TaskBlock) -> tuple[str, str]:
     image = task.config.get("imageDigest")
     media = task.config.get("imageMediaType")
     runtime = task.config.get("runtime")
-    if (
-        type(image) is not str
-        or media != IMAGE_MEDIA_PYTHON_BRICK
-        or runtime != WORKER_RUNTIME_PYTHON_SANDBOX
-    ):
+    if type(image) is not str or type(media) is not str or type(runtime) is not str:
         raise WorkerCallError(
             "execution object is not the authorized planned task",
             code="execution-binding-mismatch",
         )
-    return image, brick_execution_digest(image_digest=image, config=inner, inputs=inputs)
+    capability = _RUNTIME_MEDIA.get((runtime, media))
+    if capability is None:
+        raise WorkerCallError(
+            "execution object is not the authorized planned task",
+            code="execution-binding-mismatch",
+        )
+    return (
+        image,
+        brick_execution_digest(
+            image_digest=image,
+            config=inner,
+            inputs=inputs,
+            image_media_type=media,
+            runtime=runtime,
+        ),
+        capability,
+    )

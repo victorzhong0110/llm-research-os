@@ -1,0 +1,390 @@
+"""OCIContainerRuntime adapter. Image identity is an immutable digest (ADR-0008).
+
+Host Python remains a trusted helper (TM-043). This adapter is not a mock of a
+container: a missing docker daemon or runc fails closed. Docker on macOS runs a
+Linux VM and is not a Darwin kernel-namespace proof.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
+from llm_research_os.secrets.models import SecretRef
+from llm_research_os.secrets.resolve import SecretResolutionError, resolve_secret
+from llm_research_os.workers.binding import MAX_BRICK_REQUEST_JSON_BYTES, brick_stdin_document
+from llm_research_os.workers.errors import WorkerSandboxError
+from llm_research_os.workers.sandbox import (
+    MAX_SANDBOX_WALL_SECONDS,
+    SandboxDisposition,
+    SandboxResult,
+    _materialize_brick,
+    _process_group,
+    _reap_process_group,
+    _run_bounded,
+)
+
+_ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+_DOCKER_INFO_TIMEOUT = 3
+_DOCKER_INSPECT_TIMEOUT = 5
+DEFAULT_OCI_MEMORY_BYTES = 134_217_728
+MAX_OCI_MEMORY_BYTES = 268_435_456
+DEFAULT_OCI_PIDS = 64
+MAX_OCI_PIDS = 128
+DEFAULT_OCI_CPU_MILLIS = 1000
+MAX_OCI_CPU_MILLIS = 2000
+MAX_OCI_SECRETS = 8
+OCI_NETWORK_DENIED: Literal["denied"] = "denied"
+_FORBIDDEN_LAUNCH_KEYS = frozenset(
+    {
+        "capAdd",
+        "devices",
+        "gpus",
+        "ipc",
+        "mounts",
+        "networkMode",
+        "pid",
+        "ports",
+        "privileged",
+        "seccomp",
+        "shmSize",
+        "uts",
+        "volumes",
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class OciBackend:
+    kind: Literal["docker"]
+    executable: str
+
+
+@dataclass(frozen=True, slots=True)
+class OciSecretSlot:
+    env: str
+    ref: SecretRef
+
+
+@dataclass(frozen=True, slots=True)
+class OciLaunchPolicy:
+    network: Literal["denied"]
+    memory_bytes: int
+    pids_limit: int
+    cpu_millis: int
+    wall_time_seconds: int
+    secrets: tuple[OciSecretSlot, ...]
+    brick_digest: str
+
+
+def discover_oci_backend() -> OciBackend | None:
+    """Return a live docker engine. A CLI without a daemon is not a runtime."""
+
+    executable = shutil.which("docker")
+    if executable is None:
+        return None
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [executable, "info", "--format", "{{.ServerVersion}}"],
+            check=False,
+            capture_output=True,
+            timeout=_DOCKER_INFO_TIMEOUT,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if completed.returncode != 0:
+        return None
+    version = completed.stdout.decode("utf-8", errors="replace").strip()
+    if version == "":
+        return None
+    return OciBackend(kind="docker", executable=executable)
+
+
+def parse_oci_launch_policy(
+    *,
+    image_digest: str,
+    config: Mapping[str, object],
+    inputs: Mapping[str, object],
+) -> OciLaunchPolicy:
+    """Freeze the closed CPU OCI launch shape. Does not start a container."""
+
+    if DIGEST_PATTERN.fullmatch(image_digest) is None:
+        raise WorkerSandboxError("OCI image digest is invalid", code="oci-image-tag-forbidden")
+    if ":" in image_digest and not image_digest.startswith("sha256:"):
+        raise WorkerSandboxError("OCI image tags are forbidden", code="oci-image-tag-forbidden")
+    forbidden = _FORBIDDEN_LAUNCH_KEYS.intersection(config)
+    if forbidden:
+        raise WorkerSandboxError(
+            "OCI launch requested a forbidden host mapping",
+            code="oci-mount-forbidden",
+        )
+    network = config.get("network", OCI_NETWORK_DENIED)
+    if network != OCI_NETWORK_DENIED:
+        raise WorkerSandboxError("OCI network must be denied", code="oci-network-forbidden")
+    memory_bytes = _positive_int(
+        config.get("memoryBytes", DEFAULT_OCI_MEMORY_BYTES),
+        field="memoryBytes",
+        maximum=MAX_OCI_MEMORY_BYTES,
+    )
+    pids_limit = _positive_int(
+        config.get("pidsLimit", DEFAULT_OCI_PIDS),
+        field="pidsLimit",
+        maximum=MAX_OCI_PIDS,
+    )
+    cpu_millis = _positive_int(
+        config.get("cpuMillis", DEFAULT_OCI_CPU_MILLIS),
+        field="cpuMillis",
+        maximum=MAX_OCI_CPU_MILLIS,
+    )
+    wall_time_seconds = _positive_int(
+        config.get("wallTimeSeconds", MAX_SANDBOX_WALL_SECONDS),
+        field="wallTimeSeconds",
+        maximum=MAX_SANDBOX_WALL_SECONDS,
+    )
+    brick = inputs.get("brickDigest")
+    if type(brick) is not str or DIGEST_PATTERN.fullmatch(brick) is None:
+        raise WorkerSandboxError("OCI brick digest is invalid", code="execution-binding-mismatch")
+    return OciLaunchPolicy(
+        network=OCI_NETWORK_DENIED,
+        memory_bytes=memory_bytes,
+        pids_limit=pids_limit,
+        cpu_millis=cpu_millis,
+        wall_time_seconds=wall_time_seconds,
+        secrets=_parse_secret_slots(config.get("secrets", [])),
+        brick_digest=brick,
+    )
+
+
+def execute_oci_python_brick(
+    artifacts: LocalArtifactStore,
+    image_digest: str,
+    *,
+    config: Mapping[str, object] | None = None,
+    inputs: Mapping[str, object] | None = None,
+    environ: Mapping[str, str] | None = None,
+    backend: OciBackend | None = None,
+) -> SandboxResult:
+    """Run one JSON-stdio brick inside a digest-pinned OCI image."""
+
+    request_config = dict(config or {})
+    request_inputs = dict(inputs or {})
+    policy = parse_oci_launch_policy(
+        image_digest=image_digest,
+        config=request_config,
+        inputs=request_inputs,
+    )
+    try:
+        payload = json.dumps(
+            brick_stdin_document(config=request_config, inputs=request_inputs),
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError):
+        return SandboxResult(
+            disposition=SandboxDisposition.FAILED,
+            stdout=b"",
+            result_digest=None,
+            reason_code="worker.brick.invalid-json",
+        )
+    if len(payload) > MAX_BRICK_REQUEST_JSON_BYTES:
+        raise WorkerSandboxError(
+            "python brick request exceeds size limit",
+            code="brick-request-too-large",
+        )
+    resolved_backend = backend if backend is not None else discover_oci_backend()
+    if resolved_backend is None:
+        raise WorkerSandboxError("OCI runtime is not available", code="oci-runtime-missing")
+    require_pinned_docker_image(resolved_backend, image_digest)
+    secret_env = _resolve_secret_env(policy.secrets, environ)
+    script = _materialize_brick(artifacts, policy.brick_digest)
+    workspace = script.parent
+    process: subprocess.Popen[bytes] | None = None
+    pgid: int | None = None
+    argv = _docker_run_argv(
+        resolved_backend.executable,
+        image_digest=image_digest,
+        workspace=workspace,
+        policy=policy,
+        secret_env=secret_env,
+    )
+    try:
+        try:
+            process = subprocess.Popen(  # noqa: S603
+                argv,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=workspace,
+                close_fds=True,
+                start_new_session=os.name == "posix",
+            )
+        except OSError:
+            return SandboxResult(
+                disposition=SandboxDisposition.UNKNOWN,
+                stdout=b"",
+                result_digest=None,
+                reason_code="worker.process.lost",
+            )
+        pgid = _process_group(process)
+        return _run_bounded(process, payload, policy.wall_time_seconds, pgid)
+    finally:
+        if process is not None:
+            _reap_process_group(process, pgid)
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def require_pinned_docker_image(backend: OciBackend, image_digest: str) -> None:
+    """Refuse tags and require the digest to identify a local image. Never pull."""
+
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [backend.executable, "image", "inspect", "--format", "{{json .}}", image_digest],
+            check=False,
+            capture_output=True,
+            timeout=_DOCKER_INSPECT_TIMEOUT,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise WorkerSandboxError("OCI image is not available", code="oci-image-missing") from exc
+    if completed.returncode != 0:
+        raise WorkerSandboxError("OCI image is not available", code="oci-image-missing")
+    try:
+        document = json.loads(completed.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise WorkerSandboxError("OCI image inspect is invalid", code="oci-image-missing") from exc
+    if type(document) is not dict:
+        raise WorkerSandboxError("OCI image inspect is invalid", code="oci-image-missing")
+    identities = _image_identities(document)
+    if image_digest not in identities:
+        raise WorkerSandboxError(
+            "OCI image digest does not match the local image",
+            code="oci-image-mismatch",
+        )
+
+
+def _image_identities(document: dict[str, object]) -> frozenset[str]:
+    identities: set[str] = set()
+    image_id = document.get("Id")
+    if type(image_id) is str and DIGEST_PATTERN.fullmatch(image_id) is not None:
+        identities.add(image_id)
+    digests = document.get("RepoDigests")
+    if type(digests) is list:
+        for item in digests:
+            if type(item) is not str or "@sha256:" not in item:
+                continue
+            digest = "sha256:" + item.rsplit("@sha256:", 1)[1]
+            if DIGEST_PATTERN.fullmatch(digest) is not None:
+                identities.add(digest)
+    return frozenset(identities)
+
+
+def _docker_run_argv(
+    executable: str,
+    *,
+    image_digest: str,
+    workspace: Path,
+    policy: OciLaunchPolicy,
+    secret_env: Mapping[str, str],
+) -> list[str]:
+    argv = [
+        executable,
+        "run",
+        "--rm",
+        "-i",
+        "--pull=never",
+        "--network",
+        "none",
+        "--read-only",
+        "--user",
+        "65534:65534",
+        "--security-opt",
+        "no-new-privileges",
+        "--memory",
+        str(policy.memory_bytes),
+        "--memory-swap",
+        str(policy.memory_bytes),
+        "--pids-limit",
+        str(policy.pids_limit),
+        "--cpus",
+        f"{policy.cpu_millis / 1000:.3f}",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=16777216",  # noqa: S108  container path, not host tempfile
+        "--tmpfs",
+        "/out:rw,noexec,nosuid,size=8388608",
+        "--mount",
+        f"type=bind,src={workspace},dst=/in,readonly",
+    ]
+    for name, value in secret_env.items():
+        argv.extend(["-e", f"{name}={value}"])
+    argv.extend([image_digest, "python", "-B", "-I", "/in/task.py"])
+    return argv
+
+
+def _parse_secret_slots(value: object) -> tuple[OciSecretSlot, ...]:
+    if value in (None, []):
+        return ()
+    if type(value) is not list:
+        raise WorkerSandboxError(
+            "OCI secrets must be a JSON array",
+            code="oci-secret-forbidden",
+        )
+    if len(value) > MAX_OCI_SECRETS:
+        raise WorkerSandboxError(
+            "OCI secrets exceed the closed list limit",
+            code="oci-secret-forbidden",
+        )
+    slots: list[OciSecretSlot] = []
+    names: set[str] = set()
+    for item in value:
+        if type(item) is not dict:
+            raise WorkerSandboxError("OCI secret slot is invalid", code="oci-secret-forbidden")
+        extra = set(item).difference({"env", "secretRef"})
+        if extra:
+            raise WorkerSandboxError("OCI secret slot is invalid", code="oci-secret-forbidden")
+        env = item.get("env")
+        if type(env) is not str or _ENV_NAME.fullmatch(env) is None:
+            raise WorkerSandboxError("OCI secret env name is invalid", code="oci-secret-forbidden")
+        if env in names:
+            raise WorkerSandboxError(
+                "OCI secret env names must be unique",
+                code="oci-secret-forbidden",
+            )
+        try:
+            ref = SecretRef.model_validate(item.get("secretRef"))
+        except (TypeError, ValueError) as exc:
+            raise WorkerSandboxError(
+                "OCI secretRef is invalid",
+                code="oci-secret-forbidden",
+            ) from exc
+        names.add(env)
+        slots.append(OciSecretSlot(env=env, ref=ref))
+    return tuple(slots)
+
+
+def _resolve_secret_env(
+    slots: tuple[OciSecretSlot, ...],
+    environ: Mapping[str, str] | None,
+) -> dict[str, str]:
+    resolved: dict[str, str] = {}
+    for slot in slots:
+        try:
+            resolved[slot.env] = resolve_secret(slot.ref, environ=environ)
+        except SecretResolutionError as exc:
+            raise WorkerSandboxError(
+                "OCI secret is not available",
+                code="oci-secret-forbidden",
+            ) from exc
+    return resolved
+
+
+def _positive_int(value: object, *, field: str, maximum: int) -> int:
+    if type(value) is not int or isinstance(value, bool) or value < 1 or value > maximum:
+        raise WorkerSandboxError(f"OCI {field} exceeds the closed limit", code="oci-resource-limit")
+    return value

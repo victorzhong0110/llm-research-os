@@ -30,7 +30,8 @@ Suggested later combo (not executed here):
 
 `researchos m2 prove` is the CPU stand-in. A Worker without `cuda` MUST NOT
 claim `requiredAccelerators: ["cuda"]`. That refusal is tested. CUDA itself
-is not run.
+is not run. CPU OCIContainerRuntime (ADR-0045) is the digest-pinned docker
+adapter; it is not this GPU slice.
 
 ## Event volume
 

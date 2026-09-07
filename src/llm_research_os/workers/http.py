@@ -205,6 +205,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     "config": claimed.config,
                     "inputs": claimed.inputs,
                     "runtime": claimed.runtime,
+                    "imageMediaType": claimed.image_media_type,
                     "expiresAt": claimed.expires_at,
                     "resumed": claimed.resumed,
                 },

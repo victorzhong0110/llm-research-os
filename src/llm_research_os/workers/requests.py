@@ -19,7 +19,12 @@ from llm_research_os.research.models import require_json_array
 from llm_research_os.spec.io import load_document
 from llm_research_os.workers.drafts import grant_recorded_draft, registered_draft
 from llm_research_os.workers.errors import WorkerRequestError
-from llm_research_os.workers.models import DIGEST_PATTERN, MAX_ACCELERATORS, WorkerDocumentModel
+from llm_research_os.workers.models import (
+    DIGEST_PATTERN,
+    MAX_ACCELERATORS,
+    WORKER_RUNTIME_NAME,
+    WorkerDocumentModel,
+)
 
 WORKER_REGISTER_REQUEST_SCHEMA_ID = (
     "https://researchos.dev/schemas/worker-register-request/v0alpha1.schema.json"
@@ -50,6 +55,7 @@ class WorkerRegisterRequestDocument(WorkerDocumentModel):
     actor: WorkerRequestActor
     event: WorkerEventIdentity
     accelerators: tuple[EventIdentifier, ...] = Field(default=())
+    runtime: WORKER_RUNTIME_NAME = "python-sandbox"
 
     @field_validator("accelerators", mode="before")
     @classmethod
@@ -79,6 +85,7 @@ class WorkerRegisterRequestDocument(WorkerDocumentModel):
             actor_id=self.actor.id,
             accelerators=self.accelerators,
             experiment_revision=self.experiment_revision,
+            runtime=self.runtime,
         )
 
 

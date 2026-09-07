@@ -37,6 +37,11 @@ from llm_research_os.workers.drafts import (
     work_queued_draft,
 )
 from llm_research_os.workers.errors import WorkerCallError, WorkerGrantError
+from llm_research_os.workers.models import (
+    IMAGE_MEDIA_PYTHON_BRICK,
+    WORKER_RUNTIME_OCI_CONTAINER,
+    WORKER_RUNTIME_PYTHON_SANDBOX,
+)
 from llm_research_os.workers.tokens import (
     format_rfc3339,
     issue_grant_token,
@@ -64,6 +69,7 @@ class ClaimedWork:
     config: dict[str, object]
     inputs: dict[str, object]
     runtime: str
+    image_media_type: str
     expires_at: str
     resumed: bool
 
@@ -97,6 +103,7 @@ class WorkerPlane:
         event_id: str,
         accelerators: tuple[str, ...] = (),
         time: str | None = None,
+        runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
     ) -> StoredEvent:
         return self._control.append(
             registered_draft(
@@ -108,6 +115,7 @@ class WorkerPlane:
                 actor_id=actor_id,
                 accelerators=accelerators,
                 experiment_revision=self.experiment_revision,
+                runtime=runtime,
             )
         )
 
@@ -206,6 +214,8 @@ class WorkerPlane:
         inputs: dict[str, object] | None = None,
         required_accelerators: tuple[str, ...] = (),
         time: str | None = None,
+        image_media_type: str = IMAGE_MEDIA_PYTHON_BRICK,
+        runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
     ) -> StoredEvent:
         request_config = dict(config or {})
         request_inputs = dict(inputs or {})
@@ -213,6 +223,8 @@ class WorkerPlane:
             image_digest=image_digest,
             config=request_config,
             inputs=request_inputs,
+            image_media_type=image_media_type,
+            runtime=runtime,
         )
         return self._control.append(
             work_queued_draft(
@@ -229,6 +241,8 @@ class WorkerPlane:
                 inputs=request_inputs,
                 required_accelerators=required_accelerators,
                 experiment_revision=self.experiment_revision,
+                image_media_type=image_media_type,
+                runtime=runtime,
             )
         )
 
@@ -274,7 +288,9 @@ class WorkerPlane:
         if grant is None:
             raise WorkerGrantError("grantId is not recorded", code="unknown-grant")
         self._require_live_grant(grant, claims, now=now)
-        if grant.image_digest != image_digest or claims["imageDigest"] != image_digest:
+        queued = fold.queued_work(grant.task_id, grant.attempt_id)
+        allowed = _cas_fetch_digest(grant.image_digest, queued)
+        if allowed != image_digest or claims["imageDigest"] != grant.image_digest:
             raise WorkerCallError(
                 "image digest is not the authorized execution object",
                 code="execution-binding-mismatch",
@@ -445,14 +461,20 @@ class WorkerPlane:
         worker = fold.worker(grant.worker_id)
         if worker is None:
             raise WorkerCallError("workerId is not registered", code="unknown-worker")
+        if worker.runtime != queued.runtime:
+            raise WorkerCallError(
+                "worker runtime does not match queued work",
+                code="runtime-mismatch",
+            )
         if not queued.required_accelerators.issubset(worker.accelerators):
             raise WorkerCallError(
                 "worker does not advertise required accelerators",
                 code="accelerator-missing",
             )
         self._require_execution_match(grant, queued, None)
+        cas_digest = _cas_fetch_digest(queued.image_digest, queued)
         try:
-            self.artifacts.verify(queued.image_digest)
+            self.artifacts.verify(cas_digest)
         except (ArtifactNotFoundError, ArtifactStoreError):
             raise WorkerCallError(
                 "authorized image digest is not in CAS",
@@ -611,7 +633,8 @@ class WorkerPlane:
             config_digest=queued.config_digest,
             config=dict(queued.config),
             inputs=dict(queued.inputs),
-            runtime="python-sandbox",
+            runtime=queued.runtime,
+            image_media_type=queued.image_media_type,
             expires_at=expires_at,
             resumed=resumed,
         )
@@ -702,6 +725,8 @@ class WorkerPlane:
             config=queued.config,
             inputs=queued.inputs,
             config_digest=queued.config_digest,
+            image_media_type=queued.image_media_type,
+            runtime=queued.runtime,
         )
         if (
             queued.image_digest != grant.image_digest
@@ -772,6 +797,23 @@ class WorkerPlane:
         if time is not None:
             return time
         return format_rfc3339(self.clock())
+
+
+def _cas_fetch_digest(image_digest: str, queued: QueuedWork | None) -> str:
+    if queued is None or queued.runtime == WORKER_RUNTIME_PYTHON_SANDBOX:
+        return image_digest
+    if queued.runtime != WORKER_RUNTIME_OCI_CONTAINER:
+        raise WorkerCallError(
+            "queued runtime is not supported",
+            code="execution-binding-mismatch",
+        )
+    brick = queued.inputs.get("brickDigest")
+    if type(brick) is not str:
+        raise WorkerCallError(
+            "OCI work is missing the CAS brick digest",
+            code="execution-binding-mismatch",
+        )
+    return brick
 
 
 def _stale_lease(

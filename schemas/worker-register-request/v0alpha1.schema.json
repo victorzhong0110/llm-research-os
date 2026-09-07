@@ -91,6 +91,15 @@
       "title": "Projectid",
       "type": "string"
     },
+    "runtime": {
+      "default": "python-sandbox",
+      "enum": [
+        "python-sandbox",
+        "oci-container"
+      ],
+      "title": "Runtime",
+      "type": "string"
+    },
     "source": {
       "maxLength": 2048,
       "minLength": 1,

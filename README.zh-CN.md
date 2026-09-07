@@ -16,18 +16,18 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表。M1-1 研究决定对象见
 [research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束，且只继承最小环境。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api`、HTTPS、远端正数 CNY 上限/预留，以及原子 reserve-or-exceed 预算门控。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。M1-6 让 SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)），这不是签名启动凭证。Issue #19 的本机消费已交付；签名、过期与吊销见 Issue #53。提问通道为 `question.asked` / `question.answered`，命令为 `questions ask` / `questions answer`。`researchos m1 prove` 记录一条离线语料链（Mock 提案到模拟报告，或拒绝且不排队 Run）。伞形 #38 仍开放。编号切片不是 M1 检查点。M2-0 是免费回环 Worker CPU 闭环（[ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)）：带过期/吊销的 HMAC 授权绑定已授权的 `execute.local` 积木、CAS 钉死的 python 助手、制品与报告。独立控制面与 Worker 进程使用钉死的回环 HTTPS（[ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md)），这不是跨机器证明。这不是 GPU 完成，不是 NativeProcessRuntime，不是内核沙箱，也不是 Issue #38。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束，且只继承最小环境。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api`、HTTPS、远端正数 CNY 上限/预留，以及原子 reserve-or-exceed 预算门控。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。M1-6 让 SimulatedRuntime 按 `{eventId, sequence}` 消费本机 `plan.authorization.evaluated` 事实（[ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)），这不是签名启动凭证。Issue #19 的本机消费已交付；签名、过期与吊销见 Issue #53。提问通道为 `question.asked` / `question.answered`，命令为 `questions ask` / `questions answer`。`researchos m1 prove` 记录一条离线语料链（Mock 提案到模拟报告，或拒绝且不排队 Run）。伞形 #38 仍开放。编号切片不是 M1 检查点。M2-0 是免费回环 Worker CPU 闭环（[ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)）：带过期/吊销的 HMAC 授权绑定已授权的 `execute.local` 积木、CAS 钉死的 python 助手、制品与报告。独立控制面与 Worker 进程使用钉死的回环 HTTPS（[ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md)），这不是跨机器证明。CPU OCIContainerRuntime 是按摘要钉死的 docker 适配器（[ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md)）；缺少引擎时失败关闭，不得表述为容器实测成功。这不是 GPU 完成，不是 NativeProcessRuntime，不是内核沙箱，也不是 Issue #38。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
 全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、SimulatedRuntime 对本机 `{eventId, sequence}` 的消费、显式模拟 Run /
-取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 / M1 检查点 CLI，不可启动的 NativeProcessPreflight，以及回环 Worker 注册 / HMAC 授权 / `researchos m2 prove`（宿主 Python 助手不是 NativeProcessRuntime，也不是内核沙箱）。
+取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 / M1 检查点 CLI，不可启动的 NativeProcessPreflight，以及回环 Worker 注册 / HMAC 授权 / `researchos m2 prove`（宿主 Python 助手不是 NativeProcessRuntime，也不是内核沙箱）与失败关闭的 CPU OCI 适配器。
 
 当前仍不执行任何训练任务或真实 GPU 工作负载。授权事件、预检报告、lineage 重建与
 `decisionDigest` 都不是签名回执或启动许可。SimulatedRuntime 会消费本机 EventStore 上
 一条 `{eventId, sequence}` 引用（ADR-0042）；lineage 仍为 `not-consumed`。取消请求 CLI 仍不发送进程信号；
-观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。
+观察到的 cancelled 结果是随后 SimulatedRuntime 写出的事实。真实 NativeProcessRuntime、非回环 Worker、付费 GPU 与 JWT 启动凭证均不属于 M0 或 M1 已交付能力。M2-0 回环 CPU 已在树中（ADR-0043）。独立回环 HTTPS 是 ADR-0044，不是跨机器 Worker。CPU OCI 是 ADR-0045，不是 GPU 实测。
 
 ## M0 目标
 
@@ -96,6 +96,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
 - [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
 - [M2 Worker CLI](docs/guides/m2-worker.md)
+- [M2 CPU OCI](docs/guides/m2-oci.md)
 - [M2 GPU 切片（仅方向）](docs/guides/m2-gpu-slice.md)
 - [首次实验](docs/guides/first-experiment.md)
 - [架构决策记录](docs/adr/README.md)
@@ -308,7 +309,8 @@ uv run researchos m2 prove \
   --format json
 ```
 
-见 [M2 Worker CLI](docs/guides/m2-worker.md) 与
+见 [M2 Worker CLI](docs/guides/m2-worker.md)、
+[M2 CPU OCI](docs/guides/m2-oci.md) 与
 [首次实验](docs/guides/first-experiment.md)。
 
 研究提案、异议、决定与提问是独立的 EventStore 事实。数据库必须已存在。`accept` 不是启动凭证。回答是带权利的数据，不是指令：
@@ -407,6 +409,7 @@ OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `Secret
 已记录的项目 CNY 上限，以及与该上限一致的请求 cap。派发后结果不确定时保留预留。
 `researchos m1 prove` 从语料向空库记录一条研究链；它不会关闭 Issue #38。
 `researchos m2 prove` 从语料记录一条回环 Worker CPU 闭环；它不花费 GPU，不是内核沙箱，也不会关闭 Issue #38。
+`researchos m2 oci` 在本机已有按摘要钉死的镜像时记录 CPU OCI 闭环；否则失败关闭，不得表述为容器实测成功。
 `researchos workers serve` / `workers run` 把该闭环拆成两个进程、经钉死的回环 HTTPS 通信；它们不证明远端 Worker。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
 PDF 抽取在子进程中设上限且不继承进程密钥；未知权利不能授权训练。

@@ -67,8 +67,10 @@ MAY cite their digests.
 - Complete: `POST /v0alpha1/work/complete`. Fail: `POST /v0alpha1/work/fail`.
 - Artifact upload: `POST /v0alpha1/artifacts`; response is digest only.
 - Artifact download: `GET /v0alpha1/artifacts/sha256/<64 lowercase hex>`
-  with `X-ResearchOS-Grant`. The digest MUST equal the grant's
-  `imageDigest`. The Worker MUST hash the bytes and refuse a mismatch.
+  with `X-ResearchOS-Grant`. For `python-sandbox` work the digest MUST
+  equal the grant `imageDigest`. For `oci-container` work the digest MUST
+  equal `inputs.brickDigest`. The Worker MUST hash the bytes and refuse a
+  mismatch.
 - Isolated processes (ADR-0044) MUST use HTTPS with a pinned loopback CA,
   a private Worker CAS, and MUST NOT open the control-plane SQLite file.
   In-process HTTP is a test adapter. Loopback tests MUST NOT be described
@@ -77,20 +79,38 @@ MAY cite their digests.
 ## 4. CPU helper (not a kernel sandbox)
 
 The image field is `imageDigest` (`sha256:` + 64 hex) and
-`imageMediaType: researchos.python-brick/v0alpha1`. M2-0 materializes the
-object into a temp dir and runs host Python JSON-stdio (`-I`, allowlisted
+`imageMediaType: researchos.python-brick/v0alpha1` or
+`researchos.oci-image/v0alpha1`. M2-0 materializes a python-brick object
+into a temp dir and runs host Python JSON-stdio (`-I`, allowlisted
 env, wall-clock). Stdout and stderr byte limits apply **while pipes are
 read**, not after exit. POSIX process groups are killed and reaped. A
 wall-clock timeout or a process killed with a signal (`returncode < 0`) is
 `UNKNOWN`, not `failed`. A non-zero brick exit is `failed`. This is not
 `NativeProcessRuntime`, not runc, and not kernel network or filesystem
 isolation (TM-043). It MUST NOT be described as a general-purpose sandbox
-for arbitrary code. A later OCI runtime MUST keep the same digest field.
+for arbitrary code.
+
+## 4a. CPU OCI runtime
+
+`runtime: oci-container` with `imageMediaType: researchos.oci-image/v0alpha1`
+is `OCIContainerRuntime` (ADR-0045). `imageDigest` is the OCI image
+identity. Tags and pull-by-name are forbidden. The CAS python brick is
+`inputs.brickDigest`. Network MUST be `denied`. Allowed mounts are `/in`
+(read-only brick), `/tmp`, and `/out`. Secrets inject only as `SecretRef`
+env slots. The first adapter is docker with `--pull=never`. A docker CLI
+without an engine MUST fail `oci-runtime-missing`. Tests MUST NOT mock a
+successful container. Host Python remains the trusted helper path.
+A Worker registered as `python-sandbox` MUST NOT lease OCI work.
 
 ## 5. Conformance
 
 ```bash
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
-  tests/test_worker_isolate.py
+  tests/test_worker_isolate.py tests/test_worker_oci.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
+uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```
+
+The OCI command fails closed (`oci-runtime-missing` or `oci-image-missing`)
+when this host has no live engine or the planned digest is not present.
+That failure is not a mocked success.

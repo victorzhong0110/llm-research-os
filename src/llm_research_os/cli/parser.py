@@ -674,6 +674,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="local artifact root; created if missing",
     )
     add_event_format_argument(m2_prove)
+    m2_oci = m2_commands.add_parser(
+        "oci",
+        help="record one CPU OCI Worker loop; fails closed without a live runtime",
+    )
+    m2_oci.add_argument(
+        "corpus",
+        type=Path,
+        help="OCI checkpoint corpus directory",
+    )
+    m2_oci.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_oci.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_oci)
     return parser
 
 

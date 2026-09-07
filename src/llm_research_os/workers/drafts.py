@@ -71,6 +71,7 @@ def registered_draft(
     actor_id: str,
     accelerators: tuple[str, ...] = (),
     experiment_revision: int = 1,
+    runtime: str = "python-sandbox",
 ) -> dict[str, Any]:
     return worker_event_draft(
         event_id=event_id,
@@ -84,7 +85,7 @@ def registered_draft(
         experiment_revision=experiment_revision,
         payload={
             "workerId": worker_id,
-            "runtime": "python-sandbox",
+            "runtime": runtime,
             "protocol": "researchos.worker-longpoll/v0alpha1",
             "accelerators": list(accelerators),
         },
@@ -213,6 +214,8 @@ def work_queued_draft(
     inputs: dict[str, Any] | None = None,
     required_accelerators: tuple[str, ...] = (),
     experiment_revision: int = 1,
+    image_media_type: str = "researchos.python-brick/v0alpha1",
+    runtime: str = "python-sandbox",
 ) -> dict[str, Any]:
     return worker_event_draft(
         event_id=event_id,
@@ -227,8 +230,8 @@ def work_queued_draft(
         payload={
             "taskId": task_id,
             "imageDigest": image_digest,
-            "imageMediaType": "researchos.python-brick/v0alpha1",
-            "runtime": "python-sandbox",
+            "imageMediaType": image_media_type,
+            "runtime": runtime,
             "config": dict(config or {}),
             "inputs": dict(inputs or {}),
             "configDigest": config_digest,

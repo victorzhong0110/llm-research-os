@@ -57,8 +57,10 @@ grants with expiry/revoke bound to an authorized `execute.local` brick,
 CAS-pinned python helper, artifact + report. Isolated control-plane and
 Worker processes use pinned loopback HTTPS
 ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
-that is not a cross-machine proof. It is not GPU completion, not
-NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
+that is not a cross-machine proof. CPU OCIContainerRuntime is a
+digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md));
+a missing engine fails closed and is not a mocked success. It is not GPU
+completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -72,8 +74,10 @@ evaluation events, read-only lineage, in-process `decisionDigest`, a local
 simulated-run / cancellation-request / artifact-object / research-decision /
 mock-model-call / evidence-import / OpenAI-compat / static-report /
 M1-checkpoint CLIs, a non-launching NativeProcessPreflight, loopback Worker
-registration / HMAC grants / `researchos m2 prove`, and a host-python helper that
-is not NativeProcessRuntime and not a kernel sandbox.
+registration / HMAC grants / `researchos m2 prove`, a host-python helper that
+is not NativeProcessRuntime and not a kernel sandbox, and a CPU
+`OCIContainerRuntime` adapter that fails closed without a live digest-pinned
+image.
 
 The tree still does not execute training jobs or real GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
@@ -84,7 +88,8 @@ the observed cancelled outcome is a later SimulatedRuntime fact. A real
 NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
 credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
-loopback HTTPS is ADR-0044 and is not a cross-machine Worker.
+loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
+ADR-0045 and is not a live GPU proof.
 
 ## M0 goals
 
@@ -158,6 +163,7 @@ acceptance checklist of that milestone.
 - [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
 - [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
 - [M2 Worker CLI](docs/guides/m2-worker.md)
+- [M2 CPU OCI](docs/guides/m2-oci.md)
 - [M2 GPU slice (direction only)](docs/guides/m2-gpu-slice.md)
 - [First experiment](docs/guides/first-experiment.md)
 - [Architecture decision records](docs/adr/README.md)
@@ -399,7 +405,8 @@ uv run researchos m2 prove \
   --format json
 ```
 
-See [M2 Worker CLI](docs/guides/m2-worker.md) and
+See [M2 Worker CLI](docs/guides/m2-worker.md),
+[M2 CPU OCI](docs/guides/m2-oci.md), and
 [first experiment](docs/guides/first-experiment.md).
 
 Research proposals, dissents, decisions, and questions are separate EventStore
@@ -523,6 +530,9 @@ matches that limit. Uncertain transport after dispatch keeps the reservation.
 does not close Issue #38.
 `researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
 does not spend GPU and does not close Issue #38.
+`researchos m2 oci` records the digest-pinned OCI CPU loop when a live
+engine has the planned image; otherwise it fails closed and MUST NOT be
+described as a successful container run.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends

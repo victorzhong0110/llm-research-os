@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -16,6 +17,7 @@ from llm_research_os.execution.errors import (
 )
 from llm_research_os.execution.planner import PlanningInputError
 from llm_research_os.m2.errors import M2CheckpointError
+from llm_research_os.m2.oci_prove import prove_oci_loop
 from llm_research_os.m2.prove import M2CheckpointResult, prove_cpu_loop
 from llm_research_os.report.errors import ReportError
 from llm_research_os.runs.errors import RunStateError
@@ -39,13 +41,24 @@ def run_m2(args: argparse.Namespace) -> int:
         artifacts = args.artifacts
         if artifacts is None:
             artifacts = args.database.with_name(f"{args.database.stem}-artifacts")
-        return _prove(args.corpus, args.database, artifacts, args.format)
+        return _prove(prove_cpu_loop, args.corpus, args.database, artifacts, args.format)
+    if args.m2_command == "oci":
+        artifacts = args.artifacts
+        if artifacts is None:
+            artifacts = args.database.with_name(f"{args.database.stem}-artifacts")
+        return _prove(prove_oci_loop, args.corpus, args.database, artifacts, args.format)
     raise AssertionError(f"unhandled m2 command: {args.m2_command}")
 
 
-def _prove(corpus: Path, database: Path, artifacts: Path, output_format: str) -> int:
+def _prove(
+    loop: Callable[[Path, Path, Path], M2CheckpointResult],
+    corpus: Path,
+    database: Path,
+    artifacts: Path,
+    output_format: str,
+) -> int:
     try:
-        result = prove_cpu_loop(corpus, database, artifacts)
+        result = loop(corpus, database, artifacts)
     except M2CheckpointError as exc:
         print_error(exc, output_format)
         return 2

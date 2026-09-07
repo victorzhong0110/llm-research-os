@@ -20,9 +20,11 @@ one attempt, and one execution object.
 - Envelope `runId` / `attemptId` are required
 
 The cited evaluation MUST exist, MUST be `authorized=true`, MUST match the
-project, MUST have a human actor, and MUST list `execute.local` in
-`requiredCapabilities`. Citing a `simulate` authorization MUST fail
-`authorization-capability-mismatch`.
+project, MUST have a human actor, and MUST list the planned execution
+capability in `requiredCapabilities` (`execute.local` for host-python
+bricks, `execute.oci` for OCI images). Citing a `simulate` authorization
+MUST fail `authorization-capability-mismatch`. An `execute.local`
+evaluation MUST NOT issue an executable grant for an OCI plan.
 
 Grant recording MUST rebuild the cited plan from the caller-supplied
 ResearchSpec and registry at a shared trust boundary used by
@@ -59,8 +61,8 @@ runId, nonce, exp, projectId, imageDigest, configDigest}`. Verify with
 
 CLI: `researchos grants record SPEC REQUEST DATABASE --registry PATH`
 rebuilds the plan, then appends the recorded fact. It does not print the
-token. Recording without a matching `execute.local` evaluation, or with an
-execution object that is not the planned task, fails closed.
+token. Recording without a matching execution capability evaluation, or
+with an execution object that is not the planned task, fails closed.
 
 ## 3. Conformance
 

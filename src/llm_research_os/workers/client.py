@@ -16,6 +16,13 @@ from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStor
 from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
 from llm_research_os.workers.binding import json_object, require_execution_digest
 from llm_research_os.workers.errors import WorkerError
+from llm_research_os.workers.models import (
+    IMAGE_MEDIA_OCI_IMAGE,
+    IMAGE_MEDIA_PYTHON_BRICK,
+    WORKER_RUNTIME_OCI_CONTAINER,
+    WORKER_RUNTIME_PYTHON_SANDBOX,
+)
+from llm_research_os.workers.oci import execute_oci_python_brick
 from llm_research_os.workers.sandbox import SandboxDisposition, execute_python_brick
 from llm_research_os.workers.tls import client_tls_context
 
@@ -133,7 +140,11 @@ class WorkerClient:
             )
         image_digest = claimed.get("imageDigest")
         config_digest = claimed.get("configDigest")
+        runtime = claimed.get("runtime", WORKER_RUNTIME_PYTHON_SANDBOX)
+        media = claimed.get("imageMediaType", IMAGE_MEDIA_PYTHON_BRICK)
         if type(image_digest) is not str or type(config_digest) is not str:
+            raise WorkerError("poll omitted execution binding", code="http-invalid")
+        if type(runtime) is not str or type(media) is not str:
             raise WorkerError("poll omitted execution binding", code="http-invalid")
         config = json_object(claimed.get("config", {}), field="config")
         inputs = json_object(claimed.get("inputs", {}), field="inputs")
@@ -142,14 +153,30 @@ class WorkerClient:
             config=config,
             inputs=inputs,
             config_digest=config_digest,
+            image_media_type=media,
+            runtime=runtime,
         )
-        self.fetch_image(artifacts, image_digest)
-        result = execute_python_brick(
-            artifacts,
-            image_digest,
-            config=config,
-            inputs=inputs,
-        )
+        if runtime == WORKER_RUNTIME_PYTHON_SANDBOX and media == IMAGE_MEDIA_PYTHON_BRICK:
+            self.fetch_image(artifacts, image_digest)
+            result = execute_python_brick(
+                artifacts,
+                image_digest,
+                config=config,
+                inputs=inputs,
+            )
+        elif runtime == WORKER_RUNTIME_OCI_CONTAINER and media == IMAGE_MEDIA_OCI_IMAGE:
+            brick_digest = inputs.get("brickDigest")
+            if type(brick_digest) is not str:
+                raise WorkerError("OCI poll omitted brickDigest", code="http-invalid")
+            self.fetch_image(artifacts, brick_digest)
+            result = execute_oci_python_brick(
+                artifacts,
+                image_digest,
+                config=config,
+                inputs=inputs,
+            )
+        else:
+            raise WorkerError("poll runtime is not supported", code="runtime-mismatch")
         if result.disposition is SandboxDisposition.UNKNOWN:
             raise WorkerError("sandbox outcome is unknown", code=result.reason_code)
         if result.disposition is not SandboxDisposition.SUCCEEDED or result.result_digest is None:

@@ -42,6 +42,7 @@ _TERMINAL_LEASE = frozenset({"completed", "failed", "expired"})
 @dataclass(frozen=True, slots=True)
 class WorkerRecord:
     worker_id: str
+    runtime: str
     accelerators: frozenset[str]
 
 
@@ -72,6 +73,8 @@ class QueuedWork:
     config_digest: str
     config: dict[str, Any]
     inputs: dict[str, Any]
+    runtime: str
+    image_media_type: str
     required_accelerators: frozenset[str]
 
 
@@ -242,6 +245,7 @@ def _apply_registered(fold: WorkerFold, payload: WorkerRegisteredPayload) -> Wor
         raise WorkerCallError("workerId is already registered", code="duplicate-worker-id")
     record = WorkerRecord(
         worker_id=payload.worker_id,
+        runtime=payload.runtime,
         accelerators=frozenset(payload.accelerators),
     )
     return WorkerFold(
@@ -339,6 +343,8 @@ def _apply_queued(fold: WorkerFold, event: ResearchEvent, payload: WorkQueuedPay
         config_digest=payload.config_digest,
         config=dict(payload.config),
         inputs=dict(payload.inputs),
+        runtime=payload.runtime,
+        image_media_type=payload.image_media_type,
         required_accelerators=frozenset(payload.required_accelerators),
     )
     return WorkerFold(
@@ -369,6 +375,11 @@ def _apply_leased(fold: WorkerFold, event: ResearchEvent, payload: WorkLeasedPay
     queued = fold.queued_work(payload.task_id, attempt_id)
     if queued is None:
         raise WorkerCallError("leased task attempt is not queued", code="unknown-work")
+    if worker.runtime != queued.runtime:
+        raise WorkerCallError(
+            "worker runtime does not match queued work",
+            code="runtime-mismatch",
+        )
     if not queued.required_accelerators.issubset(worker.accelerators):
         raise WorkerCallError(
             "worker does not advertise required accelerators",

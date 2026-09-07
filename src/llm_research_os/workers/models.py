@@ -12,6 +12,7 @@ from pydantic import (
     ValidationInfo,
     field_serializer,
     field_validator,
+    model_validator,
 )
 
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
@@ -51,12 +52,16 @@ WORKER_EVENT_TYPES = frozenset(
     }
 )
 WORKER_RUNTIME_PYTHON_SANDBOX: Literal["python-sandbox"] = "python-sandbox"
+WORKER_RUNTIME_OCI_CONTAINER: Literal["oci-container"] = "oci-container"
+WORKER_RUNTIME_NAME = Literal["python-sandbox", "oci-container"]
 WORKER_PROTOCOL_LONGPOLL: Literal["researchos.worker-longpoll/v0alpha1"] = (
     "researchos.worker-longpoll/v0alpha1"
 )
 IMAGE_MEDIA_PYTHON_BRICK: Literal["researchos.python-brick/v0alpha1"] = (
     "researchos.python-brick/v0alpha1"
 )
+IMAGE_MEDIA_OCI_IMAGE: Literal["researchos.oci-image/v0alpha1"] = "researchos.oci-image/v0alpha1"
+IMAGE_MEDIA_TYPE = Literal["researchos.python-brick/v0alpha1", "researchos.oci-image/v0alpha1"]
 DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
 MAX_ACCELERATORS = 8
 MAX_BRICK_OBJECT_BYTES = 16_384
@@ -80,7 +85,7 @@ class WorkerDocumentModel(EventDocumentModel):
 
 class WorkerRegisteredPayload(WorkerDocumentModel):
     worker_id: EventIdentifier = Field(alias="workerId")
-    runtime: Literal["python-sandbox"] = WORKER_RUNTIME_PYTHON_SANDBOX
+    runtime: WORKER_RUNTIME_NAME = WORKER_RUNTIME_PYTHON_SANDBOX
     protocol: Literal["researchos.worker-longpoll/v0alpha1"] = WORKER_PROTOCOL_LONGPOLL
     accelerators: tuple[EventIdentifier, ...] = Field(default=())
 
@@ -115,11 +120,11 @@ def _require_brick_object(value: object, field: str) -> dict[str, Any]:
 class WorkQueuedPayload(WorkerDocumentModel):
     task_id: EventIdentifier = Field(alias="taskId")
     image_digest: CloudEventsString = Field(alias="imageDigest", pattern=DIGEST_PATTERN)
-    image_media_type: Literal["researchos.python-brick/v0alpha1"] = Field(
+    image_media_type: IMAGE_MEDIA_TYPE = Field(
         default=IMAGE_MEDIA_PYTHON_BRICK,
         alias="imageMediaType",
     )
-    runtime: Literal["python-sandbox"] = WORKER_RUNTIME_PYTHON_SANDBOX
+    runtime: WORKER_RUNTIME_NAME = WORKER_RUNTIME_PYTHON_SANDBOX
     config: dict[str, Any] = Field(default_factory=dict)
     inputs: dict[str, Any] = Field(default_factory=dict)
     config_digest: CloudEventsString = Field(
@@ -154,6 +159,20 @@ class WorkQueuedPayload(WorkerDocumentModel):
     @field_serializer("required_accelerators")
     def serialize_accelerators(self, values: tuple[str, ...]) -> list[str]:
         return list(values)
+
+    @model_validator(mode="after")
+    def runtime_matches_image_media_type(self) -> WorkQueuedPayload:
+        python_pair = (
+            self.runtime == WORKER_RUNTIME_PYTHON_SANDBOX
+            and self.image_media_type == IMAGE_MEDIA_PYTHON_BRICK
+        )
+        oci_pair = (
+            self.runtime == WORKER_RUNTIME_OCI_CONTAINER
+            and self.image_media_type == IMAGE_MEDIA_OCI_IMAGE
+        )
+        if python_pair or oci_pair:
+            return self
+        raise ValueError("runtime does not match imageMediaType")
 
 
 class WorkLeasedPayload(WorkerDocumentModel):
