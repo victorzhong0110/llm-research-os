@@ -51,6 +51,10 @@ The question channel is `question.asked` / `question.answered` with
 `questions ask` / `questions answer`. `researchos m1 prove` records one offline
 corpus chain (Mock proposal through simulated report, or reject without a Run).
 Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
+M2-0 is a free loopback Worker CPU loop
+([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)): HMAC
+grants with expiry/revoke, CAS-pinned python brick, artifact + report. It
+is not GPU completion, not NativeProcessRuntime, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -63,8 +67,9 @@ evaluation events, read-only lineage, in-process `decisionDigest`, a local
 `{eventId, sequence}` consume on SimulatedRuntime, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
 mock-model-call / evidence-import / OpenAI-compat / static-report /
-M1-checkpoint CLIs,
-and a non-launching NativeProcessPreflight.
+M1-checkpoint CLIs, a non-launching NativeProcessPreflight, loopback Worker
+registration / HMAC grants / `researchos m2 prove`, and a CPU sandbox that
+is not NativeProcessRuntime.
 
 The tree still does not execute training jobs or real GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
@@ -72,8 +77,9 @@ receipts or launch permits. SimulatedRuntime does consume one local
 `{eventId, sequence}` citation of the audit fact on this EventStore (ADR-0042);
 lineage stays `not-consumed`. A cancellation-request CLI still does not send a process signal;
 the observed cancelled outcome is a later SimulatedRuntime fact. A real
-NativeProcessRuntime, remote Workers, and signed launch credentials are
-not M0 or M1 deliverables.
+NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
+credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
+([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)).
 
 ## M0 goals
 
@@ -143,6 +149,12 @@ acceptance checklist of that milestone.
 - [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
 - [M1 OpenAI-compatible generate CLI](docs/guides/m1-openai-compat.md)
 - [M1 synthetic metrics and static Run report](docs/guides/m1-run-report.md)
+- [M1 checkpoint CLI](docs/guides/m1-checkpoint.md)
+- [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
+- [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
+- [M2 Worker CLI](docs/guides/m2-worker.md)
+- [M2 GPU slice (direction only)](docs/guides/m2-gpu-slice.md)
+- [First experiment](docs/guides/first-experiment.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -372,6 +384,19 @@ uv run researchos m1 prove \
 `--decision reject` records the same research facts and must not queue a Run.
 See [M1 checkpoint CLI](docs/guides/m1-checkpoint.md).
 
+One command records a loopback Worker CPU loop (CAS brick, artifact, report).
+It does not spend GPU and does not close Issue #38:
+
+```bash
+uv run researchos m2 prove \
+  examples/m2-checkpoint \
+  research.db \
+  --format json
+```
+
+See [M2 Worker CLI](docs/guides/m2-worker.md) and
+[first experiment](docs/guides/first-experiment.md).
+
 Research proposals, dissents, decisions, and questions are separate EventStore
 facts. The database must already exist. `accept` is not a launch credential.
 An answer is data with rights, not an instruction:
@@ -491,15 +516,18 @@ defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`
 matches that limit. Uncertain transport after dispatch keeps the reservation.
 `researchos m1 prove` records one empty-store research chain from a corpus; it
 does not close Issue #38.
+`researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
+does not spend GPU and does not close Issue #38.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
 minimal worker environment; unknown
 rights cannot authorize training.
 `report` rebuilds a static HTML or Markdown projection; it is not a fact source.
 The tree does not import block entrypoints, does not execute arbitrary training
-code, expressions, plugins, or remote Workers, does not write a SQLite artifact
-index or durable projections, and does not provide object export/delete, a real
-stop adapter, an executable NativeProcessRuntime, or network upload.
+frameworks, expressions, plugins, or non-loopback Workers, does not write a
+SQLite artifact index or durable projections, and does not provide object
+export/delete, a real GPU stop adapter, an executable NativeProcessRuntime, or
+network upload of training artifacts.
 A simulated `completed` is not scientific success; `unknown` stays unresolved.
 Any real GPU spend, external-account action, or irreversible operation still needs
 a separate approval. See the [security policy](SECURITY.md).

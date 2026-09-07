@@ -533,6 +533,75 @@ def build_parser() -> argparse.ArgumentParser:
         help="researcher outcome; reject must not queue a Run",
     )
     add_registry_arguments(m1_prove)
+
+    grants = subparsers.add_parser(
+        "grants",
+        help="record HMAC authorization grants as EventStore facts",
+    )
+    grants_commands = grants.add_subparsers(dest="grants_command", required=True)
+    grants_record = grants_commands.add_parser(
+        "record",
+        help="append one human-recorded HMAC grant; the token is not stored",
+    )
+    grants_record.add_argument(
+        "request",
+        type=Path,
+        help="AuthorizationGrantRequest v0alpha1 YAML or JSON file",
+    )
+    grants_record.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(grants_record)
+
+    workers = subparsers.add_parser(
+        "workers",
+        help="register loopback Workers as EventStore facts",
+    )
+    workers_commands = workers.add_subparsers(dest="workers_command", required=True)
+    workers_register = workers_commands.add_parser(
+        "register",
+        help="append one worker.registered fact",
+    )
+    workers_register.add_argument(
+        "request",
+        type=Path,
+        help="WorkerRegisterRequest v0alpha1 YAML or JSON file",
+    )
+    workers_register.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(workers_register)
+
+    m2 = subparsers.add_parser(
+        "m2",
+        help="run M2-0 CPU Worker paths; does not spend GPU or close Issue #38",
+    )
+    m2_commands = m2.add_subparsers(dest="m2_command", required=True)
+    m2_prove = m2_commands.add_parser(
+        "prove",
+        help="record one loopback Worker CPU loop from a corpus",
+    )
+    m2_prove.add_argument(
+        "corpus",
+        type=Path,
+        help="checkpoint corpus directory",
+    )
+    m2_prove.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_prove.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_prove)
     return parser
 
 

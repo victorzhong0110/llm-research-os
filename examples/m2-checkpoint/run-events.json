@@ -1,0 +1,38 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "WorkerRunEvents",
+  "events": {
+    "run.queued": {
+      "id": "evt.run.queued.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "run.started": {
+      "id": "evt.run.started.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "attempt.queued": {
+      "id": "evt.attempt.queued.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "attempt.started": {
+      "id": "evt.attempt.started.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "attempt.succeeded": {
+      "id": "evt.attempt.succeeded.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "run.completed": {
+      "id": "evt.run.completed.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "attempt.unknown": {
+      "id": "evt.attempt.unknown.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    },
+    "attempt.lost": {
+      "id": "evt.attempt.lost.worker.cpu",
+      "time": "2026-09-07T12:00:00Z"
+    }
+  }
+}

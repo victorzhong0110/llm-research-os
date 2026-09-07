@@ -65,6 +65,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   answer fields; `answered` requires them.
 - `researchos m1 prove`: one offline corpus chain (Mock proposal through
   simulated report, or reject without `run.queued`). Issue #38 stays open.
+- M2-0 loopback Worker plane, HMAC grants (expiry/revoke/consume), CPU
+  sandbox over a CAS-pinned brick, and `researchos m2 prove`
+  ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Not a
+  paid GPU run and not NativeProcessRuntime.
 
 ### Changed
 

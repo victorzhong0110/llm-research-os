@@ -173,6 +173,14 @@ from llm_research_os.secrets.schema import write_schema as write_secret_ref_sche
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
+from llm_research_os.workers.schema import (
+    authorization_grant_request_schema_matches,
+    canonical_authorization_grant_request_schema,
+    canonical_worker_register_request_schema,
+    worker_register_request_schema_matches,
+    write_authorization_grant_request_schema,
+    write_worker_register_request_schema,
+)
 
 DEFAULT_SCHEMA_CONTRACT = "research-spec"
 
@@ -381,6 +389,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         evidence_citation_schema_matches,
         write_evidence_citation_schema,
         "schemas/evidence-citation/v0alpha1.schema.json",
+    ),
+    "worker-register-request": _contract(
+        canonical_worker_register_request_schema,
+        worker_register_request_schema_matches,
+        write_worker_register_request_schema,
+        "schemas/worker-register-request/v0alpha1.schema.json",
+    ),
+    "authorization-grant-request": _contract(
+        canonical_authorization_grant_request_schema,
+        authorization_grant_request_schema_matches,
+        write_authorization_grant_request_schema,
+        "schemas/authorization-grant-request/v0alpha1.schema.json",
     ),
 }
 
