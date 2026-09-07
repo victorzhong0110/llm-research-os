@@ -1,0 +1,29 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "QuestionAskRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "subject": "question.eval-split",
+  "streamid": "stream.research",
+  "actor": {
+    "id": "model.mock",
+    "kind": "ai",
+    "modelId": "mock.deterministic"
+  },
+  "event": {
+    "id": "evt.question.1",
+    "time": "2026-09-04T12:04:00Z"
+  },
+  "questionId": "question.eval-split",
+  "question": "Was any evaluation document used in training?",
+  "uncertainty": "Whether the proposed split is independent of training documents.",
+  "whyNotObservable": "The spec, evidence refs, and event history do not record split construction.",
+  "options": [
+    "No overlap.",
+    "Unknown; treat as restricted."
+  ],
+  "blocking": true,
+  "relatedProposalId": "proposal.revise-eval",
+  "evidenceRefs": []
+}

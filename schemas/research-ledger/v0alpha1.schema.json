@@ -1,5 +1,60 @@
 {
   "$defs": {
+    "AnswerRights": {
+      "additionalProperties": false,
+      "not": {
+        "properties": {
+          "allowedUses": {
+            "contains": {
+              "enum": [
+                "redistribution",
+                "training"
+              ]
+            }
+          },
+          "status": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "allowedUses",
+          "status"
+        ]
+      },
+      "properties": {
+        "allowedUses": {
+          "default": [
+            "research-read"
+          ],
+          "items": {
+            "$ref": "#/$defs/DataUse"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Alloweduses",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "$ref": "#/$defs/RightsStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "AnswerRights",
+      "type": "object"
+    },
+    "DataUse": {
+      "enum": [
+        "research-read",
+        "retrieval",
+        "training",
+        "redistribution"
+      ],
+      "title": "DataUse",
+      "type": "string"
+    },
     "DecisionLedgerEntry": {
       "additionalProperties": false,
       "properties": {
@@ -81,7 +136,8 @@
       "enum": [
         "proposal",
         "run",
-        "dissent"
+        "dissent",
+        "question"
       ],
       "title": "DecisionTargetKind",
       "type": "string"
@@ -280,6 +336,209 @@
       ],
       "title": "ProposalRevisionState",
       "type": "string"
+    },
+    "QuestionAnswerValue": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "option": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "option"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "QuestionLedgerEntry": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "open"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "answer"
+                  ]
+                },
+                {
+                  "required": [
+                    "rights"
+                  ]
+                },
+                {
+                  "required": [
+                    "answerEventId"
+                  ]
+                },
+                {
+                  "required": [
+                    "answerSequence"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "answered"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "answer",
+              "rights",
+              "answerEventId",
+              "answerSequence"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "answer": {
+          "$ref": "#/$defs/QuestionAnswerValue"
+        },
+        "answerEventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "type": "string"
+        },
+        "answerSequence": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blocking": {
+          "title": "Blocking",
+          "type": "boolean"
+        },
+        "eventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "options": {
+          "default": [],
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Options",
+          "type": "array"
+        },
+        "question": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "questionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Questionid",
+          "type": "string"
+        },
+        "relatedProposalId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        "rights": {
+          "$ref": "#/$defs/AnswerRights"
+        },
+        "sequence": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/QuestionStatus"
+        },
+        "uncertainty": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Uncertainty",
+          "type": "string"
+        },
+        "whyNotObservable": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Whynotobservable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "questionId",
+        "question",
+        "uncertainty",
+        "whyNotObservable",
+        "blocking",
+        "status",
+        "eventId",
+        "sequence"
+      ],
+      "title": "QuestionLedgerEntry",
+      "type": "object"
+    },
+    "QuestionStatus": {
+      "enum": [
+        "open",
+        "answered"
+      ],
+      "title": "QuestionStatus",
+      "type": "string"
+    },
+    "RightsStatus": {
+      "enum": [
+        "allowed",
+        "restricted",
+        "unknown"
+      ],
+      "title": "RightsStatus",
+      "type": "string"
     }
   },
   "$id": "https://researchos.dev/schemas/research-ledger/v0alpha1.schema.json",
@@ -355,8 +614,9 @@
     },
     "questions": {
       "default": [],
-      "maxItems": 0,
-      "minItems": 0,
+      "items": {
+        "$ref": "#/$defs/QuestionLedgerEntry"
+      },
       "title": "Questions",
       "type": "array"
     },

@@ -1,4 +1,4 @@
-"""Proposal, dissent, decision, and research-ledger commands."""
+"""Proposal, dissent, decision, question, and research-ledger commands."""
 
 from __future__ import annotations
 
@@ -22,9 +22,13 @@ from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
     DissentRecordRequestDocument,
     ProposalSubmitRequestDocument,
+    QuestionAnswerRequestDocument,
+    QuestionAskRequestDocument,
     load_decision_record_request,
     load_dissent_record_request,
     load_proposal_submit_request,
+    load_question_answer_request,
+    load_question_ask_request,
 )
 from llm_research_os.spec.io import SpecLoadError
 from llm_research_os.storage import EventStore, EventStoreError
@@ -75,6 +79,24 @@ def run_decisions(args: argparse.Namespace) -> int:
     raise AssertionError(f"unhandled decisions command: {args.decisions_command}")
 
 
+def run_questions(args: argparse.Namespace) -> int:
+    if args.questions_command == "ask":
+        return _append_research_request(
+            load_question_ask_request,
+            args.request,
+            args.database,
+            args.format,
+        )
+    if args.questions_command == "answer":
+        return _append_research_request(
+            load_question_answer_request,
+            args.request,
+            args.database,
+            args.format,
+        )
+    raise AssertionError(f"unhandled questions command: {args.questions_command}")
+
+
 def run_research(args: argparse.Namespace) -> int:
     if args.research_command == "ledger":
         return _research_ledger(args.database, args.project, args.format)
@@ -86,7 +108,9 @@ def _append_research_request(
         [Path],
         ProposalSubmitRequestDocument
         | DissentRecordRequestDocument
-        | DecisionRecordRequestDocument,
+        | DecisionRecordRequestDocument
+        | QuestionAskRequestDocument
+        | QuestionAnswerRequestDocument,
     ],
     request_path: Path,
     database: Path,
@@ -129,7 +153,9 @@ def _research_ledger(database: Path, project_id: str, output_format: str) -> int
     print(f"decisions: {head.snapshot.decision_count}")
     print(f"rationale characters: {head.snapshot.rationale_characters}")
     print(f"overridden dissents: {head.snapshot.overridden_dissent_count}")
-    print("questions: 0")
+    print(f"questions: {len(head.snapshot.questions)}")
+    print(f"open questions: {head.snapshot.open_question_count}")
+    print(f"answered questions: {head.snapshot.answered_question_count}")
     return 0
 
 
@@ -160,7 +186,7 @@ def _print_receipt(stored: StoredEvent, output_format: str) -> None:
 
 
 def _object_id(payload: dict[str, object]) -> str:
-    for key in ("proposalId", "dissentId", "decisionId"):
+    for key in ("proposalId", "dissentId", "decisionId", "questionId"):
         value = payload.get(key)
         if type(value) is str:
             return value
