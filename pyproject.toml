@@ -58,6 +58,9 @@ packages = ["llm_research_os"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+markers = [
+  "oci_live: live docker engine; designated Linux OCI CI must fail instead of skip",
+]
 
 [tool.coverage.run]
 source_pkgs = ["llm_research_os"]

@@ -15,6 +15,18 @@ planned `imageDigest`. A docker CLI without a daemon is
 not mock a successful container. Docker Desktop on macOS is a Linux VM,
 not a Darwin kernel-namespace proof, and not a cross-machine Worker.
 
+Ubuntu CI 2026-09-07 recorded `worker.brick.failed` for the live brick:
+the host workspace from `tempfile.mkdtemp` was mode 0700, bind-mounted at
+`/in`, while the container ran as UID 65534. Redacted shape: `host_dir_mode=0o700
+container_user=65534:65534` and a non-zero python exit (`Permission denied`
+on `/in/task.py`). The fix keeps nobody and chmod 0755/0444 (ADR-0049).
+Do not run the container as root.
+
+Ordinary pytest may skip `oci_live` when no engine is present. The
+designated GitHub job `Linux OCI integration` sets
+`RESEARCHOS_OCI_REQUIRED=1` and MUST fail if docker, the image build, or
+the live brick is missing.
+
 ```bash
 uv run researchos m2 oci \
   examples/m2-oci-checkpoint \
