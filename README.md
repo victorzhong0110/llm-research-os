@@ -59,7 +59,10 @@ Worker processes use pinned loopback HTTPS
 ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
 that is not a cross-machine proof. CPU OCIContainerRuntime is a
 digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md));
-a missing engine fails closed and is not a mocked success. It is not GPU
+a missing engine fails closed and is not a mocked success. Worker
+stop/fault recovery is [ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md):
+a cancel request is not a stopped process; completed work reconciles
+Run/Attempt; unknown cannot auto-succeed. It is not GPU
 completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
@@ -89,7 +92,7 @@ NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
 credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
 ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
 loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
-ADR-0045 and is not a live GPU proof.
+ADR-0045 and is not a live GPU proof. Worker stop/fault recovery is ADR-0046.
 
 ## M0 goals
 

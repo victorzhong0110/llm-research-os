@@ -208,6 +208,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     "imageMediaType": claimed.image_media_type,
                     "expiresAt": claimed.expires_at,
                     "resumed": claimed.resumed,
+                    "cancelRequested": claimed.cancel_requested,
                 },
             )
 
@@ -219,11 +220,13 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             with EventStore(server._database, require_existing=True) as store:
                 plane = server._plane(store)
                 before = store.last_sequence()
-                plane.heartbeat(worker_id=worker_id, session=session, lease_id=lease_id)
+                cancel_requested = plane.heartbeat(
+                    worker_id=worker_id, session=session, lease_id=lease_id
+                )
                 after = store.last_sequence()
             if after != before:
                 raise WorkerError("heartbeat must not append facts", code="heartbeat-on-log")
-            self._write(204, None)
+            self._write(200, {"cancelRequested": cancel_requested})
 
         def _complete(self) -> None:
             body = self._json_body()

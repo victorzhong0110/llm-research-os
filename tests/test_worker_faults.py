@@ -356,8 +356,9 @@ def test_http_heartbeat_and_unknown_path_do_not_append_facts(tmp_path: Path) -> 
                 },
             )
             response = connection.getresponse()
-            response.read()
-            assert response.status == 204
+            payload = response.read()
+            assert response.status == 200
+            assert json.loads(payload.decode("utf-8")) == {"cancelRequested": False}
         finally:
             connection.close()
         missing = HTTPConnection(parsed.hostname or "127.0.0.1", parsed.port, timeout=10)

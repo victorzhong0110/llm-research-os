@@ -9,7 +9,9 @@ binding, HMAC grants bound to an authorized `execute.local` execution object, an
 host-python CAS helper that is not NativeProcessRuntime and not a kernel sandbox.
 Isolated processes use pinned loopback HTTPS (ADR-0044). CPU OCIContainerRuntime
 is a digest-pinned docker adapter for `execute.oci` (ADR-0045) and is not a GPU
-or Darwin kernel-namespace proof.
+or Darwin kernel-namespace proof. Worker stop/fault recovery (ADR-0046) keeps
+cancel requests distinct from observed stop, refuses success without
+`work.completed`, and does not auto-rerun unknown work.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -73,7 +75,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + recorded CNY limit; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
-| Local/remote Workers | Partially trusted execution nodes | M2-0 loopback long poll + HMAC grants bound to `execute.local` + CPU helper without kernel isolation (ADR-0043, TM-043); isolated processes use pinned loopback HTTPS and a private CAS (ADR-0044, TM-044) and are not a cross-machine proof; CPU OCIContainerRuntime is docker + digest pin + `execute.oci` (ADR-0045, TM-045) and is not a live GPU or Darwin-namespace proof; non-loopback remains ADR-0021 |
+| Local/remote Workers | Partially trusted execution nodes | M2-0 loopback long poll + HMAC grants bound to `execute.local` + CPU helper without kernel isolation (ADR-0043, TM-043); isolated processes use pinned loopback HTTPS and a private CAS (ADR-0044, TM-044) and are not a cross-machine proof; CPU OCIContainerRuntime is docker + digest pin + `execute.oci` (ADR-0045, TM-045) and is not a live GPU or Darwin-namespace proof; cancel request ≠ stop, unknown cannot auto-succeed, CAS without `work.completed` is not success (ADR-0046, TM-046); non-loopback remains ADR-0021 |
 | Local SQLite event store | Integrity and confidentiality target | Append/read/query/replay foundation implemented |
 | RunControl append boundary | Trusted-kernel write gate over EventStore | Implemented; SimulatedRuntime is a caller and does not auto-retry |
 | SimulatedRuntime | Deterministic single-task simulated lifecycle | Implemented; canonical builtin digest only; no GPU, network, entrypoint, spec.resources, or scientific conclusion; optional synthetic metrics are `kind: synthetic` |
@@ -172,7 +174,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-041 | A compressed or pathological PDF exhausts CPU or memory during evidence import, or the parser subprocess inherits host secrets | Local denial of service; importer hang; credential exposure (TM-007) | PDF extract runs in a subprocess with wall-clock, CPU, and best-effort address-space limits; page count and extracted-character caps abort incrementally; worker environment is a minimal allowlist (no `PYTHONPATH`, proxy, or inherited API keys); fail closed without echoing text or paths (TM-022) | FlateDecode text-bomb, page-limit, timeout, non-echo, and worker-env sentinel tests in M1-3 |
 | TM-042 | A model endpoint hostname is used for SSRF, DNS rebinding, or a private/metadata address, or a zero remote reservation is treated as a free call | Host/network compromise; unmetered paid API use | Literal classification plus one-shot DNS pin; query/fragment/userinfo forbidden; loopback, private, link-local, multicast, reserved, CGNAT, and cloud-metadata addresses fail closed; mixed loopback/public answers are `dns-rebinding`; remote `costKnown=false` requires `budgetCap > 0` and `reserveAmount > 0`; that cap MUST match a recorded `budget.limit.recorded` fact; outstanding remote reservations stay visible on the report, including after uncertain transport | Endpoint, pin, remote-zero-budget, recorded-limit, uncertain-transport, and concurrent reserve tests in M1-4 |
 | TM-043 | A swapped brick, config, inputs or runtime runs under an old authorization, or host Python is treated as a kernel sandbox | Unreviewed code execution; false isolation claims | Grant recording rebuilds the cited plan from spec+registry and binds project/revision/workflow/planned task/execution object; `simulate` cannot grant; Worker re-checks before spawn; swapped object fails closed without `Popen`; stdout/stderr limits apply during pipe reads; POSIX process groups are reaped. No seccomp, landlock, or network/filesystem jail is claimed | Binding, script-A-not-B, swapped-brick, cross-task token, output-cap, and child-reap tests in M2-0. Kernel isolation remains out of scope |
-| TM-045 | An OCI task runs a tag, extra host mount, open network, or host-python grant, or a missing runtime is reported as a successful container | Unreviewed code execution; false isolation claims | Image identity is `sha256:` only (`--pull=never`); launch shape is network-denied with closed mounts and resource ceilings; `execute.oci` is distinct from `execute.local`; python-sandbox Workers cannot lease OCI work; missing docker engine fails `oci-runtime-missing`; tests do not mock a successful container (ADR-0045) | Policy, binding, runtime-mismatch, and fail-closed prove/CLI tests. Live docker is skip-if-missing |
+| TM-046 | A cancel request is treated as stopped, unknown work is marked success or auto-rerun, or a CAS object without `work.completed` completes the Attempt | False stop/success; duplicate execution | Poll does not open a new lease after a request; resumed poll does not spawn; heartbeat returns `cancelRequested` without appending facts; observed stop is `cancel-observed` then cancelled outcomes; reconcile requires `work.completed` to succeed; unknown stays unknown; CPU checkpoint JSON is inspectable (ADR-0046) | Cancel-request-vs-stop, unknown-not-success, complete-reconcile, restart, and checkpoint tests in `tests/test_worker_recovery.py` |
 
 ## 7. M0 security gates
 
@@ -235,6 +237,10 @@ Before merging executable capability, the following gates apply:
   launch shape. Docker Desktop on macOS is a Linux VM, not a Darwin namespace
   jail. A missing engine is fail-closed, not a simulated success. This is not
   paid GPU isolation.
+- Worker stop/fault recovery (ADR-0046) does not send a process signal from
+  `runs cancel`. Observed stop is a later Worker fail or complete. A control
+  plane that records `work.completed` still needs reconcile (or `m2 prove`)
+  to append Run/Attempt outcomes when event identities are caller-owned.
 - Local artifact SHA-256 likewise detects accidental truncation or bit-rot, but cannot resist a
   host administrator who replaces object bytes and updates the digest in lockstep. Dirfd anchoring
   stops intermediate symlink escape and root-path substitution; it does not stop a privileged

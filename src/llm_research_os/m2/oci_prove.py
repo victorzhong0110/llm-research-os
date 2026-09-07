@@ -24,6 +24,7 @@ from llm_research_os.m2.prove import (
     _recorded_identity,
 )
 from llm_research_os.report import build_run_report, render_markdown
+from llm_research_os.runs.models import RunStatus
 from llm_research_os.spec.io import load_document, load_spec
 from llm_research_os.spec.models import TaskBlock
 from llm_research_os.storage import EventStore
@@ -37,6 +38,7 @@ from llm_research_os.workers.http import LoopbackWorkerServer
 from llm_research_os.workers.models import IMAGE_MEDIA_OCI_IMAGE, WORKER_RUNTIME_OCI_CONTAINER
 from llm_research_os.workers.oci import discover_oci_backend, require_pinned_docker_image
 from llm_research_os.workers.plane import WorkerPlane
+from llm_research_os.workers.recovery import reconcile_worker_run
 from llm_research_os.workers.requests import (
     load_authorization_grant_request,
     load_worker_register_request,
@@ -321,7 +323,21 @@ def prove_oci_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             actor_id=grant_request.actor.id,
             events=identities,
         )
-        runtime.succeed(report=dry_run, revision=spec.metadata.revision)
+        snapshot = reconcile_worker_run(
+            store,
+            runtime,
+            fold,
+            project_id=spec.metadata.id,
+            run_id=grant_request.run_id,
+            attempt_id=grant_request.attempt_id,
+            report=dry_run,
+            revision=spec.metadata.revision,
+        )
+        if snapshot.status is not RunStatus.COMPLETED:
+            raise M2CheckpointError(
+                "OCI loop did not reconcile Run and Attempt to completed",
+                code="run-inconsistent",
+            )
         types, ids = _recorded_identity(store)
         report_markdown = render_markdown(
             build_run_report(store, grant_request.run_id, project_id=spec.metadata.id)

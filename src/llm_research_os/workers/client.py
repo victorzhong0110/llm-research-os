@@ -134,10 +134,21 @@ class WorkerClient:
         if claimed is None:
             return None
         if claimed.get("resumed") is True:
+            if claimed.get("cancelRequested") is True:
+                lease_id = claimed.get("leaseId")
+                if type(lease_id) is str:
+                    with contextlib.suppress(WorkerError):
+                        self.fail(lease_id=lease_id, reason_code="cancel-observed")
             raise WorkerError(
                 "claimed work must not be executed again",
                 code="work-already-claimed",
             )
+        if claimed.get("cancelRequested") is True:
+            lease_id = claimed.get("leaseId")
+            if type(lease_id) is str:
+                with contextlib.suppress(WorkerError):
+                    self.fail(lease_id=lease_id, reason_code="cancel-observed")
+            raise WorkerError("cancel was requested", code="cancel-requested")
         image_digest = claimed.get("imageDigest")
         config_digest = claimed.get("configDigest")
         runtime = claimed.get("runtime", WORKER_RUNTIME_PYTHON_SANDBOX)

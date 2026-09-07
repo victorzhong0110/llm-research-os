@@ -42,6 +42,7 @@ from llm_research_os.workers.models import (
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
+from llm_research_os.workers.recovery import run_cancel_requested
 from llm_research_os.workers.tokens import (
     format_rfc3339,
     issue_grant_token,
@@ -72,6 +73,7 @@ class ClaimedWork:
     image_media_type: str
     expires_at: str
     resumed: bool
+    cancel_requested: bool = False
 
 
 @dataclass
@@ -296,8 +298,12 @@ class WorkerPlane:
                 code="execution-binding-mismatch",
             )
 
-    def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> None:
-        """Transport liveness only. Must not append EventStore facts (ADR-0041)."""
+    def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> bool:
+        """Transport liveness only. Must not append EventStore facts (ADR-0041).
+
+        Returns whether a cancel request is recorded for this lease's attempt.
+        That flag is not an observed stop.
+        """
 
         session_worker = verify_worker_session(self.hmac_key, session)
         if session_worker != worker_id:
@@ -310,6 +316,12 @@ class WorkerPlane:
                 code="unknown-lease",
             )
         self.heartbeats[lease_id] = self.clock()
+        return run_cancel_requested(
+            self.store,
+            project_id=self.project_id,
+            run_id=lease.run_id,
+            attempt_id=lease.attempt_id,
+        )
 
     def poll(self, *, worker_id: str, grant_token: str) -> ClaimedWork | None:
         now = self.clock().astimezone(UTC)
@@ -331,6 +343,13 @@ class WorkerPlane:
         existing = fold.lease_for_worker(grant.task_id, grant.attempt_id, worker_id)
         if existing is not None:
             return self._resume_or_reject(fold, existing, queued, grant, now=now)
+        if run_cancel_requested(
+            self.store,
+            project_id=self.project_id,
+            run_id=queued.run_id,
+            attempt_id=queued.attempt_id,
+        ):
+            return None
         active = fold.active_lease_for(grant.task_id, grant.attempt_id, now=now)
         if active is not None:
             raise WorkerCallError("task attempt already has an active lease", code="lease-conflict")
@@ -637,6 +656,12 @@ class WorkerPlane:
             image_media_type=queued.image_media_type,
             expires_at=expires_at,
             resumed=resumed,
+            cancel_requested=run_cancel_requested(
+                self.store,
+                project_id=self.project_id,
+                run_id=run_id,
+                attempt_id=attempt_id,
+            ),
         )
 
     def _bind_result_authorization(

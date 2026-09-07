@@ -79,6 +79,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md)). Host Python
   stays the trusted helper. A missing engine fails closed and is not a
   mocked container success. Not GPU.
+- Worker stop/fault recovery: cancel request is not observed stop;
+  `work.completed` reconciles Run/Attempt; unknown cannot auto-succeed or
+  rerun; CPU checkpoint JSON is inspectable
+  ([ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md)).
 
 ### Changed
 

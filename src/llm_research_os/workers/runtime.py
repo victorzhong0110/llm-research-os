@@ -14,14 +14,22 @@ from llm_research_os.execution.models import DryRunReport
 from llm_research_os.internal.jsonclone import snapshot_json_document
 from llm_research_os.runs import RunControl, RunControlResult, RunSnapshot
 from llm_research_os.runs.models import (
+    TYPE_ATTEMPT_CANCELLED,
+    TYPE_ATTEMPT_FAILED,
     TYPE_ATTEMPT_LOST,
     TYPE_ATTEMPT_QUEUED,
+    TYPE_ATTEMPT_RECOVERED,
     TYPE_ATTEMPT_STARTED,
     TYPE_ATTEMPT_SUCCEEDED,
     TYPE_ATTEMPT_UNKNOWN,
+    TYPE_RUN_CANCELLED,
     TYPE_RUN_COMPLETED,
+    TYPE_RUN_FAILED,
     TYPE_RUN_QUEUED,
     TYPE_RUN_STARTED,
+    AttemptSnapshot,
+    AttemptStatus,
+    RunStatus,
 )
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
@@ -32,16 +40,16 @@ START_PATH = (
     TYPE_ATTEMPT_QUEUED,
     TYPE_ATTEMPT_STARTED,
 )
-SUCCESS_TAIL = (TYPE_ATTEMPT_SUCCEEDED, TYPE_RUN_COMPLETED)
-UNKNOWN_TAIL = (TYPE_ATTEMPT_UNKNOWN,)
-LOST_TAIL = (TYPE_ATTEMPT_LOST,)
 _ATTEMPT_TYPES = frozenset(
     {
         TYPE_ATTEMPT_QUEUED,
         TYPE_ATTEMPT_STARTED,
         TYPE_ATTEMPT_SUCCEEDED,
+        TYPE_ATTEMPT_FAILED,
         TYPE_ATTEMPT_UNKNOWN,
         TYPE_ATTEMPT_LOST,
+        TYPE_ATTEMPT_RECOVERED,
+        TYPE_ATTEMPT_CANCELLED,
     }
 )
 
@@ -102,19 +110,60 @@ class WorkerRuntime:
             raise SimulationError("worker runtime produced no snapshot")
         return snapshot
 
-    def succeed(self, *, report: DryRunReport, revision: int) -> RunSnapshot:
-        snapshot: RunSnapshot | None = None
-        for event_type in SUCCESS_TAIL:
-            snapshot = self._append(
-                event_type,
-                report=report,
-                authorization=None,
-                consumed=None,
-                revision=revision,
-            ).snapshot
-        if snapshot is None:
-            raise SimulationError("worker runtime produced no snapshot")
-        return snapshot
+    def succeed(self, *, report: DryRunReport | None = None, revision: int) -> RunSnapshot:
+        snapshot = self._head()
+        remaining: list[str] = []
+        attempt = self._attempt(snapshot)
+        if attempt.status in {AttemptStatus.RUNNING, AttemptStatus.LOST, AttemptStatus.UNKNOWN}:
+            remaining.append(TYPE_ATTEMPT_SUCCEEDED)
+        if snapshot.status is RunStatus.RUNNING and (
+            TYPE_ATTEMPT_SUCCEEDED in remaining or attempt.status is AttemptStatus.SUCCEEDED
+        ):
+            remaining.append(TYPE_RUN_COMPLETED)
+        return self._append_path(remaining, revision=revision, report=report)
+
+    def failed(self, *, reason_code: str, revision: int) -> RunSnapshot:
+        snapshot = self._head()
+        remaining: list[str] = []
+        attempt = self._attempt(snapshot)
+        if attempt.status in {
+            AttemptStatus.QUEUED,
+            AttemptStatus.RUNNING,
+            AttemptStatus.LOST,
+            AttemptStatus.UNKNOWN,
+        }:
+            remaining.append(TYPE_ATTEMPT_FAILED)
+        if snapshot.status in {RunStatus.RUNNING, RunStatus.RETRY_PENDING} and (
+            TYPE_ATTEMPT_FAILED in remaining or attempt.status is AttemptStatus.FAILED
+        ):
+            remaining.append(TYPE_RUN_FAILED)
+        return self._append_path(remaining, revision=revision, reason_code=reason_code)
+
+    def cancelled(self, *, revision: int) -> RunSnapshot:
+        snapshot = self._head()
+        remaining: list[str] = []
+        attempt = self._attempt(snapshot)
+        if attempt.status in {
+            AttemptStatus.QUEUED,
+            AttemptStatus.RUNNING,
+            AttemptStatus.LOST,
+            AttemptStatus.UNKNOWN,
+        }:
+            remaining.append(TYPE_ATTEMPT_CANCELLED)
+        if snapshot.status is RunStatus.RUNNING and (
+            TYPE_ATTEMPT_CANCELLED in remaining or attempt.status is AttemptStatus.CANCELLED
+        ):
+            remaining.append(TYPE_RUN_CANCELLED)
+        return self._append_path(remaining, revision=revision)
+
+    def recovered(self, *, revision: int) -> RunSnapshot:
+        return self._append(
+            TYPE_ATTEMPT_RECOVERED,
+            report=None,
+            authorization=None,
+            consumed=None,
+            revision=revision,
+        ).snapshot
 
     def unknown(self, *, reason_code: str, revision: int) -> RunSnapshot:
         return self._append(
@@ -135,6 +184,43 @@ class WorkerRuntime:
             revision=revision,
             reason_code=reason_code,
         ).snapshot
+
+    def _head(self) -> RunSnapshot:
+        snapshot = self._control.rebuild().snapshot
+        if snapshot is None:
+            raise SimulationError("worker runtime produced no snapshot")
+        return snapshot
+
+    def _attempt(self, snapshot: RunSnapshot) -> AttemptSnapshot:
+        found = next(
+            (item for item in snapshot.attempts if item.attempt_id == self._attempt_id),
+            None,
+        )
+        if found is None:
+            raise SimulationError("worker runtime attempt is missing")
+        return found
+
+    def _append_path(
+        self,
+        event_types: list[str],
+        *,
+        revision: int,
+        report: DryRunReport | None = None,
+        reason_code: str | None = None,
+    ) -> RunSnapshot:
+        snapshot = self._head()
+        for event_type in event_types:
+            snapshot = self._append(
+                event_type,
+                report=report,
+                authorization=None,
+                consumed=None,
+                revision=revision,
+                reason_code=reason_code,
+            ).snapshot
+        if snapshot is None:
+            raise SimulationError("worker runtime produced no snapshot")
+        return snapshot
 
     def _append(
         self,
@@ -166,10 +252,14 @@ class WorkerRuntime:
             }
         elif event_type == TYPE_ATTEMPT_QUEUED:
             payload = {"ordinal": 1, "retryOf": None, "retryDecisionId": None}
-        elif event_type in {TYPE_ATTEMPT_UNKNOWN, TYPE_ATTEMPT_LOST}:
+        elif event_type in {TYPE_ATTEMPT_UNKNOWN, TYPE_ATTEMPT_LOST, TYPE_RUN_FAILED}:
             if reason_code is None:
-                raise SimulationError("unknown/lost attempts require a reasonCode")
+                raise SimulationError("unknown/lost/failed outcomes require a reasonCode")
             payload = {"reasonCode": reason_code}
+        elif event_type == TYPE_ATTEMPT_FAILED:
+            if reason_code is None:
+                raise SimulationError("failed attempts require a reasonCode")
+            payload = {"reasonCode": reason_code, "retryHint": "not-retryable"}
         data: dict[str, Any] = {
             "schemaVersion": "v0alpha1",
             "actor": {"id": self._actor_id},

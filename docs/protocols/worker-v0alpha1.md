@@ -53,7 +53,10 @@ MAY cite their digests.
   remains idempotent; a new result MUST be refused (`grant-revoked` /
   `grant-expired`).
 - Recovery MUST NOT re-run a claimed attempt whose result is unknown, and
-  MUST NOT mark success without a matching completed fact.
+  MUST NOT mark success without a matching completed fact. Same-attempt
+  resume after unknown is `attempt.recovered`. An inspectable CPU
+  checkpoint in CAS may complete that recovered attempt; continuing from
+  the checkpoint is a new execution object.
 
 ## 3. Loopback binding
 
@@ -63,7 +66,18 @@ MAY cite their digests.
   `200` includes `imageDigest`, `configDigest`, `config`, `inputs`,
   `runtime`, and `resumed`.
 - Heartbeats: `POST /v0alpha1/work/heartbeat`. Transport liveness only;
-  MUST NOT append EventStore facts.
+  MUST NOT append EventStore facts. A `200` JSON response includes
+  `cancelRequested` (a recorded request, not an observed stop).
+- Poll `200` includes `cancelRequested`. After a cancel request, poll MUST
+  NOT open a new lease. An already-claimed lease is returned with
+  `resumed=true` and MUST NOT spawn. The Worker fails that lease with
+  `cancel-observed` after the process is reaped. `attempt.cancelled` /
+  `run.cancelled` are recorded from that observation. A finished brick
+  MAY still `work.completed`.
+- Complete of an uploaded artifact that never recorded `work.completed`
+  is retried. Reconcile drives Run/Attempt from the lease: completed
+  work succeeds the Attempt; unknown without a completed fact stays
+  unknown; a CAS object alone is not success.
 - Complete: `POST /v0alpha1/work/complete`. Fail: `POST /v0alpha1/work/fail`.
 - Artifact upload: `POST /v0alpha1/artifacts`; response is digest only.
 - Artifact download: `GET /v0alpha1/artifacts/sha256/<64 lowercase hex>`
@@ -102,11 +116,25 @@ without an engine MUST fail `oci-runtime-missing`. Tests MUST NOT mock a
 successful container. Host Python remains the trusted helper path.
 A Worker registered as `python-sandbox` MUST NOT lease OCI work.
 
+## 4b. Stop, fault, and recovery
+
+Cancel request is not observed stop (ADR-0046). After `*.cancel.requested`,
+poll MUST NOT open a new lease. A resumed claim MUST NOT spawn. Observed
+stop is `work.failed` with `cancel-observed`, then `attempt.cancelled` /
+`run.cancelled`. A finished brick MAY still `work.completed`; that fact
+wins over a retained request. Heartbeats MUST NOT append facts.
+`work.completed` reconciles a still-running Attempt. A CAS object without
+that fact is not success. Unknown or lost work MUST NOT be marked success
+or auto-rerun. Same-attempt resume after unknown is `attempt.recovered`.
+An inspectable CPU checkpoint in CAS may complete that recovered attempt;
+continuing from the checkpoint is a new execution object.
+
 ## 5. Conformance
 
 ```bash
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
-  tests/test_worker_isolate.py tests/test_worker_oci.py
+  tests/test_worker_isolate.py tests/test_worker_oci.py \
+  tests/test_worker_recovery.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```
