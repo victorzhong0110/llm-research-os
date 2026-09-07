@@ -24,11 +24,13 @@ from typing import BinaryIO
 
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.canonical import content_digest
+from llm_research_os.secrets.redaction import message_without_secrets
 from llm_research_os.workers.binding import MAX_BRICK_REQUEST_JSON_BYTES, brick_stdin_document
 from llm_research_os.workers.errors import WorkerSandboxError
 
 MAX_SANDBOX_WALL_SECONDS = 5
 MAX_SANDBOX_OUTPUT_BYTES = 65_536
+MAX_SANDBOX_DIAGNOSTICS_CHARS = 2_048
 _PASSTHROUGH = ("PATH", "SYSTEMROOT", "WINDIR")
 _READ_CHUNK = 4_096
 _REAP_WAIT_SECONDS = 2
@@ -46,6 +48,7 @@ class SandboxResult:
     stdout: bytes
     result_digest: str | None
     reason_code: str
+    diagnostics: str | None = None
 
 
 def execute_python_brick(
@@ -102,7 +105,7 @@ def execute_python_brick(
                 reason_code="worker.process.lost",
             )
         pgid = _process_group(process)
-        return _run_bounded(process, payload, timeout_seconds, pgid)
+        return _run_bounded(process, payload, timeout_seconds, pgid, secret_values=())
     finally:
         if process is not None:
             _reap_process_group(process, pgid)
@@ -114,6 +117,8 @@ def _run_bounded(
     payload: bytes,
     timeout_seconds: int,
     pgid: int | None,
+    *,
+    secret_values: tuple[str, ...] = (),
 ) -> SandboxResult:
     overflow = threading.Event()
     stdout_chunks: list[bytes] = []
@@ -151,12 +156,14 @@ def _run_bounded(
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
     stdout = b"".join(stdout_chunks)
+    diagnostics = _redacted_diagnostics(stderr_chunks, secret_values)
     if timed_out:
         return SandboxResult(
             disposition=SandboxDisposition.UNKNOWN,
             stdout=b"",
             result_digest=None,
             reason_code="worker.process.timeout",
+            diagnostics=diagnostics,
         )
     if overflow.is_set():
         return SandboxResult(
@@ -164,6 +171,7 @@ def _run_bounded(
             stdout=stdout[:MAX_SANDBOX_OUTPUT_BYTES],
             result_digest=None,
             reason_code="worker.brick.output-too-large",
+            diagnostics=diagnostics,
         )
     returncode = process.poll()
     if returncode is None or returncode < 0:
@@ -172,6 +180,7 @@ def _run_bounded(
             stdout=b"",
             result_digest=None,
             reason_code="worker.process.lost",
+            diagnostics=diagnostics,
         )
     if returncode != 0:
         return SandboxResult(
@@ -179,8 +188,21 @@ def _run_bounded(
             stdout=stdout[:MAX_SANDBOX_OUTPUT_BYTES],
             result_digest=None,
             reason_code="worker.brick.failed",
+            diagnostics=diagnostics,
         )
     return _parse_report(stdout)
+
+
+def _redacted_diagnostics(
+    chunks: list[bytes],
+    secret_values: tuple[str, ...],
+) -> str | None:
+    if not chunks:
+        return None
+    text = b"".join(chunks).decode("utf-8", errors="replace")[:MAX_SANDBOX_DIAGNOSTICS_CHARS]
+    if text == "":
+        return None
+    return message_without_secrets(text, *secret_values)
 
 
 def _read_bounded(

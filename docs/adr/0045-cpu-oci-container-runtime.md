@@ -66,8 +66,9 @@ tag, would hide the binding the grant already records.
 3. Host-python helper still completes the ADR-0043 brick.
 4. `researchos m2 oci` without a live image is `oci-runtime-missing` or
    `oci-image-missing`.
-5. Live `docker` execution is skip-if-missing and is never replaced by a
-   mock success.
+5. Live `docker` execution is skip-if-missing on ordinary hosts and is
+   never replaced by a mock success. Designated Linux OCI CI MUST fail
+   closed (ADR-0049).
 
 ## References
 
