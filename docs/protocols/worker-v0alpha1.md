@@ -73,8 +73,10 @@ and 100k EventStore timings and is not an SLA (ADR-0047).
   `cancelRequested` (a recorded request, not an observed stop).
 - Poll `200` includes `cancelRequested`. After a cancel request, poll MUST
   NOT open a new lease. An already-claimed lease is returned with
-  `resumed=true` and MUST NOT spawn. The Worker fails that lease with
-  `cancel-observed` after the process is reaped. `attempt.cancelled` /
+  `resumed=true` and MUST NOT spawn. The Worker MAY stop a recorded
+  execution identity; it MUST NOT report `cancel-observed` until that
+  process or container has been reaped or inspect-confirmed. Missing
+  identity stays `execution-unobserved`. `attempt.cancelled` /
   `run.cancelled` are recorded from that observation. A finished brick
   MAY still `work.completed`.
 - Complete of an uploaded artifact that never recorded `work.completed`
@@ -114,7 +116,8 @@ is `OCIContainerRuntime` (ADR-0045). `imageDigest` is the OCI image
 identity. Tags and pull-by-name are forbidden. The CAS python brick is
 `inputs.brickDigest`. Network MUST be `denied`. Allowed mounts are `/in`
 (read-only brick), `/tmp`, and `/out`. The container user is UID/GID
-65534. The host bind root for `/in` is mode 0755 with brick file 0444 so
+65534. Launch uses `--cidfile` and MUST NOT use `--rm` so stop can
+`inspect` then `rm` (ADR-0050). The host bind root for `/in` is mode 0755 with brick file 0444 so
 nobody can traverse it; it MUST NOT be 0700, 0777, or run as root
 (ADR-0049). Secrets inject only as `SecretRef`
 env slots. The first adapter is docker with `--pull=never`. A docker CLI
@@ -127,23 +130,29 @@ A Worker registered as `python-sandbox` MUST NOT lease OCI work.
 
 ## 4b. Stop, fault, and recovery
 
-Cancel request is not observed stop (ADR-0046). After `*.cancel.requested`,
-poll MUST NOT open a new lease. A resumed claim MUST NOT spawn. Observed
-stop is `work.failed` with `cancel-observed`, then `attempt.cancelled` /
-`run.cancelled`. A finished brick MAY still `work.completed`; that fact
-wins over a retained request. Heartbeats MUST NOT append facts.
-`work.completed` reconciles a still-running Attempt. A CAS object without
-that fact is not success. Unknown or lost work MUST NOT be marked success
-or auto-rerun. Same-attempt resume after unknown is `attempt.recovered`.
-An inspectable CPU checkpoint in CAS may complete that recovered attempt;
-continuing from the checkpoint is a new execution object.
+Cancel request is not observed stop (ADR-0046, ADR-0050). After
+`*.cancel.requested`, poll MUST NOT open a new lease. A resumed claim
+MUST NOT spawn. Observed stop is `work.failed` with `cancel-observed`
+only after the recorded executor is confirmed gone, then
+`attempt.cancelled` / `run.cancelled`. A finished brick MAY still
+`work.completed`; that fact wins over a retained request. Heartbeats
+MUST NOT append facts; they MUST be polled during execute so a cancel
+request can be observed. A Worker records a 0600 execution identity
+(pid/pgid plus Linux starttime, or OCI container id from `--cidfile`).
+`docker run` MUST NOT use `--rm` before inspect. PID reuse MUST NOT
+stop another task. Unknown or lost work, including
+`execution-unobserved`, MUST NOT be marked success or auto-rerun.
+Container stop is not cloud-instance stop. Same-attempt resume after
+unknown is `attempt.recovered`. An inspectable CPU checkpoint in CAS may
+complete that recovered attempt; continuing from the checkpoint is a new
+execution object.
 
 ## 5. Conformance
 
 ```bash
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
-  tests/test_worker_recovery.py
+  tests/test_worker_recovery.py tests/test_worker_supervise.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```

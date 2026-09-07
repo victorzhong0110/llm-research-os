@@ -24,6 +24,13 @@ from llm_research_os.workers.models import (
 )
 from llm_research_os.workers.oci import execute_oci_python_brick
 from llm_research_os.workers.sandbox import SandboxDisposition, execute_python_brick
+from llm_research_os.workers.supervise import (
+    OBSERVED_STOP,
+    UNOBSERVED,
+    drop_execution_identity,
+    load_execution_identity,
+    observe_and_stop,
+)
 from llm_research_os.workers.tls import client_tls_context
 
 _GRANT_HEADER = "X-ResearchOS-Grant"
@@ -39,6 +46,7 @@ class WorkerClient:
     ca_path: Path | None = None
     tls_fingerprint: str | None = None
     retries: int = _DEFAULT_RETRIES
+    identity_dir: Path | None = None
 
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
@@ -84,6 +92,16 @@ class WorkerClient:
         if status != 200 or payload is None:
             raise WorkerError("work fail failed", code="http-fail-failed")
         return {key: str(value) for key, value in payload.items()}
+
+    def heartbeat(self, *, lease_id: str) -> bool:
+        status, payload = self._json(
+            "POST",
+            "/v0alpha1/work/heartbeat",
+            {"workerId": self.worker_id, "leaseId": lease_id},
+        )
+        if status != 200 or payload is None:
+            raise WorkerError("work heartbeat failed", code="http-heartbeat-failed")
+        return payload.get("cancelRequested") is True
 
     def put_artifact(self, payload: bytes) -> str:
         status, body = self._raw(
@@ -133,22 +151,11 @@ class WorkerClient:
         claimed = self.poll()
         if claimed is None:
             return None
+        lease_id = claimed.get("leaseId")
         if claimed.get("resumed") is True:
-            if claimed.get("cancelRequested") is True:
-                lease_id = claimed.get("leaseId")
-                if type(lease_id) is str:
-                    with contextlib.suppress(WorkerError):
-                        self.fail(lease_id=lease_id, reason_code="cancel-observed")
-            raise WorkerError(
-                "claimed work must not be executed again",
-                code="work-already-claimed",
-            )
+            return self._resume_claimed(claimed)
         if claimed.get("cancelRequested") is True:
-            lease_id = claimed.get("leaseId")
-            if type(lease_id) is str:
-                with contextlib.suppress(WorkerError):
-                    self.fail(lease_id=lease_id, reason_code="cancel-observed")
-            raise WorkerError("cancel was requested", code="cancel-requested")
+            raise WorkerError("original executor was not observed", code=UNOBSERVED)
         image_digest = claimed.get("imageDigest")
         config_digest = claimed.get("configDigest")
         runtime = claimed.get("runtime", WORKER_RUNTIME_PYTHON_SANDBOX)
@@ -167,6 +174,15 @@ class WorkerClient:
             image_media_type=media,
             runtime=runtime,
         )
+        if type(lease_id) is not str:
+            raise WorkerError("poll omitted leaseId", code="http-invalid")
+
+        def _cancel_requested() -> bool:
+            try:
+                return self.heartbeat(lease_id=lease_id)
+            except WorkerError:
+                return False
+
         if runtime == WORKER_RUNTIME_PYTHON_SANDBOX and media == IMAGE_MEDIA_PYTHON_BRICK:
             self.fetch_image(artifacts, image_digest)
             result = execute_python_brick(
@@ -174,6 +190,9 @@ class WorkerClient:
                 image_digest,
                 config=config,
                 inputs=inputs,
+                identity_dir=self.identity_dir,
+                lease_id=lease_id,
+                should_cancel=_cancel_requested,
             )
         elif runtime == WORKER_RUNTIME_OCI_CONTAINER and media == IMAGE_MEDIA_OCI_IMAGE:
             brick_digest = inputs.get("brickDigest")
@@ -185,26 +204,54 @@ class WorkerClient:
                 image_digest,
                 config=config,
                 inputs=inputs,
+                identity_dir=self.identity_dir,
+                lease_id=lease_id,
+                should_cancel=_cancel_requested,
             )
         else:
             raise WorkerError("poll runtime is not supported", code="runtime-mismatch")
         if result.disposition is SandboxDisposition.UNKNOWN:
             raise WorkerError("sandbox outcome is unknown", code=result.reason_code)
         if result.disposition is not SandboxDisposition.SUCCEEDED or result.result_digest is None:
-            lease_id = claimed.get("leaseId")
-            if type(lease_id) is str:
-                with contextlib.suppress(WorkerError):
-                    self.fail(lease_id=lease_id, reason_code=result.reason_code)
+            with contextlib.suppress(WorkerError):
+                self.fail(lease_id=lease_id, reason_code=result.reason_code)
+            self._drop_identity(lease_id)
             raise WorkerError("sandbox brick failed", code=result.reason_code)
         artifact_digest = self.put_artifact(result.stdout)
-        lease_id = claimed.get("leaseId")
-        if type(lease_id) is not str:
-            raise WorkerError("poll omitted leaseId", code="http-invalid")
-        return self.complete(
+        completed = self.complete(
             lease_id=lease_id,
             result_digest=result.result_digest,
             artifact_digest=artifact_digest,
         )
+        self._drop_identity(lease_id)
+        return completed
+
+    def _resume_claimed(self, claimed: dict[str, Any]) -> dict[str, str] | None:
+        lease_id = claimed.get("leaseId")
+        if type(lease_id) is not str:
+            raise WorkerError(
+                "claimed work must not be executed again",
+                code="work-already-claimed",
+            )
+        identity = None
+        if self.identity_dir is not None:
+            identity = load_execution_identity(self.identity_dir, lease_id)
+        if claimed.get("cancelRequested") is True:
+            outcome = observe_and_stop(identity)
+            if outcome == OBSERVED_STOP:
+                with contextlib.suppress(WorkerError):
+                    self.fail(lease_id=lease_id, reason_code="cancel-observed")
+                self._drop_identity(lease_id)
+                raise WorkerError("cancel was observed", code="cancel-observed")
+            raise WorkerError("original executor was not observed", code=UNOBSERVED)
+        raise WorkerError(
+            "claimed work must not be executed again",
+            code="work-already-claimed",
+        )
+
+    def _drop_identity(self, lease_id: str) -> None:
+        if self.identity_dir is not None:
+            drop_execution_identity(self.identity_dir, lease_id)
 
     def _json(
         self, method: str, path: str, document: dict[str, Any]

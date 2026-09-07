@@ -27,6 +27,7 @@ def run_isolated_worker(*, credential_path: Path, artifacts_root: Path) -> dict[
         grant_token=credential.grant_token,
         ca_path=credential.tls_ca_path,
         tls_fingerprint=credential.tls_fingerprint,
+        identity_dir=credential_path.parent / "execution-identities",
     )
     completed = client.run_once(LocalArtifactStore(artifacts_root))
     if completed is None:

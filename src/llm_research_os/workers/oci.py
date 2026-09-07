@@ -12,7 +12,9 @@ import os
 import re
 import shutil
 import subprocess
-from collections.abc import Mapping
+import tempfile
+import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -31,10 +33,17 @@ from llm_research_os.workers.sandbox import (
     _reap_process_group,
     _run_bounded,
 )
+from llm_research_os.workers.supervise import (
+    KIND_OCI,
+    ExecutionIdentity,
+    remove_oci_container,
+    save_execution_identity,
+)
 
 _ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 _DOCKER_INFO_TIMEOUT = 3
 _DOCKER_INSPECT_TIMEOUT = 5
+_CIDFILE_WAIT_SECONDS = 2
 DEFAULT_OCI_MEMORY_BYTES = 134_217_728
 MAX_OCI_MEMORY_BYTES = 268_435_456
 DEFAULT_OCI_PIDS = 64
@@ -201,6 +210,9 @@ def execute_oci_python_brick(
     inputs: Mapping[str, object] | None = None,
     environ: Mapping[str, str] | None = None,
     backend: OciBackend | None = None,
+    identity_dir: Path | None = None,
+    lease_id: str | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> SandboxResult:
     """Run one JSON-stdio brick inside a digest-pinned OCI image."""
 
@@ -237,14 +249,18 @@ def execute_oci_python_brick(
     script = _materialize_brick(artifacts, policy.brick_digest)
     workspace = script.parent
     prepare_oci_input_root(workspace)
+    cid_root = Path(tempfile.mkdtemp(prefix="researchos-oci-cid-"))
+    cidfile = cid_root / "cid"
     process: subprocess.Popen[bytes] | None = None
     pgid: int | None = None
+    identity: ExecutionIdentity | None = None
     argv = _docker_run_argv(
         resolved_backend.executable,
         image_digest=image_digest,
         workspace=workspace,
         policy=policy,
         secret_env=secret_env,
+        cidfile=cidfile,
     )
     try:
         try:
@@ -265,17 +281,35 @@ def execute_oci_python_brick(
                 reason_code="worker.process.lost",
             )
         pgid = _process_group(process)
+        container_id = _wait_cidfile(cidfile)
+        identity = _record_oci_identity(
+            identity_dir,
+            lease_id,
+            process,
+            pgid,
+            container_id=container_id,
+            executable=resolved_backend.executable,
+        )
         return _run_bounded(
             process,
             payload,
             policy.wall_time_seconds,
             pgid,
             secret_values=tuple(secret_env.values()),
+            should_cancel=should_cancel,
+            identity=identity,
         )
     finally:
+        if identity is not None and identity.container_id is not None:
+            remove_oci_container(resolved_backend.executable, identity.container_id)
+        elif cidfile.is_file():
+            leftover = cidfile.read_text(encoding="utf-8").strip()
+            if leftover:
+                remove_oci_container(resolved_backend.executable, leftover)
         if process is not None:
             _reap_process_group(process, pgid)
         shutil.rmtree(workspace, ignore_errors=True)
+        shutil.rmtree(cid_root, ignore_errors=True)
 
 
 def require_pinned_docker_image(backend: OciBackend, image_digest: str) -> None:
@@ -329,11 +363,11 @@ def _docker_run_argv(
     workspace: Path,
     policy: OciLaunchPolicy,
     secret_env: Mapping[str, str],
+    cidfile: Path | None = None,
 ) -> list[str]:
     argv = [
         executable,
         "run",
-        "--rm",
         "-i",
         "--pull=never",
         "--network",
@@ -358,10 +392,48 @@ def _docker_run_argv(
         "--mount",
         f"type=bind,src={workspace},dst=/in,readonly",
     ]
+    if cidfile is not None:
+        argv[2:2] = ["--cidfile", str(cidfile)]
     for name, value in secret_env.items():
         argv.extend(["-e", f"{name}={value}"])
     argv.extend([image_digest, "python", "-B", "-I", "/in/task.py"])
     return argv
+
+
+def _wait_cidfile(path: Path, timeout: float = _CIDFILE_WAIT_SECONDS) -> str | None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if path.is_file():
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+        time.sleep(0.05)
+    return None
+
+
+def _record_oci_identity(
+    identity_dir: Path | None,
+    lease_id: str | None,
+    process: subprocess.Popen[bytes],
+    pgid: int | None,
+    *,
+    container_id: str | None,
+    executable: str,
+) -> ExecutionIdentity | None:
+    if container_id is None:
+        return None
+    identity = ExecutionIdentity(
+        lease_id=lease_id if lease_id is not None else "unbound",
+        kind=KIND_OCI,
+        pid=process.pid,
+        pgid=pgid,
+        start_token=None,
+        container_id=container_id,
+        docker_executable=executable,
+    )
+    if identity_dir is not None and lease_id is not None:
+        save_execution_identity(identity_dir, identity)
+    return identity
 
 
 def _parse_secret_slots(value: object) -> tuple[OciSecretSlot, ...]:

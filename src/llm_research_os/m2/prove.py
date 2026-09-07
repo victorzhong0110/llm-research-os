@@ -271,6 +271,7 @@ def prove_cpu_loop(corpus: Path, database: Path, artifacts_root: Path) -> M2Chec
             worker_id=worker_request.worker_id,
             session=server.session_for(worker_request.worker_id),
             grant_token=grant_token,
+            identity_dir=database.parent / f"{database.stem}-identities",
         )
         completed = client.run_once(artifact_store)
         if completed is None:

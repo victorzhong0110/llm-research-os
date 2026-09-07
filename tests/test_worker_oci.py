@@ -52,6 +52,7 @@ from llm_research_os.workers.oci import (
     _docker_run_argv,
     _image_identities,
     _resolve_secret_env,
+    _wait_cidfile,
     discover_oci_backend,
     execute_oci_python_brick,
     oci_integration_required,
@@ -695,9 +696,11 @@ def test_docker_run_argv_is_digest_pinned_and_closed(tmp_path: Path) -> None:
         workspace=tmp_path,
         policy=policy,
         secret_env={"TOKEN": "super-secret-oci-token"},
+        cidfile=tmp_path / "cid",
     )
     joined = " ".join(argv)
-    assert argv[:5] == ["docker", "run", "--rm", "-i", "--pull=never"]
+    assert argv[:6] == ["docker", "run", "--cidfile", str(tmp_path / "cid"), "-i", "--pull=never"]
+    assert "--rm" not in argv
     assert "--network" in argv
     assert argv[argv.index("--network") + 1] == "none"
     assert "--privileged" not in argv
@@ -709,6 +712,33 @@ def test_docker_run_argv_is_digest_pinned_and_closed(tmp_path: Path) -> None:
     assert "/out:rw,noexec,nosuid" in joined
     assert argv[-5:] == [OCI_IMAGE, "python", "-B", "-I", "/in/task.py"]
     assert "TOKEN=super-secret-oci-token" in argv
+
+
+def test_docker_run_argv_without_cidfile_omits_rm(tmp_path: Path) -> None:
+    brick = "sha256:" + ("a" * 64)
+    policy = parse_oci_launch_policy(
+        image_digest=OCI_IMAGE,
+        config={"network": "denied"},
+        inputs={"brickDigest": brick},
+    )
+    argv = _docker_run_argv(
+        "docker",
+        image_digest=OCI_IMAGE,
+        workspace=tmp_path,
+        policy=policy,
+        secret_env={},
+    )
+    assert argv[:4] == ["docker", "run", "-i", "--pull=never"]
+    assert "--rm" not in argv
+    assert "--cidfile" not in argv
+
+
+def test_wait_cidfile_reads_id_or_times_out(tmp_path: Path) -> None:
+    missing = tmp_path / "missing-cid"
+    assert _wait_cidfile(missing, timeout=0.12) is None
+    path = tmp_path / "cid"
+    path.write_text("deadbeef\n", encoding="utf-8")
+    assert _wait_cidfile(path, timeout=0.2) == "deadbeef"
 
 
 def test_image_identities_read_id_and_repo_digests() -> None:

@@ -623,10 +623,10 @@ def test_resumed_cancel_fails_lease_without_spawn(
         )
         with pytest.raises(WorkerError) as captured:
             client.run_once(artifacts)
-        assert captured.value.code == "work-already-claimed"
+        assert captured.value.code == "execution-unobserved"
     finally:
         server.stop()
     with EventStore(database, require_existing=True) as store:
         types = {item.event.type for item in store.read_events(limit=80)}
-        assert "work.failed" in types
+        assert "work.failed" not in types
         assert "work.completed" not in types

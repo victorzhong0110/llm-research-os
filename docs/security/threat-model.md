@@ -16,6 +16,9 @@ folds and CAS metric chunks (ADR-0047) keep heartbeats and per-step series
 off the fact log; bench receipts are not SLA. The pinned ms-swift adapter
 (ADR-0048) parses one SFT plan to argv and does not execute GPU work.
 Non-root `/in` bind modes and designated Linux OCI CI are ADR-0049.
+Observed execution identity and cancel supervision are ADR-0050: a cancel
+request is still not a stop; `cancel-observed` requires a confirmed
+process or container exit; container stop is not cloud-instance stop.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -183,6 +186,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-047 | Per-step metrics or transport heartbeats fill EventStore, or a static report/claim fold materializes the whole log, or bench timings are treated as a contract | Log blow-up; false SLA; OOM on report | Heartbeats stay off the log; `read_events(event_types=)` is a post-high-water fold filter, not a substitute for contiguous replay; reports keep lineage on the matching Run; series use CAS `MetricChunk` with 1024/32 caps; `m2 bench` receipts are measurements not golden files (ADR-0047) | 10k/100k bench, typed Worker rebuild, metric-chunk cap, and report lineage tests in `tests/test_m2_perf.py` / `tests/test_metric_chunk.py` |
 | TM-048 | A training-backend plan is treated as a GPU run, or ms-swift/torch enter the core environment, or deleting the adapter breaks the CPU loop | False training success; core/CUDA coupling | Closed `TrainingBackendPlan` for `ms-swift==4.5.2` only; `training plan` prints argv with `executed: false` / `gpu: not-run` and MUST NOT subprocess; core `project.dependencies` stay free of ms-swift/torch; CPU prove/sandbox must not import `llm_research_os.training` (ADR-0048) | Pinned-plan, reject-unpinned, and core-isolation tests in `tests/test_training_backend.py` |
 | TM-049 | An OCI bind uses 0700 `/in` so nobody cannot read the brick, or the container is run as root / 0777 to bypass that, or a skip on designated Linux CI is treated as live OCI acceptance | Unreadable inputs; privilege escalation; false Linux OCI proof | Bind root is 0755 and brick 0444; `--user 65534:65534`; not world-writable; `RESEARCHOS_OCI_REQUIRED=1` converts skip to fail (ADR-0049) | Mode tests, argv user assertion, designated `Linux OCI integration` job |
+| TM-050 | A resumed cancel request is reported as observed stop, PID reuse stops another task, `--rm` prevents container inspect, or container stop is treated as cloud VM stop | False cancelled outcome; wrong process killed; GPU billing stop | Resume+cancel without a matching identity stays `execution-unobserved`; Linux starttime rejects PID reuse; host stop waits for exit; OCI uses `--cidfile` without `--rm` then inspect; cloud instance stop is forbidden (ADR-0050) | Identity, pid-reuse, heartbeat-cancel, argv, and cloud-stop tests in `tests/test_worker_supervise.py` |
 
 ## 7. M0 security gates
 

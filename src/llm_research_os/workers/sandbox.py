@@ -16,7 +16,8 @@ import subprocess
 import sys
 import tempfile
 import threading
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -27,6 +28,16 @@ from llm_research_os.canonical import content_digest
 from llm_research_os.secrets.redaction import message_without_secrets
 from llm_research_os.workers.binding import MAX_BRICK_REQUEST_JSON_BYTES, brick_stdin_document
 from llm_research_os.workers.errors import WorkerSandboxError
+from llm_research_os.workers.supervise import (
+    KIND_OCI,
+    KIND_POSIX,
+    OBSERVED_STOP,
+    UNOBSERVED,
+    ExecutionIdentity,
+    observe_and_stop,
+    posix_start_token,
+    save_execution_identity,
+)
 
 MAX_SANDBOX_WALL_SECONDS = 5
 MAX_SANDBOX_OUTPUT_BYTES = 65_536
@@ -34,6 +45,7 @@ MAX_SANDBOX_DIAGNOSTICS_CHARS = 2_048
 _PASSTHROUGH = ("PATH", "SYSTEMROOT", "WINDIR")
 _READ_CHUNK = 4_096
 _REAP_WAIT_SECONDS = 2
+_CANCEL_POLL_SECONDS = 0.2
 
 
 class SandboxDisposition(StrEnum):
@@ -58,6 +70,9 @@ def execute_python_brick(
     config: Mapping[str, object] | None = None,
     inputs: Mapping[str, object] | None = None,
     timeout_seconds: int = MAX_SANDBOX_WALL_SECONDS,
+    identity_dir: Path | None = None,
+    lease_id: str | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> SandboxResult:
     """Run one JSON-stdio brick in a temp dir. Isolation is not kernel-enforced."""
 
@@ -85,6 +100,7 @@ def execute_python_brick(
     workspace = script.parent
     process: subprocess.Popen[bytes] | None = None
     pgid: int | None = None
+    identity: ExecutionIdentity | None = None
     try:
         try:
             process = subprocess.Popen(  # noqa: S603
@@ -105,11 +121,41 @@ def execute_python_brick(
                 reason_code="worker.process.lost",
             )
         pgid = _process_group(process)
-        return _run_bounded(process, payload, timeout_seconds, pgid, secret_values=())
+        identity = _record_posix_identity(identity_dir, lease_id, process, pgid)
+        return _run_bounded(
+            process,
+            payload,
+            timeout_seconds,
+            pgid,
+            secret_values=(),
+            should_cancel=should_cancel,
+            identity=identity,
+        )
     finally:
         if process is not None:
             _reap_process_group(process, pgid)
         shutil.rmtree(workspace, ignore_errors=True)
+
+
+def _record_posix_identity(
+    identity_dir: Path | None,
+    lease_id: str | None,
+    process: subprocess.Popen[bytes],
+    pgid: int | None,
+) -> ExecutionIdentity | None:
+    if identity_dir is None or lease_id is None or process.pid is None:
+        return None
+    identity = ExecutionIdentity(
+        lease_id=lease_id,
+        kind=KIND_POSIX,
+        pid=process.pid,
+        pgid=pgid,
+        start_token=posix_start_token(process.pid),
+        container_id=None,
+        docker_executable=None,
+    )
+    save_execution_identity(identity_dir, identity)
+    return identity
 
 
 def _run_bounded(
@@ -119,6 +165,8 @@ def _run_bounded(
     pgid: int | None,
     *,
     secret_values: tuple[str, ...] = (),
+    should_cancel: Callable[[], bool] | None = None,
+    identity: ExecutionIdentity | None = None,
 ) -> SandboxResult:
     overflow = threading.Event()
     stdout_chunks: list[bytes] = []
@@ -148,10 +196,37 @@ def _run_bounded(
     stdout_thread.start()
     stderr_thread.start()
     timed_out = False
-    try:
-        process.wait(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        timed_out = True
+    cancelled = False
+    if should_cancel is None:
+        try:
+            process.wait(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+    else:
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                timed_out = True
+                break
+            if should_cancel():
+                cancelled = True
+                break
+            try:
+                process.wait(timeout=min(_CANCEL_POLL_SECONDS, remaining))
+                break
+            except subprocess.TimeoutExpired:
+                continue
+    if cancelled:
+        return _finish_cancelled(
+            process,
+            pgid,
+            identity,
+            stdout_thread,
+            stderr_thread,
+            stderr_chunks,
+            secret_values,
+        )
     _reap_process_group(process, pgid)
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
@@ -191,6 +266,50 @@ def _run_bounded(
             diagnostics=diagnostics,
         )
     return _parse_report(stdout)
+
+
+def _finish_cancelled(
+    process: subprocess.Popen[bytes],
+    pgid: int | None,
+    identity: ExecutionIdentity | None,
+    stdout_thread: threading.Thread,
+    stderr_thread: threading.Thread,
+    stderr_chunks: list[bytes],
+    secret_values: tuple[str, ...],
+) -> SandboxResult:
+    container_observed = False
+    if identity is not None and identity.kind == KIND_OCI:
+        outcome = observe_and_stop(identity)
+        if outcome == UNOBSERVED:
+            stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
+            stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
+            return SandboxResult(
+                disposition=SandboxDisposition.UNKNOWN,
+                stdout=b"",
+                result_digest=None,
+                reason_code=UNOBSERVED,
+                diagnostics=_redacted_diagnostics(stderr_chunks, secret_values),
+            )
+        container_observed = outcome == OBSERVED_STOP
+    _reap_process_group(process, pgid)
+    stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
+    stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
+    diagnostics = _redacted_diagnostics(stderr_chunks, secret_values)
+    if container_observed or process.poll() is not None:
+        return SandboxResult(
+            disposition=SandboxDisposition.FAILED,
+            stdout=b"",
+            result_digest=None,
+            reason_code="cancel-observed",
+            diagnostics=diagnostics,
+        )
+    return SandboxResult(
+        disposition=SandboxDisposition.UNKNOWN,
+        stdout=b"",
+        result_digest=None,
+        reason_code=UNOBSERVED,
+        diagnostics=diagnostics,
+    )
 
 
 def _redacted_diagnostics(

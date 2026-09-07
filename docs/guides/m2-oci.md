@@ -41,6 +41,10 @@ The CAS brick is `inputs.brickDigest`.
 Build a CPU interpreter image from the corpus Dockerfile only when a live
 engine is present, then copy the image id into the spec and grant.
 
+Launch records a container id (`--cidfile`, no `--rm`) so cancel can
+`docker stop` / `kill` and `inspect` before `rm`. That is container
+stop, not cloud-instance stop (ADR-0050).
+
 ## What this is not
 
 - NativeProcessRuntime (preflight still forbids launch)

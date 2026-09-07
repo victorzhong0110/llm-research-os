@@ -551,6 +551,8 @@ an SLA and does not spend GPU.
 execute. It is not a real training run.
 `researchos workers serve` / `workers run` split that loop across two
 processes over pinned loopback HTTPS; they do not prove a remote Worker.
+Cancel supervision records a process or container identity and confirms
+exit; it does not stop a cloud instance.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
 minimal worker environment; unknown

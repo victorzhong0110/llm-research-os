@@ -91,6 +91,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - Pinned `ms-swift==4.5.2` parse/plan adapter (`researchos training plan`);
   argv only, no GPU execution
   ([ADR-0048](docs/adr/0048-pinned-ms-swift-adapter.md)).
+- Observed execution identity and cancel supervision: resumed
+  `cancelRequested` is not `cancel-observed`; host process groups and OCI
+  containers are stopped then confirmed; cloud instance stop is forbidden
+  ([ADR-0050](docs/adr/0050-observed-execution-identity.md)).
 
 ### Changed
 
