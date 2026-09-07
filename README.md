@@ -62,7 +62,10 @@ digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime
 a missing engine fails closed and is not a mocked success. Worker
 stop/fault recovery is [ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md):
 a cancel request is not a stopped process; completed work reconciles
-Run/Attempt; unknown cannot auto-succeed. EventStore 10k/100k baseline
+Run/Attempt; unknown cannot auto-succeed. Observed execution identity is
+[ADR-0050](docs/adr/0050-observed-execution-identity.md). Live CPU fault
+acceptance is [ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md):
+`plane.fail` is not a stop. EventStore 10k/100k baseline
 and CAS metric chunks are [ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md);
 bench receipts are not SLA. It is not GPU
 completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.

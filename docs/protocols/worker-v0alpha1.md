@@ -140,8 +140,15 @@ MUST NOT append facts; they MUST be polled during execute so a cancel
 request can be observed. A Worker records a 0600 execution identity
 (pid/pgid plus Linux starttime, or OCI container id from `--cidfile`).
 `docker run` MUST NOT use `--rm` before inspect. PID reuse MUST NOT
-stop another task. Unknown or lost work, including
+stop another task. After a successful brick and artifact upload, the
+Worker writes a pending complete receipt. Disconnect before
+`work.completed` retries that complete and MUST NOT re-execute. Unknown or lost work, including
 `execution-unobserved`, MUST NOT be marked success or auto-rerun.
+A second Worker client MUST NOT spawn while the original executor is
+still running. Timeout/kill stay unknown; the Worker drops a reaped
+identity so a later cancel cannot rewrite unknown as cancelled.
+Live CPU fault cases (ADR-0051) MUST assert process or container state;
+calling `work.failed` without that observation is not a stop.
 Container stop is not cloud-instance stop. Same-attempt resume after
 unknown is `attempt.recovered`. An inspectable CPU checkpoint in CAS may
 complete that recovered attempt; continuing from the checkpoint is a new
@@ -152,7 +159,8 @@ execution object.
 ```bash
 uv run pytest tests/test_worker_protocol.py tests/test_worker_faults.py \
   tests/test_worker_isolate.py tests/test_worker_oci.py \
-  tests/test_worker_recovery.py tests/test_worker_supervise.py
+  tests/test_worker_recovery.py tests/test_worker_supervise.py \
+  tests/test_worker_live_faults.py
 uv run researchos m2 prove examples/m2-checkpoint /tmp/m2.db --format json
 uv run researchos m2 oci examples/m2-oci-checkpoint /tmp/m2-oci.db --format json
 ```

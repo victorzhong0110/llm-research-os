@@ -29,6 +29,12 @@ _GRANT_HEADER = "X-ResearchOS-Grant"
 _ARTIFACT_PATH = re.compile(r"^/v0alpha1/artifacts/sha256/([0-9a-f]{64})$")
 
 
+class _ReusableLoopbackServer(ThreadingHTTPServer):
+    """SO_REUSEADDR so a control-plane process can restart on the same port."""
+
+    allow_reuse_address = True
+
+
 class LoopbackWorkerServer:
     """Worker-initiated long poll on loopback. Non-loopback binds fail closed (TM-009)."""
 
@@ -56,7 +62,7 @@ class LoopbackWorkerServer:
         self._clock: Clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._tls = tls
         handler = _handler_for(self)
-        self._httpd = ThreadingHTTPServer((host, port), handler)
+        self._httpd = _ReusableLoopbackServer((host, port), handler)
         bound_host, bound_port = self._httpd.server_address[:2]
         _require_loopback_host(str(bound_host))
         self.host = str(bound_host)

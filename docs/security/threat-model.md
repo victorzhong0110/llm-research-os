@@ -19,6 +19,7 @@ Non-root `/in` bind modes and designated Linux OCI CI are ADR-0049.
 Observed execution identity and cancel supervision are ADR-0050: a cancel
 request is still not a stop; `cancel-observed` requires a confirmed
 process or container exit; container stop is not cloud-instance stop.
+Live CPU fault acceptance is ADR-0051.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -187,6 +188,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-048 | A training-backend plan is treated as a GPU run, or ms-swift/torch enter the core environment, or deleting the adapter breaks the CPU loop | False training success; core/CUDA coupling | Closed `TrainingBackendPlan` for `ms-swift==4.5.2` only; `training plan` prints argv with `executed: false` / `gpu: not-run` and MUST NOT subprocess; core `project.dependencies` stay free of ms-swift/torch; CPU prove/sandbox must not import `llm_research_os.training` (ADR-0048) | Pinned-plan, reject-unpinned, and core-isolation tests in `tests/test_training_backend.py` |
 | TM-049 | An OCI bind uses 0700 `/in` so nobody cannot read the brick, or the container is run as root / 0777 to bypass that, or a skip on designated Linux CI is treated as live OCI acceptance | Unreadable inputs; privilege escalation; false Linux OCI proof | Bind root is 0755 and brick 0444; `--user 65534:65534`; not world-writable; `RESEARCHOS_OCI_REQUIRED=1` converts skip to fail (ADR-0049) | Mode tests, argv user assertion, designated `Linux OCI integration` job |
 | TM-050 | A resumed cancel request is reported as observed stop, PID reuse stops another task, `--rm` prevents container inspect, or container stop is treated as cloud VM stop | False cancelled outcome; wrong process killed; GPU billing stop | Resume+cancel without a matching identity stays `execution-unobserved`; Linux starttime rejects PID reuse; host stop waits for exit; OCI uses `--cidfile` without `--rm` then inspect; cloud instance stop is forbidden (ADR-0050) | Identity, pid-reuse, heartbeat-cancel, argv, and cloud-stop tests in `tests/test_worker_supervise.py` |
+| TM-051 | `plane.fail("cancel-observed")` is treated as a live stop, unknown work is auto-rerun, a second client spawns while the original executor is alive, or disconnect-after-upload re-executes | False cancelled/success; duplicate execution | Live faults spawn a long-running CPU brick and assert pid/container state; timeout/kill drop a reaped identity; pending complete retries `work.completed`; recovery must not spawn; expire/revoke is not observed stop (ADR-0051) | `tests/test_worker_live_faults.py` |
 
 ## 7. M0 security gates
 

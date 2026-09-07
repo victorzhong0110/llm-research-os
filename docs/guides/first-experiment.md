@@ -40,7 +40,10 @@ for this slice: replay the same database; do not treat a cancel request as
 stopped. A resumed claim MUST NOT re-run unknown work. `cancel-observed`
 requires a confirmed process or container exit; missing identity stays
 `execution-unobserved` (ADR-0050). Sandbox timeout or a
-killed sandbox process is `unknown`, not `failed`. Disconnect before
+killed sandbox process is `unknown`, not `failed`. Disconnect after
+upload retries `work.completed` from a pending receipt and MUST NOT
+re-run (ADR-0051). A second Worker client MUST NOT spawn while the
+original executor is still running. Disconnect before
 complete leaves the lease open (not success). Heartbeats do not grow the
 event log. Completed work reconciles Run/Attempt; a CAS object without
 `work.completed` is not success. CPU checkpoint JSON is inspectable

@@ -63,7 +63,10 @@ recorded process or container is confirmed gone
 ([ADR-0050](../adr/0050-observed-execution-identity.md)). A resumed cancel
 without that identity is `execution-unobserved`, not cancelled. Heartbeat
 stays off the log and returns
-`{"cancelRequested": true|false}` and is polled during execute. `work.completed` reconciles the Run
+`{"cancelRequested": true|false}` and is polled during execute. After
+upload, a pending complete receipt lets a recovered Worker retry
+`work.completed` without spawning (ADR-0051). A second client MUST NOT
+spawn while the original executor is alive. `work.completed` reconciles the Run
 and Attempt; a CAS object without that fact is not success. Unknown work
 stays unknown. An inspectable CPU checkpoint lives in
 `examples/m2-checkpoint-resume/`.

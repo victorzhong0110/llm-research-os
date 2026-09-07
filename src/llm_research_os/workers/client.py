@@ -23,13 +23,21 @@ from llm_research_os.workers.models import (
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
 from llm_research_os.workers.oci import execute_oci_python_brick
-from llm_research_os.workers.sandbox import SandboxDisposition, execute_python_brick
+from llm_research_os.workers.sandbox import (
+    MAX_SANDBOX_WALL_SECONDS,
+    SandboxDisposition,
+    execute_python_brick,
+)
 from llm_research_os.workers.supervise import (
     OBSERVED_STOP,
     UNOBSERVED,
+    PendingComplete,
     drop_execution_identity,
+    drop_pending_complete,
     load_execution_identity,
+    load_pending_complete,
     observe_and_stop,
+    save_pending_complete,
 )
 from llm_research_os.workers.tls import client_tls_context
 
@@ -47,6 +55,7 @@ class WorkerClient:
     tls_fingerprint: str | None = None
     retries: int = _DEFAULT_RETRIES
     identity_dir: Path | None = None
+    timeout_seconds: int = MAX_SANDBOX_WALL_SECONDS
 
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
@@ -190,6 +199,7 @@ class WorkerClient:
                 image_digest,
                 config=config,
                 inputs=inputs,
+                timeout_seconds=self.timeout_seconds,
                 identity_dir=self.identity_dir,
                 lease_id=lease_id,
                 should_cancel=_cancel_requested,
@@ -211,13 +221,25 @@ class WorkerClient:
         else:
             raise WorkerError("poll runtime is not supported", code="runtime-mismatch")
         if result.disposition is SandboxDisposition.UNKNOWN:
+            self._drop_identity(lease_id)
             raise WorkerError("sandbox outcome is unknown", code=result.reason_code)
         if result.disposition is not SandboxDisposition.SUCCEEDED or result.result_digest is None:
             with contextlib.suppress(WorkerError):
                 self.fail(lease_id=lease_id, reason_code=result.reason_code)
             self._drop_identity(lease_id)
             raise WorkerError("sandbox brick failed", code=result.reason_code)
+        if self.identity_dir is not None:
+            drop_execution_identity(self.identity_dir, lease_id)
         artifact_digest = self.put_artifact(result.stdout)
+        if self.identity_dir is not None:
+            save_pending_complete(
+                self.identity_dir,
+                PendingComplete(
+                    lease_id=lease_id,
+                    result_digest=result.result_digest,
+                    artifact_digest=artifact_digest,
+                ),
+            )
         completed = self.complete(
             lease_id=lease_id,
             result_digest=result.result_digest,
@@ -233,6 +255,17 @@ class WorkerClient:
                 "claimed work must not be executed again",
                 code="work-already-claimed",
             )
+        pending = None
+        if self.identity_dir is not None:
+            pending = load_pending_complete(self.identity_dir, lease_id)
+        if pending is not None:
+            completed = self.complete(
+                lease_id=lease_id,
+                result_digest=pending.result_digest,
+                artifact_digest=pending.artifact_digest,
+            )
+            self._drop_identity(lease_id)
+            return completed
         identity = None
         if self.identity_dir is not None:
             identity = load_execution_identity(self.identity_dir, lease_id)
@@ -252,6 +285,7 @@ class WorkerClient:
     def _drop_identity(self, lease_id: str) -> None:
         if self.identity_dir is not None:
             drop_execution_identity(self.identity_dir, lease_id)
+            drop_pending_complete(self.identity_dir, lease_id)
 
     def _json(
         self, method: str, path: str, document: dict[str, Any]

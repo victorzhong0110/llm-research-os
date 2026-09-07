@@ -95,6 +95,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `cancelRequested` is not `cancel-observed`; host process groups and OCI
   containers are stopped then confirmed; cloud instance stop is forbidden
   ([ADR-0050](docs/adr/0050-observed-execution-identity.md)).
+- Live CPU fault acceptance: cancel, timeout, Worker kill, control-plane
+  restart, and disconnect-after-upload assert real process state;
+  `plane.fail` is not observed stop; pending complete retries without
+  rerun ([ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md)).
 
 ### Changed
 

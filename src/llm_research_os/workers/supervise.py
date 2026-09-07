@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -17,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from llm_research_os.artifacts.store import DIGEST_PATTERN
+from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
 from llm_research_os.workers.errors import WorkerError
 
 KIND_POSIX: Literal["posix-pg"] = "posix-pg"
@@ -39,6 +42,15 @@ class ExecutionIdentity:
     start_token: str | None
     container_id: str | None
     docker_executable: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PendingComplete:
+    """Local receipt after artifact upload, before work.completed (ADR-0051)."""
+
+    lease_id: str
+    result_digest: str
+    artifact_digest: str
 
 
 def identity_path(identity_dir: Path, lease_id: str) -> Path:
@@ -166,6 +178,57 @@ def observe_and_stop(identity: ExecutionIdentity | None) -> str:
 
 def drop_execution_identity(identity_dir: Path, lease_id: str) -> None:
     path = identity_path(identity_dir, lease_id)
+    with suppress(OSError):
+        path.unlink()
+
+
+def pending_complete_path(identity_dir: Path, lease_id: str) -> Path:
+    hex_id = lease_id.encode("utf-8").hex()
+    return identity_dir / f"{hex_id}.pending.json"
+
+
+def save_pending_complete(identity_dir: Path, pending: PendingComplete) -> Path:
+    identity_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(identity_dir, _IDENTITY_DIR_MODE)
+    path = pending_complete_path(identity_dir, pending.lease_id)
+    document = {
+        "leaseId": pending.lease_id,
+        "resultDigest": pending.result_digest,
+        "artifactDigest": pending.artifact_digest,
+    }
+    encoded = json.dumps(document, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+    path.write_bytes(encoded)
+    os.chmod(path, _IDENTITY_MODE)
+    return path
+
+
+def load_pending_complete(identity_dir: Path, lease_id: str) -> PendingComplete | None:
+    path = pending_complete_path(identity_dir, lease_id)
+    if not path.is_file():
+        return None
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if type(document) is not dict:
+        return None
+    result_digest = document.get("resultDigest")
+    artifact_digest = document.get("artifactDigest")
+    if type(result_digest) is not str or type(artifact_digest) is not str:
+        return None
+    if re.fullmatch(SEMANTIC_DIGEST_PATTERN, result_digest) is None:
+        return None
+    if DIGEST_PATTERN.fullmatch(artifact_digest) is None:
+        return None
+    return PendingComplete(
+        lease_id=lease_id,
+        result_digest=result_digest,
+        artifact_digest=artifact_digest,
+    )
+
+
+def drop_pending_complete(identity_dir: Path, lease_id: str) -> None:
+    path = pending_complete_path(identity_dir, lease_id)
     with suppress(OSError):
         path.unlink()
 

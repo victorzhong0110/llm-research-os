@@ -148,6 +148,11 @@ def test_cancel_request_is_not_observed_stop(tmp_path: Path) -> None:
 
 
 def test_observed_stop_records_cancelled_outcomes(tmp_path: Path) -> None:
+    """Reconcile cancelled Run/Attempt from an already-recorded work.failed fact.
+
+    This is not live observation. Checkpoint C asserts real process state in
+    tests/test_worker_live_faults.py (ADR-0051).
+    """
     store, _artifacts, plane, image = _plane(tmp_path)
     try:
         runtime, report = _start_runtime(store)
