@@ -28,6 +28,14 @@ from llm_research_os.execution import (
     authorize_plan,
 )
 from llm_research_os.execution.simulated import FAILURE_PATH, SUCCESS_PATH, UNKNOWN_PATH
+from llm_research_os.execution.synthetic import (
+    TYPE_EVALUATION_METRIC,
+    TYPE_TRAINING_STEP,
+    parse_evaluation_metric_payload,
+    parse_training_step_payload,
+    synthetic_evaluation_payload,
+    synthetic_training_payload,
+)
 from llm_research_os.projections import fold_events, replay_events
 from llm_research_os.runs import AttemptStatus, RunControl, RunStateProjection, RunStatus
 from llm_research_os.spec.io import load_document, load_spec
@@ -1112,6 +1120,61 @@ def test_minimal_example_completes_success_simulation(tmp_path: Path) -> None:
         result = _runtime(store).run(spec, _request())
         assert result.disposition is SimulationDisposition.COMPLETED
         assert [item.event.type for item in result.stored] == list(SUCCESS_PATH)
+
+
+def _metric_identities() -> dict[str, SimulationEventIdentity]:
+    return {
+        TYPE_TRAINING_STEP: SimulationEventIdentity(id="evt.training.step", time=TIME),
+        TYPE_EVALUATION_METRIC: SimulationEventIdentity(id="evt.evaluation.metric", time=TIME),
+    }
+
+
+def test_success_path_emits_seeded_synthetic_metrics_after_attempt_started(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "research.db"
+    expected = [
+        *SUCCESS_PATH[:4],
+        TYPE_TRAINING_STEP,
+        TYPE_EVALUATION_METRIC,
+        *SUCCESS_PATH[4:],
+    ]
+    with EventStore(database) as store:
+        result = _runtime(store).run(
+            load_spec(EXAMPLES / "valid/minimal.yaml"),
+            _request(extra_events=_metric_identities()),
+        )
+        types = [item.event.type for item in result.stored]
+        assert types == expected
+        assert result.disposition is SimulationDisposition.COMPLETED
+        assert result.snapshot == _replay(store)
+        training = parse_training_step_payload(result.stored[4].event)
+        evaluation = parse_evaluation_metric_payload(result.stored[5].event)
+        assert training.kind == "synthetic"
+        assert evaluation.kind == "synthetic"
+        assert training.model_dump(mode="json", by_alias=True) == synthetic_training_payload(
+            RUN, ATTEMPT
+        )
+        assert evaluation.model_dump(mode="json", by_alias=True) == synthetic_evaluation_payload(
+            RUN, ATTEMPT
+        )
+        second = _runtime(store).run(
+            load_spec(EXAMPLES / "valid/minimal.yaml"),
+            _request(extra_events=_metric_identities()),
+        )
+        assert second.stored == ()
+        assert store.get_event("evt.training.step") is not None
+
+
+def test_failure_path_ignores_metric_identities(tmp_path: Path) -> None:
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        result = _runtime(store).run(
+            _spec_document(outcome="failure"),
+            _request(FAILURE_PATH, extra_events=_metric_identities()),
+        )
+        assert [item.event.type for item in result.stored] == list(FAILURE_PATH)
+        assert store.get_event("evt.training.step") is None
 
 
 def _run_simulation_toctou(database: Path, *, prefix: str) -> None:

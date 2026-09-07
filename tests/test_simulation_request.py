@@ -54,7 +54,7 @@ def test_simulation_request_schema_declares_closed_external_contract() -> None:
         "workflowId",
     }
     events = schema["properties"]["events"]
-    assert events["maxProperties"] == 11
+    assert events["maxProperties"] == 13
     assert events["additionalProperties"] == {"$ref": "#/$defs/SimulationEventIdentityDocument"}
     assert set(events["propertyNames"]["enum"]) == {
         "attempt.cancelled",
@@ -63,17 +63,27 @@ def test_simulation_request_schema_declares_closed_external_contract() -> None:
         "attempt.started",
         "attempt.succeeded",
         "attempt.unknown",
+        "evaluation.metric",
         "run.cancelled",
         "run.completed",
         "run.failed",
         "run.queued",
         "run.started",
+        "training.step",
     }
 
 
 def test_committed_simulation_request_schema_is_current_and_valid() -> None:
     assert schema_matches(SCHEMA)
     Draft202012Validator.check_schema(json.loads(SCHEMA.read_text(encoding="utf-8")))
+
+
+def test_schema_and_model_accept_metrics_request() -> None:
+    document = load_document(EXAMPLES / "valid" / "success-with-metrics.json")
+    _validator().validate(document)
+    request = validate_simulation_request_document(document)
+    assert "training.step" in request.events
+    assert "evaluation.metric" in request.events
 
 
 def test_schema_and_model_accept_valid_request() -> None:

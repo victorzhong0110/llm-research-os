@@ -16,13 +16,13 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 M1 的切片顺序、安全门、检查点与预算见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md)
 与宪章 §23 勘误表。M1-1 研究决定对象见
 [research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)。
-M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api` 与运行时 CNY 预算事实门控。提问通道见 Issue #42。
+M1-0 已在本树交付：schema v2 可重建查询表与已校验高水位缓存（[ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)）、类型化 [`SecretRef`](docs/protocols/secret-ref-v0alpha1.md)、可选的 ResearchEvent actor `kind` / `modelId`，以及 SimulatedRuntime 产出 `attempt.cancelled` / `run.cancelled`。M1-1 交付 `proposal.submitted` / `dissent.recorded` / `decision.recorded`、可重建 `ResearchLedger` 与对应 CLI。M1-2 交付 [`ModelProvider`](docs/adr/0017-minimal-model-interface.md)、确定性 mock 与仅存摘要的 `ai.call.*` 事实（事件中不内嵌 prompt/output）。M1-3 交付本地 Markdown/PDF 导入为 `evidence.imported`，默认 `LicenseRef-Unknown`。PDF 抽取在子进程中受页数、字符数与墙钟上限约束。M1-4 交付 OpenAI 兼容 HTTP 适配器（默认回环），由 `SecretRef`、`read.external_api` 与运行时 CNY 预算事实门控。提问通道见 Issue #42。M1-5 交付由 SimulatedRuntime 写出的种子化合成 `training.step` / `evaluation.metric` 事实，以及 `researchos report RUN` 静态 HTML/Markdown（React Flow 延后）。
 
 已交付能力包括：ResearchSpec / ResearchEvent / BlockManifest 协议基础、纯静态规划内核、
 SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品对象层、纯 Run/Attempt 状态机、写入前预检并做
 全局 CAS 的 RunControl、无需 GPU 与网络且可消费取消请求的确定性 SimulatedRuntime、绑定三摘要的计划授权门、
 非凭证授权 CLI、仅审计的求值事件、只读 lineage、进程内 `decisionDigest`、显式模拟 Run /
-取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 CLI，以及不可启动的 NativeProcessPreflight。
+取消请求 / 制品对象 / 研究决定 / mock 模型调用 / 资料导入 / OpenAI 兼容 / 静态报告 CLI，以及不可启动的 NativeProcessPreflight。
 
 当前仍不执行任何训练任务或真实 GPU 工作负载，也不会把授权、预检报告、lineage 重建或
 `decisionDigest` 冒充认证回执、启动许可或 Run 所消费的那条审计事实。取消请求 CLI 仍不发送进程信号；
@@ -61,6 +61,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
 - [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
 - [OpenAI-compatible generate / budget v0alpha1](docs/protocols/openai-compat-v0alpha1.md)
+- [Synthetic metrics and static Run report v0alpha1](docs/protocols/run-report-v0alpha1.md)
 - [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -90,6 +91,7 @@ SQLite 追加式事件事实源与可重建查询表、本地内容寻址制品�
 - [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
 - [M1 资料导入 CLI](docs/guides/m1-evidence-import.md)
 - [M1 OpenAI 兼容 generate CLI](docs/guides/m1-openai-compat.md)
+- [M1 合成指标与静态 Run 报告](docs/guides/m1-run-report.md)
 - [架构决策记录](docs/adr/README.md)
 - [持续威胁模型](docs/security/threat-model.md)
 - [工程规范](docs/engineering-standards.md)（英文）
@@ -327,6 +329,14 @@ uv run researchos evidence import \
   --format json
 ```
 
+成功路径的 SimulationRequest 也可提供 `training.step` 与 `evaluation.metric` 身份。报告是静态投影：
+
+```bash
+uv run researchos report run.simulated \
+  --database research.db \
+  --format markdown
+```
+
 本地制品对象根目录必须预先创建。导入与完整校验都返回版本化对象报告，不打印对象正文：
 
 ```bash
@@ -360,6 +370,7 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `SecretRef`、`read.external_api` 与 HTTPS。
 `evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
 PDF 抽取在子进程中设上限；未知权利不能授权训练。
+`report` 重建静态 HTML 或 Markdown 投影；它不是事实源。
 它不导入积木入口点，不执行任意训练代码、表达式、插件或远程 Worker，不写 SQLite 制品索引
 或持久化投影，也不提供对象导出/删除、实际停止适配器、可执行的 NativeProcessRuntime 或网络上传。
 模拟 `completed` 不是科学成功；`unknown` 保持未决。

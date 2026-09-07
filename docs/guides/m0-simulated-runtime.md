@@ -86,7 +86,8 @@ seed.
 
 ## Event sequences
 
-Success (`outcome: success`), exactly six facts:
+Success (`outcome: success`), exactly six lifecycle facts (optional synthetic
+metrics are not part of this count):
 
 1. `run.queued` — `workflowId`, three plan digests, in-process `decisionDigest`, `maxAttempts: 1`
 2. `run.started`
@@ -94,6 +95,12 @@ Success (`outcome: success`), exactly six facts:
 4. `attempt.started`
 5. `attempt.succeeded`
 6. `run.completed`
+
+When the SimulationRequest also includes `training.step` and `evaluation.metric`
+identities, SimulatedRuntime appends those two EventStore facts after
+`attempt.started` and before `attempt.succeeded`. Values are `kind: synthetic`
+and seeded from a JCS digest of caller-owned identities. They are not scientific
+metrics (TM-023). See [M1 run report](m1-run-report.md).
 
 Failure (`outcome: failure`), exactly six facts: the same first four events,
 then `attempt.failed` (`reasonCode: simulation.outcome.failure`, `retryHint:
@@ -110,7 +117,8 @@ conclusion.
 
 ## Security boundary
 
-Allowed side effects are the lifecycle appends above. SimulatedRuntime does not
+Allowed side effects are the lifecycle appends above and, when requested,
+synthetic metric appends through EventStore. SimulatedRuntime does not
 import or call a block entrypoint, `eval` / `exec`, subprocess, sockets, HTTP,
 DNS, dynamic import, environment expansion, secret reads, GPU/MPS/CUDA probes,
 model APIs, paid actions, or ArtifactStore writes. It does not change SQLite

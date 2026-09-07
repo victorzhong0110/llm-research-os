@@ -67,7 +67,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/SimulationEventIdentityDocument"
       },
-      "maxProperties": 11,
+      "maxProperties": 13,
       "propertyNames": {
         "enum": [
           "run.queued",
@@ -80,7 +80,9 @@
           "attempt.succeeded",
           "attempt.failed",
           "attempt.unknown",
-          "attempt.cancelled"
+          "attempt.cancelled",
+          "training.step",
+          "evaluation.metric"
         ]
       },
       "title": "Events",

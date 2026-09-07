@@ -39,7 +39,8 @@ M1-3 lands local Markdown/PDF import as `evidence.imported` with default
 `LicenseRef-Unknown`. PDF extraction is bounded in a subprocess. M1-4 lands an
 OpenAI-compatible HTTP adapter (loopback default) gated by `SecretRef`,
 `read.external_api`, and runtime CNY budget facts. The question channel is
-Issue #42.
+Issue #42. M1-5 emits seeded synthetic `training.step` / `evaluation.metric`
+facts and `researchos report RUN` static HTML/Markdown (React Flow deferred).
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -50,7 +51,7 @@ SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
-mock-model-call / evidence-import / OpenAI-compat CLIs,
+mock-model-call / evidence-import / OpenAI-compat / static-report CLIs,
 and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads, and it does
@@ -98,6 +99,7 @@ acceptance checklist of that milestone.
 - [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
 - [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
 - [OpenAI-compatible generate / budget v0alpha1](docs/protocols/openai-compat-v0alpha1.md)
+- [Synthetic metrics and static Run report v0alpha1](docs/protocols/run-report-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -127,6 +129,7 @@ acceptance checklist of that milestone.
 - [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
 - [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
 - [M1 OpenAI-compatible generate CLI](docs/guides/m1-openai-compat.md)
+- [M1 synthetic metrics and static Run report](docs/guides/m1-run-report.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -395,6 +398,15 @@ uv run researchos evidence import \
   --format json
 ```
 
+A success SimulationRequest may also name `training.step` and
+`evaluation.metric` identities. The report is a static projection:
+
+```bash
+uv run researchos report run.simulated \
+  --database research.db \
+  --format markdown
+```
+
 A local artifact object root must be created first. Import and full verification
 both return a versioned object report and never print object bodies:
 
@@ -445,6 +457,7 @@ defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded; unknown
 rights cannot authorize training.
+`report` rebuilds a static HTML or Markdown projection; it is not a fact source.
 The tree does not import block entrypoints, does not execute arbitrary training
 code, expressions, plugins, or remote Workers, does not write a SQLite artifact
 index or durable projections, and does not provide object export/delete, a real

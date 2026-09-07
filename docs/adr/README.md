@@ -29,7 +29,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0023](0023-inert-manifests-and-pure-dry-run.md) | Inert manifests and pure deterministic dry-run | Accepted | Implemented |
 | [0024](0024-run-attempt-state-machine.md) | Pure Run and Attempt state machine | Accepted | Implemented |
 | [0025](0025-atomic-run-control-append-boundary.md) | Atomic RunControl append boundary | Accepted | Implemented; write-cost model relaxed for schema v2 by ADR-0041 |
-| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented; M1-0 consumes cancellation requests and emits `attempt.cancelled` / `run.cancelled` |
+| [0026](0026-deterministic-simulated-runtime.md) | Deterministic SimulatedRuntime | Accepted | Implemented; M1-0 consumes cancellation requests and emits `attempt.cancelled` / `run.cancelled`; M1-5 optionally emits seeded synthetic `training.step` / `evaluation.metric` after `attempt.started` |
 | [0027](0027-explicit-simulated-run-cli.md) | Explicit Simulated Run CLI | Accepted | Implemented |
 | [0028](0028-explicit-run-cancellation-request.md) | Explicit Run/Attempt cancellation request CLI | Accepted | Implemented |
 | [0029](0029-explicit-local-artifact-object-cli.md) | Explicit local artifact object CLI | Accepted | Implemented |

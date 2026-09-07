@@ -48,6 +48,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `budget.limit.recorded` / `reserved` / `consumed` / `exceeded` / `released`.
 - `budget.limit.recorded` as a human-only project CNY cap. Positive reservations
   must repeat that cap; a request cannot raise it by itself.
+- M1-5: seeded synthetic `training.step` / `evaluation.metric` from
+  SimulatedRuntime and `researchos report RUN` static HTML/Markdown with
+  research, training, cost, and lineage sections linked to `eventId`.
 
 ### Changed
 
@@ -76,3 +79,6 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   prove the request was not dispatched, or when `ai.call.started` itself failed
   to commit. Consume/release must match the reservation (`callId`,
   currency, cap, amount).
+- M1-5: `researchos report` folds research, budget, and lineage from one frozen
+  prefix. Synthetic metric resume compares the canonical caller document, not
+  only id+type. Markdown/HTML fragment ids percent-encode event ids.

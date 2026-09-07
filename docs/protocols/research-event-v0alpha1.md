@@ -150,7 +150,9 @@ digests, never source paths or extracted bodies. `budget.reserved` /
 [OpenAI-compatible generate v0alpha1](openai-compat-v0alpha1.md); amounts are CNY
 decimal strings, never floats. A human `budget.limit.recorded` fact is the
 project cap; request `budgetCap` values MUST match it. Outstanding reservations hold the cap until
-consume, full release, or (when dispatch is uncertain) reconciliation.
+consume, full release, or (when dispatch is uncertain) reconciliation. `training.step` / `evaluation.metric` are defined
+by [Synthetic metrics and static Run report v0alpha1](run-report-v0alpha1.md);
+payloads are `kind: synthetic` and are not scientific metrics.
 
 ## 6. Conformance commands
 
