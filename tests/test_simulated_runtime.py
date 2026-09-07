@@ -26,6 +26,8 @@ from llm_research_os.execution import (
     SimulationRequest,
     TrustedKernel,
     authorize_plan,
+    record_plan_authorization_event,
+    validate_plan_authorization_event_request_document,
 )
 from llm_research_os.execution.simulated import FAILURE_PATH, SUCCESS_PATH, UNKNOWN_PATH
 from llm_research_os.execution.synthetic import (
@@ -39,6 +41,7 @@ from llm_research_os.execution.synthetic import (
 from llm_research_os.projections import fold_events, replay_events
 from llm_research_os.runs import AttemptStatus, RunControl, RunStateProjection, RunStatus
 from llm_research_os.spec.io import load_document, load_spec
+from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage import (
     DuplicateEventError,
     EventIntegrityError,
@@ -55,6 +58,8 @@ ATTEMPT = "attempt.1"
 TIME = "2026-08-30T12:00:00Z"
 SOURCE = "https://researchos.dev/projects/example-minimal"
 HOSTILE_KEY = "\x1b[31msecret-field\nnext-line"
+AUTH_EVENT_ID = "evt.authorization.example-minimal.1"
+AUTH_EVENT_REQUEST = EXAMPLES / "plan-authorization-events" / "valid" / "minimal.json"
 
 
 class _Stopped(RuntimeError):
@@ -78,6 +83,8 @@ def _request(
     workflow_id: str = WORKFLOW,
     stream_id: str = "stream.simulated",
     extra_events: dict[str, SimulationEventIdentity] | None = None,
+    authorization_event_id: str = AUTH_EVENT_ID,
+    authorization_sequence: str = "1",
 ) -> SimulationRequest:
     events = _identities(path, prefix=prefix)
     if extra_events:
@@ -89,7 +96,70 @@ def _request(
         subject=RUN,
         stream_id=stream_id,
         actor_id="researcher.alice",
+        authorization_event_id=authorization_event_id,
+        authorization_sequence=authorization_sequence,
         events=events,
+    )
+
+
+def _seed_authorization(
+    store: EventStore,
+    spec: ResearchSpec | dict[str, Any] | None = None,
+    registry: BlockRegistry | None = None,
+    *,
+    event_id: str = AUTH_EVENT_ID,
+    workflow_id: str = WORKFLOW,
+) -> tuple[str, str]:
+    if spec is None:
+        frozen = load_spec(EXAMPLES / "valid/minimal.yaml")
+    elif isinstance(spec, ResearchSpec):
+        frozen = spec
+    else:
+        frozen = ResearchSpec.model_validate(spec)
+    sealed = registry or build_registry()
+    report = TrustedKernel(sealed).dry_run(frozen, workflow_id=workflow_id)
+    if report.digests.plan is None:
+        raise AssertionError("authorization seed requires a ready plan")
+    policy = PlanAuthorizationPolicy(
+        spec_digest=report.digests.spec,
+        registry_digest=report.digests.registry,
+        plan_digest=report.digests.plan,
+        granted_capabilities=("simulate",),
+    )
+    result = authorize_plan(report, policy)
+    document = load_document(AUTH_EVENT_REQUEST)
+    document["projectId"] = str(report.project.id)
+    document["experimentRevision"] = report.project.revision
+    document["workflowId"] = str(report.workflow_id)
+    document["event"] = {"id": event_id, "time": "2026-09-02T05:00:00Z"}
+    document["binding"] = {
+        "specDigest": result.spec_digest,
+        "registryDigest": result.registry_digest,
+        "planDigest": result.plan_digest,
+        "decisionDigest": result.decision_digest,
+    }
+    recorded = record_plan_authorization_event(
+        store,
+        report,
+        policy,
+        validate_plan_authorization_event_request_document(document),
+    )
+    return recorded.stored.event.id, recorded.stored.event.sequence
+
+
+def _authorized_request(
+    store: EventStore,
+    spec: ResearchSpec | dict[str, Any] | None = None,
+    path: tuple[str, ...] = SUCCESS_PATH,
+    registry: BlockRegistry | None = None,
+    **kwargs: Any,
+) -> SimulationRequest:
+    event_id, sequence = _seed_authorization(store, spec, registry)
+    return _request(
+        path,
+        authorization_event_id=event_id,
+        authorization_sequence=sequence,
+        **kwargs,
     )
 
 
@@ -241,7 +311,8 @@ def test_success_path_emits_six_events_and_matches_replay(tmp_path: Path) -> Non
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     report = TrustedKernel(registry).dry_run(spec, workflow_id=WORKFLOW)
     with EventStore(database) as store:
-        result = _runtime(store, registry).run(spec, _request())
+        request = _authorized_request(store, spec, registry=registry)
+        result = _runtime(store, registry).run(spec, request)
         types = [item.event.type for item in result.stored]
         assert types == list(SUCCESS_PATH)
         assert result.disposition is SimulationDisposition.COMPLETED
@@ -255,17 +326,27 @@ def test_success_path_emits_six_events_and_matches_replay(tmp_path: Path) -> Non
             "registryDigest": report.digests.registry,
             "planDigest": report.digests.plan,
             "decisionDigest": _t0_decision_digest(report),
+            "authorizationEventId": request.authorization_event_id,
+            "authorizationSequence": request.authorization_sequence,
             "maxAttempts": 1,
         }
         assert result.snapshot.digests.decision_digest == _t0_decision_digest(report)
+        assert result.snapshot.consumed_authorization is not None
+        assert result.snapshot.consumed_authorization.event_id == request.authorization_event_id
+        assert result.snapshot.consumed_authorization.sequence == int(
+            request.authorization_sequence
+        )
         sequences = [item.sequence for item in result.stored]
-        assert sequences == [1, 2, 3, 4, 5, 6]
+        assert sequences == [2, 3, 4, 5, 6, 7]
 
 
 def test_failure_path_emits_six_events_and_stays_failed(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
-        result = _runtime(store).run(_spec_document(outcome="failure"), _request(FAILURE_PATH))
+        result = _runtime(store).run(
+            _spec_document(outcome="failure"),
+            _authorized_request(store, _spec_document(outcome="failure"), FAILURE_PATH),
+        )
         assert [item.event.type for item in result.stored] == list(FAILURE_PATH)
         assert result.disposition is SimulationDisposition.FAILED
         assert result.snapshot.status is RunStatus.FAILED
@@ -280,22 +361,27 @@ def test_failure_path_emits_six_events_and_stays_failed(tmp_path: Path) -> None:
 def test_unknown_path_emits_five_events_and_stops(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
-        result = _runtime(store).run(_spec_document(outcome="unknown"), _request(UNKNOWN_PATH))
+        result = _runtime(store).run(
+            _spec_document(outcome="unknown"),
+            _authorized_request(store, _spec_document(outcome="unknown"), UNKNOWN_PATH),
+        )
         assert [item.event.type for item in result.stored] == list(UNKNOWN_PATH)
         assert result.disposition is SimulationDisposition.UNKNOWN
         assert result.snapshot.status is RunStatus.UNKNOWN
         assert result.snapshot.active_attempt_id == ATTEMPT
         assert result.snapshot == _replay(store)
-        assert store.last_sequence() == 5
+        assert store.last_sequence() == 6
 
 
 def test_sequence_uses_global_head_and_nonzero_streamversion(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
+        spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+        request = _authorized_request(store, spec)
         store.append(_foreign_draft("evt.foreign.1", streamid="stream.simulated"))
         store.append(_foreign_draft("evt.foreign.2", streamid="stream.other"))
-        result = _runtime(store).run(load_spec(EXAMPLES / "valid/minimal.yaml"), _request())
-        assert [item.sequence for item in result.stored] == [3, 4, 5, 6, 7, 8]
+        result = _runtime(store).run(spec, request)
+        assert [item.sequence for item in result.stored] == [4, 5, 6, 7, 8, 9]
         assert result.stored[0].event.streamversion == 1
         assert result.snapshot == _replay(store)
         assert result.snapshot.status is RunStatus.COMPLETED
@@ -505,7 +591,7 @@ def test_caller_mutation_after_preflight_cannot_change_outcome(tmp_path: Path) -
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(mutate)
-            result = _runtime(store).run(spec, _request())
+            result = _runtime(store).run(spec, _authorized_request(store, spec))
             future.result(timeout=5)
         assert [item.event.type for item in result.stored] == list(SUCCESS_PATH)
         assert result.snapshot.status is RunStatus.COMPLETED
@@ -517,7 +603,7 @@ def test_nested_container_mutation_does_not_alias_snapshot(tmp_path: Path) -> No
     document = _spec_document()
     nested = document["workflows"][0]["graph"]["nodes"][0]["config"]
     with EventStore(database) as store:
-        result = _runtime(store).run(document, _request())
+        result = _runtime(store).run(document, _authorized_request(store, document))
         nested["outcome"] = "failure"
         nested["token"] = "sk-secret-value"
         assert result.snapshot.status is RunStatus.COMPLETED
@@ -526,24 +612,26 @@ def test_nested_container_mutation_does_not_alias_snapshot(tmp_path: Path) -> No
 
 def test_invalid_later_event_identity_does_not_write_prefix(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
-    request = _request()
-    request.events["run.completed"] = SimulationEventIdentity(id="", time="not-a-time")
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
+        request.events["run.completed"] = SimulationEventIdentity(id="", time="not-a-time")
         with pytest.raises(SimulationError, match="ResearchEvent validation"):
-            _runtime(store).run(load_spec(EXAMPLES / "valid/minimal.yaml"), request)
-        _assert_unchanged(store, 0)
+            _runtime(store).run(spec, request)
+        _assert_unchanged(store, 1)
 
 
 def test_duplicate_event_ids_are_rejected_before_write(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
-    request = _request()
-    shared = SimulationEventIdentity(id="evt.shared", time=TIME)
-    request.events["run.queued"] = shared
-    request.events["run.started"] = shared
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
+        shared = SimulationEventIdentity(id="evt.shared", time=TIME)
+        request.events["run.queued"] = shared
+        request.events["run.started"] = shared
         with pytest.raises(SimulationError, match="not unique"):
-            _runtime(store).run(load_spec(EXAMPLES / "valid/minimal.yaml"), request)
-        _assert_unchanged(store, 0)
+            _runtime(store).run(spec, request)
+        _assert_unchanged(store, 1)
 
 
 @pytest.mark.parametrize(
@@ -561,42 +649,44 @@ def test_resume_from_each_legal_prefix(
 ) -> None:
     for prefix in range(len(path)):
         database = tmp_path / f"{outcome}-{prefix}.db"
-        request = _request(path, prefix=f"{outcome}-{prefix}")
         document = _spec_document(outcome=outcome)
         with EventStore(database) as store:
+            request = _authorized_request(store, document, path, prefix=f"{outcome}-{prefix}")
             _limit_appends(store, prefix)
             with pytest.raises(_Stopped):
                 _runtime(store).run(document, request)
-            assert store.last_sequence() == prefix
+            assert store.last_sequence() == prefix + 1
         with EventStore(database) as store:
             result = _runtime(store).run(document, request)
             assert [item.event.type for item in result.stored] == list(path[prefix:])
             assert result.snapshot == _replay(store)
-            assert store.last_sequence() == len(path)
+            assert store.last_sequence() == len(path) + 1
 
 
 def test_terminal_rerun_is_idempotent(tmp_path: Path) -> None:
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
     with EventStore(tmp_path / "research.db") as store:
-        request = _request()
+        request = _authorized_request(store, spec)
         first = _runtime(store).run(spec, request)
         second = _runtime(store).run(spec, request)
         assert first.disposition is SimulationDisposition.COMPLETED
         assert second.disposition is SimulationDisposition.COMPLETED
         assert second.stored == ()
-        assert store.last_sequence() == 6
+        assert store.last_sequence() == 7
     with EventStore(tmp_path / "unknown.db") as store:
-        unknown_request = _request(UNKNOWN_PATH)
-        first_unknown = _runtime(store).run(_spec_document(outcome="unknown"), unknown_request)
-        second_unknown = _runtime(store).run(_spec_document(outcome="unknown"), unknown_request)
+        unknown_spec = _spec_document(outcome="unknown")
+        unknown_request = _authorized_request(store, unknown_spec, UNKNOWN_PATH)
+        first_unknown = _runtime(store).run(unknown_spec, unknown_request)
+        second_unknown = _runtime(store).run(unknown_spec, unknown_request)
         assert first_unknown.disposition is SimulationDisposition.UNKNOWN
         assert second_unknown.disposition is SimulationDisposition.UNRESOLVED
         assert second_unknown.stored == ()
-        assert store.last_sequence() == 5
+        assert store.last_sequence() == 6
     with EventStore(tmp_path / "failed.db") as store:
-        failed_request = _request(FAILURE_PATH)
-        first_failed = _runtime(store).run(_spec_document(outcome="failure"), failed_request)
-        second_failed = _runtime(store).run(_spec_document(outcome="failure"), failed_request)
+        failed_spec = _spec_document(outcome="failure")
+        failed_request = _authorized_request(store, failed_spec, FAILURE_PATH)
+        first_failed = _runtime(store).run(failed_spec, failed_request)
+        second_failed = _runtime(store).run(failed_spec, failed_request)
         assert first_failed.disposition is SimulationDisposition.FAILED
         assert second_failed.disposition is SimulationDisposition.FAILED
         assert second_failed.stored == ()
@@ -605,22 +695,29 @@ def test_terminal_rerun_is_idempotent(tmp_path: Path) -> None:
 def test_mismatched_existing_run_writes_nothing(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
         _limit_appends(store, 3)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
     with EventStore(database) as store:
         other = load_document(EXAMPLES / "valid/minimal.yaml")
         other["metadata"]["revision"] = 2
-        with pytest.raises(SimulationError, match="does not match") as info:
+        with pytest.raises(SimulationError, match="in-process gate") as info:
             _runtime(store).run(other, request)
-        assert info.value.code == "experiment-revision-mismatch"
-        assert store.last_sequence() == 3
+        assert info.value.code == "authorization-binding-mismatch"
+        assert store.last_sequence() == 4
         with pytest.raises(SimulationError, match="does not match") as info:
-            _runtime(store).run(spec, _request(attempt_id="attempt.other"))
+            _runtime(store).run(
+                spec,
+                _request(
+                    attempt_id="attempt.other",
+                    authorization_event_id=request.authorization_event_id,
+                    authorization_sequence=request.authorization_sequence,
+                ),
+            )
         assert info.value.code == "attempt-id-mismatch"
-        assert store.last_sequence() == 3
+        assert store.last_sequence() == 4
 
 
 def test_omitted_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) -> None:
@@ -629,6 +726,7 @@ def test_omitted_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) 
     registry = build_registry()
     report = TrustedKernel(registry).dry_run(spec, workflow_id=WORKFLOW)
     with EventStore(database) as store:
+        event_id, sequence = _seed_authorization(store, spec, registry)
         store.append(
             _lifecycle_draft(
                 "run.queued",
@@ -643,8 +741,11 @@ def test_omitted_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) 
             )
         )
         with pytest.raises(SimulationError, match="does not match"):
-            _runtime(store, registry).run(spec, _request())
-        assert store.last_sequence() == 1
+            _runtime(store, registry).run(
+                spec,
+                _request(authorization_event_id=event_id, authorization_sequence=sequence),
+            )
+        assert store.last_sequence() == 2
 
 
 def test_stale_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) -> None:
@@ -655,6 +756,7 @@ def test_stale_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) ->
     stale = "jcs-sha256:" + "00" * 32
     assert stale != _t0_decision_digest(report)
     with EventStore(database) as store:
+        event_id, sequence = _seed_authorization(store, spec, registry)
         store.append(
             _lifecycle_draft(
                 "run.queued",
@@ -665,17 +767,24 @@ def test_stale_decision_digest_on_existing_run_writes_nothing(tmp_path: Path) ->
                     "registryDigest": report.digests.registry,
                     "planDigest": report.digests.plan,
                     "decisionDigest": stale,
+                    "authorizationEventId": event_id,
+                    "authorizationSequence": sequence,
                     "maxAttempts": 1,
                 },
             )
         )
         with pytest.raises(SimulationError, match="does not match"):
-            _runtime(store, registry).run(spec, _request())
-        assert store.last_sequence() == 1
+            _runtime(store, registry).run(
+                spec,
+                _request(authorization_event_id=event_id, authorization_sequence=sequence),
+            )
+        assert store.last_sequence() == 2
 
 
 def _race_simulations(database: Path) -> tuple[list[object], list[object]]:
     start = Barrier(2, timeout=5)
+    with EventStore(database) as store:
+        event_id, sequence = _seed_authorization(store)
 
     def run_one(index: int) -> tuple[str, object]:
         with EventStore(database) as store:
@@ -696,7 +805,11 @@ def _race_simulations(database: Path) -> tuple[list[object], list[object]]:
             try:
                 result = _runtime(store).run(
                     load_spec(EXAMPLES / "valid/minimal.yaml"),
-                    _request(prefix=f"race-{index}"),
+                    _request(
+                        prefix=f"race-{index}",
+                        authorization_event_id=event_id,
+                        authorization_sequence=sequence,
+                    ),
                 )
                 return ("ok", result)
             except EventSequenceConflictError as exc:
@@ -717,8 +830,8 @@ def test_concurrent_cas_does_not_retry(tmp_path: Path) -> None:
     conflict = conflicts[0]
     assert isinstance(conflict, EventSequenceConflictError)
     with EventStore(database) as store:
-        assert store.last_sequence() == 6
-        assert store.verify_integrity() == 6
+        assert store.last_sequence() == 7
+        assert store.verify_integrity() == 7
 
 
 def test_concurrent_cas_is_stable_across_repeated_races(tmp_path: Path) -> None:
@@ -732,16 +845,17 @@ def test_concurrent_cas_is_stable_across_repeated_races(tmp_path: Path) -> None:
 def test_integrity_and_duplicate_errors_are_not_success(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
         store.append(_foreign_draft(request.events["run.queued"].id, streamid="stream.other"))
         with pytest.raises((SimulationError, DuplicateEventError)):
             _runtime(store).run(spec, request)
-        assert store.last_sequence() == 1
+        assert store.last_sequence() == 2
 
     broken = tmp_path / "broken.db"
     with EventStore(broken) as store:
-        _runtime(store).run(spec, _request(prefix="ok"))
+        request = _authorized_request(store, spec, prefix="ok")
+        _runtime(store).run(spec, request)
     with sqlite3.connect(broken, autocommit=True) as connection:
         connection.execute("DROP TRIGGER events_reject_update")
         last = connection.execute("SELECT MAX(sequence) FROM events").fetchone()[0]
@@ -751,7 +865,14 @@ def test_integrity_and_duplicate_errors_are_not_success(tmp_path: Path) -> None:
         )
         connection.execute(_trigger_statement("events_reject_update"))
     with EventStore(broken) as store, pytest.raises(EventIntegrityError):
-        _runtime(store).run(spec, _request(prefix="later"))
+        _runtime(store).run(
+            spec,
+            _request(
+                prefix="later",
+                authorization_event_id=request.authorization_event_id,
+                authorization_sequence=request.authorization_sequence,
+            ),
+        )
 
 
 def test_hostile_config_error_does_not_echo_secrets(tmp_path: Path) -> None:
@@ -775,15 +896,18 @@ def test_side_effect_tripwires(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     def tripwire(*args: object, **kwargs: object) -> NoReturn:
         raise AssertionError(f"runtime side effect called: {args!r} {kwargs!r}")
 
+    database = tmp_path / "research.db"
+    spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+    with EventStore(database) as store:
+        request = _authorized_request(store, spec)
     monkeypatch.setattr(subprocess, "run", tripwire)
     monkeypatch.setattr(socket, "create_connection", tripwire)
     monkeypatch.setattr(importlib, "import_module", tripwire)
     monkeypatch.setattr(builtins, "eval", tripwire)
     monkeypatch.setattr(builtins, "exec", tripwire)
     monkeypatch.setattr(LocalArtifactStore, "put", tripwire)
-    database = tmp_path / "research.db"
     with EventStore(database) as store:
-        result = _runtime(store).run(load_spec(EXAMPLES / "valid/minimal.yaml"), _request())
+        result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.COMPLETED
 
 
@@ -815,8 +939,8 @@ def test_simulated_runtime_module_has_no_clock_or_io_imports() -> None:
 def test_cancellation_requested_emits_cancelled_facts(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request(extra_events=_cancel_identities())
     with EventStore(database) as store:
+        request = _authorized_request(store, spec, extra_events=_cancel_identities())
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -834,7 +958,7 @@ def test_cancellation_requested_emits_cancelled_facts(tmp_path: Path) -> None:
             "run.cancelled",
         ]
         assert result.disposition is SimulationDisposition.CANCELLED
-        assert store.last_sequence() == 7
+        assert store.last_sequence() == 8
         assert result.snapshot.status is RunStatus.CANCELLED
         assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
         assert result.snapshot.cancellation_requested is True
@@ -843,8 +967,8 @@ def test_cancellation_requested_emits_cancelled_facts(tmp_path: Path) -> None:
 def test_attempt_cancel_requested_emits_attempt_cancelled_only(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request(extra_events=_cancel_identities())
     with EventStore(database) as store:
+        request = _authorized_request(store, spec, extra_events=_cancel_identities())
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -860,7 +984,7 @@ def test_attempt_cancel_requested_emits_attempt_cancelled_only(tmp_path: Path) -
         result = _runtime(store).run(spec, request)
         assert [item.event.type for item in result.stored] == ["attempt.cancelled"]
         assert result.disposition is SimulationDisposition.UNRESOLVED
-        assert store.last_sequence() == 6
+        assert store.last_sequence() == 7
         assert result.snapshot.cancellation_requested is False
         assert result.snapshot.attempts[0].cancellation_requested is True
         assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
@@ -870,8 +994,8 @@ def test_attempt_cancel_requested_emits_attempt_cancelled_only(tmp_path: Path) -
 def test_unknown_is_not_collapsed_to_cancelled(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = _spec_document(outcome="unknown")
-    request = _request(UNKNOWN_PATH, extra_events=_cancel_identities())
     with EventStore(database) as store:
+        request = _authorized_request(store, spec, UNKNOWN_PATH, extra_events=_cancel_identities())
         result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.UNKNOWN
         RunControl(store, project_id=PROJECT, run_id=RUN).append(
@@ -885,14 +1009,14 @@ def test_unknown_is_not_collapsed_to_cancelled(tmp_path: Path) -> None:
         assert resumed.disposition is SimulationDisposition.UNRESOLVED
         assert resumed.stored == ()
         assert resumed.snapshot.status is RunStatus.UNKNOWN
-        assert store.last_sequence() == 6
+        assert store.last_sequence() == 7
 
 
 def test_cancel_path_requires_caller_owned_identities(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
         _limit_appends(store, 2)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -906,14 +1030,14 @@ def test_cancel_path_requires_caller_owned_identities(tmp_path: Path) -> None:
         )
         with pytest.raises(SimulationError, match="incomplete"):
             _runtime(store).run(spec, request)
-        assert store.last_sequence() == 3
+        assert store.last_sequence() == 4
 
 
 def test_cancelled_run_is_idempotent(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request(extra_events=_cancel_identities())
     with EventStore(database) as store:
+        request = _authorized_request(store, spec, extra_events=_cancel_identities())
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -930,14 +1054,14 @@ def test_cancelled_run_is_idempotent(tmp_path: Path) -> None:
         second = _runtime(store).run(spec, request)
         assert second.disposition is SimulationDisposition.CANCELLED
         assert second.stored == ()
-        assert store.last_sequence() == 7
+        assert store.last_sequence() == 8
 
 
 def test_attempt_cancelled_writes_nothing(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -962,7 +1086,7 @@ def test_attempt_cancelled_writes_nothing(tmp_path: Path) -> None:
         result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.UNRESOLVED
         assert result.stored == ()
-        assert store.last_sequence() == 6
+        assert store.last_sequence() == 7
         assert result.snapshot.attempts[0].status is AttemptStatus.CANCELLED
         assert result.snapshot.status is RunStatus.RUNNING
 
@@ -970,8 +1094,8 @@ def test_attempt_cancelled_writes_nothing(tmp_path: Path) -> None:
 def test_completed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = load_spec(EXAMPLES / "valid/minimal.yaml")
-    request = _request()
     with EventStore(database) as store:
+        request = _authorized_request(store, spec)
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -996,7 +1120,7 @@ def test_completed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
         result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.COMPLETED
         assert result.stored == ()
-        assert store.last_sequence() == 7
+        assert store.last_sequence() == 8
         assert result.snapshot.status is RunStatus.COMPLETED
         assert result.snapshot.cancellation_requested is True
 
@@ -1004,8 +1128,8 @@ def test_completed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
 def test_failed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     spec = _spec_document(outcome="failure")
-    request = _request(FAILURE_PATH)
     with EventStore(database) as store:
+        request = _authorized_request(store, spec, FAILURE_PATH)
         _limit_appends(store, 4)
         with pytest.raises(_Stopped):
             _runtime(store).run(spec, request)
@@ -1039,7 +1163,7 @@ def test_failed_after_run_cancel_request_is_terminal(tmp_path: Path) -> None:
         result = _runtime(store).run(spec, request)
         assert result.disposition is SimulationDisposition.FAILED
         assert result.stored == ()
-        assert store.last_sequence() == 7
+        assert store.last_sequence() == 8
         assert result.snapshot.status is RunStatus.FAILED
         assert result.snapshot.cancellation_requested is True
 
@@ -1117,7 +1241,7 @@ def test_minimal_example_completes_success_simulation(tmp_path: Path) -> None:
     assert spec.workflows[0].graph.nodes[0].config["outcome"] == "success"
     assert spec.workflows[0].graph.nodes[0].config["seed"] == 0
     with EventStore(database) as store:
-        result = _runtime(store).run(spec, _request())
+        result = _runtime(store).run(spec, _authorized_request(store, spec))
         assert result.disposition is SimulationDisposition.COMPLETED
         assert [item.event.type for item in result.stored] == list(SUCCESS_PATH)
 
@@ -1140,10 +1264,9 @@ def test_success_path_emits_seeded_synthetic_metrics_after_attempt_started(
         *SUCCESS_PATH[4:],
     ]
     with EventStore(database) as store:
-        result = _runtime(store).run(
-            load_spec(EXAMPLES / "valid/minimal.yaml"),
-            _request(extra_events=_metric_identities()),
-        )
+        spec = load_spec(EXAMPLES / "valid/minimal.yaml")
+        request = _authorized_request(store, spec, extra_events=_metric_identities())
+        result = _runtime(store).run(spec, request)
         types = [item.event.type for item in result.stored]
         assert types == expected
         assert result.disposition is SimulationDisposition.COMPLETED
@@ -1158,10 +1281,7 @@ def test_success_path_emits_seeded_synthetic_metrics_after_attempt_started(
         assert evaluation.model_dump(mode="json", by_alias=True) == synthetic_evaluation_payload(
             RUN, ATTEMPT
         )
-        second = _runtime(store).run(
-            load_spec(EXAMPLES / "valid/minimal.yaml"),
-            _request(extra_events=_metric_identities()),
-        )
+        second = _runtime(store).run(spec, request)
         assert second.stored == ()
         assert store.get_event("evt.training.step") is not None
 
@@ -1169,9 +1289,10 @@ def test_success_path_emits_seeded_synthetic_metrics_after_attempt_started(
 def test_failure_path_ignores_metric_identities(tmp_path: Path) -> None:
     database = tmp_path / "research.db"
     with EventStore(database) as store:
+        spec = _spec_document(outcome="failure")
         result = _runtime(store).run(
-            _spec_document(outcome="failure"),
-            _request(FAILURE_PATH, extra_events=_metric_identities()),
+            spec,
+            _authorized_request(store, spec, FAILURE_PATH, extra_events=_metric_identities()),
         )
         assert [item.event.type for item in result.stored] == list(FAILURE_PATH)
         assert store.get_event("evt.training.step") is None
@@ -1204,7 +1325,7 @@ def _run_simulation_toctou(database: Path, *, prefix: str) -> None:
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(mutate)
-            result = _runtime(store).run(spec, _request(prefix=prefix))
+            result = _runtime(store).run(spec, _authorized_request(store, spec, prefix=prefix))
             future.result(timeout=5)
         assert result.snapshot.status is RunStatus.COMPLETED
         assert [item.event.type for item in result.stored] == list(SUCCESS_PATH)

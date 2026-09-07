@@ -28,6 +28,8 @@ from llm_research_os.storage import EventStore
 ROOT = Path(__file__).parents[1]
 SPEC = ROOT / "examples" / "valid" / "minimal.yaml"
 REQUEST = ROOT / "examples" / "simulation-requests" / "valid" / "success-with-metrics.json"
+AUTHORIZATION_REQUEST = ROOT / "examples" / "plan-authorization-requests" / "valid" / "minimal.json"
+EVENT_REQUEST = ROOT / "examples" / "plan-authorization-events" / "valid" / "minimal.json"
 PROPOSAL = ROOT / "examples" / "research-decisions" / "valid" / "proposal-submit.json"
 DISSENT = ROOT / "examples" / "research-decisions" / "valid" / "dissent-record.json"
 DECISION = ROOT / "examples" / "research-decisions" / "valid" / "decision-record.json"
@@ -35,7 +37,28 @@ RUN = "run.simulated"
 ATTEMPT = "attempt.1"
 
 
+def _seed_auth(database: Path) -> None:
+    with EventStore(database):
+        pass
+    assert (
+        main(
+            [
+                "authorizations",
+                "record",
+                str(SPEC),
+                str(AUTHORIZATION_REQUEST),
+                str(EVENT_REQUEST),
+                str(database),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+
 def _simulate(database: Path) -> None:
+    _seed_auth(database)
     assert (
         main(
             [
@@ -67,6 +90,10 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     assert '<a href="#evt.training.step"><code>evt.training.step</code></a>' in output
     assert '<a href="#evt.evaluation.metric"><code>evt.evaluation.metric</code></a>' in output
     assert '<a href="#evt.6.run.completed"><code>evt.6.run.completed</code></a>' in output
+    assert (
+        '<a href="#evt.authorization.example-minimal.1">'
+        "<code>evt.authorization.example-minimal.1</code></a>"
+    ) in output
     assert "No `budget.*` facts for this project." in output
     assert "React Flow" not in output
 
@@ -185,6 +212,77 @@ def test_report_rejects_invalid_run_identifier(tmp_path: Path, capsys: object) -
     assert main(["report", "..", "--database", str(database)]) == 2
     error = capsys.readouterr().err  # type: ignore[attr-defined]
     assert "invalid-identifier" in error
+
+
+def test_report_does_not_read_authorization_appended_after_freeze(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "research.db"
+    _simulate(database)
+    with EventStore(database, require_existing=True) as store:
+        original = EventStore.freeze_high_water
+        appended: dict[str, object] = {"id": None}
+
+        def freeze(self: EventStore) -> int:
+            head = original(self)
+            if appended["id"] is None:
+                auth = next(
+                    item
+                    for item in self.read_events(limit=20)
+                    if item.event.type == "plan.authorization.evaluated"
+                )
+                draft = auth.event.model_dump(mode="json", by_alias=True, exclude_none=True)
+                for key in ("sequence", "sequencetype", "streamversion"):
+                    draft.pop(key, None)
+                draft["id"] = "evt.auth.after.freeze"
+                stored = self.append(draft, expected_last_sequence=head)
+                appended["id"] = stored.event.id
+                return head
+            return original(self)
+
+        monkeypatch.setattr(EventStore, "freeze_high_water", freeze)
+        report = build_run_report(store, RUN)
+        assert report.consumed_authorization is not None
+        assert report.consumed_authorization.event.id != appended["id"]
+        assert report.consumed_authorization.sequence <= report.last_sequence
+        assert store.last_sequence() == report.last_sequence + 1
+
+
+def test_report_fails_closed_when_cited_authorization_is_outside_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    donor = tmp_path / "donor.db"
+    _simulate(donor)
+    with EventStore(donor, require_existing=True) as source:
+        auth = next(
+            item
+            for item in source.read_events(limit=20)
+            if item.event.type == "plan.authorization.evaluated"
+        )
+        draft = auth.event.model_dump(mode="json", by_alias=True, exclude_none=True)
+        for key in ("sequence", "sequencetype", "streamversion"):
+            draft.pop(key, None)
+        draft["id"] = "evt.auth.late"
+    database = tmp_path / "research.db"
+    with EventStore(database) as store:
+        queued = _queued_event("example-minimal", RUN, "evt.run.queued.late-auth")
+        queued["data"]["payload"]["authorizationEventId"] = "evt.auth.late"
+        queued["data"]["payload"]["authorizationSequence"] = "2"
+        store.append(queued)
+        original = EventStore.freeze_high_water
+
+        def freeze(self: EventStore) -> int:
+            head = original(self)
+            if head == 1:
+                self.append(draft, expected_last_sequence=head)
+                return head
+            return original(self)
+
+        monkeypatch.setattr(EventStore, "freeze_high_water", freeze)
+        with pytest.raises(ReportError) as captured:
+            build_run_report(store, RUN)
+        assert captured.value.code == "authorization-event-not-found"
+        assert store.last_sequence() == 2
 
 
 def test_metric_payload_parsers_reject_the_other_type() -> None:

@@ -153,30 +153,34 @@ def _apply_first(event: ResearchEvent, payload: object) -> RunSnapshot:
     run_id = event.data.run_id
     if run_id is None:
         raise RunTransitionError(_event_label(event, "run.queued requires data.runId"))
-    return RunSnapshot.model_validate(
-        {
-            "apiVersion": "researchos.dev/v0alpha1",
-            "kind": "RunSnapshot",
-            "projectId": event.data.project_id,
-            "experimentRevision": event.data.experiment_revision,
-            "runId": run_id,
-            "workflowId": payload.workflow_id,
-            "digests": _queued_digests(payload),
-            "maxAttempts": payload.max_attempts,
-            "status": RunStatus.QUEUED,
-            "cancellationRequested": False,
-            "activeAttemptId": None,
-            "attempts": (),
-            "lastEventId": event.id,
-            "lastSequence": int(event.sequence),
-            "review": {
-                "reviewed": False,
-                "eventId": None,
-                "sequence": None,
-                "decisionId": None,
-            },
+    document: dict[str, Any] = {
+        "apiVersion": "researchos.dev/v0alpha1",
+        "kind": "RunSnapshot",
+        "projectId": event.data.project_id,
+        "experimentRevision": event.data.experiment_revision,
+        "runId": run_id,
+        "workflowId": payload.workflow_id,
+        "digests": _queued_digests(payload),
+        "maxAttempts": payload.max_attempts,
+        "status": RunStatus.QUEUED,
+        "cancellationRequested": False,
+        "activeAttemptId": None,
+        "attempts": (),
+        "lastEventId": event.id,
+        "lastSequence": int(event.sequence),
+        "review": {
+            "reviewed": False,
+            "eventId": None,
+            "sequence": None,
+            "decisionId": None,
+        },
+    }
+    if payload.authorization_event_id is not None and payload.authorization_sequence is not None:
+        document["consumedAuthorization"] = {
+            "eventId": payload.authorization_event_id,
+            "sequence": int(payload.authorization_sequence),
         }
-    )
+    return RunSnapshot.model_validate(document)
 
 
 def _queued_digests(payload: RunQueuedPayload) -> dict[str, str]:

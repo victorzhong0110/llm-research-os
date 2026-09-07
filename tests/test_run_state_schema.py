@@ -49,6 +49,10 @@ def test_run_state_schema_declares_external_contract() -> None:
     assert "decisionDigest" not in digests["required"]
     assert digests["properties"]["decisionDigest"]["type"] == "string"
     assert "anyOf" not in digests["properties"]["decisionDigest"]
+    assert "consumedAuthorization" not in schema["required"]
+    consumed = schema["properties"]["consumedAuthorization"]
+    assert consumed == {"$ref": "#/$defs/ConsumedAuthorization"}
+    assert "ConsumedAuthorization" in schema["$defs"]
 
 
 def test_committed_run_state_schema_is_current() -> None:
@@ -61,6 +65,25 @@ def test_forbid_null_optional_digest_fails_closed_on_unexpected_shape() -> None:
     with pytest.raises(ValueError, match="anyOf"):
         _forbid_null_optional_digest(
             {"$defs": {"RunDigests": {"properties": {"decisionDigest": {"type": "string"}}}}},
+            "RunDigests",
+            "decisionDigest",
+        )
+    with pytest.raises(ValueError, match="string alternative"):
+        _forbid_null_optional_digest(
+            {
+                "$defs": {
+                    "RunDigests": {
+                        "properties": {
+                            "decisionDigest": {
+                                "anyOf": [
+                                    {"$ref": "#/$defs/ConsumedAuthorization"},
+                                    {"type": "null"},
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
             "RunDigests",
             "decisionDigest",
         )
@@ -108,6 +131,10 @@ def test_schema_invalid_snapshots_are_rejected_by_the_model() -> None:
     null_decision = _valid_snapshot()
     null_decision["digests"]["decisionDigest"] = None
     cases.append(("null decisionDigest", null_decision))
+
+    null_citation = _valid_snapshot()
+    null_citation["consumedAuthorization"] = None
+    cases.append(("null consumedAuthorization", null_citation))
 
     for name, document in cases:
         assert list(validator.iter_errors(document)), name

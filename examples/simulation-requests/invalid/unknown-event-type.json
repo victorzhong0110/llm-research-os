@@ -10,6 +10,10 @@
   "actor": {
     "id": "researcher.alice"
   },
+  "authorization": {
+    "eventId": "evt.authorization.example-minimal.1",
+    "sequence": "1"
+  },
   "events": {
     "attempt.teleported": {
       "id": "evt.teleported",

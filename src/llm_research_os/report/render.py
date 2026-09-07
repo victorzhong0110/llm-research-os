@@ -12,6 +12,7 @@ from llm_research_os.report.fold import (
     format_consumed,
     format_outstanding,
 )
+from llm_research_os.storage.models import StoredEvent
 
 
 def render_markdown(report: RunReport) -> str:
@@ -145,6 +146,12 @@ def _lineage_markdown(report: RunReport) -> list[str]:
         status = report.snapshot.status.value
         snapshot_id = report.snapshot.last_event_id
     lines = [f"- Run status `{_md(status)}` {_md_link(snapshot_id)}."]
+    if report.consumed_authorization is not None:
+        stored = report.consumed_authorization
+        lines.append(
+            f"- Consumed authorization `{_md(stored.event.type)}` "
+            f"sequence {stored.sequence} {_md_link(stored.event.id)}."
+        )
     for stored in report.lineage:
         lines.append(
             f"- `{_md(stored.event.type)}` sequence {stored.sequence} {_md_link(stored.event.id)}."
@@ -155,7 +162,7 @@ def _lineage_markdown(report: RunReport) -> list[str]:
 def _index_markdown(report: RunReport) -> list[str]:
     seen: set[str] = set()
     lines: list[str] = []
-    for stored in (*report.lineage, *report.budget_events):
+    for stored in _indexed_events(report):
         event_id = stored.event.id
         if event_id in seen:
             continue
@@ -258,6 +265,12 @@ def _lineage_html(report: RunReport) -> list[str]:
         status = report.snapshot.status.value
         snapshot_id = report.snapshot.last_event_id
     items = [f"<li>Run status <code>{_html(status)}</code> {_html_link(snapshot_id)}.</li>"]
+    if report.consumed_authorization is not None:
+        stored = report.consumed_authorization
+        items.append(
+            f"<li>Consumed authorization <code>{_html(stored.event.type)}</code> "
+            f"sequence {stored.sequence} {_html_link(stored.event.id)}.</li>"
+        )
     for stored in report.lineage:
         items.append(
             f"<li><code>{_html(stored.event.type)}</code> sequence {stored.sequence} "
@@ -269,7 +282,7 @@ def _lineage_html(report: RunReport) -> list[str]:
 def _index_html(report: RunReport) -> list[str]:
     seen: set[str] = set()
     items: list[str] = []
-    for stored in (*report.lineage, *report.budget_events):
+    for stored in _indexed_events(report):
         event_id = stored.event.id
         if event_id in seen:
             continue
@@ -295,6 +308,11 @@ def _ledger_event_ids(report: RunReport) -> tuple[str, ...]:
         for group in (ledger.proposals, ledger.dissents, ledger.decisions)
         for entry in group
     )
+
+
+def _indexed_events(report: RunReport) -> tuple[StoredEvent, ...]:
+    extra = () if report.consumed_authorization is None else (report.consumed_authorization,)
+    return (*extra, *report.lineage, *report.budget_events)
 
 
 def _budget_limit_event_id(report: RunReport) -> str:
