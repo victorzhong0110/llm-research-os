@@ -275,12 +275,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     models = subparsers.add_parser(
         "models",
-        help="record deterministic mock model calls as EventStore facts",
+        help="record mock or OpenAI-compatible model calls as EventStore facts",
     )
     model_commands = models.add_subparsers(dest="models_command", required=True)
     models_generate = model_commands.add_parser(
         "generate",
-        help="append ai.call.started and ai.call.completed for one fixture",
+        help="append ai.call facts (and budget facts for the HTTP adapter)",
     )
     models_generate.add_argument(
         "request",
@@ -306,6 +306,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional existing local artifact root for prompt/output object refs",
     )
     add_event_format_argument(models_generate)
+
+    budget = subparsers.add_parser(
+        "budget",
+        help="record project CNY budget limits as EventStore facts",
+    )
+    budget_commands = budget.add_subparsers(dest="budget_command", required=True)
+    budget_limit = budget_commands.add_parser(
+        "record-limit",
+        help="append one human-recorded project budget cap",
+    )
+    budget_limit.add_argument(
+        "request",
+        type=Path,
+        help="BudgetLimitRequest v0alpha1 YAML or JSON file",
+    )
+    budget_limit.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(budget_limit)
 
     evidence = subparsers.add_parser(
         "evidence",

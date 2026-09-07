@@ -1,0 +1,14 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "ModelFixture",
+  "id": "compat-local",
+  "prompt": {
+    "role": "user",
+    "task": "local-loopback",
+    "token": "HTTP_PROMPT_UNIQUE_TOKEN_bravo"
+  },
+  "output": {
+    "kind": "unused-for-http",
+    "token": "HTTP_FIXTURE_OUTPUT_UNUSED"
+  }
+}

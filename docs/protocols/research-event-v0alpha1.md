@@ -145,7 +145,12 @@ executable authority. `ai.call.started` / `ai.call.completed` / `ai.call.failed`
 [ModelProvider v0alpha1](model-provider-v0alpha1.md); payloads store prompt and output digests
 and optional artifact refs, never inline text. `evidence.imported` is defined by
 [Evidence import v0alpha1](evidence-import-v0alpha1.md); payloads store snapshot and text
-digests, never source paths or extracted bodies.
+digests, never source paths or extracted bodies. `budget.reserved` /
+`budget.consumed` / `budget.exceeded` / `budget.released` / `budget.limit.recorded` are defined by
+[OpenAI-compatible generate v0alpha1](openai-compat-v0alpha1.md); amounts are CNY
+decimal strings, never floats. A human `budget.limit.recorded` fact is the
+project cap; request `budgetCap` values MUST match it. Outstanding reservations hold the cap until
+consume, full release, or (when dispatch is uncertain) reconciliation.
 
 ## 6. Conformance commands
 

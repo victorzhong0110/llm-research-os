@@ -9,6 +9,7 @@ from typing import NoReturn
 from llm_research_os.cli.artifacts_commands import run_artifacts
 from llm_research_os.cli.authz_commands import run_authorizations, run_authorize
 from llm_research_os.cli.blocks_commands import run_blocks
+from llm_research_os.cli.budget_commands import run_budget
 from llm_research_os.cli.events_commands import run_events
 from llm_research_os.cli.evidence_commands import run_evidence
 from llm_research_os.cli.models_commands import run_models
@@ -36,6 +37,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "runs": run_runs,
     "artifacts": run_artifacts,
     "models": run_models,
+    "budget": run_budget,
     "evidence": run_evidence,
     "proposals": run_proposals,
     "dissents": run_dissents,

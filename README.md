@@ -36,8 +36,10 @@ actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
 M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
 deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
 M1-3 lands local Markdown/PDF import as `evidence.imported` with default
-`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess. The question
-channel is Issue #42.
+`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess. M1-4 lands an
+OpenAI-compatible HTTP adapter (loopback default) gated by `SecretRef`,
+`read.external_api`, and runtime CNY budget facts. The question channel is
+Issue #42.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -48,7 +50,7 @@ SimulatedRuntime that can consume a cancel request, a plan-authorization gate
 bound to three digests, a non-credential authorization CLI, audit-only
 evaluation events, read-only lineage, in-process `decisionDigest`, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
-mock-model-call / evidence-import CLIs,
+mock-model-call / evidence-import / OpenAI-compat CLIs,
 and a non-launching NativeProcessPreflight.
 
 The tree still does not execute training jobs or real GPU workloads, and it does
@@ -95,6 +97,7 @@ acceptance checklist of that milestone.
 - [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
 - [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
 - [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
+- [OpenAI-compatible generate / budget v0alpha1](docs/protocols/openai-compat-v0alpha1.md)
 - [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
 - [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
 - [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
@@ -123,6 +126,7 @@ acceptance checklist of that milestone.
 - [M1 research decision CLI](docs/guides/m1-research-decisions.md)
 - [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
 - [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
+- [M1 OpenAI-compatible generate CLI](docs/guides/m1-openai-compat.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -366,6 +370,17 @@ uv run researchos models generate \
   --format json
 ```
 
+An OpenAI-compatible local server is the default HTTP path (cap `0.00` CNY).
+Prompt and completion stay off the event; budget facts are recorded:
+
+```bash
+uv run researchos models generate \
+  examples/openai-compat-requests/valid/local.json \
+  research.db \
+  --fixture examples/model-fixtures/valid/compat-local.json \
+  --format json
+```
+
 Local Markdown or PDF notes become `evidence.imported` facts. The file path and
 extracted text stay off the event. PDF extract is subprocess-isolated with page,
 character, and wall-clock bounds:
@@ -423,9 +438,10 @@ does not retry conflicts.
 an existing database, and neither signals nor infers a cancellation outcome.
 `artifacts put` / `verify` only reuse the local object layer: they do not print
 object bodies and they do not build an index or lineage.
-`models generate` records digest-only `ai.call.*` facts from a local fixture
-through the deterministic mock; it does not open a network connection or
-resolve a live API secret.
+`models generate` records digest-only `ai.call.*` facts from a local fixture.
+The mock path does not open a network connection. The OpenAI-compatible path
+defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`,
+`read.external_api`, and HTTPS.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded; unknown
 rights cannot authorize training.

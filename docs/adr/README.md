@@ -9,7 +9,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0003](0003-minimal-trusted-kernel.md) | Minimal trusted kernel | Accepted | Written |
 | [0004](0004-modular-monolith.md) | Modular monolith first | Accepted | Written |
 | [0005](0005-researcher-final-decision.md) | Researcher final decision and preserved AI dissent | Accepted | Written; ADR-0039 D2 adds required decision rationale and overridden-dissent references |
-| [0006](0006-capability-budget-approval-autonomy.md) | Capability-, budget-, and approval-based autonomy | Accepted | Written |
+| [0006](0006-capability-budget-approval-autonomy.md) | Capability-, budget-, and approval-based autonomy | Accepted | Written; M1-4 runtime-enforces CNY `budget.*` caps on the HTTP adapter |
 | [0007](0007-append-only-facts-rebuildable-projections.md) | Append-only facts and rebuildable projections | Accepted | Written |
 | [0008](0008-native-process-and-oci-runtimes.md) | Native process and OCI runtimes | Accepted | Written; M0 milestone scope clarified by ADR-0034; non-executing native preflight implemented, native/OCI executors pending |
 | [0009](0009-worker-semantics-independent-of-transport.md) | Worker semantics independent of transport | Accepted | Written |
@@ -20,7 +20,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0014](0014-cloudevents-compatible-research-event.md) | CloudEvents-compatible ResearchEvent envelope | Accepted | Written |
 | [0015](0015-sqlite-event-source-projections-and-artifacts.md) | SQLite event source, projections and artifact addressing | Accepted | Event source, query/replay, in-memory folds, local file CAS, schema v2 query tables and verified high-water cache (ADR-0041) |
 | 0016 | Tiered plugin trust and isolation | Direction accepted | M1 implementation pending; M1 built-in adapters scoped T0/T1 in-process by ADR-0038 E5 |
-| [0017](0017-minimal-model-interface.md) | Minimal model interface and capability negotiation | Accepted | Implemented; M1-2 DeterministicMockProvider and `ai.call.*` digest facts; OpenAI-compatible adapter remains M1-4 |
+| [0017](0017-minimal-model-interface.md) | Minimal model interface and capability negotiation | Accepted | Implemented; DeterministicMockProvider (M1-2) and in-process OpenAI-compatible HTTP adapter with budget facts (M1-4) |
 | [0018](0018-explicit-bounded-loops.md) | Explicit bounded research loops | Accepted | Written |
 | [0019](0019-evidence-rights-by-use.md) | Evidence rights tracked by use | Accepted | Implemented for local Markdown/PDF import (M1-3); Git/web connectors pending |
 | 0020 | Capability evaluation and progressive autonomy | Direction accepted | M1 implementation pending |
