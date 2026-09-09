@@ -48,6 +48,14 @@ GPU_NETWORK_DENIED: Literal["denied"] = "denied"
 GPU_DEVICE: Literal["nvidia.com/gpu=0"] = "nvidia.com/gpu=0"
 GPU_ACCELERATOR = "cuda"
 GPU_CONTAINER_USER = "65534:65534"
+GPU_CONTAINER_HOME = "/tmp"  # noqa: S108  existing tmpfs; passwd HOME is /nonexistent
+GPU_HF_HOME = "/tmp/hf"  # noqa: S108
+GPU_HF_DATASETS_CACHE = "/tmp/hf/datasets"  # noqa: S108
+GPU_CACHE_ENV: tuple[str, ...] = (
+    f"HOME={GPU_CONTAINER_HOME}",
+    f"HF_HOME={GPU_HF_HOME}",
+    f"HF_DATASETS_CACHE={GPU_HF_DATASETS_CACHE}",
+)
 GPU_DATA_MOUNT: Literal["/work/data"] = "/work/data"
 GPU_MODEL_MOUNT: Literal["/work/model"] = "/work/model"
 GPU_OUTPUT_MOUNT: Literal["/work/output"] = "/work/output"
@@ -351,6 +359,7 @@ def gpu_docker_argv(
         f"{policy.cpu_millis / 1000:.3f}",
         "--tmpfs",
         f"/tmp:rw,noexec,nosuid,size={policy.tmpfs_bytes}",  # noqa: S108  container path
+        *[item for value in GPU_CACHE_ENV for item in ("--env", value)],
         "--mount",
         f"type=bind,src={data_dir},dst={policy.data_mount},readonly",
         "--mount",

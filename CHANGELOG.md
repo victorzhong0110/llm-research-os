@@ -8,6 +8,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ## Unreleased
 
+### Fixed
+
+- GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
+  `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
+  a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`).
+
 ### Added
 
 - ADR-0059 WSL2 CUDA laptop profile (`wsl2-cuda-laptop-8g`) and

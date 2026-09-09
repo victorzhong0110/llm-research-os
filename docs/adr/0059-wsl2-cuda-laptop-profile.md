@@ -21,7 +21,11 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
 2. **`run_gpu_training` is the Worker execution entry.** After grant +
    poll it may start docker with `--gpus device=0` (never `all`),
    observe cancel, and fail closed without docker or a digest-pinned
-   image.
+   image. The closed argv keeps `--read-only` and `--user 65534:65534`.
+   UID 65534 has passwd `HOME=/nonexistent`; HuggingFace datasets mkdir
+   on that path is EROFS. The launch MUST set `HOME=/tmp`, `HF_HOME=/tmp/hf`,
+   and `HF_DATASETS_CACHE=/tmp/hf/datasets` on the existing `/tmp` tmpfs.
+   It MUST NOT add bind mounts or drop `--read-only` to paper over cache.
 3. **Closed laptop profile** `wsl2-cuda-laptop-8g`: default 3 GiB
    container memory, max 4 GiB, 6 CPU, 1800 s wall. It MUST NOT reuse
    the 16–24 GiB AutoDL defaults.
@@ -47,6 +51,8 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
 3. `run_gpu_training` without host dirs is `gpu-host-dirs-missing`.
 4. Bind of `WslCudaTrainingPlan` prints `--gpus device=0` and 3 GiB
    `--memory`.
+5. Prepared GPU argv keeps `--read-only` and sets `HOME=/tmp` on the
+   existing `/tmp` tmpfs (not passwd `/nonexistent`).
 
 ## References
 

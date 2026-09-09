@@ -31,6 +31,8 @@ from llm_research_os.workers.errors import WorkerCallError, WorkerSandboxError
 from llm_research_os.workers.gpu import (
     DEFAULT_GPU_WALL_SECONDS,
     GPU_ACCELERATOR,
+    GPU_CACHE_ENV,
+    GPU_CONTAINER_USER,
     GPU_DEVICE,
     GPU_OUTPUT_MOUNT,
     execute_gpu_training,
@@ -207,6 +209,11 @@ def test_gpu_policy_pins_device_mounts_and_command(tmp_path: Path) -> None:
     assert "/out:rw" not in joined
     assert "--network" in prepared.docker_argv
     assert prepared.docker_argv[prepared.docker_argv.index("--network") + 1] == "none"
+    assert "--read-only" in prepared.docker_argv
+    assert prepared.docker_argv[prepared.docker_argv.index("--user") + 1] == GPU_CONTAINER_USER
+    for value in GPU_CACHE_ENV:
+        assert prepared.docker_argv[prepared.docker_argv.index(value) - 1] == "--env"
+    assert "HOME=/nonexistent" not in prepared.docker_argv
 
 
 @pytest.mark.parametrize(
@@ -779,6 +786,14 @@ def test_gpu_docker_argv_records_cidfile(tmp_path: Path) -> None:
         cidfile=cidfile,
     )
     assert argv[2:4] == ["--cidfile", str(cidfile)]
+    assert argv[argv.index("--user") + 1] == GPU_CONTAINER_USER
+    assert "--read-only" in argv
+    for value in GPU_CACHE_ENV:
+        assert argv[argv.index(value) - 1] == "--env"
+    tmpfs = argv[argv.index("--tmpfs") + 1]
+    assert tmpfs.startswith("/tmp:rw,noexec,nosuid,size=")
+    assert "type=bind" in " ".join(argv)
+    assert argv.count("--tmpfs") == 1
 
 
 def test_execute_gpu_training_without_host_dirs_is_not_run(tmp_path: Path) -> None:

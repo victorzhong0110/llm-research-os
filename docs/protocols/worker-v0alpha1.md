@@ -177,7 +177,11 @@ is the GPU launch profile (ADR-0056). It is not the CPU OCI shape.
 `execute.gpu` is required. The only authorized device is
 `nvidia.com/gpu=0` (`--gpus device=0`). Network MUST be `denied`.
 Allowed mounts are `/work/data` (read-only), `/work/model` (read-only),
-and `/work/output` (read-write bind, not tmpfs). The container command
+and `/work/output` (read-write bind, not tmpfs). `/tmp` is tmpfs. The
+closed environment MUST set `HOME=/tmp`, `HF_HOME=/tmp/hf`, and
+`HF_DATASETS_CACHE=/tmp/hf/datasets` so UID 65534 can mkdir a HuggingFace
+datasets cache under `--read-only` (passwd `HOME` is `/nonexistent`).
+The container command
 MUST be the pinned `ms-swift==4.5.2` plan argv. Extra devices, mounts,
 and `privileged` MUST fail closed. A Worker MUST advertise `cuda`.
 `researchos training bind` and `execute_gpu_training` MUST NOT start a
