@@ -791,7 +791,8 @@ def test_gpu_docker_argv_records_cidfile(tmp_path: Path) -> None:
     for value in GPU_CACHE_ENV:
         assert argv[argv.index(value) - 1] == "--env"
     tmpfs = argv[argv.index("--tmpfs") + 1]
-    assert tmpfs.startswith("/tmp:rw,noexec,nosuid,size=")
+    assert tmpfs.startswith("/tmp:rw,nosuid,size=")
+    assert "noexec" not in tmpfs
     assert "type=bind" in " ".join(argv)
     assert argv.count("--tmpfs") == 1
 

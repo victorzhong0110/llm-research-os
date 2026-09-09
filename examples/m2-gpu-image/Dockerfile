@@ -12,5 +12,10 @@ RUN apt-get update \
 
 RUN python3 -m pip install --no-cache-dir "ms-swift==4.5.2"
 
+# Triton/PyTorch native JIT compiles a CUDA utils extension against Python.h.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Help-check only. Training is the unpaid GPU sheet, not this build.
 RUN python3 -c "import importlib.util; assert importlib.util.find_spec('swift')"

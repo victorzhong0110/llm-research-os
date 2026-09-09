@@ -25,6 +25,8 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
    UID 65534 has passwd `HOME=/nonexistent`; HuggingFace datasets mkdir
    on that path is EROFS. The launch MUST set `HOME=/tmp`, `HF_HOME=/tmp/hf`,
    and `HF_DATASETS_CACHE=/tmp/hf/datasets` on the existing `/tmp` tmpfs.
+   GPU `/tmp` tmpfs MUST NOT use `noexec`: Triton compiles and loads a `.so`
+   there. The image MUST include `python3-dev` (`Python.h`) for that compile.
    It MUST NOT add bind mounts or drop `--read-only` to paper over cache.
 3. **Closed laptop profile** `wsl2-cuda-laptop-8g`: default 3 GiB
    container memory, max 4 GiB, 6 CPU, 1800 s wall. It MUST NOT reuse

@@ -12,7 +12,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 - GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
   `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
-  a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`).
+  a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU
+  `/tmp` tmpfs allows exec so Triton can load a JIT `.so`; the CUDA image
+  installs `python3-dev` for `Python.h`.
 
 ### Added
 

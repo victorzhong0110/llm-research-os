@@ -358,7 +358,7 @@ def gpu_docker_argv(
         "--cpus",
         f"{policy.cpu_millis / 1000:.3f}",
         "--tmpfs",
-        f"/tmp:rw,noexec,nosuid,size={policy.tmpfs_bytes}",  # noqa: S108  container path
+        f"/tmp:rw,nosuid,size={policy.tmpfs_bytes}",  # noqa: S108  Triton loads .so from tmpfs
         *[item for value in GPU_CACHE_ENV for item in ("--env", value)],
         "--mount",
         f"type=bind,src={data_dir},dst={policy.data_mount},readonly",
