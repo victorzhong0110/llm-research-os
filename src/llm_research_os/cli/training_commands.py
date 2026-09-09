@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 from pathlib import Path
+from typing import Literal
 
 from pydantic import ValidationError
 
@@ -28,7 +29,12 @@ from llm_research_os.training.gpu_bind import (
 )
 from llm_research_os.training.mps_bind import bind_ms_swift_mps_command, plan_ms_swift_mps
 from llm_research_os.training.ms_swift import plan_ms_swift
-from llm_research_os.training.requests import load_mac_mps_training_plan, load_training_backend_plan
+from llm_research_os.training.requests import (
+    load_mac_mps_training_plan,
+    load_training_backend_plan,
+    load_wsl_cuda_training_plan,
+)
+from llm_research_os.training.wsl_bind import bind_ms_swift_wsl_cuda_command, plan_ms_swift_wsl_cuda
 from llm_research_os.workers.errors import WorkerSandboxError
 from llm_research_os.workers.gpu import (
     DEFAULT_GPU_CPU_MILLIS,
@@ -36,12 +42,19 @@ from llm_research_os.workers.gpu import (
     DEFAULT_GPU_MEMORY_BYTES,
     DEFAULT_GPU_PIDS,
     DEFAULT_GPU_WALL_SECONDS,
+    DEFAULT_WSL_GPU_CPU_MILLIS,
+    DEFAULT_WSL_GPU_DISK_BYTES,
+    DEFAULT_WSL_GPU_PIDS,
+    DEFAULT_WSL_GPU_WALL_SECONDS,
     GPU_ACCELERATOR,
     GPU_DATA_MOUNT,
     GPU_DEVICE,
     GPU_MODEL_MOUNT,
     GPU_NETWORK_DENIED,
     GPU_OUTPUT_MOUNT,
+    GPU_PROFILE_AUTODL,
+    GPU_PROFILE_WSL2,
+    WSL_GPU_MEMORY_BYTES,
     parse_gpu_launch_policy,
     prepare_gpu_launch,
 )
@@ -72,8 +85,11 @@ def run_training(args: argparse.Namespace) -> int:
 def _plan(request_path: Path, output_format: str) -> int:
     try:
         document = load_document(request_path)
-        if type(document) is dict and document.get("kind") == "MacMpsTrainingPlan":
+        kind = document.get("kind") if type(document) is dict else None
+        if kind == "MacMpsTrainingPlan":
             receipt = plan_ms_swift_mps(load_mac_mps_training_plan(request_path))
+        elif kind == "WslCudaTrainingPlan":
+            receipt = plan_ms_swift_wsl_cuda(load_wsl_cuda_training_plan(request_path))
         else:
             receipt = plan_ms_swift(load_training_backend_plan(request_path))
     except TrainingBackendRequestError as exc:
@@ -104,8 +120,30 @@ def _plan(request_path: Path, output_format: str) -> int:
 
 def _bind(args: argparse.Namespace) -> int:
     try:
-        plan = load_training_backend_plan(args.request)
-        command_argv, command = bind_ms_swift_gpu_command(plan)
+        document = load_document(args.request)
+        kind = document.get("kind") if type(document) is dict else None
+        if kind == "WslCudaTrainingPlan":
+            wsl_plan = load_wsl_cuda_training_plan(args.request)
+            command_argv, command = bind_ms_swift_wsl_cuda_command(wsl_plan)
+            from llm_research_os.training.wsl_bind import plan_document_digest as wsl_digest
+
+            plan_digest = wsl_digest(wsl_plan)
+            profile: Literal["autodl-4090", "wsl2-cuda-laptop-8g"] = GPU_PROFILE_WSL2
+            memory_bytes = WSL_GPU_MEMORY_BYTES
+            pids_limit = DEFAULT_WSL_GPU_PIDS
+            cpu_millis = DEFAULT_WSL_GPU_CPU_MILLIS
+            wall_time = DEFAULT_WSL_GPU_WALL_SECONDS
+            disk_bytes = DEFAULT_WSL_GPU_DISK_BYTES
+        else:
+            gpu_plan = load_training_backend_plan(args.request)
+            command_argv, command = bind_ms_swift_gpu_command(gpu_plan)
+            plan_digest = plan_document_digest(gpu_plan)
+            profile = GPU_PROFILE_AUTODL
+            memory_bytes = DEFAULT_GPU_MEMORY_BYTES
+            pids_limit = DEFAULT_GPU_PIDS
+            cpu_millis = DEFAULT_GPU_CPU_MILLIS
+            wall_time = DEFAULT_GPU_WALL_SECONDS
+            disk_bytes = DEFAULT_GPU_DISK_BYTES
         raw = args.request.read_bytes()
         artifact = "sha256:" + hashlib.sha256(raw).hexdigest()
         policy = parse_gpu_launch_policy(
@@ -113,18 +151,19 @@ def _bind(args: argparse.Namespace) -> int:
             config={
                 "network": GPU_NETWORK_DENIED,
                 "device": GPU_DEVICE,
-                "memoryBytes": DEFAULT_GPU_MEMORY_BYTES,
-                "pidsLimit": DEFAULT_GPU_PIDS,
-                "cpuMillis": DEFAULT_GPU_CPU_MILLIS,
-                "wallTimeSeconds": DEFAULT_GPU_WALL_SECONDS,
-                "diskBytes": DEFAULT_GPU_DISK_BYTES,
+                "profile": profile,
+                "memoryBytes": memory_bytes,
+                "pidsLimit": pids_limit,
+                "cpuMillis": cpu_millis,
+                "wallTimeSeconds": wall_time,
+                "diskBytes": disk_bytes,
                 "dataMount": GPU_DATA_MOUNT,
                 "modelMount": GPU_MODEL_MOUNT,
                 "outputMount": GPU_OUTPUT_MOUNT,
                 "commandDigest": command,
             },
             inputs={
-                "planDigest": plan_document_digest(plan),
+                "planDigest": plan_digest,
                 "planArtifactDigest": artifact,
             },
         )
@@ -154,7 +193,7 @@ def _bind(args: argparse.Namespace) -> int:
         "executed": prepared.executed,
         "gpu": prepared.gpu,
         "commandDigest": command,
-        "planDigest": plan_document_digest(plan),
+        "planDigest": plan_digest,
         "planArtifactDigest": artifact,
     }
     if args.format == "json":
@@ -170,9 +209,16 @@ def _bind(args: argparse.Namespace) -> int:
 def _overlay(args: argparse.Namespace) -> int:
     try:
         document = load_document(args.request)
-        if type(document) is dict and document.get("kind") == "MacMpsTrainingPlan":
+        kind = document.get("kind") if type(document) is dict else None
+        if kind == "MacMpsTrainingPlan":
             command_argv, command = bind_ms_swift_mps_command(
                 load_mac_mps_training_plan(args.request),
+                resume_mode=args.resume,
+                checkpoint_path=args.checkpoint,
+            )
+        elif kind == "WslCudaTrainingPlan":
+            command_argv, command = bind_ms_swift_wsl_cuda_command(
+                load_wsl_cuda_training_plan(args.request),
                 resume_mode=args.resume,
                 checkpoint_path=args.checkpoint,
             )
@@ -248,7 +294,7 @@ def _collect(args: argparse.Namespace) -> int:
         artifacts_root.mkdir(parents=True, exist_ok=True)
         artifacts = LocalArtifactStore(artifacts_root)
         prior = load_collect_manifest(args.resume_from) if args.resume_from is not None else None
-        if args.profile == "mps":
+        if args.profile in {"mps", "wsl2-cuda"}:
             receipt = collect_output_artifacts(
                 args.output,
                 artifacts,

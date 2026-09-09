@@ -10,6 +10,11 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ### Added
 
+- ADR-0059 WSL2 CUDA laptop profile (`wsl2-cuda-laptop-8g`) and
+  `run_gpu_training` as the authorized container start. Plan/bind and
+  `execute_gpu_training` stay `gpu-not-run`. Live two-host/CUDA evidence
+  is not claimed until recorded on Windows/WSL2 + Docker Engine.
+
 - M0 kernel proof (closed 2026-09-03; [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)).
 - Post-M0 governance: [ADR-0038](docs/adr/0038-charter-errata-after-m0.md),
   [ADR-0039](docs/adr/0039-human-help-period-purpose.md),

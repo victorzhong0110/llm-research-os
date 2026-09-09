@@ -16,7 +16,12 @@ from llm_research_os.artifacts.errors import (
     ArtifactPathError,
     ArtifactStoreError,
 )
-from llm_research_os.artifacts.store import MAX_PUT_BYTES, LocalArtifactStore, parse_artifact_digest
+from llm_research_os.artifacts.store import (
+    MAX_PUT_BYTES,
+    MAX_WORKER_PUT_BYTES,
+    LocalArtifactStore,
+    parse_artifact_digest,
+)
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.bind import require_worker_bind_host
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
@@ -277,8 +282,8 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             if type(header) is not str or not header.startswith("Bearer "):
                 raise WorkerGrantError("worker session is missing", code="worker-session-missing")
             verify_worker_session(server._hmac_key, header.removeprefix("Bearer "))
-            payload = self._raw_body()
-            record = server._artifacts.put_bytes(payload)
+            payload = self._raw_body(limit=MAX_WORKER_PUT_BYTES)
+            record = server._artifacts.put_bytes(payload, limit=MAX_WORKER_PUT_BYTES)
             self._write(201, {"digest": record.digest, "sizeBytes": record.size_bytes})
 
         def _get_artifact(self) -> None:
@@ -298,8 +303,8 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     image_digest=digest,
                 )
             with server._artifacts.open(digest) as handle:
-                payload = handle.read(MAX_PUT_BYTES + 1)
-            if len(payload) > MAX_PUT_BYTES:
+                payload = handle.read(MAX_WORKER_PUT_BYTES + 1)
+            if len(payload) > MAX_WORKER_PUT_BYTES:
                 raise WorkerError("artifact exceeds the put limit", code="http-too-large")
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
@@ -314,13 +319,13 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 raise WorkerError("JSON body must be an object", code="http-invalid")
             return document
 
-        def _raw_body(self) -> bytes:
+        def _raw_body(self, *, limit: int = MAX_PUT_BYTES) -> bytes:
             length_header = self.headers.get("Content-Length", "0")
             try:
                 length = int(length_header)
             except ValueError:
                 raise WorkerError("Content-Length is invalid", code="http-invalid") from None
-            if length < 0 or length > MAX_PUT_BYTES:
+            if length < 0 or length > limit:
                 raise WorkerError("request body exceeds the put limit", code="http-too-large")
             return self.rfile.read(length)
 

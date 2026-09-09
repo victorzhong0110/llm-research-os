@@ -177,12 +177,15 @@ from llm_research_os.training.schema import (
     canonical_gpu_data_checkpoint_schema,
     canonical_mac_mps_training_plan_schema,
     canonical_training_backend_plan_schema,
+    canonical_wsl_cuda_training_plan_schema,
     gpu_data_checkpoint_schema_matches,
     mac_mps_training_plan_schema_matches,
     training_backend_plan_schema_matches,
     write_gpu_data_checkpoint_schema,
     write_mac_mps_training_plan_schema,
     write_training_backend_plan_schema,
+    write_wsl_cuda_training_plan_schema,
+    wsl_cuda_training_plan_schema_matches,
 )
 from llm_research_os.workers.schema import (
     authorization_grant_request_schema_matches,
@@ -430,6 +433,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         mac_mps_training_plan_schema_matches,
         write_mac_mps_training_plan_schema,
         "schemas/mac-mps-training-plan/v0alpha1.schema.json",
+    ),
+    "wsl-cuda-training-plan": _contract(
+        canonical_wsl_cuda_training_plan_schema,
+        wsl_cuda_training_plan_schema_matches,
+        write_wsl_cuda_training_plan_schema,
+        "schemas/wsl-cuda-training-plan/v0alpha1.schema.json",
     ),
 }
 

@@ -1,0 +1,150 @@
+{
+  "$id": "https://researchos.dev/schemas/wsl-cuda-training-plan/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Closed Windows/WSL2 CUDA SFT plan. Independent of the 24 GiB GPU sheet.",
+  "properties": {
+    "accDevice": {
+      "const": "cuda",
+      "title": "Accdevice",
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "backendId": {
+      "const": "ms-swift",
+      "title": "Backendid",
+      "type": "string"
+    },
+    "backendVersion": {
+      "const": "4.5.2",
+      "title": "Backendversion",
+      "type": "string"
+    },
+    "dataset": {
+      "const": "/work/data/sft.jsonl",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "gradientAccumulationSteps": {
+      "const": 1,
+      "title": "Gradientaccumulationsteps",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "WslCudaTrainingPlan",
+      "title": "Kind",
+      "type": "string"
+    },
+    "learningRate": {
+      "const": "1e-4",
+      "title": "Learningrate",
+      "type": "string"
+    },
+    "loggingSteps": {
+      "const": 1,
+      "title": "Loggingsteps",
+      "type": "integer"
+    },
+    "loraAlpha": {
+      "const": 16,
+      "title": "Loraalpha",
+      "type": "integer"
+    },
+    "loraRank": {
+      "const": 8,
+      "title": "Lorarank",
+      "type": "integer"
+    },
+    "maxLength": {
+      "const": 256,
+      "title": "Maxlength",
+      "type": "integer"
+    },
+    "maxSteps": {
+      "const": 20,
+      "title": "Maxsteps",
+      "type": "integer"
+    },
+    "model": {
+      "const": "/work/model",
+      "title": "Model",
+      "type": "string"
+    },
+    "modelRevision": {
+      "const": "7ae557604adf67be50417f59c2c2f167def9a775",
+      "title": "Modelrevision",
+      "type": "string"
+    },
+    "modelType": {
+      "const": "qwen2",
+      "title": "Modeltype",
+      "type": "string"
+    },
+    "outputDir": {
+      "const": "/work/output",
+      "title": "Outputdir",
+      "type": "string"
+    },
+    "perDeviceTrainBatchSize": {
+      "const": 1,
+      "title": "Perdevicetrainbatchsize",
+      "type": "integer"
+    },
+    "saveSteps": {
+      "const": 10,
+      "title": "Savesteps",
+      "type": "integer"
+    },
+    "seed": {
+      "const": 42,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "template": {
+      "const": "qwen2_5",
+      "title": "Template",
+      "type": "string"
+    },
+    "torchDtype": {
+      "const": "bfloat16",
+      "title": "Torchdtype",
+      "type": "string"
+    },
+    "tunerType": {
+      "const": "lora",
+      "title": "Tunertype",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "backendId",
+    "backendVersion",
+    "model",
+    "modelRevision",
+    "modelType",
+    "template",
+    "dataset",
+    "tunerType",
+    "torchDtype",
+    "accDevice",
+    "maxSteps",
+    "perDeviceTrainBatchSize",
+    "gradientAccumulationSteps",
+    "learningRate",
+    "loraRank",
+    "loraAlpha",
+    "outputDir",
+    "saveSteps",
+    "loggingSteps",
+    "maxLength",
+    "seed"
+  ],
+  "title": "WslCudaTrainingPlan",
+  "type": "object"
+}

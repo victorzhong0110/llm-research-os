@@ -65,6 +65,23 @@ def test_plan_ms_swift_never_sets_executed() -> None:
     assert "swift" in receipt.argv
 
 
+def test_wsl_cuda_plan_prints_argv_and_does_not_execute(capsys: object) -> None:
+    plan = ROOT / "examples" / "training-backend" / "valid" / "wsl-cuda-sft.json"
+    assert main(["training", "plan", str(plan), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)  # type: ignore[attr-defined]
+    assert payload["executed"] is False
+    assert payload["gpu"] == "not-run"
+    assert payload["argv"][0:2] == ["swift", "sft"]
+    assert "/work/model" in payload["argv"]
+    assert "--max_steps" in payload["argv"]
+    assert payload["argv"][payload["argv"].index("--max_steps") + 1] == "20"
+
+
+def test_wsl_cuda_plan_rejects_extra_fields(capsys: object) -> None:
+    plan = INVALID / "wsl-cuda-extra-field.json"
+    assert main(["training", "plan", str(plan), "--format", "json"]) == 2
+
+
 def test_core_cpu_paths_do_not_import_training_adapter() -> None:
     for path in _CORE_PATHS:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

@@ -625,7 +625,7 @@ def test_http_poll_empty_and_client_error_codes(tmp_path: Path) -> None:
                 headers={
                     "Authorization": f"Bearer {server.session_for('worker.loopback.1')}",
                     "Content-Type": "application/octet-stream",
-                    "Content-Length": "1048577",
+                    "Content-Length": str(268_435_457),
                 },
             )
             huge_response = huge.getresponse()

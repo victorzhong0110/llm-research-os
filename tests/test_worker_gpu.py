@@ -955,3 +955,128 @@ def test_training_plan_and_bind_report_backend_errors(
 def test_unhandled_training_command_fails_closed() -> None:
     with pytest.raises(AssertionError, match="unhandled training command"):
         run_training(type("Args", (), {"training_command": "launch"})())
+
+
+def test_wsl_cuda_profile_rejects_autodl_memory() -> None:
+    with pytest.raises(WorkerSandboxError) as captured:
+        parse_gpu_launch_policy(
+            image_digest=GPU_IMAGE,
+            config={
+                "network": "denied",
+                "device": GPU_DEVICE,
+                "profile": "wsl2-cuda-laptop-8g",
+                "memoryBytes": 17_179_869_184,
+                "commandDigest": _JCS_A,
+            },
+            inputs={"planDigest": _JCS_A, "planArtifactDigest": GPU_IMAGE},
+        )
+    assert captured.value.code == "gpu-resource-limit"
+
+
+def test_wsl_cuda_profile_uses_three_gib_default() -> None:
+    from llm_research_os.workers.gpu import WSL_GPU_MEMORY_BYTES
+
+    policy = parse_gpu_launch_policy(
+        image_digest=GPU_IMAGE,
+        config={
+            "network": "denied",
+            "device": GPU_DEVICE,
+            "profile": "wsl2-cuda-laptop-8g",
+            "commandDigest": _JCS_A,
+        },
+        inputs={"planDigest": _JCS_A, "planArtifactDigest": GPU_IMAGE},
+    )
+    assert policy.memory_bytes == WSL_GPU_MEMORY_BYTES
+    assert policy.profile == "wsl2-cuda-laptop-8g"
+    assert policy.tmpfs_bytes == 268_435_456
+
+
+def test_run_gpu_training_without_host_dirs_is_distinct_from_bind(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import run_gpu_training
+
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    plan, _argv, command_digest, artifact = _plan_bundle(artifacts)
+    result = run_gpu_training(
+        artifacts,
+        GPU_IMAGE,
+        config=_gpu_config(command_digest),
+        inputs={
+            "planDigest": plan_document_digest(plan),
+            "planArtifactDigest": artifact,
+        },
+        advertised_accelerators=(GPU_ACCELERATOR,),
+    )
+    assert result.reason_code == "gpu-host-dirs-missing"
+    assert result.disposition is SandboxDisposition.FAILED
+
+
+def test_run_gpu_training_without_docker_fails_closed(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import run_gpu_training
+
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    plan, _argv, command_digest, artifact = _plan_bundle(artifacts)
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    with pytest.raises(WorkerSandboxError) as captured:
+        run_gpu_training(
+            artifacts,
+            GPU_IMAGE,
+            config=_gpu_config(command_digest),
+            inputs={
+                "planDigest": plan_document_digest(plan),
+                "planArtifactDigest": artifact,
+            },
+            advertised_accelerators=(GPU_ACCELERATOR,),
+            data_dir=data,
+            model_dir=model,
+            output_dir=output,
+        )
+    assert captured.value.code in {"oci-runtime-missing", "oci-image-missing"}
+
+
+def test_wsl_cuda_plan_bind_prints_device_zero_and_does_not_execute(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    plan = ROOT / "examples" / "training-backend" / "valid" / "wsl-cuda-sft.json"
+    assert (
+        main(
+            [
+                "training",
+                "bind",
+                str(plan),
+                "--image",
+                GPU_IMAGE,
+                "--data-dir",
+                str(data),
+                "--model-dir",
+                str(model),
+                "--output-dir",
+                str(output),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executed"] is False
+    assert payload["gpu"] == "not-run"
+    assert "device=0" in payload["dockerArgv"]
+    assert "all" not in payload["dockerArgv"]
+    assert "--memory" in payload["dockerArgv"]
+    memory_at = payload["dockerArgv"].index("--memory")
+    assert payload["dockerArgv"][memory_at + 1] == "3221225472"

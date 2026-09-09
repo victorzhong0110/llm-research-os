@@ -198,6 +198,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-057 | GPU training reuses the CPU OCI profile with lifted ceilings, or an unauthorized device/mount/privileged flag is launched, or `training bind` is treated as a CUDA run | Unreviewed GPU/host escape; false training success | Independent `gpu-oci-container` / `execute.gpu`; closed device `nvidia.com/gpu=0` and mounts; CPU OCI allow-list unchanged; receipts stay `gpu-not-run` (ADR-0056) | `tests/test_worker_gpu.py` |
 | TM-058 | Hub ids float without a revision, `/work/output` is tmpfs, `--adapters` is treated as a full resume, or an interrupted CAS put is called a checkpoint success | Silent snapshot retarget; lost weights; false resume; false GPU result | `GpuDataCheckpointBinding` pins the HF model SHA; dataset git SHA is `pending-live` until recorded; overlay declares loads; collect is bounded, symlink-closed, and resumable; receipts stay `gpu-not-run` (ADR-0057) | `tests/test_training_checkpoint.py` |
 | TM-059 | A host `swift sft` or `executed: false` plan is called a Worker MPS result, MPS inherits OCI isolation, CPU fallback is labeled `mps`, adapter-only is treated as full resume, or the 1 MiB CAS bound blocks a real LoRA checkpoint | False training success; false isolation; false restore; lost weights | Independent `macos-mps-process` / `execute.mps`; process-group isolation only; probe fail-closed `mps-unavailable`; live environment binds `sitecustomizeDigest`; overlay loads declared and file digests observed; MPS collect 256 MiB / 64 files (ADR-0058) | `tests/test_worker_mps.py` |
+| TM-060 | AutoDL 16–24 GiB memory is used on a 6 GiB WSL laptop, `--gpus all` is treated as the authorized launch, a jammy rootfs or image tag is used as grant identity, `execute_gpu_training` is called a CUDA result, ping or Windows-host reachability is called a WSL Worker proof, or this slice is filed as M2 close | Host OOM; extra GPU attach; false image identity; false two-host/CUDA acceptance | Closed `wsl2-cuda-laptop-8g` (3 GiB default); docker `--gpus device=0`; grant identity is local `docker image inspect .Id`; bind stays `gpu-not-run`; live start is `run_gpu_training`; two-host/CUDA rows stay pending-live until recorded from Ubuntu on Windows/WSL2 + Docker Engine (ADR-0059) | Profile/bind/run-split tests in `tests/test_worker_gpu.py`; live TLS/register/CUDA remain pending-live |
 
 ## 7. M0 security gates
 
@@ -260,6 +261,10 @@ Before merging executable capability, the following gates apply:
   launch shape. Docker Desktop on macOS is a Linux VM, not a Darwin namespace
   jail. A missing engine is fail-closed, not a simulated success. This is not
   paid GPU isolation.
+- WSL2 CUDA (ADR-0059) may start docker only via `run_gpu_training` after
+  grant. Plan/bind stay `gpu-not-run`. Unit tests without that host are not
+  a CUDA or two-host proof. Image identity is the local docker Id, not a
+  tag and not a Canonical jammy rootfs digest.
 - Worker stop/fault recovery (ADR-0046) does not send a process signal from
   `runs cancel`. Observed stop is a later Worker fail or complete. A control
   plane that records `work.completed` still needs reconcile (or `m2 prove`)

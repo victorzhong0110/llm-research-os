@@ -62,6 +62,7 @@ ADRs record why an architectural constraint exists, its consequences, and how it
 | [0056](0056-gpu-training-execution-profile.md) | Independent GPU training execution profile | Accepted | `gpu-oci-container` / `execute.gpu`; closed device/mounts/resources; ms-swift argv bound; `gpu-not-run` |
 | [0057](0057-gpu-data-checkpoint.md) | Data snapshot and checkpoint artifact loop | Accepted | Hub revision + pending-live dataset SHA; offline snapshot; overlay resume vs adapters; bounded CAS collect |
 | [0058](0058-macos-mps-training-profile.md) | Independent macOS/MPS training execution profile | Accepted | `macos-mps-process` / `execute.mps`; process-group isolation, not OCI; live Mac row is separate from CUDA/two-host |
+| [0059](0059-wsl2-cuda-laptop-profile.md) | WSL2 CUDA laptop profile and authorized container start | Accepted | `wsl2-cuda-laptop-8g` + `run_gpu_training`; bind stays `gpu-not-run`; live two-host/CUDA still recorded separately |
 
 M0 kernel proof closed 2026-09-03; see ADR-0037. ADR-0015 remainders (SQLite artifact index and persistent projections) are delivered by ADR-0041 as M1-0. E4 numbered M1 slices have an in-tree status record in ADR-0042; that is not the M1 checkpoint. The question channel is implemented independently of that checkpoint. M2-0 is free protocol verification (ADR-0043), not GPU completion. Isolated loopback HTTPS is ADR-0044, not a cross-machine proof. Remote Worker
 transport (ADR-0021) is a pending-live pack: same HTTPS/JSON semantics, no
@@ -78,6 +79,8 @@ result. Data snapshot and checkpoint collect is ADR-0057: Hub revision
 and pending-live dataset SHA; overlay resume is not a CUDA result.
 Independent macOS/MPS execution is ADR-0058: `macos-mps-process` /
 `execute.mps`, process-group isolation, not OCI or NativeProcessRuntime;
-CUDA and two-host rows stay pending-live.
+CUDA and two-host rows stay pending-live. WSL2 CUDA laptop execution is
+ADR-0059: `run_gpu_training` may start docker; plan/bind stay not-run;
+live two-host evidence is recorded on Windows/WSL2 + Docker Engine only.
 
 From ADR-0038 E10 onward an ADR records a constraint or trade-off; a new command, report or CLI surface is documented by a protocol document and a guide instead of its own ADR.

@@ -64,6 +64,9 @@ class WorkerClient:
     mps_model_dir: Path | None = None
     mps_output_dir: Path | None = None
     mps_interpreter: Path | None = None
+    gpu_data_dir: Path | None = None
+    gpu_model_dir: Path | None = None
+    gpu_output_dir: Path | None = None
 
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
@@ -232,12 +235,18 @@ class WorkerClient:
                 raise WorkerError("GPU poll omitted planArtifactDigest", code="http-invalid")
             self.fetch_image(artifacts, plan_artifact)
             gpu = importlib.import_module("llm_research_os.workers.gpu")
-            result = gpu.execute_gpu_training(
+            result = gpu.run_gpu_training(
                 artifacts,
                 image_digest,
                 config=config,
                 inputs=inputs,
                 advertised_accelerators=("cuda",),
+                data_dir=self.gpu_data_dir,
+                model_dir=self.gpu_model_dir,
+                output_dir=self.gpu_output_dir,
+                identity_dir=self.identity_dir,
+                lease_id=lease_id,
+                should_cancel=_cancel_requested,
             )
         elif runtime == WORKER_RUNTIME_MACOS_MPS and media == IMAGE_MEDIA_MPS_ENV:
             plan_artifact = inputs.get("planArtifactDigest")
@@ -410,7 +419,7 @@ def _connection(
         return HTTPSConnection(
             host,
             port,
-            timeout=10,
+            timeout=120,
             context=client_tls_context(ca_path, tls_fingerprint),
         )
     if parsed.scheme != "http":

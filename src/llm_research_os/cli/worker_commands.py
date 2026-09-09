@@ -60,7 +60,13 @@ def run_workers(args: argparse.Namespace) -> int:
             args.port,
         )
     if args.workers_command == "run":
-        return _run_isolated_worker(args.credential, args.artifacts)
+        return _run_isolated_worker(
+            args.credential,
+            args.artifacts,
+            gpu_data_dir=args.gpu_data_dir,
+            gpu_model_dir=args.gpu_model_dir,
+            gpu_output_dir=args.gpu_output_dir,
+        )
     if args.workers_command == "pack":
         return _pack_remote_worker(args.output, args.url, args.project, args.source, args.state)
     raise AssertionError(f"unhandled workers command: {args.workers_command}")
@@ -160,7 +166,14 @@ def _serve_worker_plane(
     return 0
 
 
-def _run_isolated_worker(credential_path: Path, artifacts: Path) -> int:
+def _run_isolated_worker(
+    credential_path: Path,
+    artifacts: Path,
+    *,
+    gpu_data_dir: Path | None,
+    gpu_model_dir: Path | None,
+    gpu_output_dir: Path | None,
+) -> int:
     from llm_research_os.workers.credentials import load_worker_credential, redact_worker_log
     from llm_research_os.workers.isolated import run_isolated_worker
 
@@ -170,6 +183,9 @@ def _run_isolated_worker(credential_path: Path, artifacts: Path) -> int:
         completed = run_isolated_worker(
             credential_path=credential_path,
             artifacts_root=artifacts,
+            gpu_data_dir=gpu_data_dir,
+            gpu_model_dir=gpu_model_dir,
+            gpu_output_dir=gpu_output_dir,
         )
     except WorkerError as exc:
         print_error(

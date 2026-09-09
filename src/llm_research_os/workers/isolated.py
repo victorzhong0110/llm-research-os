@@ -10,8 +10,15 @@ from llm_research_os.workers.credentials import load_worker_credential
 from llm_research_os.workers.errors import WorkerError
 
 
-def run_isolated_worker(*, credential_path: Path, artifacts_root: Path) -> dict[str, str]:
-    """Claim one grant over pinned loopback HTTPS and execute from a private CAS."""
+def run_isolated_worker(
+    *,
+    credential_path: Path,
+    artifacts_root: Path,
+    gpu_data_dir: Path | None = None,
+    gpu_model_dir: Path | None = None,
+    gpu_output_dir: Path | None = None,
+) -> dict[str, str]:
+    """Claim one grant over pinned HTTPS and execute from a private CAS."""
 
     credential = load_worker_credential(credential_path)
     if not credential.control_plane_url.startswith("https://"):
@@ -28,6 +35,9 @@ def run_isolated_worker(*, credential_path: Path, artifacts_root: Path) -> dict[
         ca_path=credential.tls_ca_path,
         tls_fingerprint=credential.tls_fingerprint,
         identity_dir=credential_path.parent / "execution-identities",
+        gpu_data_dir=gpu_data_dir,
+        gpu_model_dir=gpu_model_dir,
+        gpu_output_dir=gpu_output_dir,
     )
     completed = client.run_once(LocalArtifactStore(artifacts_root))
     if completed is None:

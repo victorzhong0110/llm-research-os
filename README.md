@@ -125,6 +125,9 @@ ADR-0058 (`macos-mps-process` / `execute.mps`; process-group isolation,
 not OCI). The three-column matrix is
 [docs/guides/m2-mps-acceptance.md](docs/guides/m2-mps-acceptance.md):
 Mac/MPS live, CUDA/OCI pending-live, two-host pending-live.
+WSL2 CUDA laptop bind/run split is ADR-0059
+([docs/guides/m2-wsl2-cuda-acceptance.md](docs/guides/m2-wsl2-cuda-acceptance.md));
+live two-host and CUDA rows stay pending until recorded on that platform.
 
 ## M0 goals
 

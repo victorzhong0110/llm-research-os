@@ -669,6 +669,9 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ROOT",
         help="Worker-private CAS root; must not be the control-plane CAS",
     )
+    workers_run.add_argument("--gpu-data-dir", type=Path, dest="gpu_data_dir")
+    workers_run.add_argument("--gpu-model-dir", type=Path, dest="gpu_model_dir")
+    workers_run.add_argument("--gpu-output-dir", type=Path, dest="gpu_output_dir")
 
     m2 = subparsers.add_parser(
         "m2",
@@ -831,7 +834,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     training_collect.add_argument(
         "--profile",
-        choices=("gpu", "mps"),
+        choices=("gpu", "mps", "wsl2-cuda"),
         default="gpu",
         help="gpu keeps the 1 MiB CAS bound; mps allows real LoRA checkpoint bytes",
     )
