@@ -45,7 +45,7 @@ def _run_file(path: Path) -> str:
             os.killpg(proc.pid, signal.SIGKILL)
         proc.wait(timeout=5)
         return "hung"
-    if code == 0:
+    if code == 0 or code == 5:
         return "ok"
     return f"fail:{code}"
 

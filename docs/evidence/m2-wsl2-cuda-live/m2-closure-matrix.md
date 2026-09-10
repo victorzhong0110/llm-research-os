@@ -62,8 +62,8 @@ Merge into `main` from the bottom. Do not merge in this slice.
 ## GitHub required checks
 
 `15a8025` protocol jobs cancelled at the 20-minute cap inside pytest, not
-`cancel-in-progress`. This branch had Worker HTTPS GET `read(256MiB+1)`
-and 120s sockets; both stall GitHub runners. Required protocol pytest now
-uses `-m "not oci_live and not slow"` (live docker stays on Linux OCI),
-chunked GET, and 10s sockets by default. Local pytest is not a substitute
-for the required GitHub checks.
+`cancel-in-progress`. Root cause: `_reap_process_group` `killpg`'d pytest
+when a MPS test spawned `/bin/sleep` in the runner's group (Linux SIGKILL;
+the job then sat). Also fixed Worker HTTPS GET `read(256MiB+1)` and 120s
+sockets. Required protocol pytest uses `-m "not oci_live and not slow"`.
+Local pytest is not a substitute for the required GitHub checks.

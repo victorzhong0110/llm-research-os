@@ -23,9 +23,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
   Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
   Worker can fail the lease instead of leaving a claimed grant dangling.
-- Worker HTTPS GET no longer calls ``read(256MiB+1)`` for every artifact.
-  Protocol CI runs each ``tests/test_*.py`` under a 90s process-group kill
-  so a hung file is named, then coverage. Required pytest uses
+- `_reap_process_group` does not `killpg` the caller's process group.
+  A MPS unit test spawned `/bin/sleep` in pytest's group; Linux CI then
+  SIGKILLed the runner and the job sat until the cap. Worker HTTPS GET
+  no longer calls ``read(256MiB+1)``. Required pytest uses
   `-m "not oci_live and not slow"`. Worker HTTP sockets default to 10s.
 - Static run reports render Evaluation and System as their own sections.
   Training no longer lists `evaluation.metric` facts.

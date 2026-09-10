@@ -1516,13 +1516,22 @@ def test_mps_helper_negative_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     process.wait()
     cancelled = mps_mod._finish_cancelled(process, None, None)
     assert cancelled.reason_code == "cancel-observed"
-    sleeper = subprocess.Popen(["/bin/sleep", "30"])
+    sleeper = subprocess.Popen(["/bin/sleep", "30"], start_new_session=True)
     try:
-        unobserved = mps_mod._finish_cancelled(sleeper, None, None)
-        assert unobserved.reason_code == mps_mod.UNOBSERVED
+        isolated = mps_mod._finish_cancelled(sleeper, None, None)
+        assert isolated.reason_code == "cancel-observed"
+        same_group = subprocess.Popen(["/bin/sleep", "30"])
+        try:
+            mps_mod._finish_cancelled(same_group, None, None)
+            assert same_group.poll() is not None
+        finally:
+            if same_group.poll() is None:
+                same_group.kill()
+                same_group.wait(timeout=3)
     finally:
-        sleeper.kill()
-        sleeper.wait()
+        if sleeper.poll() is None:
+            sleeper.kill()
+            sleeper.wait(timeout=3)
 
 
 def test_mps_probe_device_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

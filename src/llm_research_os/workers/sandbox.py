@@ -367,7 +367,13 @@ def _reap_process_group(process: subprocess.Popen[bytes], pgid: int | None) -> N
     target = pgid
     if target is None:
         target = _process_group(process)
-    if os.name == "posix" and target is not None:
+    caller_pgid: int | None = None
+    if os.name == "posix":
+        with contextlib.suppress(OSError):
+            caller_pgid = os.getpgid(0)
+    # A child spawned without start_new_session shares pytest's group.
+    # killpg(self) SIGKILLs the test runner and GitHub jobs look hung.
+    if os.name == "posix" and target is not None and target != caller_pgid:
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(target, signal.SIGKILL)
     elif process.poll() is None:
