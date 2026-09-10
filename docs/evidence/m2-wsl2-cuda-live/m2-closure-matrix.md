@@ -30,7 +30,7 @@ Linux. Not paid cloud GPU.
 | --- | --- | --- |
 | `unknown ≠ rerun` | Unit/loopback: [unknown-not-rerun.md](unknown-not-rerun.md) | Dedicated two-host unknown live. cuda.8 was **failed**, not rerun. |
 | Paid cloud | Not done | Not a remaining live experiment for this pack. |
-| Code identity | cuda.7 overlay `b3da4bd` / e47279d tree; cuda.8 shared venv miss; cuda.9 `PYTHONPATH` overlay; later independent venv install of a full commit | Those live grants did not run final HEAD. |
+| Code identity | cuda.7 overlay `b3da4bd` / e47279d tree; cuda.8 shared venv miss; cuda.9 `PYTHONPATH` overlay; independent venv of `041365a` with its own `.venv` | Those live grants did not run final pack HEAD. Independent venv did not `workers run`. |
 | Leftover checkpoint-20 | cuda.9 checkpoint-20 mtime is new vs freeze-copied checkpoint-10; adapter SHA matches cuda.7 checkpoint-20 | That match is leftover copy. |
 
 ## Stacked PRs (do not merge)

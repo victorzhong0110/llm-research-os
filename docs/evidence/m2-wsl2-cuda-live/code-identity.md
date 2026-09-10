@@ -36,10 +36,16 @@ the 374f5c6 `gpu.py` overlay, but `workers run` used the **shared
 
 ## Independent venv (no grant)
 
-A later full-commit tree with its **own** `.venv` (no symlink to the
-e47279d environment) records `llm_research_os.workers.gpu.__file__`
-and the file SHA-256 before any `workers run`. That identity is not
-cuda.7, cuda.8, or cuda.9.
+| Layer | Identity |
+| --- | --- |
+| Source commit (archive) | `041365a4e74d02a5827162c2ebc8e792c850a8fa` |
+| WSL tree | `/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa` |
+| Venv | that tree’s `.venv` (not a symlink; not the e47279d env) |
+| `gpu.py` | `/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa/src/llm_research_os/workers/gpu.py` SHA-256 `8a69aed235…29ba` |
+| PYTHONPATH | unset |
+| `workers run` | not started |
+
+Receipt: [independent-venv.json](independent-venv.json). This is not cuda.7, cuda.8, or cuda.9.
 
 ## This evidence pack
 

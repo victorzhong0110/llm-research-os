@@ -1,0 +1,19 @@
+{
+  "kind": "WslIndependentVenvIdentity",
+  "recordedAt": "2026-09-10T15:02:50Z",
+  "sourceCommit": "041365a4e74d02a5827162c2ebc8e792c850a8fa",
+  "installRoot": "/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa",
+  "venv": "/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa/.venv",
+  "venvIsSymlink": false,
+  "python": "/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa/.venv/bin/python",
+  "pythonVersion": "3.12.14",
+  "pythonpath": null,
+  "gpuModuleFile": "/root/researchos/src-041365a4e74d02a5827162c2ebc8e792c850a8fa/src/llm_research_os/workers/gpu.py",
+  "gpuModuleSha256": "8a69aed235d9b53b3d5a9fd1835d23e7652e5a5b6cda58316f9e4c4f3afb29ba",
+  "install": "uv venv --python 3.12 .venv && uv sync --locked --no-dev",
+  "workersRun": false,
+  "newGrant": false,
+  "notRuntimeFor": ["grant.wsl.cuda.7", "grant.wsl.cuda.8", "grant.wsl.cuda.9"],
+  "sharedVenvStillAt": "/root/researchos/src-e47279da27289094683259b1a9639b7ccea70dee/.venv",
+  "note": "Installed from git archive of sourceCommit. This JSON may land in a later commit on the same branch. Do not call this cuda.7/cuda.9 HEAD live."
+}

@@ -51,7 +51,10 @@ Host SHA256 now exists: checkpoint-10 adapter
 `PYTHONPATH` onto the 374f5c6 overlay.
 
 A later independent venv of a full commit is not cuda.7/cuda.9 runtime
-and is not a new grant.
+and is not a new grant. Receipt:
+[independent-venv.json](independent-venv.json) (archive of `041365a`;
+own `.venv`; `gpu.py` SHA-256 `8a69aed235…29ba`; `workers run` not
+started).
 
 ## cuda.9 restore semantics
 
@@ -74,7 +77,7 @@ pre-copied leftover. No `grant.wsl.cuda.10`.
 | `unknown ≠ rerun` two-host live | not a dedicated live shot; see tests. cuda.8 was **failed**, not rerun |
 | M2 charter §14.4 paid cloud | N/A (¥0); not a missing live shot |
 | optimizer/scheduler/rng actually loaded on cuda.9 | unverified; no framework load log |
-| Independent venv as cuda.7/9 runtime | never; those grants used overlay / shared venv |
+| Independent venv as cuda.7/9 runtime | never; those grants used overlay / shared venv. [independent-venv.json](independent-venv.json) is a later archive install only |
 | Worker GET of checkpoint blobs | denied by design (`http-artifact-denied`); retrieve is `artifacts verify` |
 
 Do not reuse `grant.wsl.cuda.1`–`.9`. Do not merge PR #73 as M2 close.
