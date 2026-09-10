@@ -537,6 +537,7 @@ def run_gpu_training(
     require_pinned_docker_image(backend, image_digest)
     output_dir.mkdir(parents=True, exist_ok=True)
     _prepare_gpu_output_root(output_dir)
+    baseline = snapshot_gpu_checkpoints(output_dir)
     cid_root = Path(tempfile.mkdtemp(prefix="researchos-gpu-cid-"))
     cidfile = cid_root / "cid"
     process: subprocess.Popen[bytes] | None = None
@@ -608,6 +609,7 @@ def run_gpu_training(
                 profile=policy.profile,
                 resume_mode=policy.resume,
                 checkpoint_path=policy.checkpoint,
+                baseline=baseline,
             )
             payload = json.dumps(report, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
             digest_value = "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -697,12 +699,22 @@ def _prepare_gpu_output_root(output_dir: Path) -> None:
     (output_dir / "tmp").chmod(0o775)
 
 
+def snapshot_gpu_checkpoints(output: Path) -> dict[str, dict[str, object]]:
+    """Record checkpoint digests before docker starts. Leftovers must not count."""
+
+    snapshots: dict[str, dict[str, object]] = {}
+    for directory in _checkpoint_dirs(output):
+        snapshots[directory.name] = _checkpoint_fingerprint(directory)
+    return snapshots
+
+
 def _cuda_training_report(
     output: Path,
     *,
     profile: str,
     resume_mode: ResumeMode = "none",
     checkpoint_path: str | None = None,
+    baseline: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     checkpoints = _checkpoint_dirs(output)
     if not checkpoints:
@@ -710,7 +722,14 @@ def _cuda_training_report(
             "GPU training produced no checkpoint",
             code="gpu-checkpoint-missing",
         )
-    latest = checkpoints[-1]
+    this_run = _this_run_checkpoints(output, baseline)
+    if baseline is not None and not this_run:
+        raise WorkerSandboxError(
+            "GPU training wrote no new checkpoint",
+            code="gpu-checkpoint-stale",
+        )
+    scored = this_run if this_run else checkpoints
+    latest = scored[-1]
     state = _trainer_state(latest)
     global_step = state.get("global_step")
     if type(global_step) is not int or global_step < 1:
@@ -721,8 +740,21 @@ def _cuda_training_report(
     losses = _losses(state)
     if not losses or any(not math.isfinite(item) for item in losses):
         raise WorkerSandboxError("GPU training loss is not finite", code="gpu-loss-invalid")
-    first = checkpoints[0]
-    last = checkpoints[-1]
+    source_dir = _host_checkpoint_dir(output, checkpoint_path)
+    source_adapter = (
+        None
+        if source_dir is None
+        else next(
+            (
+                _file_digest(source_dir, name)
+                for name in _ADAPTER_NAMES
+                if (source_dir / name).is_file()
+            ),
+            None,
+        )
+    )
+    first = scored[0]
+    last = scored[-1]
     first_adapter = next(
         (_file_digest(first, name) for name in _ADAPTER_NAMES if (first / name).is_file()),
         None,
@@ -731,11 +763,12 @@ def _cuda_training_report(
         (_file_digest(last, name) for name in _ADAPTER_NAMES if (last / name).is_file()),
         None,
     )
-    if len(checkpoints) == 1:
+    compare_first = source_adapter if source_adapter is not None else first_adapter
+    if len(scored) == 1 and source_adapter is None:
         parameters_updated: bool | None = None
     else:
         parameters_updated = (
-            first_adapter is not None and last_adapter is not None and first_adapter != last_adapter
+            compare_first is not None and last_adapter is not None and compare_first != last_adapter
         )
         if parameters_updated is not True:
             raise WorkerSandboxError(
@@ -774,6 +807,8 @@ def _cuda_training_report(
             resume_mode=resume_mode,
             checkpoint_path=checkpoint_path,
             to_step=global_step,
+            this_run=this_run,
+            latest=latest,
         ),
     }
 
@@ -820,6 +855,90 @@ def _file_digest(directory: Path, name: str) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
+def _named_digest(directory: Path, names: tuple[str, ...]) -> str | None:
+    for name in names:
+        if (directory / name).is_file():
+            return _file_digest(directory, name)
+    return None
+
+
+def _checkpoint_fingerprint(directory: Path) -> dict[str, object]:
+    state_path = directory / "trainer_state.json"
+    mtime_ns = state_path.stat().st_mtime_ns if state_path.is_file() else 0
+    return {
+        "adapter": _named_digest(directory, _ADAPTER_NAMES),
+        "optimizer": _named_digest(directory, _OPTIMIZER_NAMES),
+        "scheduler": _named_digest(directory, _SCHEDULER_NAMES),
+        "rng": _named_digest(directory, _RNG_NAMES),
+        "trainerState": _named_digest(directory, ("trainer_state.json",)),
+        "mtimeNs": mtime_ns,
+    }
+
+
+def _this_run_checkpoints(
+    output: Path, baseline: Mapping[str, Mapping[str, object]] | None
+) -> list[Path]:
+    current = _checkpoint_dirs(output)
+    if baseline is None:
+        return []
+    produced: list[Path] = []
+    for directory in current:
+        before = baseline.get(directory.name)
+        after = _checkpoint_fingerprint(directory)
+        if before is None:
+            produced.append(directory)
+            continue
+        digest_keys = ("adapter", "optimizer", "scheduler", "rng", "trainerState")
+        if any(before.get(key) != after.get(key) for key in digest_keys):
+            produced.append(directory)
+            continue
+        before_mtime = before.get("mtimeNs")
+        after_mtime = after.get("mtimeNs")
+        if type(before_mtime) is int and type(after_mtime) is int and after_mtime > before_mtime:
+            produced.append(directory)
+    return produced
+
+
+def _logging_step_markers(output: Path) -> tuple[str, ...]:
+    path = output / "logging.jsonl"
+    if not path.is_file():
+        return ()
+    markers: list[str] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ()
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            document = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if type(document) is not dict:
+            continue
+        marker = document.get("global_step/max_steps")
+        if type(marker) is str and marker != "":
+            markers.append(marker)
+    return tuple(markers)
+
+
+def _load_log_hits(output: Path, needles: tuple[str, ...]) -> tuple[str, ...]:
+    hits: list[str] = []
+    lowered = tuple(item.lower() for item in needles)
+    for path in (output / "logging.jsonl", output / "train.log", output / "trainer.log"):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for needle, raw in zip(lowered, needles, strict=True):
+            if needle in text.lower() and raw not in hits:
+                hits.append(raw)
+    return tuple(hits)
+
+
 def _has_any(directory: Path, names: tuple[str, ...]) -> bool:
     return any((directory / name).is_file() for name in names)
 
@@ -847,43 +966,148 @@ def _restore_record(
     resume_mode: ResumeMode,
     checkpoint_path: str | None,
     to_step: int,
+    this_run: list[Path],
+    latest: Path,
 ) -> dict[str, object]:
     if resume_mode == "none":
         return {
             "executed": False,
             "status": "unverified",
             "source": None,
-            "loads": [],
+            "requestedLoads": [],
+            "observedLoads": {},
             "fromStep": None,
             "toStep": None,
             "loadBasis": None,
+            "thisRunCheckpoints": [path.name for path in this_run],
+            "sourceDigest": None,
         }
-    loads = list(resume_loads(resume_mode))
+    requested = list(resume_loads(resume_mode))
     load_basis = (
-        "argv --resume_from_checkpoint" if resume_mode == "full-checkpoint" else "argv --adapters"
+        "argv --resume_from_checkpoint (requested)"
+        if resume_mode == "full-checkpoint"
+        else "argv --adapters (requested)"
     )
     source_dir = _host_checkpoint_dir(output, checkpoint_path)
     from_step: int | None = None
+    source_digest: dict[str, object] | None = None
     if source_dir is not None:
         step = _trainer_state(source_dir).get("global_step")
         if type(step) is int:
             from_step = step
-    verified = (
-        resume_mode == "full-checkpoint"
-        and source_dir is not None
-        and type(from_step) is int
-        and from_step < to_step
-        and loads == ["weights", "optimizer", "scheduler", "rng", "global_step"]
+        source_digest = {
+            "adapter": _named_digest(source_dir, _ADAPTER_NAMES),
+            "optimizer": _named_digest(source_dir, _OPTIMIZER_NAMES),
+            "scheduler": _named_digest(source_dir, _SCHEDULER_NAMES),
+            "rng": _named_digest(source_dir, _RNG_NAMES),
+            "trainerState": _named_digest(source_dir, ("trainer_state.json",)),
+        }
+    observed = _observe_restore_loads(
+        output,
+        requested=requested,
+        from_step=from_step,
+        to_step=to_step,
+        source_digest=source_digest,
+        this_run=this_run,
+        latest=latest,
     )
+    verified = [name for name, item in observed.items() if item.get("status") == "verified"]
+    if requested and set(verified) >= set(requested):
+        status = "verified"
+    elif verified:
+        status = "partial"
+    else:
+        status = "unverified"
     return {
         "executed": True,
-        "status": "verified" if verified else "unverified",
+        "status": status,
         "source": checkpoint_path,
-        "loads": loads,
+        "requestedLoads": requested,
+        "observedLoads": observed,
         "fromStep": from_step,
         "toStep": to_step,
         "loadBasis": load_basis,
+        "thisRunCheckpoints": [path.name for path in this_run],
+        "sourceDigest": source_digest,
     }
+
+
+def _observe_restore_loads(
+    output: Path,
+    *,
+    requested: list[str],
+    from_step: int | None,
+    to_step: int,
+    source_digest: dict[str, object] | None,
+    this_run: list[Path],
+    latest: Path,
+) -> dict[str, dict[str, object]]:
+    observed: dict[str, dict[str, object]] = {}
+    markers = _logging_step_markers(output)
+    expected = f"{from_step + 1}/{to_step}" if type(from_step) is int else None
+    latest_fp = _checkpoint_fingerprint(latest)
+    produced_latest = latest in this_run
+    for name in requested:
+        if name == "global_step":
+            if expected is not None and markers[:1] == (expected,):
+                observed[name] = {
+                    "status": "verified",
+                    "basis": "logging.jsonl global_step/max_steps",
+                    "detail": expected,
+                }
+            elif type(from_step) is int and from_step < to_step:
+                observed[name] = {
+                    "status": "unverified",
+                    "basis": "step-growth-only",
+                    "detail": f"{from_step}->{to_step}",
+                }
+            else:
+                observed[name] = {
+                    "status": "unverified",
+                    "basis": "missing-logging-marker",
+                    "detail": None,
+                }
+            continue
+        if name == "weights":
+            source_adapter = None if source_digest is None else source_digest.get("adapter")
+            latest_adapter = latest_fp.get("adapter")
+            if (
+                produced_latest
+                and type(source_adapter) is str
+                and type(latest_adapter) is str
+                and source_adapter != latest_adapter
+            ):
+                observed[name] = {
+                    "status": "verified",
+                    "basis": "source-adapter-digest vs this-run checkpoint",
+                    "detail": latest.name,
+                }
+            else:
+                observed[name] = {
+                    "status": "unverified",
+                    "basis": "no-this-run-adapter-diff",
+                    "detail": None,
+                }
+            continue
+        needles = {
+            "optimizer": ("loading optimizer", "loaded optimizer"),
+            "scheduler": ("loading scheduler", "loaded scheduler"),
+            "rng": ("loading rng", "rng_state loaded"),
+        }.get(name, ())
+        hits = _load_log_hits(output, needles)
+        if hits:
+            observed[name] = {
+                "status": "verified",
+                "basis": "framework-load-log",
+                "detail": hits[0],
+            }
+        else:
+            observed[name] = {
+                "status": "unverified",
+                "basis": "no-framework-load-log",
+                "detail": None,
+            }
+    return observed
 
 
 def command_digest_of(argv: tuple[str, ...]) -> str:

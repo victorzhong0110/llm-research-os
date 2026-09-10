@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -1157,7 +1158,8 @@ def test_single_checkpoint_does_not_claim_parameters_updated_or_restore(
     assert restore["executed"] is False
     assert restore["status"] == "unverified"
     assert restore["source"] is None
-    assert restore["loads"] == []
+    assert restore["requestedLoads"] == []
+    assert restore["observedLoads"] == {}
     assert restore["fromStep"] is None
     assert restore["toStep"] is None
     assert restore["loadBasis"] is None
@@ -1177,33 +1179,137 @@ def test_two_checkpoints_verify_adapter_change_without_claiming_restore(
     assert report["restore"]["status"] == "unverified"
 
 
-def test_full_checkpoint_restore_records_source_steps_and_loads(tmp_path: Path) -> None:
-    from llm_research_os.workers.gpu import _cuda_training_report
+def test_full_checkpoint_restore_separates_requested_and_observed_loads(
+    tmp_path: Path,
+) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
 
     output = tmp_path / "output"
     _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    baseline = snapshot_gpu_checkpoints(output)
     _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    (output / "logging.jsonl").write_text(
+        json.dumps({"global_step/max_steps": "11/20", "loss": 0.1}) + "\n",
+        encoding="utf-8",
+    )
     report = _cuda_training_report(
         output,
         profile="wsl2-cuda-laptop-8g",
         resume_mode="full-checkpoint",
         checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
     )
     restore = report["restore"]
     assert restore["executed"] is True
-    assert restore["status"] == "verified"
-    assert restore["source"] == "/work/output/checkpoint-10"
-    assert restore["fromStep"] == 10
-    assert restore["toStep"] == 20
-    assert restore["loads"] == [
+    assert restore["status"] == "partial"
+    assert restore["requestedLoads"] == [
         "weights",
         "optimizer",
         "scheduler",
         "rng",
         "global_step",
     ]
-    assert restore["loadBasis"] == "argv --resume_from_checkpoint"
+    assert restore["loadBasis"] == "argv --resume_from_checkpoint (requested)"
+    assert restore["thisRunCheckpoints"] == ["checkpoint-20"]
+    observed = restore["observedLoads"]
+    assert observed["global_step"]["status"] == "verified"
+    assert observed["global_step"]["detail"] == "11/20"
+    assert observed["weights"]["status"] == "verified"
+    assert observed["optimizer"]["status"] == "unverified"
+    assert observed["scheduler"]["status"] == "unverified"
+    assert observed["rng"]["status"] == "unverified"
     assert report["parametersUpdated"] is True
+
+
+def test_argv_and_step_growth_do_not_verify_all_restore_loads(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    baseline = snapshot_gpu_checkpoints(output)
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
+    )
+    observed = report["restore"]["observedLoads"]
+    assert report["restore"]["status"] == "partial"
+    assert observed["global_step"]["status"] == "unverified"
+    assert observed["global_step"]["basis"] == "step-growth-only"
+    assert observed["optimizer"]["status"] == "unverified"
+    assert observed["weights"]["status"] == "verified"
+
+
+def test_leftover_checkpoint_is_not_this_run_product(tmp_path: Path) -> None:
+    from llm_research_os.workers.errors import WorkerSandboxError
+    from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    baseline = snapshot_gpu_checkpoints(output)
+    with pytest.raises(WorkerSandboxError) as captured:
+        _cuda_training_report(
+            output,
+            profile="wsl2-cuda-laptop-8g",
+            resume_mode="full-checkpoint",
+            checkpoint_path="/work/output/checkpoint-10",
+            baseline=baseline,
+        )
+    assert captured.value.code == "gpu-checkpoint-stale"
+
+
+def test_leftover_checkpoint_is_excluded_when_this_run_writes_another(
+    tmp_path: Path,
+) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-leftover")
+    baseline = snapshot_gpu_checkpoints(output)
+    _write_cuda_checkpoint(output, 30, adapter=b"adapter-this-run")
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
+    )
+    leftover = output / "checkpoint-20" / "adapter_model.safetensors"
+    leftover_digest = "sha256:" + hashlib.sha256(leftover.read_bytes()).hexdigest()
+    assert report["restore"]["thisRunCheckpoints"] == ["checkpoint-30"]
+    assert report["checkpoint"]["path"] == "checkpoint-30"
+    assert report["checkpoint"]["adapterDigest"] != leftover_digest
+
+
+def test_framework_load_log_verifies_optimizer_only(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    baseline = snapshot_gpu_checkpoints(output)
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    (output / "logging.jsonl").write_text(
+        json.dumps({"global_step/max_steps": "11/20", "loss": 0.1})
+        + "\nLoading optimizer states from checkpoint-10\n",
+        encoding="utf-8",
+    )
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
+    )
+    observed = report["restore"]["observedLoads"]
+    assert observed["optimizer"]["status"] == "verified"
+    assert observed["optimizer"]["basis"] == "framework-load-log"
+    assert observed["scheduler"]["status"] == "unverified"
+    assert observed["rng"]["status"] == "unverified"
 
 
 def test_wsl_resume_overlay_is_bound_into_authorized_command(tmp_path: Path) -> None:

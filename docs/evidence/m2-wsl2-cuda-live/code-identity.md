@@ -34,8 +34,16 @@ the 374f5c6 `gpu.py` overlay, but `workers run` used the **shared
 | Overlay `commandDigest` | `jcs-sha256:411120ecc09852a717d43ad1dd53210af86ca9901c496bfa13d5398c3b67901d` |
 | `configDigest` | `jcs-sha256:28e9ac5f46f2a3c7a0f017f90af0776dad1d89d93a129c0de3f6e425a333abc8` |
 
+## Independent venv (no grant)
+
+A later full-commit tree with its **own** `.venv` (no symlink to the
+e47279d environment) records `llm_research_os.workers.gpu.__file__`
+and the file SHA-256 before any `workers run`. That identity is not
+cuda.7, cuda.8, or cuda.9.
+
 ## This evidence pack
 
-Report semantics, GPU resume overlay, lease env reader, and sandbox
-fail-closed on forbidden GPU config belong to the commit that lands
-this update. That SHA is **not** the cuda.7 runtime.
+Report semantics, GPU resume overlay, lease env reader, leftover
+checkpoint exclusion, and sandbox fail-closed on forbidden GPU config
+belong to the commit that lands this update. That SHA is **not** the
+cuda.7 or cuda.9 runtime.

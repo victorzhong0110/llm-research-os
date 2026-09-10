@@ -29,6 +29,12 @@ def render_markdown(report: RunReport) -> str:
         "## Training",
         *_training_markdown(report),
         "",
+        "## Evaluation",
+        *_evaluation_markdown(report),
+        "",
+        "## System",
+        *_system_markdown(report),
+        "",
         "## Cost",
         *_cost_markdown(report),
         "",
@@ -54,6 +60,10 @@ def render_html(report: RunReport) -> str:
         *_research_html(report),
         '<h2 id="training">Training</h2>',
         *_training_html(report),
+        '<h2 id="evaluation">Evaluation</h2>',
+        *_evaluation_html(report),
+        '<h2 id="system">System</h2>',
+        *_system_html(report),
         '<h2 id="cost">Cost</h2>',
         *_cost_html(report),
         '<h2 id="lineage">Lineage</h2>',
@@ -109,18 +119,38 @@ def _research_markdown(report: RunReport) -> list[str]:
 
 
 def _training_markdown(report: RunReport) -> list[str]:
-    if not report.training and not report.evaluation:
-        return ["No `training.step` or `evaluation.metric` facts for this run."]
+    if not report.training:
+        return ["No `training.step` facts for this run."]
     lines: list[str] = []
     for step in report.training:
         lines.append(
             f"- Synthetic step {step.payload.step} loss `{_md(step.payload.loss)}` "
             f"{_md_link(step.stored.event.id)}."
         )
+    return lines
+
+
+def _evaluation_markdown(report: RunReport) -> list[str]:
+    if not report.evaluation:
+        return ["No `evaluation.metric` facts for this run."]
+    lines: list[str] = []
     for metric in report.evaluation:
         lines.append(
             f"- Synthetic `{_md(metric.payload.name)}` `{_md(metric.payload.value)}` "
             f"split `{_md(metric.payload.split)}` {_md_link(metric.stored.event.id)}."
+        )
+    return lines
+
+
+def _system_markdown(report: RunReport) -> list[str]:
+    lines = [f"- Store head sequence {report.last_sequence}."]
+    events = _system_events(report)
+    if not events:
+        lines.append("No worker, work, or attempt facts for this run.")
+        return lines
+    for stored in events:
+        lines.append(
+            f"- `{_md(stored.event.type)}` sequence {stored.sequence} {_md_link(stored.event.id)}."
         )
     return lines
 
@@ -287,11 +317,8 @@ def _research_html(report: RunReport) -> list[str]:
 
 
 def _training_html(report: RunReport) -> list[str]:
-    if not report.training and not report.evaluation:
-        return [
-            "<p>No <code>training.step</code> or "
-            "<code>evaluation.metric</code> facts for this run.</p>"
-        ]
+    if not report.training:
+        return ["<p>No <code>training.step</code> facts for this run.</p>"]
     items: list[str] = []
     for step in report.training:
         items.append(
@@ -299,6 +326,13 @@ def _training_html(report: RunReport) -> list[str]:
             f"<code>{_html(step.payload.loss)}</code> "
             f"{_html_link(step.stored.event.id)}.</li>"
         )
+    return ["<ul>", *items, "</ul>"]
+
+
+def _evaluation_html(report: RunReport) -> list[str]:
+    if not report.evaluation:
+        return ["<p>No <code>evaluation.metric</code> facts for this run.</p>"]
+    items: list[str] = []
     for metric in report.evaluation:
         items.append(
             f"<li>Synthetic <code>{_html(metric.payload.name)}</code> "
@@ -307,6 +341,38 @@ def _training_html(report: RunReport) -> list[str]:
             f"{_html_link(metric.stored.event.id)}.</li>"
         )
     return ["<ul>", *items, "</ul>"]
+
+
+def _system_html(report: RunReport) -> list[str]:
+    items = [f"<li>Store head sequence {report.last_sequence}.</li>"]
+    events = _system_events(report)
+    if not events:
+        return [
+            "<ul>",
+            *items,
+            "</ul>",
+            "<p>No worker, work, or attempt facts for this run.</p>",
+        ]
+    for stored in events:
+        items.append(
+            f"<li><code>{_html(stored.event.type)}</code> sequence {stored.sequence} "
+            f"{_html_link(stored.event.id)}.</li>"
+        )
+    return ["<ul>", *items, "</ul>"]
+
+
+def _system_events(report: RunReport) -> tuple[StoredEvent, ...]:
+    matching = [stored for stored in report.lineage if _is_system_event(stored.event.type)]
+    return tuple(matching)
+
+
+def _is_system_event(event_type: str) -> bool:
+    return (
+        event_type.startswith("worker.")
+        or event_type.startswith("work.")
+        or event_type.startswith("attempt.")
+        or event_type.startswith("authorization.grant.")
+    )
 
 
 def _cost_html(report: RunReport) -> list[str]:

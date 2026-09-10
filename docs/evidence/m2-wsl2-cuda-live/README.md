@@ -21,7 +21,9 @@ Not native Linux, not cloud GPU.
 | Checkpoint-20 SHA256 on the Worker host | [cuda7-frozen-inventory.json](cuda7-frozen-inventory.json) |
 | `POST /v0alpha1/artifacts` of adapter + restore state (22 files, 106 422 278 bytes) | [upload-cuda7.json](upload-cuda7.json), [collect-cuda7.receipt.json](collect-cuda7.receipt.json) |
 | Control-plane retrieve of those bytes | [retrieve-proof.json](retrieve-proof.json) |
-| Authorized restore checkpoint-10 → 20 | `grant.wsl.cuda.9` seq 140–142; [cuda9-WslCudaTrainingReport.json](cuda9-WslCudaTrainingReport.json), [cuda9-restore-host.json](cuda9-restore-host.json) |
+| Authorized restore checkpoint-10 → 20 | `grant.wsl.cuda.9` seq 140–142; historical [cuda9-WslCudaTrainingReport.json](cuda9-WslCudaTrainingReport.json); honest reading [cuda9-report-correction.md](cuda9-report-correction.md) |
+| cuda.9 leftover vs this-run checkpoint-20 | [cuda9-host-observation-supplement.json](cuda9-host-observation-supplement.json): checkpoint-20 mtime is new; adapter SHA matches cuda.7 frozen checkpoint-20 (deterministic) |
+| `requestedLoads` ≠ `observedLoads`; leftovers do not count | `tests/test_worker_gpu.py`; [cuda9-report-correction.md](cuda9-report-correction.md) |
 | Report file-presence ≠ restore; single checkpoint ≠ `parametersUpdated` | `tests/test_worker_gpu.py` |
 | GPU resume overlay is a new `commandDigest` | `tests/test_worker_gpu.py`, [restore-overlay.preflight.json](restore-overlay.preflight.json) |
 | Invalid GPU config fails the sandbox (lease can `work.failed`) | `tests/test_worker_gpu.py::test_run_gpu_training_forbidden_config_fails_the_sandbox` |
@@ -48,12 +50,31 @@ Host SHA256 now exists: checkpoint-10 adapter
 `gpu.py` through a shared `.venv` (resume keys rejected). cuda.9 used
 `PYTHONPATH` onto the 374f5c6 overlay.
 
+A later independent venv of a full commit is not cuda.7/cuda.9 runtime
+and is not a new grant.
+
+## cuda.9 restore semantics
+
+Keep the CAS JSON. Read [cuda9-report-correction.md](cuda9-report-correction.md).
+`restore.status: verified` in the live report meant “argv requested full
+checkpoint loads and steps grew”. Observed: `global_step` (`11/20`) and
+weights (source vs this-run adapter). optimizer / scheduler / rng:
+**unverified** (no framework load logs). checkpoint-20 is this-run, not a
+pre-copied leftover. No `grant.wsl.cuda.10`.
+
+## Charter matrix
+
+[m2-closure-matrix.md](m2-closure-matrix.md). Paid cloud is N/A at ¥0.
+`unknown ≠ rerun` cites tests, not a two-host unknown live.
+
 ## Not proven / out of slice
 
 | Item | Status |
 | --- | --- |
 | `unknown ≠ rerun` two-host live | not a dedicated live shot; see tests. cuda.8 was **failed**, not rerun |
-| M2 charter §14.4 dashboards / paid-cloud | out of this slice |
+| M2 charter §14.4 paid cloud | N/A (¥0); not a missing live shot |
+| optimizer/scheduler/rng actually loaded on cuda.9 | unverified; no framework load log |
+| Independent venv as cuda.7/9 runtime | never; those grants used overlay / shared venv |
 | Worker GET of checkpoint blobs | denied by design (`http-artifact-denied`); retrieve is `artifacts verify` |
 
 Do not reuse `grant.wsl.cuda.1`–`.9`. Do not merge PR #73 as M2 close.

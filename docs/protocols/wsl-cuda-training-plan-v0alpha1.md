@@ -21,4 +21,10 @@ Pinned values:
 advertised `cuda`. A full-checkpoint restore is a new execution object:
 grant config MAY include `resume: full-checkpoint` and
 `checkpoint: /work/output/checkpoint-N` when `commandDigest` is the
-overlay argv. File presence in a checkpoint is not a restore.
+overlay argv. File presence in a checkpoint is not a restore. A report
+MAY list `requestedLoads` from that overlay. It MUST NOT mark
+optimizer / scheduler / rng as observed unless a framework load log
+(or equivalent state record) says so. Step growth and argv alone are
+not a full restore. Checkpoints that already existed in the output
+directory before the container started are leftovers, not this-run
+products.

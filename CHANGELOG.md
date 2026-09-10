@@ -17,10 +17,16 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   installs `python3-dev` for `Python.h`.
 - WSL CUDA reports no longer treat checkpoint file presence as a restore,
   and a single checkpoint no longer sets `parametersUpdated: true`.
+  Restore records split `requestedLoads` from `observedLoads`; leftover
+  checkpoints in the pre-docker snapshot are not this-run products.
   `run_gpu_training` applies a grant `resume` overlay when `commandDigest`
   matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
   Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
   Worker can fail the lease instead of leaving a claimed grant dangling.
+- Protocol CI jobs time out at 40 minutes. The 20-minute cap cancelled the
+  Python 3.12/3.13 coverage jobs on `15a8025` after lint/mypy had passed.
+- Static run reports render Evaluation and System as their own sections.
+  Training no longer lists `evaluation.metric` facts.
 
 ### Added
 
@@ -28,6 +34,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   `run_gpu_training` as the authorized container start. Plan/bind and
   `execute_gpu_training` stay `gpu-not-run`. Live two-host/CUDA evidence
   is not claimed until recorded on Windows/WSL2 + Docker Engine.
+- M0 kernel architecture diagram source and HTML under
+  `docs/architecture/` (visual-check review still pending).
+- Charter §14.4 closure matrix for the WSL live pack (not M2 complete).
 
 - M0 kernel proof (closed 2026-09-03; [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)).
 - Post-M0 governance: [ADR-0038](docs/adr/0038-charter-errata-after-m0.md),

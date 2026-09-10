@@ -45,7 +45,13 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
    `checkpoint-state-files`. A restore is a new overlay execution
    (`resume` + `checkpoint` in the grant, `commandDigest` of the overlay
    argv). `parametersUpdated` is true only when two checkpoints differ;
-   a single checkpoint is unverified.
+   a single checkpoint is unverified. Restore reports MUST split
+   `requestedLoads` (argv / overlay) from `observedLoads` (framework
+   load logs, logging step markers, source vs this-run adapter
+   digests). Checkpoints already present in the output snapshot before
+   docker starts MUST NOT count as this-run products.
+8. **Paid cloud is optional.** A zero-spend WSL laptop proof does not
+   satisfy a paid-cloud cap; record that row as not applicable.
 
 ## Consequences
 

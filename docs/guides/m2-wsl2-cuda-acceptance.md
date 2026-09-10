@@ -31,9 +31,12 @@ Authoritative pack: [m2-wsl2-cuda-live](../evidence/m2-wsl2-cuda-live/README.md)
 | Reconnect / cancel | live pass | reconnect completed; cancel `cancel-observed` |
 | CUDA 20-step | live pass | `grant.wsl.cuda.7`; report semantics corrected in the pack |
 | Checkpoint SHA256 + CAS PUT | live pass | Worker `POST /v0alpha1/artifacts`; retrieve via `artifacts verify` |
-| Authorized restore | live pass | `grant.wsl.cuda.9` from checkpoint-10; cuda.8 failed and was not reused |
+| Authorized restore | live pass, **partial** observation | `grant.wsl.cuda.9`; argv requested full loads; observed `global_step` + weights; optimizer/scheduler/rng unverified. Historical report still says `verified` — read the correction note |
+| Leftover checkpoint-20 | ruled out | resume checkpoint-20 mtime is new vs freeze-copied checkpoint-10 |
 | `unknown ≠ rerun` | tests only | no dedicated live shot |
-| Code SHA (both machines) | not a single HEAD | see `code-identity.md` |
+| Paid cloud | N/A | ¥0; not a missing experiment |
+| Code SHA (both machines) | not a single HEAD | see `code-identity.md`; independent venv ≠ live grant runtime |
+| Charter §14.4 matrix | written | [m2-closure-matrix.md](../evidence/m2-wsl2-cuda-live/m2-closure-matrix.md). Do not merge. |
 
 ## Windows Cursor command pack
 
