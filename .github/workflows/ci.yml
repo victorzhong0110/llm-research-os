@@ -65,7 +65,7 @@ jobs:
       - name: Test
         timeout-minutes: 20
         run: >
-          uv run pytest --durations=20
+          uv run pytest --durations=20 -vv --timeout=120 --timeout-method=signal
           --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
           --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
       - name: Coverage
@@ -76,6 +76,8 @@ jobs:
           --cov-report=term-missing:skip-covered
           --cov-fail-under=85
           --durations=20
+          --timeout=120
+          --timeout-method=signal
           --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
           --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
       - name: Verify generated schemas
