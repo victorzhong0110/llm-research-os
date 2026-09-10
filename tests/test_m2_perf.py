@@ -124,6 +124,7 @@ def test_m2_bench_cli_records_10k_receipt(tmp_path: Path, capsys: object) -> Non
     assert payload["peakRssBytes"] > 0
 
 
+@pytest.mark.slow
 def test_perf_baseline_100k_keeps_report_lineage_short(tmp_path: Path) -> None:
     result = run_perf_baseline(tmp_path / "bench-100k.db", 100_000)
     assert result.event_count == 100_000

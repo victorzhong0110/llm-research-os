@@ -61,6 +61,7 @@ testpaths = ["tests"]
 markers = [
   "oci_live: live docker engine; designated Linux OCI CI must fail instead of skip",
   "mps_live: live Apple MPS + extras/ms-swift-mps; skip unless RESEARCHOS_MPS_REQUIRED=1",
+  "slow: long EventStore baselines; required CI runs -m 'not slow'",
 ]
 
 [tool.coverage.run]
