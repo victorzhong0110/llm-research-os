@@ -23,10 +23,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
   Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
   Worker can fail the lease instead of leaving a claimed grant dangling.
-- Protocol CI jobs time out at 40 minutes. Required pytest deselects the
-  10k/100k EventStore baselines and uses `--timeout=120` so a hung test
-  cannot sit until the job cap. Coverage is a separate step after a
-  no-coverage pytest pass.
+- Protocol CI jobs time out at 25 minutes. Required pytest uses
+  `-m "not oci_live and not slow"` (live docker stays on the Linux OCI
+  job). Worker HTTP sockets default to 10s; live checkpoint PUT can set
+  `RESEARCHOS_WORKER_HTTP_TIMEOUT`. Each test is bounded at 60s.
 - Static run reports render Evaluation and System as their own sections.
   Training no longer lists `evaluation.metric` facts.
 

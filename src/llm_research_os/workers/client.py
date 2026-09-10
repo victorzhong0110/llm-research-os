@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import importlib
 import json
+import os
 import ssl
 from dataclasses import dataclass
 from http.client import HTTPConnection, HTTPSConnection
@@ -47,6 +48,22 @@ from llm_research_os.workers.tls import client_tls_context
 
 _GRANT_HEADER = "X-ResearchOS-Grant"
 _DEFAULT_RETRIES = 3
+_WORKER_HTTP_TIMEOUT_ENV = "RESEARCHOS_WORKER_HTTP_TIMEOUT"
+_DEFAULT_WORKER_HTTP_TIMEOUT = 10.0
+_MAX_WORKER_HTTP_TIMEOUT = 300.0
+
+
+def worker_http_timeout() -> float:
+    """Socket timeout for Worker HTTP/HTTPS. Live checkpoint PUT may raise this."""
+
+    raw = os.environ.get(_WORKER_HTTP_TIMEOUT_ENV, "10")
+    try:
+        value = float(raw)
+    except ValueError:
+        return _DEFAULT_WORKER_HTTP_TIMEOUT
+    if value < 1 or value > _MAX_WORKER_HTTP_TIMEOUT:
+        return _DEFAULT_WORKER_HTTP_TIMEOUT
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -419,7 +436,7 @@ def _connection(
         return HTTPSConnection(
             host,
             port,
-            timeout=120,
+            timeout=worker_http_timeout(),
             context=client_tls_context(ca_path, tls_fingerprint),
         )
     if parsed.scheme != "http":
@@ -429,4 +446,4 @@ def _connection(
             "HTTP Worker client cannot carry TLS material",
             code="tls-scheme-mismatch",
         )
-    return HTTPConnection(host, port, timeout=10)
+    return HTTPConnection(host, port, timeout=worker_http_timeout())

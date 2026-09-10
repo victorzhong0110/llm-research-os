@@ -21,11 +21,10 @@ jobs:
     # and may fail.
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})${{ matrix.experimental && ' forward-compat, allowed to fail' || '' }}
     runs-on: ${{ matrix.os }}
-    # Coverage pytest on this matrix exceeded 20 minutes on 15a8025 and
-    # 40 minutes on 65beba9 / df077cb while still inside the coverage
-    # step. Required pytest uses -m "not slow" so the 10k/100k EventStore
-    # baselines are not in this job. The 200-heartbeat lineage test stays.
-    timeout-minutes: 40
+    # Required pytest is the protocol suite, not live docker (oci-linux job)
+    # and not the 10k/100k EventStore baselines. HTTPS Worker sockets default
+    # to 10s; 120s was stalling GitHub jobs when a handler did not answer.
+    timeout-minutes: 25
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
@@ -59,27 +58,22 @@ jobs:
       - name: Count selected tests
         run: >
           uv run pytest --collect-only -q
-          --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
-          --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
+          -m "not oci_live and not slow"
           | tail -n 20
-      - name: Test
-        timeout-minutes: 20
+      - name: Test with coverage report
+        timeout-minutes: 15
+        env:
+          PYTHONUNBUFFERED: "1"
+          RESEARCHOS_PYTEST_FAULTLOG: "1"
         run: >
-          uv run pytest --durations=20 -vv --timeout=120 --timeout-method=signal
-          --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
-          --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
-      - name: Coverage
-        timeout-minutes: 20
-        run: >
-          uv run pytest
+          uv run pytest -s
+          -m "not oci_live and not slow"
+          --timeout=60
+          --timeout-method=thread
           --cov=llm_research_os
           --cov-report=term-missing:skip-covered
           --cov-fail-under=85
-          --durations=20
-          --timeout=120
-          --timeout-method=signal
-          --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
-          --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
+          --durations=25
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
       - name: Build package

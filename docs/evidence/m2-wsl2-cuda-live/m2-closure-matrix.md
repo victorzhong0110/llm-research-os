@@ -58,3 +58,12 @@ Merge into `main` from the bottom. Do not merge in this slice.
 19. [#73](https://github.com/victorzhong0110/llm-research-os/pull/73) `m2/wsl2-cuda-live` (this slice)
 
 [#43](https://github.com/victorzhong0110/llm-research-os/pull/43) Dependabot is outside this stack.
+
+## GitHub required checks
+
+`15a8025` protocol jobs cancelled at the 20-minute cap inside pytest, not
+`cancel-in-progress`. HTTPS Worker sockets on this branch had been 120s;
+a silent handler then sat until the job cap. Required protocol pytest now
+uses `-m "not oci_live and not slow"` (live docker stays on Linux OCI) and
+10s sockets by default. Local pytest is not a substitute for the required
+GitHub checks.

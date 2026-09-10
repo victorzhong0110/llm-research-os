@@ -487,3 +487,16 @@ def test_lease_seconds_reads_researchos_env(monkeypatch: pytest.MonkeyPatch) -> 
     assert _lease_seconds() == DEFAULT_LEASE_SECONDS
     monkeypatch.setenv("RESEARCHOS_LEASE_SECONDS", "not-an-int")
     assert _lease_seconds() == DEFAULT_LEASE_SECONDS
+
+
+def test_worker_http_timeout_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from llm_research_os.workers.client import worker_http_timeout
+
+    monkeypatch.delenv("RESEARCHOS_WORKER_HTTP_TIMEOUT", raising=False)
+    assert worker_http_timeout() == 10.0
+    monkeypatch.setenv("RESEARCHOS_WORKER_HTTP_TIMEOUT", "120")
+    assert worker_http_timeout() == 120.0
+    monkeypatch.setenv("RESEARCHOS_WORKER_HTTP_TIMEOUT", "0")
+    assert worker_http_timeout() == 10.0
+    monkeypatch.setenv("RESEARCHOS_WORKER_HTTP_TIMEOUT", "not-a-float")
+    assert worker_http_timeout() == 10.0
