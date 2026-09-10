@@ -62,7 +62,14 @@ jobs:
           --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
           --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
           | tail -n 20
-      - name: Test with coverage report
+      - name: Test
+        timeout-minutes: 20
+        run: >
+          uv run pytest --durations=20
+          --deselect tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short
+          --deselect tests/test_m2_perf.py::test_m2_bench_cli_records_10k_receipt
+      - name: Coverage
+        timeout-minutes: 20
         run: >
           uv run pytest
           --cov=llm_research_os
