@@ -496,11 +496,19 @@ def run_gpu_training(
 
     from llm_research_os.workers.oci import discover_oci_backend, require_pinned_docker_image
 
-    policy = parse_gpu_launch_policy(
-        image_digest=image_digest,
-        config=dict(config or {}),
-        inputs=dict(inputs or {}),
-    )
+    try:
+        policy = parse_gpu_launch_policy(
+            image_digest=image_digest,
+            config=dict(config or {}),
+            inputs=dict(inputs or {}),
+        )
+    except WorkerSandboxError as exc:
+        return SandboxResult(
+            disposition=SandboxDisposition.FAILED,
+            stdout=b"",
+            result_digest=None,
+            reason_code=exc.code,
+        )
     command_argv, digest = _authorized_gpu_command(artifacts, policy)
     if digest != policy.command_digest:
         raise WorkerSandboxError(

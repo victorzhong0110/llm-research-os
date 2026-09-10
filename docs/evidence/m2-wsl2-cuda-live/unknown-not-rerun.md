@@ -12,3 +12,7 @@ tests; do not invent a new fault campaign.
 
 Live two-host already proved **reconnect** (completed) and **cancel**
 (`cancel-observed`). Those are not the unknown path.
+
+`grant.wsl.cuda.8` claimed, then failed `gpu-mount-forbidden`. It was
+**not** polled again. Restore ran as a **new** grant (`grant.wsl.cuda.9`)
+after the Worker imported the overlay `gpu.py`.

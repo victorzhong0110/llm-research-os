@@ -1,0 +1,15 @@
+{
+  "kind": "WslCuda9RestoreHostObservation",
+  "outputDir": "/root/researchos/gpu/output-resume",
+  "frozenDir": "/root/researchos/gpu/output-cuda7-frozen",
+  "argsResumeFromCheckpoint": "/work/output/checkpoint-10",
+  "argsMaxSteps": 20,
+  "loggingFirstGlobalStep": "11/20",
+  "loggingLineCount": 12,
+  "checkpoint10GlobalStep": 10,
+  "checkpoint20GlobalStep": 20,
+  "trainRuntimeSeconds": null,
+  "workerImport": "/root/researchos/src-374f5c6f75d5c51fbca8b993e0eca434ddd63e53/src/llm_research_os/workers/gpu.py",
+  "pythonpathRequired": true,
+  "sharedVenvWouldLoad": "/root/researchos/src-e47279da27289094683259b1a9639b7ccea70dee/src/llm_research_os/workers/gpu.py"
+}

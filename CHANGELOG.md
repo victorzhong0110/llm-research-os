@@ -19,6 +19,8 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   and a single checkpoint no longer sets `parametersUpdated: true`.
   `run_gpu_training` applies a grant `resume` overlay when `commandDigest`
   matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
+  Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
+  Worker can fail the lease instead of leaving a claimed grant dangling.
 
 ### Added
 

@@ -1007,6 +1007,27 @@ def test_wsl_cuda_profile_uses_three_gib_default() -> None:
     assert policy.tmpfs_bytes == 268_435_456
 
 
+def test_run_gpu_training_forbidden_config_fails_the_sandbox(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import run_gpu_training
+
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    plan, _argv, command_digest, artifact = _plan_bundle(artifacts)
+    result = run_gpu_training(
+        artifacts,
+        GPU_IMAGE,
+        config={**_gpu_config(command_digest), "volumes": ["/host"]},
+        inputs={
+            "planDigest": plan_document_digest(plan),
+            "planArtifactDigest": artifact,
+        },
+        advertised_accelerators=(GPU_ACCELERATOR,),
+    )
+    assert result.disposition is SandboxDisposition.FAILED
+    assert result.reason_code == "gpu-mount-forbidden"
+
+
 def test_run_gpu_training_without_host_dirs_is_distinct_from_bind(tmp_path: Path) -> None:
     from llm_research_os.workers.gpu import run_gpu_training
 

@@ -1,0 +1,76 @@
+{
+  "checkpoint": {
+    "adapterDigest": "sha256:9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58",
+    "globalStep": 20,
+    "optimizer": true,
+    "path": "checkpoint-20",
+    "rng": true,
+    "scheduler": true
+  },
+  "executed": true,
+  "globalStep": 20,
+  "gpu": "cuda",
+  "kind": "WslCudaTrainingReport",
+  "lossFinite": true,
+  "losses": [
+    1.1614576578140259,
+    0.9165180921554565,
+    0.3595010042190552,
+    0.079377681016922,
+    0.05081566050648689,
+    0.025356654077768326,
+    0.0019500016933307052,
+    0.0006454754038713872,
+    0.005064444150775671,
+    0.0002214496344095096,
+    0.0009299744269810617,
+    0.00011455201456556097,
+    0.0010150762973353267,
+    6.301982648437843e-05,
+    5.527176836039871e-05,
+    0.0003875244001392275,
+    0.0002882852859329432,
+    7.798848673701286e-05,
+    6.550201214849949e-05,
+    0.0003452720120549202
+  ],
+  "parametersUpdated": true,
+  "platform": "windows-wsl2-docker-engine",
+  "profile": "wsl2-cuda-laptop-8g",
+  "restore": {
+    "executed": true,
+    "fromStep": 10,
+    "loadBasis": "argv --resume_from_checkpoint",
+    "loads": [
+      "weights",
+      "optimizer",
+      "scheduler",
+      "rng",
+      "global_step"
+    ],
+    "source": "/work/output/checkpoint-10",
+    "status": "verified",
+    "toStep": 20
+  },
+  "resumeEvidence": {
+    "globalStep": 20,
+    "kind": "checkpoint-state-files",
+    "optimizer": {
+      "name": "optimizer.pt",
+      "present": true
+    },
+    "rng": {
+      "name": "rng_state.pth",
+      "present": true
+    },
+    "scheduler": {
+      "name": "scheduler.pt",
+      "present": true
+    },
+    "trainerState": {
+      "name": "trainer_state.json",
+      "present": true
+    }
+  },
+  "status": "ok"
+}

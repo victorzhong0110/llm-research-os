@@ -1,0 +1,129 @@
+{
+  "kind": "WslCuda7FrozenCheckpointInventory",
+  "root": "/root/researchos/gpu/output-cuda7-frozen",
+  "fileCount": 24,
+  "bytes": 106422282,
+  "resumeFromCheckpointInLogging": false,
+  "files": [
+    {
+      "path": "args.json",
+      "size": 39076,
+      "sha256": "3739048de37a7e98306fd0770a800ea00083387d6c992293421630154b2cc752"
+    },
+    {
+      "path": "checkpoint-10/README.md",
+      "size": 5176,
+      "sha256": "4e3ef9dc161313a84faa63b92804a6203c7937f2e2996f2f27222685a9a8b383"
+    },
+    {
+      "path": "checkpoint-10/adapter_config.json",
+      "size": 1087,
+      "sha256": "7eba578a09a760532583225bd25c66a4f64e67d4ff239bb1c034c954bb5c221b"
+    },
+    {
+      "path": "checkpoint-10/adapter_model.safetensors",
+      "size": 17640136,
+      "sha256": "3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5"
+    },
+    {
+      "path": "checkpoint-10/additional_config.json",
+      "size": 67,
+      "sha256": "c7799462ebedae6557ffad31566029e2d2f958b7b40e46e972cf901bcaf45733"
+    },
+    {
+      "path": "checkpoint-10/args.json",
+      "size": 39076,
+      "sha256": "3739048de37a7e98306fd0770a800ea00083387d6c992293421630154b2cc752"
+    },
+    {
+      "path": "checkpoint-10/optimizer.pt",
+      "size": 35474963,
+      "sha256": "3adef7fad4e00c56f3b1629aa40cce4e144eae4e22de563e2744e22252ba8198"
+    },
+    {
+      "path": "checkpoint-10/rng_state.pth",
+      "size": 14645,
+      "sha256": "8c61358bd25924386f2d9ccbf10d1c45b547c5fa75162b2335aa4aebb462e866"
+    },
+    {
+      "path": "checkpoint-10/scheduler.pt",
+      "size": 1401,
+      "sha256": "9ed01db2eda3bea5fa922f53902d9e01f11d97c8b2fb1d6e7481e8bc818ee32f"
+    },
+    {
+      "path": "checkpoint-10/trainer_state.json",
+      "size": 2717,
+      "sha256": "7bbb1f0068e8754b44f70a62d133f32d1e415207fc641959cdb25dc9b3ce3b01"
+    },
+    {
+      "path": "checkpoint-10/training_args.bin",
+      "size": 6673,
+      "sha256": "8c0091d6509baf38b84579753e4c4a7a52d3562d5ab1ae621db36c708e04d766"
+    },
+    {
+      "path": "checkpoint-20/README.md",
+      "size": 5176,
+      "sha256": "4e3ef9dc161313a84faa63b92804a6203c7937f2e2996f2f27222685a9a8b383"
+    },
+    {
+      "path": "checkpoint-20/adapter_config.json",
+      "size": 1087,
+      "sha256": "7eba578a09a760532583225bd25c66a4f64e67d4ff239bb1c034c954bb5c221b"
+    },
+    {
+      "path": "checkpoint-20/adapter_model.safetensors",
+      "size": 17640136,
+      "sha256": "9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58"
+    },
+    {
+      "path": "checkpoint-20/additional_config.json",
+      "size": 67,
+      "sha256": "c7799462ebedae6557ffad31566029e2d2f958b7b40e46e972cf901bcaf45733"
+    },
+    {
+      "path": "checkpoint-20/args.json",
+      "size": 39076,
+      "sha256": "3739048de37a7e98306fd0770a800ea00083387d6c992293421630154b2cc752"
+    },
+    {
+      "path": "checkpoint-20/optimizer.pt",
+      "size": 35474963,
+      "sha256": "63876402a6f1ed16f42b5d4a185498de94e97daee4197a9d4d46d509f16cf9ff"
+    },
+    {
+      "path": "checkpoint-20/rng_state.pth",
+      "size": 14645,
+      "sha256": "f7a19012753a436957122431d570c38270cb14c317152584ad6016b40e0b043c"
+    },
+    {
+      "path": "checkpoint-20/scheduler.pt",
+      "size": 1401,
+      "sha256": "7ae7b11ac40fcb16f3f375e3260a19b542c7e908741e39c724780485ef58bf59"
+    },
+    {
+      "path": "checkpoint-20/trainer_state.json",
+      "size": 4710,
+      "sha256": "054f96f297dbaead3aeff78576b7979c5e5fe9e18673252dbc1e6af0015cebdb"
+    },
+    {
+      "path": "checkpoint-20/training_args.bin",
+      "size": 6673,
+      "sha256": "8c0091d6509baf38b84579753e4c4a7a52d3562d5ab1ae621db36c708e04d766"
+    },
+    {
+      "path": "logging.jsonl",
+      "size": 9327,
+      "sha256": "8bc1f76404c3dcaadaf3a0007893ef0a40f011640919912cbef000b4ec5950f8"
+    },
+    {
+      "path": "probe-after.txt",
+      "size": 2,
+      "sha256": "2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df"
+    },
+    {
+      "path": "probe-grant4.txt",
+      "size": 2,
+      "sha256": "2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df"
+    }
+  ]
+}

@@ -23,15 +23,15 @@ Authoritative pack: [m2-wsl2-cuda-live](../evidence/m2-wsl2-cuda-live/README.md)
 
 | Row | Status | Note |
 | --- | --- | --- |
-| EventStore | 118 events | Mac `~/researchos-control-wsl2/research.db` |
+| EventStore | 142 events | Mac `~/researchos-control-wsl2/research.db`; seq 1–118 freeze plus cuda.8/9 tail |
 | Mac Tailscale IPv4 | `100.69.150.10` | Serve bound here, not `26.0.0.1` |
 | Control plane HTTPS | live | TLS timeout was local `https_proxy`; `--noproxy` works |
 | WSL TCP + TLS + Worker register | live | `worker.wsl.1` and `worker.wsl.gpu.1` |
 | CPU two-host OCI | live pass | `grant.wsl.oci.1` completed |
 | Reconnect / cancel | live pass | reconnect completed; cancel `cancel-observed` |
 | CUDA 20-step | live pass | `grant.wsl.cuda.7`; report semantics corrected in the pack |
-| Checkpoint SHA256 + CAS PUT | pending host | Windows Tailscale peer offline at pack time |
-| Authorized restore | static overlay only | `restore-overlay.preflight.json`; no cuda.8 yet |
+| Checkpoint SHA256 + CAS PUT | live pass | Worker `POST /v0alpha1/artifacts`; retrieve via `artifacts verify` |
+| Authorized restore | live pass | `grant.wsl.cuda.9` from checkpoint-10; cuda.8 failed and was not reused |
 | `unknown ≠ rerun` | tests only | no dedicated live shot |
 | Code SHA (both machines) | not a single HEAD | see `code-identity.md` |
 

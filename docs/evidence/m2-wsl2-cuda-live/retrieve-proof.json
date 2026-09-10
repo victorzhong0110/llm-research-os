@@ -1,0 +1,60 @@
+{
+  "kind": "WslCudaArtifactRetrieveProof",
+  "cas": "/Users/zhongxudong/researchos-control-wsl2/cas",
+  "method": "researchos artifacts verify + LocalArtifactStore.open rehash",
+  "workerGetOfCheckpoint": {
+    "digest": "sha256:9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58",
+    "result": "http-artifact-denied",
+    "note": "Worker GET authorizes only the grant imageDigest, not checkpoint blobs."
+  },
+  "objects": [
+    {
+      "label": "cuda7-checkpoint-20-adapter",
+      "digest": "sha256:9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58",
+      "sizeBytes": 17640136,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    },
+    {
+      "label": "cuda7-checkpoint-20-optimizer",
+      "digest": "sha256:63876402a6f1ed16f42b5d4a185498de94e97daee4197a9d4d46d509f16cf9ff",
+      "sizeBytes": 35474963,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    },
+    {
+      "label": "cuda7-checkpoint-10-adapter",
+      "digest": "sha256:3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+      "sizeBytes": 17640136,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    },
+    {
+      "label": "cuda7-collect-supplement",
+      "digest": "sha256:c5937467ad0cefeaa5a981fc0704a68fcce88471ed748c246e891d65766843aa",
+      "sizeBytes": 9930,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    },
+    {
+      "label": "cuda9-training-report",
+      "digest": "sha256:b1c3527d6bb4053a85dfbd95cb51011bf0158ce8b6172ff41e87dd64c5d5ab0c",
+      "sizeBytes": 1325,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    },
+    {
+      "label": "cuda7-training-report-unchanged",
+      "digest": "sha256:9da93e29a6263aa05aacb7a61cee15a6f34eccd66832b3471805a65f69daea76",
+      "sizeBytes": 910,
+      "operation": "artifacts.verify+rehash",
+      "match": true,
+      "workerGet": "denied-not-grant-image"
+    }
+  ]
+}

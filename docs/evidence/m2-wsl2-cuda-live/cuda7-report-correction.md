@@ -27,7 +27,7 @@ and the single-checkpoint shortcut would have fired on a 20-only tree.
 | Checkpoint state files present | yes (optimizer / scheduler / rng / trainer_state) |
 | Restore executed | **no** — argv had no `--resume_from_checkpoint` |
 | `restore.status` | **unverified** |
-| `parametersUpdated` | **unverified from the original report**; a later two-checkpoint compare on host files is still pending host SHA256 |
+| `parametersUpdated` | **unverified from the original report**; host SHA256 now shows checkpoint-10 adapter `sha256:3a0260a51c…a4d5` ≠ checkpoint-20 adapter `sha256:9d5ec470…ff58` ([cuda7-frozen-inventory.json](cuda7-frozen-inventory.json)) |
 
 New reports use `resumeEvidence.kind: checkpoint-state-files` and a
 separate `restore` object. cuda.7’s JSON stays as a historical fact.
