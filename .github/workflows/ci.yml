@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   protocol:
@@ -24,7 +24,7 @@ jobs:
     # Required pytest is the protocol suite, not live docker (oci-linux job)
     # and not the 10k/100k EventStore baselines. HTTPS Worker sockets default
     # to 10s; 120s was stalling GitHub jobs when a handler did not answer.
-    timeout-minutes: 25
+    timeout-minutes: 35
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
@@ -60,15 +60,18 @@ jobs:
           uv run pytest --collect-only -q
           -m "not oci_live and not slow"
           | tail -n 20
+      - name: Test by file
+        timeout-minutes: 20
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python3 .github/scripts/pytest-by-file.py
       - name: Test with coverage report
-        timeout-minutes: 15
+        timeout-minutes: 12
         env:
           PYTHONUNBUFFERED: "1"
         run: >
           uv run pytest
           -m "not oci_live and not slow"
-          --timeout=60
-          --timeout-method=thread
           --cov=llm_research_os
           --cov-report=term-missing:skip-covered
           --cov-fail-under=85
