@@ -109,6 +109,7 @@ def test_report_lineage_stays_on_the_run_when_heartbeats_fill_the_store(
     assert report.lineage[0].event.type == "run.queued"
 
 
+@pytest.mark.slow
 def test_m2_bench_cli_records_10k_receipt(tmp_path: Path, capsys: object) -> None:
     database = tmp_path / "bench.db"
     assert main(["m2", "bench", str(database), "--events", "10000", "--format", "json"]) == 0

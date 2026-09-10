@@ -24,9 +24,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
   Worker can fail the lease instead of leaving a claimed grant dangling.
 - Protocol CI jobs time out at 40 minutes and skip `pytest.mark.slow`
-  (the 100k EventStore baseline). Coverage jobs on `15a8025` cancelled
-  at 20 minutes and on `65beba9` at 40 minutes, still inside the
-  coverage pytest step after lint/mypy.
+  (10k and 100k EventStore baselines). Coverage jobs on `15a8025`
+  cancelled at 20 minutes; `65beba9` and `df077cb` still died inside
+  coverage pytest after lint/mypy. The 200-heartbeat lineage test stays
+  in the required matrix.
 - Static run reports render Evaluation and System as their own sections.
   Training no longer lists `evaluation.metric` facts.
 
