@@ -473,3 +473,17 @@ def test_isolated_https_processes_do_not_share_cas(tmp_path: Path) -> None:
     finally:
         serve.terminate()
         serve.wait(timeout=10)
+
+
+def test_lease_seconds_reads_researchos_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from llm_research_os.workers.http import _lease_seconds
+    from llm_research_os.workers.plane import DEFAULT_LEASE_SECONDS
+
+    monkeypatch.delenv("RESEARCHOS_LEASE_SECONDS", raising=False)
+    assert _lease_seconds() == DEFAULT_LEASE_SECONDS
+    monkeypatch.setenv("RESEARCHOS_LEASE_SECONDS", "1800")
+    assert _lease_seconds() == 1800
+    monkeypatch.setenv("RESEARCHOS_LEASE_SECONDS", "0")
+    assert _lease_seconds() == DEFAULT_LEASE_SECONDS
+    monkeypatch.setenv("RESEARCHOS_LEASE_SECONDS", "not-an-int")
+    assert _lease_seconds() == DEFAULT_LEASE_SECONDS

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 from datetime import UTC, datetime
@@ -25,7 +26,7 @@ from llm_research_os.artifacts.store import (
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.bind import require_worker_bind_host
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
-from llm_research_os.workers.plane import Clock, WorkerPlane
+from llm_research_os.workers.plane import DEFAULT_LEASE_SECONDS, Clock, WorkerPlane
 from llm_research_os.workers.tls import TlsMaterial
 from llm_research_os.workers.tokens import issue_worker_session, verify_worker_session
 
@@ -117,7 +118,19 @@ class LoopbackWorkerServer:
             source=self._source,
             experiment_revision=self._experiment_revision,
             clock=self._clock,
+            lease_seconds=_lease_seconds(),
         )
+
+
+def _lease_seconds() -> int:
+    raw = os.environ.get("RESEARCHOS_LEASE_SECONDS", str(DEFAULT_LEASE_SECONDS))
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_LEASE_SECONDS
+    if value < 1 or value > 3600:
+        return DEFAULT_LEASE_SECONDS
+    return value
 
 
 def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:

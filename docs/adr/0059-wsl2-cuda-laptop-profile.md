@@ -37,8 +37,15 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
    `/work/model` `/work/data` `/work/output`. Network remains denied.
 5. **Artifact PUT** on Worker HTTPS may use 256 MiB (`MAX_WORKER_PUT_BYTES`)
    so real LoRA checkpoints can upload. JSON control bodies stay 1 MiB.
+   Collect `--profile wsl2-cuda` uses the same 256 MiB bound. AutoDL `gpu`
+   collect stays 1 MiB.
 6. **Platform claim.** Live evidence, when recorded, is Windows/WSL2 +
    Docker Engine. It is not native Linux or cloud GPU acceptance.
+7. **Checkpoint file presence is not a restore.** `resumeEvidence.kind` is
+   `checkpoint-state-files`. A restore is a new overlay execution
+   (`resume` + `checkpoint` in the grant, `commandDigest` of the overlay
+   argv). `parametersUpdated` is true only when two checkpoints differ;
+   a single checkpoint is unverified.
 
 ## Consequences
 

@@ -25,7 +25,12 @@ from pydantic import ValidationError
 
 from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, content_digest
-from llm_research_os.training.gpu_bind import bind_ms_swift_gpu_command, plan_document_digest
+from llm_research_os.training.gpu_bind import (
+    ResumeMode,
+    bind_ms_swift_gpu_command,
+    plan_document_digest,
+    resume_loads,
+)
 from llm_research_os.training.requests import TrainingBackendPlan, WslCudaTrainingPlan
 from llm_research_os.training.wsl_bind import bind_ms_swift_wsl_cuda_command
 from llm_research_os.training.wsl_bind import plan_document_digest as wsl_plan_document_digest
@@ -101,6 +106,8 @@ _GPU_LAUNCH_KEYS = frozenset(
         "modelMount",
         "outputMount",
         "commandDigest",
+        "resume",
+        "checkpoint",
     }
 )
 _FORBIDDEN_GPU_KEYS = frozenset(
@@ -139,6 +146,8 @@ class GpuLaunchPolicy:
     command_digest: str
     plan_digest: str
     plan_artifact_digest: str
+    resume: Literal["none", "full-checkpoint", "adapter-only"]
+    checkpoint: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +156,36 @@ class GpuLaunchPreparation:
     command_argv: tuple[str, ...]
     executed: bool
     gpu: str
+
+
+def _parse_gpu_resume(
+    config: Mapping[str, object],
+) -> tuple[Literal["none", "full-checkpoint", "adapter-only"], str | None]:
+    resume = config.get("resume", "none")
+    checkpoint = config.get("checkpoint")
+    parsed: Literal["none", "full-checkpoint", "adapter-only"]
+    if resume == "full-checkpoint":
+        parsed = "full-checkpoint"
+    elif resume == "adapter-only":
+        parsed = "adapter-only"
+    elif resume == "none":
+        parsed = "none"
+    else:
+        raise WorkerSandboxError("GPU resume mode is invalid", code="resume-overlay-conflict")
+    if parsed == "none":
+        if checkpoint is not None:
+            raise WorkerSandboxError(
+                "checkpoint path is forbidden when resume is none",
+                code="resume-overlay-conflict",
+            )
+        return parsed, None
+    prefix = f"{GPU_OUTPUT_MOUNT}/"
+    if type(checkpoint) is not str or not checkpoint.startswith(prefix):
+        raise WorkerSandboxError(
+            "resume checkpoint is not under the authorized output mount",
+            code="gpu-mount-forbidden",
+        )
+    return parsed, checkpoint
 
 
 def parse_gpu_launch_policy(
@@ -198,6 +237,7 @@ def parse_gpu_launch_policy(
         raise WorkerSandboxError("GPU mount is not authorized", code="gpu-mount-forbidden")
     if output_mount != GPU_OUTPUT_MOUNT:
         raise WorkerSandboxError("GPU mount is not authorized", code="gpu-mount-forbidden")
+    resume, resume_checkpoint = _parse_gpu_resume(config)
     profile = config.get("profile", GPU_PROFILE_AUTODL)
     if profile == GPU_PROFILE_WSL2:
         closed_profile: Literal["autodl-4090", "wsl2-cuda-laptop-8g"] = GPU_PROFILE_WSL2
@@ -253,6 +293,8 @@ def parse_gpu_launch_policy(
         command_digest=command,
         plan_digest=plan_digest,
         plan_artifact_digest=plan_artifact,
+        resume=resume,
+        checkpoint=resume_checkpoint,
     )
 
 
@@ -553,7 +595,12 @@ def run_gpu_training(
             }
         )
         if training_finished:
-            report = _cuda_training_report(output_dir, profile=policy.profile)
+            report = _cuda_training_report(
+                output_dir,
+                profile=policy.profile,
+                resume_mode=policy.resume,
+                checkpoint_path=policy.checkpoint,
+            )
             payload = json.dumps(report, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
             digest_value = "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
             return SandboxResult(
@@ -597,11 +644,19 @@ def _authorized_gpu_command(
     try:
         if kind == "WslCudaTrainingPlan":
             wsl_plan = WslCudaTrainingPlan.model_validate(document)
-            command_argv, digest = bind_ms_swift_wsl_cuda_command(wsl_plan)
+            command_argv, digest = bind_ms_swift_wsl_cuda_command(
+                wsl_plan,
+                resume_mode=policy.resume,
+                checkpoint_path=policy.checkpoint,
+            )
             plan_digest = wsl_plan_document_digest(wsl_plan)
         else:
             gpu_plan = TrainingBackendPlan.model_validate(document)
-            command_argv, digest = bind_ms_swift_gpu_command(gpu_plan)
+            command_argv, digest = bind_ms_swift_gpu_command(
+                gpu_plan,
+                resume_mode=policy.resume,
+                checkpoint_path=policy.checkpoint,
+            )
             plan_digest = plan_document_digest(gpu_plan)
     except ValidationError as exc:
         raise WorkerSandboxError(
@@ -618,6 +673,11 @@ def _authorized_gpu_command(
             "WSL CUDA plan requires the laptop resource profile",
             code="gpu-resource-limit",
         )
+    if digest != policy.command_digest:
+        raise WorkerSandboxError(
+            "GPU command is not the authorized plan argv",
+            code="execution-binding-mismatch",
+        )
     return command_argv, digest
 
 
@@ -629,7 +689,13 @@ def _prepare_gpu_output_root(output_dir: Path) -> None:
     (output_dir / "tmp").chmod(0o775)
 
 
-def _cuda_training_report(output: Path, *, profile: str) -> dict[str, object]:
+def _cuda_training_report(
+    output: Path,
+    *,
+    profile: str,
+    resume_mode: ResumeMode = "none",
+    checkpoint_path: str | None = None,
+) -> dict[str, object]:
     checkpoints = _checkpoint_dirs(output)
     if not checkpoints:
         raise WorkerSandboxError(
@@ -657,16 +723,17 @@ def _cuda_training_report(output: Path, *, profile: str) -> dict[str, object]:
         (_file_digest(last, name) for name in _ADAPTER_NAMES if (last / name).is_file()),
         None,
     )
-    updated = (
-        first_adapter is not None
-        and last_adapter is not None
-        and (len(checkpoints) == 1 or first_adapter != last_adapter)
-    )
-    if not updated and len(checkpoints) > 1:
-        raise WorkerSandboxError(
-            "GPU adapter bytes did not change",
-            code="gpu-parameters-unchanged",
+    if len(checkpoints) == 1:
+        parameters_updated: bool | None = None
+    else:
+        parameters_updated = (
+            first_adapter is not None and last_adapter is not None and first_adapter != last_adapter
         )
+        if parameters_updated is not True:
+            raise WorkerSandboxError(
+                "GPU adapter bytes did not change",
+                code="gpu-parameters-unchanged",
+            )
     return {
         "kind": "WslCudaTrainingReport",
         "status": "ok",
@@ -677,7 +744,7 @@ def _cuda_training_report(output: Path, *, profile: str) -> dict[str, object]:
         "globalStep": global_step,
         "losses": losses,
         "lossFinite": True,
-        "parametersUpdated": True if len(checkpoints) == 1 else updated,
+        "parametersUpdated": parameters_updated,
         "checkpoint": {
             "path": latest.name,
             "optimizer": _has_any(latest, _OPTIMIZER_NAMES),
@@ -687,11 +754,19 @@ def _cuda_training_report(output: Path, *, profile: str) -> dict[str, object]:
             "adapterDigest": last_adapter,
         },
         "resumeEvidence": {
-            "optimizer": _has_any(latest, _OPTIMIZER_NAMES),
-            "scheduler": _has_any(latest, _SCHEDULER_NAMES),
-            "rng": _has_any(latest, _RNG_NAMES),
+            "kind": "checkpoint-state-files",
+            "optimizer": _state_file(latest, _OPTIMIZER_NAMES),
+            "scheduler": _state_file(latest, _SCHEDULER_NAMES),
+            "rng": _state_file(latest, _RNG_NAMES),
+            "trainerState": _state_file(latest, ("trainer_state.json",)),
             "globalStep": global_step,
         },
+        "restore": _restore_record(
+            output,
+            resume_mode=resume_mode,
+            checkpoint_path=checkpoint_path,
+            to_step=global_step,
+        ),
     }
 
 
@@ -739,6 +814,68 @@ def _file_digest(directory: Path, name: str) -> str:
 
 def _has_any(directory: Path, names: tuple[str, ...]) -> bool:
     return any((directory / name).is_file() for name in names)
+
+
+def _state_file(directory: Path, names: tuple[str, ...]) -> dict[str, object]:
+    for name in names:
+        if (directory / name).is_file():
+            return {"present": True, "name": name}
+    return {"present": False, "name": None}
+
+
+def _host_checkpoint_dir(output: Path, mount_path: str | None) -> Path | None:
+    prefix = f"{GPU_OUTPUT_MOUNT}/"
+    if mount_path is None or not mount_path.startswith(prefix):
+        return None
+    directory = output / mount_path[len(prefix) :]
+    if directory.is_dir():
+        return directory
+    return None
+
+
+def _restore_record(
+    output: Path,
+    *,
+    resume_mode: ResumeMode,
+    checkpoint_path: str | None,
+    to_step: int,
+) -> dict[str, object]:
+    if resume_mode == "none":
+        return {
+            "executed": False,
+            "status": "unverified",
+            "source": None,
+            "loads": [],
+            "fromStep": None,
+            "toStep": None,
+            "loadBasis": None,
+        }
+    loads = list(resume_loads(resume_mode))
+    load_basis = (
+        "argv --resume_from_checkpoint" if resume_mode == "full-checkpoint" else "argv --adapters"
+    )
+    source_dir = _host_checkpoint_dir(output, checkpoint_path)
+    from_step: int | None = None
+    if source_dir is not None:
+        step = _trainer_state(source_dir).get("global_step")
+        if type(step) is int:
+            from_step = step
+    verified = (
+        resume_mode == "full-checkpoint"
+        and source_dir is not None
+        and type(from_step) is int
+        and from_step < to_step
+        and loads == ["weights", "optimizer", "scheduler", "rng", "global_step"]
+    )
+    return {
+        "executed": True,
+        "status": "verified" if verified else "unverified",
+        "source": checkpoint_path,
+        "loads": loads,
+        "fromStep": from_step,
+        "toStep": to_step,
+        "loadBasis": load_basis,
+    }
 
 
 def command_digest_of(argv: tuple[str, ...]) -> str:

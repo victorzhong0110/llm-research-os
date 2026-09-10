@@ -836,7 +836,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--profile",
         choices=("gpu", "mps", "wsl2-cuda"),
         default="gpu",
-        help="gpu keeps the 1 MiB CAS bound; mps allows real LoRA checkpoint bytes",
+        help="gpu keeps the 1 MiB CAS bound; mps and wsl2-cuda allow 256 MiB",
     )
     add_event_format_argument(training_collect)
     return parser

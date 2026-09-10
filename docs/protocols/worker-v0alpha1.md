@@ -186,8 +186,11 @@ MUST be the pinned `ms-swift==4.5.2` plan argv. Extra devices, mounts,
 and `privileged` MUST fail closed. A Worker MUST advertise `cuda`.
 `researchos training bind` and `execute_gpu_training` MUST NOT start a
 container; the receipt is `gpu: not-run`. Persistent `/work/output` files
-are collected by `researchos training collect` (ADR-0057). This is not a
-CUDA result.
+are collected by `researchos training collect` (ADR-0057). Collect
+`--profile wsl2-cuda` (and `--profile mps`) allows 256 MiB; the AutoDL
+`gpu` collect profile stays 1 MiB. Worker HTTPS artifact PUT already
+allows 256 MiB (ADR-0059). This collect receipt is not itself a CUDA
+result; live bytes must still be uploaded with `POST /v0alpha1/artifacts`.
 
 ## 4d. macOS/MPS training execution profile
 
@@ -203,8 +206,9 @@ cgroup, seccomp, OCI mounts, or NativeProcessRuntime. `privileged`,
 `sitecustomizeDigest` so a shim change is a new `imageDigest`.
 `researchos training plan` prints argv with `executed: false`.
 `researchos m2 mps` MUST go through authorization, lease, execute, collect,
-and `work.completed`. Collect `--profile mps` allows 256 MiB; GPU collect
-stays 1 MiB. This is not a CUDA result.
+and `work.completed`. Collect `--profile mps` allows 256 MiB; AutoDL GPU
+collect stays 1 MiB; WSL CUDA collect uses `--profile wsl2-cuda` (256 MiB).
+This is not a CUDA result.
 
 ## 5. Conformance
 

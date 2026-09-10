@@ -1096,3 +1096,185 @@ def test_wsl_cuda_plan_bind_prints_device_zero_and_does_not_execute(
     assert "--memory" in payload["dockerArgv"]
     memory_at = payload["dockerArgv"].index("--memory")
     assert payload["dockerArgv"][memory_at + 1] == "3221225472"
+
+
+WSL_PLAN_PATH = ROOT / "examples" / "training-backend" / "valid" / "wsl-cuda-sft.json"
+
+
+def _write_cuda_checkpoint(root: Path, step: int, *, adapter: bytes) -> Path:
+    directory = root / f"checkpoint-{step}"
+    directory.mkdir(parents=True)
+    (directory / "adapter_model.safetensors").write_bytes(adapter)
+    (directory / "adapter_config.json").write_text('{"r":8}\n', encoding="utf-8")
+    (directory / "optimizer.pt").write_bytes(b"opt-" + adapter[:8])
+    (directory / "scheduler.pt").write_bytes(b"sch-" + adapter[:8])
+    (directory / "rng_state.pth").write_bytes(b"rng-" + adapter[:8])
+    state = {
+        "global_step": step,
+        "log_history": [{"loss": 1.0 / step} for _ in range(step)],
+    }
+    (directory / "trainer_state.json").write_text(json.dumps(state), encoding="utf-8")
+    return directory
+
+
+def test_single_checkpoint_does_not_claim_parameters_updated_or_restore(
+    tmp_path: Path,
+) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-only-once")
+    report = _cuda_training_report(output, profile="wsl2-cuda-laptop-8g")
+    assert report["parametersUpdated"] is None
+    evidence = report["resumeEvidence"]
+    assert evidence["kind"] == "checkpoint-state-files"
+    assert evidence["optimizer"] == {"present": True, "name": "optimizer.pt"}
+    assert evidence["scheduler"] == {"present": True, "name": "scheduler.pt"}
+    assert evidence["rng"] == {"present": True, "name": "rng_state.pth"}
+    assert evidence["trainerState"] == {"present": True, "name": "trainer_state.json"}
+    restore = report["restore"]
+    assert restore["executed"] is False
+    assert restore["status"] == "unverified"
+    assert restore["source"] is None
+    assert restore["loads"] == []
+    assert restore["fromStep"] is None
+    assert restore["toStep"] is None
+    assert restore["loadBasis"] is None
+
+
+def test_two_checkpoints_verify_adapter_change_without_claiming_restore(
+    tmp_path: Path,
+) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    report = _cuda_training_report(output, profile="wsl2-cuda-laptop-8g")
+    assert report["parametersUpdated"] is True
+    assert report["restore"]["executed"] is False
+    assert report["restore"]["status"] == "unverified"
+
+
+def test_full_checkpoint_restore_records_source_steps_and_loads(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import _cuda_training_report
+
+    output = tmp_path / "output"
+    _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    _write_cuda_checkpoint(output, 20, adapter=b"adapter-v2-changed")
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+    )
+    restore = report["restore"]
+    assert restore["executed"] is True
+    assert restore["status"] == "verified"
+    assert restore["source"] == "/work/output/checkpoint-10"
+    assert restore["fromStep"] == 10
+    assert restore["toStep"] == 20
+    assert restore["loads"] == [
+        "weights",
+        "optimizer",
+        "scheduler",
+        "rng",
+        "global_step",
+    ]
+    assert restore["loadBasis"] == "argv --resume_from_checkpoint"
+    assert report["parametersUpdated"] is True
+
+
+def test_wsl_resume_overlay_is_bound_into_authorized_command(tmp_path: Path) -> None:
+    from llm_research_os.training.requests import load_wsl_cuda_training_plan
+    from llm_research_os.training.wsl_bind import (
+        bind_ms_swift_wsl_cuda_command,
+    )
+    from llm_research_os.training.wsl_bind import (
+        plan_document_digest as wsl_plan_digest,
+    )
+    from llm_research_os.workers.gpu import _authorized_gpu_command
+
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    plan = load_wsl_cuda_training_plan(WSL_PLAN_PATH)
+    stored = artifacts.put(WSL_PLAN_PATH)
+    overlay_argv, overlay_digest = bind_ms_swift_wsl_cuda_command(
+        plan,
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+    )
+    policy = parse_gpu_launch_policy(
+        image_digest=GPU_IMAGE,
+        config={
+            "network": "denied",
+            "device": GPU_DEVICE,
+            "profile": "wsl2-cuda-laptop-8g",
+            "commandDigest": overlay_digest,
+            "resume": "full-checkpoint",
+            "checkpoint": "/work/output/checkpoint-10",
+        },
+        inputs={
+            "planDigest": wsl_plan_digest(plan),
+            "planArtifactDigest": stored.digest,
+        },
+    )
+    command_argv, digest = _authorized_gpu_command(artifacts, policy)
+    assert digest == overlay_digest
+    assert command_argv == overlay_argv
+    assert "--resume_from_checkpoint" in command_argv
+    assert "/work/output/checkpoint-10" in command_argv
+
+
+def test_wsl_resume_without_matching_command_digest_fails_closed(tmp_path: Path) -> None:
+    from llm_research_os.training.requests import load_wsl_cuda_training_plan
+    from llm_research_os.training.wsl_bind import (
+        bind_ms_swift_wsl_cuda_command,
+    )
+    from llm_research_os.training.wsl_bind import (
+        plan_document_digest as wsl_plan_digest,
+    )
+    from llm_research_os.workers.gpu import _authorized_gpu_command
+
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    plan = load_wsl_cuda_training_plan(WSL_PLAN_PATH)
+    stored = artifacts.put(WSL_PLAN_PATH)
+    _plain_argv, plain_digest = bind_ms_swift_wsl_cuda_command(plan)
+    policy = parse_gpu_launch_policy(
+        image_digest=GPU_IMAGE,
+        config={
+            "network": "denied",
+            "device": GPU_DEVICE,
+            "profile": "wsl2-cuda-laptop-8g",
+            "commandDigest": plain_digest,
+            "resume": "full-checkpoint",
+            "checkpoint": "/work/output/checkpoint-10",
+        },
+        inputs={
+            "planDigest": wsl_plan_digest(plan),
+            "planArtifactDigest": stored.digest,
+        },
+    )
+    with pytest.raises(WorkerSandboxError) as captured:
+        _authorized_gpu_command(artifacts, policy)
+    assert captured.value.code == "execution-binding-mismatch"
+
+
+def test_resume_none_rejects_checkpoint_path() -> None:
+    with pytest.raises(WorkerSandboxError) as captured:
+        parse_gpu_launch_policy(
+            image_digest=GPU_IMAGE,
+            config={
+                "network": "denied",
+                "device": GPU_DEVICE,
+                "profile": "wsl2-cuda-laptop-8g",
+                "commandDigest": _JCS_A,
+                "resume": "none",
+                "checkpoint": "/work/output/checkpoint-10",
+            },
+            inputs={"planDigest": _JCS_A, "planArtifactDigest": GPU_IMAGE},
+        )
+    assert captured.value.code == "resume-overlay-conflict"

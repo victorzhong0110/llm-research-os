@@ -15,6 +15,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU
   `/tmp` tmpfs allows exec so Triton can load a JIT `.so`; the CUDA image
   installs `python3-dev` for `Python.h`.
+- WSL CUDA reports no longer treat checkpoint file presence as a restore,
+  and a single checkpoint no longer sets `parametersUpdated: true`.
+  `run_gpu_training` applies a grant `resume` overlay when `commandDigest`
+  matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
 
 ### Added
 

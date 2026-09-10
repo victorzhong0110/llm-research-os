@@ -18,4 +18,7 @@ Pinned values:
 
 `researchos training plan` / `bind` stay `executed: false`. Live start is
 `run_gpu_training` after an `execute.gpu` grant on a Worker that
-advertised `cuda`.
+advertised `cuda`. A full-checkpoint restore is a new execution object:
+grant config MAY include `resume: full-checkpoint` and
+`checkpoint: /work/output/checkpoint-N` when `commandDigest` is the
+overlay argv. File presence in a checkpoint is not a restore.

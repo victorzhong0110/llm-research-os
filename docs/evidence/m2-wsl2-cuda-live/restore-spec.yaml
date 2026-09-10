@@ -1,0 +1,48 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-minimal
+  revision: 1
+  title: WSL CUDA restore from checkpoint-10
+questions:
+  - id: rq.cuda.resume
+    question: Does full-checkpoint overlay continue global_step and change adapter bytes?
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+workflows:
+  - id: workflow.gpu
+    graph:
+      nodes:
+        - kind: task
+          id: task.gpu
+          blockType: researchos.gpu-ms-swift
+          blockVersion: 0.1.0
+          config:
+            imageDigest: "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151"
+            imageMediaType: researchos.oci-image/v0alpha1
+            runtime: gpu-oci-container
+            config:
+              network: "denied"
+              device: "nvidia.com/gpu=0"
+              profile: "wsl2-cuda-laptop-8g"
+              memoryBytes: 3221225472
+              pidsLimit: 256
+              cpuMillis: 4000
+              wallTimeSeconds: 1800
+              diskBytes: 8589934592
+              commandDigest: "jcs-sha256:411120ecc09852a717d43ad1dd53210af86ca9901c496bfa13d5398c3b67901d"
+              resume: full-checkpoint
+              checkpoint: "/work/output/checkpoint-10"
+            inputs:
+              planDigest: "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+              planArtifactDigest: "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba"
+      edges: []
+evaluations: []
+resources: []
+policies:
+  paidActionsRequireApproval: true
+  destructiveActionsRequireApproval: true
+  preserveAiDissent: true
+  unknownEvidenceMayTrain: false

@@ -17,16 +17,23 @@ PR #72 `a6898a620b9ca0ee62d735d51a3b8f3298d25da9` (which includes #71).
 
 ## Live evidence (this work package)
 
-Do not treat this PR as two-host or CUDA completion. Issue #38 stays open.
+Issue #38 stays open. Do not merge this PR as M2 close.
+
+Authoritative pack: [m2-wsl2-cuda-live](../evidence/m2-wsl2-cuda-live/README.md).
 
 | Row | Status | Note |
 | --- | --- | --- |
-| Code SHA (both machines) | pending until this branch is fetched | After push, `git rev-parse HEAD` on WSL must match origin |
-| Mac Tailscale IPv4 | pending | App present; `tailscaled` socket absent until you log in. Never use `26.0.0.1` |
-| Control plane HTTPS URL | pending | Bind `--host` to the real `100.x` address and a free port |
-| WSL TCP + TLS + Worker register | pending | Must be measured from Ubuntu, not only Windows host ping |
-| CPU two-host OCI | pending | Independent CAS/workdir; unknown ≠ rerun |
-| CUDA 20-step + checkpoint upload | pending | Platform: Windows/WSL2 + Docker Engine |
+| EventStore | 118 events | Mac `~/researchos-control-wsl2/research.db` |
+| Mac Tailscale IPv4 | `100.69.150.10` | Serve bound here, not `26.0.0.1` |
+| Control plane HTTPS | live | TLS timeout was local `https_proxy`; `--noproxy` works |
+| WSL TCP + TLS + Worker register | live | `worker.wsl.1` and `worker.wsl.gpu.1` |
+| CPU two-host OCI | live pass | `grant.wsl.oci.1` completed |
+| Reconnect / cancel | live pass | reconnect completed; cancel `cancel-observed` |
+| CUDA 20-step | live pass | `grant.wsl.cuda.7`; report semantics corrected in the pack |
+| Checkpoint SHA256 + CAS PUT | pending host | Windows Tailscale peer offline at pack time |
+| Authorized restore | static overlay only | `restore-overlay.preflight.json`; no cuda.8 yet |
+| `unknown ≠ rerun` | tests only | no dedicated live shot |
+| Code SHA (both machines) | not a single HEAD | see `code-identity.md` |
 
 ## Windows Cursor command pack
 
