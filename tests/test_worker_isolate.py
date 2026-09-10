@@ -500,3 +500,21 @@ def test_worker_http_timeout_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert worker_http_timeout() == 10.0
     monkeypatch.setenv("RESEARCHOS_WORKER_HTTP_TIMEOUT", "not-a-float")
     assert worker_http_timeout() == 10.0
+
+
+def test_artifact_get_does_not_preallocate_the_put_cap() -> None:
+    from io import BytesIO
+
+    from llm_research_os.artifacts.store import MAX_WORKER_PUT_BYTES
+    from llm_research_os.workers.http import _read_capped
+
+    class _Spy(BytesIO):
+        def read(self, size: int | None = -1) -> bytes:
+            sizes.append(size)
+            return super().read(size)
+
+    sizes: list[int | None] = []
+    payload = _read_capped(_Spy(b"brick"), MAX_WORKER_PUT_BYTES)
+    assert payload == b"brick"
+    assert sizes
+    assert all(size is None or size <= 65_536 for size in sizes)

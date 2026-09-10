@@ -9,7 +9,7 @@ import threading
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 from urllib.parse import urlparse
 
 from llm_research_os.artifacts.errors import (
@@ -18,6 +18,7 @@ from llm_research_os.artifacts.errors import (
     ArtifactStoreError,
 )
 from llm_research_os.artifacts.store import (
+    CHUNK_SIZE,
     MAX_PUT_BYTES,
     MAX_WORKER_PUT_BYTES,
     LocalArtifactStore,
@@ -316,9 +317,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     image_digest=digest,
                 )
             with server._artifacts.open(digest) as handle:
-                payload = handle.read(MAX_WORKER_PUT_BYTES + 1)
-            if len(payload) > MAX_WORKER_PUT_BYTES:
-                raise WorkerError("artifact exceeds the put limit", code="http-too-large")
+                payload = _read_capped(handle, MAX_WORKER_PUT_BYTES)
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Content-Length", str(len(payload)))
@@ -366,6 +365,22 @@ def _require_session(server: LoopbackWorkerServer, worker_id: str, header: str |
     if session_worker != worker_id:
         raise WorkerGrantError("worker session does not match", code="worker-session-mismatch")
     return token
+
+
+def _read_capped(handle: BinaryIO, limit: int) -> bytes:
+    """Read until EOF without allocating ``limit`` bytes up front."""
+
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = handle.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise WorkerError("artifact exceeds the put limit", code="http-too-large")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _session_worker(server: LoopbackWorkerServer, header: str | None) -> str:

@@ -64,9 +64,8 @@ jobs:
         timeout-minutes: 15
         env:
           PYTHONUNBUFFERED: "1"
-          RESEARCHOS_PYTEST_FAULTLOG: "1"
         run: >
-          uv run pytest -s
+          uv run pytest
           -m "not oci_live and not slow"
           --timeout=60
           --timeout-method=thread
