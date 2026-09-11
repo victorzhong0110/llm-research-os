@@ -63,6 +63,22 @@ Receipt: [independent-venv.json](independent-venv.json). This is not cuda.7, cud
 [cuda10-code-identity.json](cuda10-code-identity.json),
 [cuda10-failure.md](cuda10-failure.md).
 
+## cuda.11 (completed seq 164–166)
+
+| Layer | Identity |
+| --- | --- |
+| Source commit | `b7d960c7c78a8c6fbdbdbdc006d50285165e50a6` |
+| WSL tree | `/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6` |
+| Venv | that tree’s `.venv` (not a symlink; not the e47279d or 6e60115 env) |
+| `gpu.py` | SHA-256 `5749a8f7cabe41357415c186dcdc2b927692d72e0df3e9004aad7762b8ea3f40` |
+| observe module | SHA-256 `9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f` |
+| PYTHONPATH | unset |
+| `workers run` | yes; grant consumed-completed |
+
+[cuda11-preflight.json](cuda11-preflight.json),
+[cuda11-code-identity.json](cuda11-code-identity.json),
+[cuda11-success.md](cuda11-success.md).
+
 ## This evidence pack
 
 Report semantics, GPU resume overlay, lease env reader, leftover

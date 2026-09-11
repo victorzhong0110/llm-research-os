@@ -1,0 +1,127 @@
+{
+  "checkpoint": {
+    "adapterDigest": "sha256:7adaf622e061ed83a8e8db158609083029f1d8ecfba8d92565ded112967985cc",
+    "globalStep": 12,
+    "optimizer": true,
+    "path": "checkpoint-12",
+    "rng": true,
+    "scheduler": true
+  },
+  "executed": true,
+  "globalStep": 12,
+  "gpu": "cuda",
+  "kind": "WslCudaTrainingReport",
+  "lossFinite": true,
+  "losses": [
+    1.1614576578140259,
+    0.9165180921554565,
+    0.3595010042190552,
+    0.079377681016922,
+    0.05081566050648689,
+    0.025356654077768326,
+    0.0019500016933307052,
+    0.0006454754038713872,
+    0.005064444150775671,
+    0.0002214496344095096,
+    0.0009299744269810617,
+    0.00011455201456556097
+  ],
+  "parametersUpdated": true,
+  "platform": "windows-wsl2-docker-engine",
+  "profile": "wsl2-cuda-laptop-8g",
+  "restore": {
+    "executed": true,
+    "fromStep": 10,
+    "loadBasis": "argv --resume_from_checkpoint (requested)",
+    "observeIdentity": {
+      "gpuDigest": "sha256:5749a8f7cabe41357415c186dcdc2b927692d72e0df3e9004aad7762b8ea3f40",
+      "gpuModule": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu.py",
+      "observeDigest": "sha256:9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f",
+      "observeModule": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu_restore_observe.py",
+      "python": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/.venv/bin/python3",
+      "pythonPath": null
+    },
+    "observedLoads": {
+      "global_step": {
+        "basis": "logging.jsonl global_step/max_steps",
+        "detail": "11/12",
+        "status": "verified"
+      },
+      "optimizer": {
+        "after": {
+          "keyCount": 2,
+          "stateDigest": "sha256:999d0afb334acb0fbc819868993af143fd88669b187b52b08580ef889c4baf7f"
+        },
+        "basis": "trainer-load-hook",
+        "detail": "/work/output/checkpoint-10/optimizer.pt",
+        "sourceDigest": "sha256:3adef7fad4e00c56f3b1629aa40cce4e144eae4e22de563e2744e22252ba8198",
+        "status": "verified"
+      },
+      "rng": {
+        "after": {
+          "pythonStateDigest": "sha256:a52169fac48aa2d80acadd41f776ce38656ab70adc3b32c80c1fb1f0ee56b71f"
+        },
+        "basis": "trainer-load-hook",
+        "detail": "/work/output/checkpoint-10/rng_state.pth",
+        "sourceDigest": "sha256:8c61358bd25924386f2d9ccbf10d1c45b547c5fa75162b2335aa4aebb462e866",
+        "status": "verified"
+      },
+      "scheduler": {
+        "after": {
+          "keyCount": 8,
+          "stateDigest": "sha256:fef581d22f2932d4fc14f716f0fa93296d29641fb6a74e9a5c77fead6088857a"
+        },
+        "basis": "trainer-load-hook",
+        "detail": "/work/output/checkpoint-10/scheduler.pt",
+        "sourceDigest": "sha256:9ed01db2eda3bea5fa922f53902d9e01f11d97c8b2fb1d6e7481e8bc818ee32f",
+        "status": "verified"
+      },
+      "weights": {
+        "basis": "source-adapter-digest vs this-run checkpoint",
+        "detail": "checkpoint-12",
+        "status": "verified"
+      }
+    },
+    "requestedLoads": [
+      "weights",
+      "optimizer",
+      "scheduler",
+      "rng",
+      "global_step"
+    ],
+    "source": "/work/output/checkpoint-10",
+    "sourceDigest": {
+      "adapter": "sha256:3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+      "optimizer": "sha256:3adef7fad4e00c56f3b1629aa40cce4e144eae4e22de563e2744e22252ba8198",
+      "rng": "sha256:8c61358bd25924386f2d9ccbf10d1c45b547c5fa75162b2335aa4aebb462e866",
+      "scheduler": "sha256:9ed01db2eda3bea5fa922f53902d9e01f11d97c8b2fb1d6e7481e8bc818ee32f",
+      "trainerState": "sha256:7bbb1f0068e8754b44f70a62d133f32d1e415207fc641959cdb25dc9b3ce3b01"
+    },
+    "status": "verified",
+    "thisRunCheckpoints": [
+      "checkpoint-12"
+    ],
+    "toStep": 12
+  },
+  "resumeEvidence": {
+    "globalStep": 12,
+    "kind": "checkpoint-state-files",
+    "optimizer": {
+      "name": "optimizer.pt",
+      "present": true
+    },
+    "rng": {
+      "name": "rng_state.pth",
+      "present": true
+    },
+    "scheduler": {
+      "name": "scheduler.pt",
+      "present": true
+    },
+    "trainerState": {
+      "name": "trainer_state.json",
+      "present": true
+    }
+  },
+  "status": "ok"
+}

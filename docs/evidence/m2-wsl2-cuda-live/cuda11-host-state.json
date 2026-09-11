@@ -1,0 +1,14 @@
+{
+  "kind": "WslCuda11HostState",
+  "outputRoot": "/root/researchos/gpu/output-resume-12b",
+  "outputMode": "0o755",
+  "checkpoints": [
+    "checkpoint-10",
+    "checkpoint-12"
+  ],
+  "frozenStillNobody": true,
+  "frozenAdapter": "sha256:3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+  "copyAdapter10": "sha256:3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+  "newAdapter12": "sha256:7adaf622e061ed83a8e8db158609083029f1d8ecfba8d92565ded112967985cc",
+  "observe": "sha256:c1fcc3f980219e3bf95c03f5d8071be29ef8799c652189f6b0a33dd58941856e"
+}

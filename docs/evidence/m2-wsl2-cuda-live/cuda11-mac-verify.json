@@ -1,0 +1,28 @@
+{
+  "kind": "WslCuda11MacVerify",
+  "recordedAt": "2026-09-11T16:06:10Z",
+  "cas": "/Users/zhongxudong/researchos-control-wsl2/cas",
+  "verified": [
+    {
+      "digest": "sha256:ab90b95280727d8452e70c737ad99c786cb40de582ecee924080e58cfb3da0b3",
+      "what": "WslCudaTrainingReport (work.completed)"
+    },
+    {
+      "digest": "sha256:c1fcc3f980219e3bf95c03f5d8071be29ef8799c652189f6b0a33dd58941856e",
+      "what": "researchos-restore-observe.jsonl"
+    },
+    {
+      "digest": "sha256:7adaf622e061ed83a8e8db158609083029f1d8ecfba8d92565ded112967985cc",
+      "what": "checkpoint-12 adapter_model.safetensors"
+    },
+    {
+      "digest": "sha256:e9aa038746e5dedbc5572e78b4c6dcc1ffc1d9af71f269771eea70e1bbdd5273",
+      "what": "checkpoint-12 trainer_state.json"
+    },
+    {
+      "digest": "sha256:3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+      "what": "frozen checkpoint-10 adapter (unchanged)"
+    }
+  ],
+  "command": "researchos artifacts verify ~/researchos-control-wsl2/cas <digest>"
+}

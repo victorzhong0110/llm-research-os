@@ -1,0 +1,9 @@
+{
+  "gpuDigest": "sha256:5749a8f7cabe41357415c186dcdc2b927692d72e0df3e9004aad7762b8ea3f40",
+  "gpuModule": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu.py",
+  "kind": "GpuCodeIdentity",
+  "observeDigest": "sha256:9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f",
+  "observeModule": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu_restore_observe.py",
+  "python": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/.venv/bin/python3",
+  "pythonPath": null
+}

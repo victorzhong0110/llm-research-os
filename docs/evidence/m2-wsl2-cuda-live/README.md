@@ -12,7 +12,7 @@ Not native Linux, not cloud GPU.
 
 | Item | Evidence |
 | --- | --- |
-| EventStore 153 events; cuda.7 `run.completed` unchanged | [eventstore-redacted.json](eventstore-redacted.json) (seq 1–118 freeze) + [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json) + [eventstore-redacted-cuda10.json](eventstore-redacted-cuda10.json) |
+| EventStore 166 events; cuda.7 `run.completed` unchanged | [eventstore-redacted.json](eventstore-redacted.json) (seq 1–118 freeze) + [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json) + [eventstore-redacted-cuda10.json](eventstore-redacted-cuda10.json) + [eventstore-redacted-cuda11.json](eventstore-redacted-cuda11.json) |
 | CPU OCI two-host `grant.wsl.oci.1` completed seq 12–14 | seq 1–118 excerpt |
 | Reconnect `grant.wsl.reconnect.1` completed seq 41–43 | same |
 | Cancel `grant.wsl.cancel.1` `cancel-observed` seq 48–50 | same |
@@ -22,6 +22,7 @@ Not native Linux, not cloud GPU.
 | `POST /v0alpha1/artifacts` of adapter + restore state (22 files, 106 422 278 bytes) | [upload-cuda7.json](upload-cuda7.json), [collect-cuda7.receipt.json](collect-cuda7.receipt.json) |
 | Control-plane retrieve of those bytes | [retrieve-proof.json](retrieve-proof.json) |
 | Authorized restore checkpoint-10 → 20 | `grant.wsl.cuda.9` seq 140–142; historical [cuda9-WslCudaTrainingReport.json](cuda9-WslCudaTrainingReport.json); honest reading [cuda9-report-correction.md](cuda9-report-correction.md) |
+| Authorized restore checkpoint-10 → 12 with Trainer load hooks | `grant.wsl.cuda.11` seq 164–166; [cuda11-success.md](cuda11-success.md); report [cuda11-WslCudaTrainingReport.json](cuda11-WslCudaTrainingReport.json); Mac [cuda11-mac-verify.json](cuda11-mac-verify.json) |
 | cuda.9 leftover vs this-run checkpoint-20 | [cuda9-host-observation-supplement.json](cuda9-host-observation-supplement.json): checkpoint-20 mtime is new; adapter SHA matches cuda.7 frozen checkpoint-20 (deterministic) |
 | `requestedLoads` ≠ `observedLoads`; leftovers do not count | `tests/test_worker_gpu.py`; [cuda9-report-correction.md](cuda9-report-correction.md) |
 | Report file-presence ≠ restore; single checkpoint ≠ `parametersUpdated` | `tests/test_worker_gpu.py` |
@@ -59,6 +60,10 @@ started).
 cuda.10 used a **new** independent venv of `6e60115` and did `workers
 run`. It failed before Trainer load. [cuda10-failure.md](cuda10-failure.md).
 
+cuda.11 used a **new** independent venv of `b7d960c` (not a symlink),
+`PYTHONPATH` unset, probe `python3`, output `output-resume-12b`.
+[cuda11-success.md](cuda11-success.md).
+
 ## cuda.9 restore semantics
 
 Keep the CAS JSON. Read [cuda9-report-correction.md](cuda9-report-correction.md).
@@ -79,12 +84,12 @@ pre-copied leftover. No `grant.wsl.cuda.10`.
 | --- | --- |
 | `unknown ≠ rerun` two-host live | not a dedicated live shot; see tests. cuda.8 was **failed**, not rerun |
 | M2 charter §14.4 paid cloud | N/A (¥0); not a missing live shot |
-| optimizer/scheduler/rng actually loaded on cuda.9 | unverified; no framework load log |
+| optimizer/scheduler/rng actually loaded on cuda.9 | unverified; no framework load log. cuda.11 verified those three via Trainer load-hook JSONL |
 | cuda.10 10→12 Trainer-load observation | **failed** seq 153; `PermissionError` `/work/output/args.json`; not retried. [cuda10-failure.md](cuda10-failure.md) |
 | Independent venv as cuda.7/9 runtime | never; those grants used overlay / shared venv. [independent-venv.json](independent-venv.json) is a later archive install only |
 | Worker GET of checkpoint blobs | denied by design (`http-artifact-denied`); retrieve is `artifacts verify` |
 
-Do not reuse `grant.wsl.cuda.1`–`.10`. Do not merge PR #73 as M2 close.
+Do not reuse `grant.wsl.cuda.1`–`.11`. Do not merge PR #73 as M2 close.
 Do not close Issue #38.
 
 ## Reproduce (no GPU)
