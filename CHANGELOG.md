@@ -21,7 +21,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   writes, renames, and deletes only `.researchos-perm-probe` files and
   reads `checkpoint-*` without touching `args.json`. Failure is
   `gpu-output-unwritable` / `gpu-checkpoint-unreadable` and does not
-  claim. Training stays non-root and does not use mode `0777`.
+  claim. Training stays non-root and does not use mode `0777`. The
+  probe interpreter is `python3` so the CUDA image (no `python`) and
+  the Linux OCI brick image both run it.
 - GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
   `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
   a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU

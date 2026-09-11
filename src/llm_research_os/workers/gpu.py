@@ -849,7 +849,7 @@ def gpu_output_probe_argv(
         "--mount",
         f"type=bind,src={output_dir},dst={GPU_OUTPUT_MOUNT}",
         "--entrypoint",
-        "python",
+        "python3",
         image_digest,
         "-I",
         "-c",
@@ -890,14 +890,16 @@ def probe_gpu_output_permissions(
             code="gpu-output-unwritable",
         ) from exc
     stdout = completed.stdout.decode("utf-8", errors="replace")
+    stderr = " ".join(completed.stderr.decode("utf-8", errors="replace").split())[:200]
     if completed.returncode == 3:
         raise WorkerSandboxError(
             "GPU source checkpoint is not readable by the container user",
             code="gpu-checkpoint-unreadable",
         )
     if completed.returncode != 0 or GPU_OUTPUT_PROBE_MARKER not in stdout:
+        suffix = f": {stderr}" if stderr else ""
         raise WorkerSandboxError(
-            "GPU output is not writable by the container user",
+            "GPU output is not writable by the container user" + suffix,
             code="gpu-output-unwritable",
         )
     leftover = output_dir / GPU_OUTPUT_PROBE_DIRNAME

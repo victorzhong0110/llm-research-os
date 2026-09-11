@@ -899,7 +899,7 @@ def test_gpu_output_probe_argv_matches_training_user_and_readonly(tmp_path: Path
     assert "args.json" not in GPU_OUTPUT_PROBE_SOURCE
     assert GPU_OUTPUT_PROBE_DIRNAME in GPU_OUTPUT_PROBE_SOURCE
     assert GPU_OUTPUT_PROBE_MARKER in GPU_OUTPUT_PROBE_SOURCE
-    assert argv[argv.index("--entrypoint") + 1] == "python"
+    assert argv[argv.index("--entrypoint") + 1] == "python3"
 
 
 def test_probe_gpu_output_permissions_accepts_marker_and_rejects_exits(
