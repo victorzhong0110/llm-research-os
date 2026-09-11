@@ -131,7 +131,7 @@ def _generate_host_cert(cert_path: Path, key_path: Path, host: str) -> None:
             "-out",
             str(cert_path),
             "-days",
-            "1",
+            "14",
             "-nodes",
             "-subj",
             f"/CN={host[:64]}",

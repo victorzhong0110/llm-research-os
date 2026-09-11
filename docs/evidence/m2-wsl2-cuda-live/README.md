@@ -12,7 +12,7 @@ Not native Linux, not cloud GPU.
 
 | Item | Evidence |
 | --- | --- |
-| EventStore 142 events; cuda.7 `run.completed` unchanged | [eventstore-redacted.json](eventstore-redacted.json) (seq 1–118 freeze) + [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json) |
+| EventStore 153 events; cuda.7 `run.completed` unchanged | [eventstore-redacted.json](eventstore-redacted.json) (seq 1–118 freeze) + [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json) + [eventstore-redacted-cuda10.json](eventstore-redacted-cuda10.json) |
 | CPU OCI two-host `grant.wsl.oci.1` completed seq 12–14 | seq 1–118 excerpt |
 | Reconnect `grant.wsl.reconnect.1` completed seq 41–43 | same |
 | Cancel `grant.wsl.cancel.1` `cancel-observed` seq 48–50 | same |
@@ -56,6 +56,9 @@ and is not a new grant. Receipt:
 own `.venv`; `gpu.py` SHA-256 `8a69aed235…29ba`; `workers run` not
 started).
 
+cuda.10 used a **new** independent venv of `6e60115` and did `workers
+run`. It failed before Trainer load. [cuda10-failure.md](cuda10-failure.md).
+
 ## cuda.9 restore semantics
 
 Keep the CAS JSON. Read [cuda9-report-correction.md](cuda9-report-correction.md).
@@ -77,10 +80,11 @@ pre-copied leftover. No `grant.wsl.cuda.10`.
 | `unknown ≠ rerun` two-host live | not a dedicated live shot; see tests. cuda.8 was **failed**, not rerun |
 | M2 charter §14.4 paid cloud | N/A (¥0); not a missing live shot |
 | optimizer/scheduler/rng actually loaded on cuda.9 | unverified; no framework load log |
+| cuda.10 10→12 Trainer-load observation | **failed** seq 153; `PermissionError` `/work/output/args.json`; not retried. [cuda10-failure.md](cuda10-failure.md) |
 | Independent venv as cuda.7/9 runtime | never; those grants used overlay / shared venv. [independent-venv.json](independent-venv.json) is a later archive install only |
 | Worker GET of checkpoint blobs | denied by design (`http-artifact-denied`); retrieve is `artifacts verify` |
 
-Do not reuse `grant.wsl.cuda.1`–`.9`. Do not merge PR #73 as M2 close.
+Do not reuse `grant.wsl.cuda.1`–`.10`. Do not merge PR #73 as M2 close.
 Do not close Issue #38.
 
 ## Reproduce (no GPU)

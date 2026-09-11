@@ -11,8 +11,6 @@
 | `grant.wsl.cuda.7` | completed seq 116–118 | 20-step LoRA; report `sha256:9da93e29…ea76` |
 | `grant.wsl.cuda.8` | failed seq 129 | `gpu-mount-forbidden` — shared `.venv` imported e47279d `gpu.py`; `resume`/`checkpoint` treated as unknown keys. Grant consumed; **not rerun** |
 | `grant.wsl.cuda.9` | completed seq 140–142 | full-checkpoint overlay from `/work/output/checkpoint-10`; report `sha256:b1c3527d…ab0c` (historical `restore.status=verified`; honest reading is **partial**, see [cuda9-report-correction.md](cuda9-report-correction.md)) |
+| `grant.wsl.cuda.10` | failed seq 153 | new task `task.gpu.restore12`; 10→12 overlay; independent venv of `6e60115`; container exit 1 writing `/work/output/args.json` (root `775`). No observe JSONL. **Not retried.** See [cuda10-failure.md](cuda10-failure.md) |
 
-Do not reuse 1–9. Do not issue `grant.wsl.cuda.10` for leftover-checkpoint
-ambiguity: host mtimes show checkpoint-20 was written in the resume
-logging window. A later grant would only be for framework load-log
-observation, which this pack does not authorize.
+Do not reuse 1–10.

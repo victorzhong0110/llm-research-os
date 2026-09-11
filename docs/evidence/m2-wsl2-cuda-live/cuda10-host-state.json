@@ -1,0 +1,78 @@
+{
+  "checkpoints": [
+    "checkpoint-10"
+  ],
+  "containerId": "3b9e226bde7e",
+  "files": [
+    {
+      "mode": "0o644",
+      "path": ".researchos/gpu_restore_observe.py",
+      "size": 8138
+    },
+    {
+      "mode": "0o644",
+      "path": ".researchos/sitecustomize.py",
+      "size": 58
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/README.md",
+      "size": 5176
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/adapter_config.json",
+      "size": 1087
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/adapter_model.safetensors",
+      "size": 17640136
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/additional_config.json",
+      "size": 67
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/args.json",
+      "size": 39076
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/optimizer.pt",
+      "size": 35474963
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/rng_state.pth",
+      "size": 14645
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/scheduler.pt",
+      "size": 1401
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/trainer_state.json",
+      "size": 2717
+    },
+    {
+      "mode": "0o666",
+      "path": "checkpoint-10/training_args.bin",
+      "size": 6673
+    },
+    {
+      "mode": "0o664",
+      "path": "researchos-code-identity.json",
+      "size": 583
+    }
+  ],
+  "grantId": "grant.wsl.cuda.10",
+  "kind": "WslCuda10FailureHostState",
+  "loggingJsonl": false,
+  "observeJsonl": false,
+  "outputDir": "/root/researchos/gpu/output-resume-12"
+}

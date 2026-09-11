@@ -1,0 +1,20 @@
+{
+  "gpuModuleFile": "/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794/src/llm_research_os/workers/gpu.py",
+  "gpuModuleSha256": "sha256:3bd87a7c7719dc8831c8f3d6294ade651baaf8fffcdc40fd54835fa856136d21",
+  "installRoot": "/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794",
+  "kind": "WslCuda10PreflightIdentity",
+  "laterCheckpointsBeforeStart": [
+    "checkpoint-10"
+  ],
+  "observeModuleFile": "/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794/src/llm_research_os/workers/gpu_restore_observe.py",
+  "observeModuleSha256": "sha256:9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f",
+  "outputDir": "/root/researchos/gpu/output-resume-12",
+  "python": "/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794/.venv/bin/python",
+  "pythonVersion": "3.12.14",
+  "pythonpath": null,
+  "sharedVenvStillAt": "/root/researchos/src-e47279da27289094683259b1a9639b7ccea70dee/.venv",
+  "sourceCommit": "6e601150dd7fff8d654fbed9954b55353915a794",
+  "venv": "/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794/.venv",
+  "venvIsSymlink": false,
+  "workersRun": false
+}

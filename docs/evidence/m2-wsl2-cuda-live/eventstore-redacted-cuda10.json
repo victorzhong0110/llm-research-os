@@ -1,0 +1,28 @@
+{
+  "kind": "ResearchOSEventStoreExcerpt",
+  "recordedAt": "2026-09-11T15:24:00Z",
+  "database": "/Users/zhongxudong/researchos-control-wsl2/research.db",
+  "priorMaxSequence": 142,
+  "maxSequence": 153,
+  "note": "Append-only after the 142-event freeze. cuda.7 seq 116 and cuda.9 seq 140 are unchanged.",
+  "cuda10Failed": {
+    "sequence": 153,
+    "id": "evt.work.failed.lease.grant.wsl.cuda.10",
+    "reasonCode": "worker.brick.failed",
+    "container": "3b9e226bde7e",
+    "hostError": "PermissionError: /work/output/args.json"
+  },
+  "events": [
+    {"sequence": 143, "id": "evt.authorization.example-minimal.wsl.cuda.10", "type": "plan.authorization.evaluated"},
+    {"sequence": 144, "id": "evt.grant.recorded.grant.wsl.cuda.10", "type": "authorization.grant.recorded"},
+    {"sequence": 145, "id": "evt.run.queued.wsl.cuda.10", "type": "run.queued"},
+    {"sequence": 146, "id": "evt.run.started.wsl.cuda.10", "type": "run.started"},
+    {"sequence": 147, "id": "evt.attempt.queued.wsl.cuda.10", "type": "attempt.queued"},
+    {"sequence": 148, "id": "evt.attempt.started.wsl.cuda.10", "type": "attempt.started"},
+    {"sequence": 149, "id": "evt.work.queued.task.gpu.restore12.wsl.10", "type": "work.queued"},
+    {"sequence": 150, "id": "evt.work.leased.lease.grant.wsl.cuda.10", "type": "work.leased"},
+    {"sequence": 151, "id": "evt.work.claimed.lease.grant.wsl.cuda.10", "type": "work.claimed"},
+    {"sequence": 152, "id": "evt.grant.consumed.grant.wsl.cuda.10", "type": "authorization.grant.consumed"},
+    {"sequence": 153, "id": "evt.work.failed.lease.grant.wsl.cuda.10", "type": "work.failed"}
+  ]
+}

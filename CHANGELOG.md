@@ -10,6 +10,9 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ### Fixed
 
+- Loopback Worker TLS material is minted for 14 days. A 1-day cert
+  expired on the live control plane (notAfter 2026-09-10) and made
+  `workers run` report `http-disconnect` before claim.
 - GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
   `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
   a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU

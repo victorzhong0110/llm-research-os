@@ -36,6 +36,9 @@ argv + `fromStep < toStep` as a full restore.
 | Leftover checkpoint-20 | **not leftover** | mtime of resume `checkpoint-20` is new vs freeze-copied `checkpoint-10`; identical adapter SHA vs cuda.7 frozen checkpoint-20 is deterministic resume, not a pre-copied product |
 | Code identity | overlay + `PYTHONPATH` | [code-identity.md](code-identity.md); not HEAD |
 
-No `grant.wsl.cuda.10`. The leftover-vs-this-run question is settled by
-existing host mtimes and logging markers. Optimizer/scheduler/rng stay
-unverified unless a later authorized run emits framework load logs.
+No restore loads were observed on this document's cuda.9 runtime.
+`grant.wsl.cuda.10` was later issued for Trainer-load observation and
+**failed** before those loads ([cuda10-failure.md](cuda10-failure.md)).
+The leftover-vs-this-run question for cuda.9 is settled by existing host
+mtimes and logging markers. Optimizer/scheduler/rng on cuda.9 stay
+unverified.

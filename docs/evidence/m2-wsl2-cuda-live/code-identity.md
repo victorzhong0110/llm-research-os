@@ -47,6 +47,22 @@ the 374f5c6 `gpu.py` overlay, but `workers run` used the **shared
 
 Receipt: [independent-venv.json](independent-venv.json). This is not cuda.7, cuda.8, or cuda.9.
 
+## cuda.10 (failed seq 153)
+
+| Layer | Identity |
+| --- | --- |
+| Source commit | `6e601150dd7fff8d654fbed9954b55353915a794` |
+| WSL tree | `/root/researchos/src-6e601150dd7fff8d654fbed9954b55353915a794` |
+| Venv | that tree’s `.venv` (not a symlink; not the e47279d env) |
+| `gpu.py` | SHA-256 `3bd87a7c7719dc8831c8f3d6294ade651baaf8fffcdc40fd54835fa856136d21` |
+| observe module | SHA-256 `9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f` |
+| PYTHONPATH | unset |
+| `workers run` | yes; grant consumed-failed |
+
+[cuda10-preflight.json](cuda10-preflight.json),
+[cuda10-code-identity.json](cuda10-code-identity.json),
+[cuda10-failure.md](cuda10-failure.md).
+
 ## This evidence pack
 
 Report semantics, GPU resume overlay, lease env reader, leftover
