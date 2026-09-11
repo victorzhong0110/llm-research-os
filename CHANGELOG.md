@@ -13,6 +13,15 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 - Loopback Worker TLS material is minted for 14 days. A 1-day cert
   expired on the live control plane (notAfter 2026-09-10) and made
   `workers run` report `http-disconnect` before claim.
+- GPU output prepare grants UID/GID `65534:65534` ownership or a
+  controlled ACL on the dedicated output root, `tmp`, and `.researchos`.
+  Mode `775` alone is not a write grant. The Worker then runs a short
+  file-ops probe in the pinned image (`--user 65534:65534`, `--read-only`,
+  same data/model/output mounts) before `work/poll`. The probe creates,
+  writes, renames, and deletes only `.researchos-perm-probe` files and
+  reads `checkpoint-*` without touching `args.json`. Failure is
+  `gpu-output-unwritable` / `gpu-checkpoint-unreadable` and does not
+  claim. Training stays non-root and does not use mode `0777`.
 - GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
   `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
   a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU

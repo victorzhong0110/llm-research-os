@@ -64,6 +64,7 @@ from llm_research_os.workers.tokens import (
     _sign,
     issue_grant_token,
     issue_worker_session,
+    peek_grant_token_image_digest,
     verify_grant_token,
     verify_worker_session,
 )
@@ -136,6 +137,23 @@ def test_hmac_token_claim_and_encoding_edges() -> None:
     with pytest.raises(WorkerGrantError) as captured:
         verify_grant_token(HMAC_KEY, bad, now=NOW)
     assert captured.value.code in {"grant-hmac-mismatch", "grant-token-invalid"}
+
+
+def test_peek_grant_token_image_digest_does_not_need_hmac() -> None:
+    payload = json.dumps(_claims(), ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    encoded = base64.urlsafe_b64encode(payload.encode("utf-8")).rstrip(b"=").decode("ascii")
+    unsigned = f"{GRANT_TOKEN_VERSION}.{encoded}.deadbeef"
+    assert peek_grant_token_image_digest(unsigned) == TOKEN_IMAGE
+    with pytest.raises(WorkerGrantError) as captured:
+        peek_grant_token_image_digest("rg1.not-json.deadbeef")
+    assert captured.value.code == "grant-token-invalid"
+    missing = dict(_claims())
+    missing["imageDigest"] = "not-a-digest"
+    bad_payload = json.dumps(missing, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    bad_encoded = base64.urlsafe_b64encode(bad_payload.encode("utf-8")).rstrip(b"=").decode("ascii")
+    with pytest.raises(WorkerGrantError) as captured:
+        peek_grant_token_image_digest(f"{GRANT_TOKEN_VERSION}.{bad_encoded}.deadbeef")
+    assert captured.value.code == "grant-token-invalid"
 
 
 def test_plane_unknown_revoke_revoked_issue_and_empty_poll(tmp_path: Path) -> None:

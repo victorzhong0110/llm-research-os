@@ -998,3 +998,109 @@ def _build_local_python_image(backend: OciBackend, tmp_path: Path) -> str:
     image_id = document["Id"]
     assert type(image_id) is str
     return image_id
+
+
+def _sudo_chown(path: Path, spec: str) -> bool:
+    completed = subprocess.run(
+        ["sudo", "-n", "chown", spec, str(path)],
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    return completed.returncode == 0
+
+
+def _sudo_chmod(path: Path, mode: str) -> bool:
+    completed = subprocess.run(
+        ["sudo", "-n", "chmod", mode, str(path)],
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    return completed.returncode == 0
+
+
+@pytest.mark.oci_live
+def test_live_gpu_output_probe_after_root_owned_prepare(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import (
+        GPU_OUTPUT_PROBE_DIRNAME,
+        _prepare_gpu_output_root,
+        probe_gpu_output_permissions,
+    )
+
+    backend = _require_oci_backend()
+    image = _build_local_python_image(backend, tmp_path)
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    checkpoint = output / "checkpoint-10"
+    checkpoint.mkdir()
+    (checkpoint / "trainer_state.json").write_text('{"epoch": 0}\n', encoding="utf-8")
+    leftover = output / "args.json"
+    leftover.write_text('{"keep": true}\n', encoding="utf-8")
+    rooted = _sudo_chown(output, "root:root") and _sudo_chmod(output, "0700")
+    if not rooted:
+        output.chmod(0o700)
+    try:
+        _prepare_gpu_output_root(output)
+    except WorkerSandboxError as exc:
+        assert exc.code == "gpu-output-unwritable"
+        return
+    probe_gpu_output_permissions(
+        backend=backend,
+        image_digest=image,
+        data_dir=data,
+        model_dir=model,
+        output_dir=output,
+    )
+    try:
+        assert leftover.read_text(encoding="utf-8") == '{"keep": true}\n'
+        assert not (output / GPU_OUTPUT_PROBE_DIRNAME).exists()
+    except OSError:
+        listed = subprocess.run(
+            ["sudo", "-n", "ls", "-1", str(output)],
+            check=False,
+            capture_output=True,
+            timeout=5,
+        )
+        names = listed.stdout.decode("utf-8", errors="replace").splitlines()
+        assert GPU_OUTPUT_PROBE_DIRNAME not in names
+        content = subprocess.run(
+            ["sudo", "-n", "cat", str(leftover)],
+            check=False,
+            capture_output=True,
+            timeout=5,
+        )
+        assert content.stdout.decode("utf-8") == '{"keep": true}\n'
+
+
+@pytest.mark.oci_live
+def test_live_gpu_output_probe_rejects_unwritable_root(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import probe_gpu_output_permissions
+
+    backend = _require_oci_backend()
+    image = _build_local_python_image(backend, tmp_path)
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    checkpoint = output / "checkpoint-10"
+    checkpoint.mkdir()
+    (checkpoint / "trainer_state.json").write_text("{}\n", encoding="utf-8")
+    rooted = _sudo_chown(output, "root:root") and _sudo_chmod(output, "0700")
+    if not rooted:
+        output.chmod(0o700)
+    with pytest.raises(WorkerSandboxError) as captured:
+        probe_gpu_output_permissions(
+            backend=backend,
+            image_digest=image,
+            data_dir=data,
+            model_dir=model,
+            output_dir=output,
+        )
+    assert captured.value.code in {"gpu-output-unwritable", "gpu-checkpoint-unreadable"}

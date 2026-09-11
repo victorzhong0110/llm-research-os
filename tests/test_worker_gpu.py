@@ -36,8 +36,12 @@ from llm_research_os.workers.gpu import (
     GPU_CONTAINER_USER,
     GPU_DEVICE,
     GPU_OUTPUT_MOUNT,
+    GPU_OUTPUT_PROBE_DIRNAME,
+    GPU_OUTPUT_PROBE_MARKER,
+    GPU_OUTPUT_PROBE_SOURCE,
     execute_gpu_training,
     gpu_docker_argv,
+    gpu_output_probe_argv,
     parse_gpu_launch_policy,
     prepare_gpu_launch,
 )
@@ -800,9 +804,15 @@ def test_gpu_docker_argv_records_cidfile(tmp_path: Path) -> None:
     assert argv.count("--tmpfs") == 1
 
 
-def test_prepare_gpu_output_installs_restore_observe(tmp_path: Path) -> None:
+def test_prepare_gpu_output_installs_restore_observe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from llm_research_os.workers.gpu import _prepare_gpu_output_root
 
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu._grant_container_user_write",
+        lambda path, uid, gid: True,
+    )
     output = tmp_path / "output"
     output.mkdir()
     _prepare_gpu_output_root(output)
@@ -814,6 +824,266 @@ def test_prepare_gpu_output_installs_restore_observe(tmp_path: Path) -> None:
     assert identity["kind"] == "GpuCodeIdentity"
     assert identity["observeDigest"].startswith("sha256:")
     assert identity["gpuDigest"].startswith("sha256:")
+
+
+def test_prepare_gpu_output_grants_dedicated_paths_not_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.workers.gpu import _gpu_output_owned_paths, _prepare_gpu_output_root
+
+    granted: list[Path] = []
+
+    def _grant(path: Path, uid: int, gid: int) -> bool:
+        granted.append(Path(path))
+        assert uid == 65534
+        assert gid == 65534
+        return True
+
+    monkeypatch.setattr("llm_research_os.workers.gpu._grant_container_user_write", _grant)
+    output = tmp_path / "output"
+    output.mkdir()
+    checkpoint = output / "checkpoint-10"
+    checkpoint.mkdir()
+    (checkpoint / "trainer_state.json").write_text("{}", encoding="utf-8")
+    leftover = output / "args.json"
+    leftover.write_text('{"keep":true}\n', encoding="utf-8")
+    _prepare_gpu_output_root(output)
+    assert leftover.read_text(encoding="utf-8") == '{"keep":true}\n'
+    assert checkpoint not in granted
+    assert checkpoint / "trainer_state.json" not in granted
+    owned = set(_gpu_output_owned_paths(output))
+    assert output in owned
+    assert output / "tmp" in owned
+    assert output / ".researchos" in owned
+    assert checkpoint not in owned
+    for path in granted:
+        assert path in owned
+
+
+def test_prepare_gpu_output_rejects_when_container_user_cannot_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.workers.gpu import _prepare_gpu_output_root
+
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu._grant_container_user_write",
+        lambda path, uid, gid: False,
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+    with pytest.raises(WorkerSandboxError) as captured:
+        _prepare_gpu_output_root(output)
+    assert captured.value.code == "gpu-output-unwritable"
+
+
+def test_gpu_output_probe_argv_matches_training_user_and_readonly(tmp_path: Path) -> None:
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    argv = gpu_output_probe_argv(
+        "docker",
+        image_digest=GPU_IMAGE,
+        data_dir=data,
+        model_dir=model,
+        output_dir=output,
+    )
+    joined = " ".join(argv)
+    assert argv[argv.index("--user") + 1] == GPU_CONTAINER_USER
+    assert "--read-only" in argv
+    assert "--gpus" not in argv
+    assert "0:0" not in argv
+    assert "0777" not in joined
+    assert "args.json" not in GPU_OUTPUT_PROBE_SOURCE
+    assert GPU_OUTPUT_PROBE_DIRNAME in GPU_OUTPUT_PROBE_SOURCE
+    assert GPU_OUTPUT_PROBE_MARKER in GPU_OUTPUT_PROBE_SOURCE
+    assert argv[argv.index("--entrypoint") + 1] == "python"
+
+
+def test_probe_gpu_output_permissions_accepts_marker_and_rejects_exits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    from llm_research_os.workers.gpu import probe_gpu_output_permissions
+
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    backend = SimpleNamespace(executable="docker")
+
+    def _completed(code: int, stdout: bytes) -> object:
+        return SimpleNamespace(returncode=code, stdout=stdout, stderr=b"")
+
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu.subprocess.run",
+        lambda *args, **kwargs: _completed(0, b"gpu-output-probe-ok\n"),
+    )
+    probe_gpu_output_permissions(
+        backend=backend,
+        image_digest=GPU_IMAGE,
+        data_dir=data,
+        model_dir=model,
+        output_dir=output,
+    )
+
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu.subprocess.run",
+        lambda *args, **kwargs: _completed(3, b""),
+    )
+    with pytest.raises(WorkerSandboxError) as captured:
+        probe_gpu_output_permissions(
+            backend=backend,
+            image_digest=GPU_IMAGE,
+            data_dir=data,
+            model_dir=model,
+            output_dir=output,
+        )
+    assert captured.value.code == "gpu-checkpoint-unreadable"
+
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu.subprocess.run",
+        lambda *args, **kwargs: _completed(2, b""),
+    )
+    with pytest.raises(WorkerSandboxError) as captured:
+        probe_gpu_output_permissions(
+            backend=backend,
+            image_digest=GPU_IMAGE,
+            data_dir=data,
+            model_dir=model,
+            output_dir=output,
+        )
+    assert captured.value.code == "gpu-output-unwritable"
+
+
+def test_grant_container_user_write_prefers_chown_when_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.workers.gpu import _clear_world_write, _grant_container_user_write
+
+    seen: list[tuple[Path, int, int]] = []
+    monkeypatch.setattr("llm_research_os.workers.gpu.os.geteuid", lambda: 0)
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu.os.chown",
+        lambda path, uid, gid: seen.append((Path(path), uid, gid)),
+    )
+    path = tmp_path / "output"
+    path.mkdir()
+    assert _grant_container_user_write(path, 65534, 65534) is True
+    assert seen == [(path, 65534, 65534)]
+    path.chmod(0o777)
+    _clear_world_write(path)
+    assert path.stat().st_mode & 0o002 == 0
+
+
+def test_gpu_preflight_runs_before_poll(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from llm_research_os.workers.client import WorkerClient
+    from llm_research_os.workers.tokens import issue_grant_token
+
+    order: list[str] = []
+    monkeypatch.setattr(
+        "llm_research_os.workers.gpu.preflight_gpu_output_before_claim",
+        lambda **kwargs: order.append("preflight"),
+    )
+    monkeypatch.setattr(
+        WorkerClient,
+        "poll",
+        lambda self: order.append("poll") or None,
+    )
+    token = issue_grant_token(
+        HMAC_KEY,
+        grant_id="grant.wsl.cuda.11",
+        grant_event_id="evt.grant.recorded.cuda.11",
+        worker_id="worker.wsl.gpu.1",
+        task_id="task.gpu.restore12b",
+        attempt_id="attempt.wsl.cuda.11",
+        run_id="run.wsl.cuda.11",
+        nonce="nonce.cuda.11",
+        expires_at="2099-01-01T00:00:00Z",
+        project_id=PROJECT,
+        image_digest=GPU_IMAGE,
+        config_digest="sha256:" + ("1" * 64),
+    )
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    client = WorkerClient(
+        base_url="http://127.0.0.1:1",
+        worker_id="worker.wsl.gpu.1",
+        session="session.cuda.11",
+        grant_token=token,
+        gpu_data_dir=data,
+        gpu_model_dir=model,
+        gpu_output_dir=output,
+    )
+    artifacts_root = tmp_path / "cas"
+    artifacts_root.mkdir()
+    artifacts = LocalArtifactStore(artifacts_root)
+    assert client.run_once(artifacts) is None
+    assert order == ["preflight", "poll"]
+
+
+def test_gpu_preflight_failure_does_not_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.workers.client import WorkerClient
+    from llm_research_os.workers.tokens import issue_grant_token
+
+    polled = False
+
+    def _boom(**kwargs: object) -> None:
+        raise WorkerSandboxError("unwritable", code="gpu-output-unwritable")
+
+    def _poll(self: object) -> dict[str, str]:
+        nonlocal polled
+        polled = True
+        return {"leaseId": "lease.should-not-issue"}
+
+    monkeypatch.setattr("llm_research_os.workers.gpu.preflight_gpu_output_before_claim", _boom)
+    monkeypatch.setattr(WorkerClient, "poll", _poll)
+    token = issue_grant_token(
+        HMAC_KEY,
+        grant_id="grant.wsl.cuda.11",
+        grant_event_id="evt.grant.recorded.cuda.11",
+        worker_id="worker.wsl.gpu.1",
+        task_id="task.gpu.restore12b",
+        attempt_id="attempt.wsl.cuda.11",
+        run_id="run.wsl.cuda.11",
+        nonce="nonce.cuda.11",
+        expires_at="2099-01-01T00:00:00Z",
+        project_id=PROJECT,
+        image_digest=GPU_IMAGE,
+        config_digest="sha256:" + ("1" * 64),
+    )
+    data = tmp_path / "data"
+    model = tmp_path / "model"
+    output = tmp_path / "output"
+    data.mkdir()
+    model.mkdir()
+    output.mkdir()
+    client = WorkerClient(
+        base_url="http://127.0.0.1:1",
+        worker_id="worker.wsl.gpu.1",
+        session="session.cuda.11",
+        grant_token=token,
+        gpu_data_dir=data,
+        gpu_model_dir=model,
+        gpu_output_dir=output,
+    )
+    artifacts_root = tmp_path / "cas"
+    artifacts_root.mkdir()
+    with pytest.raises(WorkerSandboxError) as captured:
+        client.run_once(LocalArtifactStore(artifacts_root))
+    assert captured.value.code == "gpu-output-unwritable"
+    assert polled is False
 
 
 def test_execute_gpu_training_without_host_dirs_is_not_run(tmp_path: Path) -> None:

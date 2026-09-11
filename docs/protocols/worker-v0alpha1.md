@@ -185,7 +185,13 @@ The container command
 MUST be the pinned `ms-swift==4.5.2` plan argv. Extra devices, mounts,
 and `privileged` MUST fail closed. A Worker MUST advertise `cuda`.
 `researchos training bind` and `execute_gpu_training` MUST NOT start a
-container; the receipt is `gpu: not-run`. Persistent `/work/output` files
+container; the receipt is `gpu: not-run`. Before `work/poll` the Worker
+MUST chown or ACL-grant the dedicated `/work/output` root (and `tmp` /
+`.researchos`) to UID/GID 65534 and run a short file-ops probe in the
+pinned image with the same `--user 65534:65534`, `--read-only`, and
+bind mounts. The probe MUST NOT load a model, request a GPU, chmod
+`0777`, or overwrite `args.json`. A host `os.access` or directory mode
+number is not a write proof. Persistent `/work/output` files
 are collected by `researchos training collect` (ADR-0057). Collect
 `--profile wsl2-cuda` (and `--profile mps`) allows 256 MiB; the AutoDL
 `gpu` collect profile stays 1 MiB. Worker HTTPS artifact PUT already

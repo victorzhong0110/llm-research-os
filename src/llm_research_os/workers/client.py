@@ -184,7 +184,23 @@ class WorkerClient:
             )
         return artifacts.put_bytes(payload).digest
 
+    def _preflight_gpu_output(self) -> None:
+        from llm_research_os.workers.gpu import preflight_gpu_output_before_claim
+        from llm_research_os.workers.tokens import peek_grant_token_image_digest
+
+        if self.gpu_data_dir is None or self.gpu_model_dir is None or self.gpu_output_dir is None:
+            raise WorkerError("GPU host dirs are missing", code="gpu-host-dirs-missing")
+        image_digest = peek_grant_token_image_digest(self.grant_token)
+        preflight_gpu_output_before_claim(
+            image_digest=image_digest,
+            data_dir=self.gpu_data_dir,
+            model_dir=self.gpu_model_dir,
+            output_dir=self.gpu_output_dir,
+        )
+
     def run_once(self, artifacts: LocalArtifactStore) -> dict[str, str] | None:
+        if self.gpu_output_dir is not None:
+            self._preflight_gpu_output()
         claimed = self.poll()
         if claimed is None:
             return None

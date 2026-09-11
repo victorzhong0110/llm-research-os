@@ -20,7 +20,7 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 from pydantic import ValidationError
 
@@ -60,6 +60,8 @@ GPU_NETWORK_DENIED: Literal["denied"] = "denied"
 GPU_DEVICE: Literal["nvidia.com/gpu=0"] = "nvidia.com/gpu=0"
 GPU_ACCELERATOR = "cuda"
 GPU_CONTAINER_USER = "65534:65534"
+GPU_CONTAINER_UID = 65534
+GPU_CONTAINER_GID = 65534
 GPU_CONTAINER_HOME = "/tmp"  # noqa: S108  existing tmpfs; passwd HOME is /nonexistent
 GPU_HF_HOME = "/tmp/hf"  # noqa: S108
 GPU_HF_DATASETS_CACHE = "/tmp/hf/datasets"  # noqa: S108
@@ -97,6 +99,59 @@ MAX_WSL_GPU_WALL_SECONDS = 1800
 DEFAULT_WSL_GPU_DISK_BYTES = 8_589_934_592
 MAX_WSL_GPU_DISK_BYTES = 17_179_869_184
 DEFAULT_WSL_GPU_TMPFS_BYTES = 268_435_456
+GPU_OUTPUT_DIR_MODE = 0o755
+GPU_OUTPUT_FILE_MODE = 0o644
+GPU_OUTPUT_PROBE_TIMEOUT_SECONDS = 30
+GPU_OUTPUT_PROBE_DIRNAME = ".researchos-perm-probe"
+GPU_OUTPUT_PROBE_MARKER = "gpu-output-probe-ok"
+GPU_OUTPUT_PROBE_SOURCE = """\
+import pathlib
+
+root = pathlib.Path("/work/output")
+observe = root / ".researchos"
+probe = root / ".researchos-perm-probe"
+payload = b"researchos-probe"
+
+def roundtrip(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    src = directory / ".probe-write"
+    dst = directory / ".probe-renamed"
+    src.write_bytes(payload)
+    if src.read_bytes() != payload:
+        raise SystemExit(2)
+    src.rename(dst)
+    if dst.read_bytes() != payload:
+        raise SystemExit(2)
+    dst.unlink()
+
+try:
+    roundtrip(root)
+    roundtrip(observe)
+    roundtrip(probe)
+    probe.rmdir()
+except OSError:
+    raise SystemExit(2)
+
+for ckpt in sorted(root.glob("checkpoint-*")):
+    if ckpt.is_symlink() or not ckpt.is_dir():
+        continue
+    readable = False
+    for child in ckpt.iterdir():
+        if child.is_file() and not child.is_symlink():
+            try:
+                with child.open("rb") as handle:
+                    handle.read(1)
+                readable = True
+                break
+            except OSError:
+                continue
+    if not readable:
+        raise SystemExit(3)
+
+print("gpu-output-probe-ok")
+"""
+_SETFACL = ("/usr/bin/setfacl", "-m")
+_SUDO = "/usr/bin/sudo"
 _ADAPTER_NAMES = ("adapter_model.safetensors", "adapter_model.bin")
 _OPTIMIZER_NAMES = ("optimizer.pt", "optimizer.bin")
 _SCHEDULER_NAMES = ("scheduler.pt", "scheduler.bin")
@@ -136,6 +191,11 @@ _FORBIDDEN_GPU_KEYS = frozenset(
         "volumes",
     }
 )
+
+
+class _DockerExecutable(Protocol):
+    @property
+    def executable(self) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -545,7 +605,22 @@ def run_gpu_training(
         raise WorkerSandboxError("OCI runtime is not available", code="oci-runtime-missing")
     require_pinned_docker_image(backend, image_digest)
     output_dir.mkdir(parents=True, exist_ok=True)
-    _prepare_gpu_output_root(output_dir)
+    try:
+        _prepare_gpu_output_root(output_dir)
+        probe_gpu_output_permissions(
+            backend=backend,
+            image_digest=image_digest,
+            data_dir=data_dir,
+            model_dir=model_dir,
+            output_dir=output_dir,
+        )
+    except WorkerSandboxError as exc:
+        return SandboxResult(
+            disposition=SandboxDisposition.FAILED,
+            stdout=b"",
+            result_digest=None,
+            reason_code=exc.code,
+        )
     baseline = snapshot_gpu_checkpoints(output_dir)
     cid_root = Path(tempfile.mkdtemp(prefix="researchos-gpu-cid-"))
     cidfile = cid_root / "cid"
@@ -700,30 +775,334 @@ def _authorized_gpu_command(
     return command_argv, digest
 
 
+def gpu_container_uid_gid() -> tuple[int, int]:
+    left, right = GPU_CONTAINER_USER.split(":", 1)
+    uid = int(left)
+    gid = int(right)
+    if uid != GPU_CONTAINER_UID or gid != GPU_CONTAINER_GID:
+        raise WorkerSandboxError(
+            "GPU container user must be 65534:65534",
+            code="gpu-output-unwritable",
+        )
+    return uid, gid
+
+
+def preflight_gpu_output_before_claim(
+    *,
+    image_digest: str,
+    data_dir: Path,
+    model_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Prepare ownership and probe as UID 65534 before poll/claim."""
+
+    from llm_research_os.workers.oci import discover_oci_backend, require_pinned_docker_image
+
+    backend = discover_oci_backend()
+    if backend is None:
+        raise WorkerSandboxError("OCI runtime is not available", code="oci-runtime-missing")
+    require_pinned_docker_image(backend, image_digest)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _prepare_gpu_output_root(output_dir)
+    probe_gpu_output_permissions(
+        backend=backend,
+        image_digest=image_digest,
+        data_dir=data_dir,
+        model_dir=model_dir,
+        output_dir=output_dir,
+    )
+
+
+def gpu_output_probe_argv(
+    executable: str,
+    *,
+    image_digest: str,
+    data_dir: Path,
+    model_dir: Path,
+    output_dir: Path,
+) -> list[str]:
+    """Closed file-ops probe: same user, mounts, and read-only root as training.
+
+    Does not load a model, request a GPU, or touch args.json.
+    """
+
+    return [
+        executable,
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network",
+        "none",
+        "--read-only",
+        "--user",
+        GPU_CONTAINER_USER,
+        "--security-opt",
+        "no-new-privileges",
+        "--tmpfs",
+        "/tmp:rw,nosuid,size=16777216",  # noqa: S108  probe tmpfs; not the training tmpfs
+        "--env",
+        f"HOME={GPU_CONTAINER_HOME}",
+        "--mount",
+        f"type=bind,src={data_dir},dst={GPU_DATA_MOUNT},readonly",
+        "--mount",
+        f"type=bind,src={model_dir},dst={GPU_MODEL_MOUNT},readonly",
+        "--mount",
+        f"type=bind,src={output_dir},dst={GPU_OUTPUT_MOUNT}",
+        "--entrypoint",
+        "python",
+        image_digest,
+        "-I",
+        "-c",
+        GPU_OUTPUT_PROBE_SOURCE,
+    ]
+
+
+def probe_gpu_output_permissions(
+    *,
+    backend: _DockerExecutable,
+    image_digest: str,
+    data_dir: Path,
+    model_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Create/write/rename/unlink probe files as 65534 inside the pinned image."""
+
+    executable = backend.executable
+    if type(executable) is not str or executable == "":
+        raise WorkerSandboxError("OCI runtime is not available", code="oci-runtime-missing")
+    argv = gpu_output_probe_argv(
+        executable,
+        image_digest=image_digest,
+        data_dir=data_dir,
+        model_dir=model_dir,
+        output_dir=output_dir,
+    )
+    try:
+        completed = subprocess.run(  # noqa: S603
+            argv,
+            check=False,
+            capture_output=True,
+            timeout=GPU_OUTPUT_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise WorkerSandboxError(
+            "GPU output probe did not complete",
+            code="gpu-output-unwritable",
+        ) from exc
+    stdout = completed.stdout.decode("utf-8", errors="replace")
+    if completed.returncode == 3:
+        raise WorkerSandboxError(
+            "GPU source checkpoint is not readable by the container user",
+            code="gpu-checkpoint-unreadable",
+        )
+    if completed.returncode != 0 or GPU_OUTPUT_PROBE_MARKER not in stdout:
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        )
+    leftover = output_dir / GPU_OUTPUT_PROBE_DIRNAME
+    if leftover.exists():
+        raise WorkerSandboxError(
+            "GPU output probe left leftover files",
+            code="gpu-output-unwritable",
+        )
+
+
 def _prepare_gpu_output_root(output_dir: Path) -> None:
     if output_dir.is_symlink() or not output_dir.is_dir():
         raise WorkerSandboxError("GPU output path is invalid", code="gpu-mount-forbidden")
-    output_dir.chmod(0o775)
-    (output_dir / "tmp").mkdir(exist_ok=True)
-    (output_dir / "tmp").chmod(0o775)
+    uid, gid = gpu_container_uid_gid()
+    if not _owned_or_granted(output_dir, uid, gid):
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        )
+    _clear_world_write(output_dir)
+    _ensure_gpu_dir(output_dir / "tmp")
     _install_restore_observe(output_dir)
     _write_host_code_identity(output_dir)
+    _apply_gpu_output_ownership(_gpu_output_owned_paths(output_dir))
+
+
+def _gpu_output_owned_paths(output_dir: Path) -> tuple[Path, ...]:
+    candidates = (
+        output_dir,
+        output_dir / "tmp",
+        output_dir / ".researchos",
+        output_dir / ".researchos" / "gpu_restore_observe.py",
+        output_dir / ".researchos" / "sitecustomize.py",
+        output_dir / "researchos-code-identity.json",
+    )
+    return tuple(
+        path
+        for path in candidates
+        if path.exists() and not path.is_symlink() and not _is_checkpoint_path(path, output_dir)
+    )
+
+
+def _is_checkpoint_path(path: Path, output_dir: Path) -> bool:
+    try:
+        relative = path.resolve().relative_to(output_dir.resolve())
+    except ValueError:
+        return False
+    return any(part.startswith("checkpoint-") for part in relative.parts)
+
+
+def _apply_gpu_output_ownership(paths: tuple[Path, ...]) -> None:
+    uid, gid = gpu_container_uid_gid()
+    for path in paths:
+        if not _owned_or_granted(path, uid, gid):
+            raise WorkerSandboxError(
+                "GPU output is not writable by the container user",
+                code="gpu-output-unwritable",
+            )
+        _clear_world_write(path)
+
+
+def _owned_or_granted(path: Path, uid: int, gid: int) -> bool:
+    try:
+        stat_result = path.stat()
+    except OSError:
+        return False
+    if stat_result.st_uid == uid and stat_result.st_gid == gid:
+        return True
+    return _grant_container_user_write(path, uid, gid)
+
+
+def _grant_container_user_write(path: Path, uid: int, gid: int) -> bool:
+    host_uid = os.geteuid() if hasattr(os, "geteuid") else -1
+    if host_uid == 0:
+        try:
+            os.chown(path, uid, gid)
+            return True
+        except OSError:
+            pass
+    if _setfacl_user(path, uid):
+        return True
+    try:
+        os.chown(path, uid, gid)
+        return True
+    except OSError:
+        pass
+    return _sudo_chown(path, uid, gid)
+
+
+def _sudo_run(argv: tuple[str, ...], *, payload: bytes | None = None) -> bool:
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [_SUDO, "-n", *argv],
+            check=False,
+            capture_output=True,
+            input=payload,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0
+
+
+def _sudo_chown(path: Path, uid: int, gid: int) -> bool:
+    return _sudo_run(("/usr/bin/chown", f"{uid}:{gid}", str(path)))
+
+
+def _setfacl_user(path: Path, uid: int) -> bool:
+    spec = f"u:{uid}:rwx" if path.is_dir() else f"u:{uid}:rw"
+    argv = [*_SETFACL, spec, str(path)]
+    try:
+        completed = subprocess.run(  # noqa: S603
+            argv,
+            check=False,
+            capture_output=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0
+
+
+def _ensure_gpu_dir(path: Path) -> None:
+    try:
+        path.mkdir(exist_ok=True)
+    except OSError:
+        if not _sudo_run(("/usr/bin/mkdir", "-p", str(path))):
+            raise WorkerSandboxError(
+                "GPU output is not writable by the container user",
+                code="gpu-output-unwritable",
+            ) from None
+    uid, gid = gpu_container_uid_gid()
+    if not _owned_or_granted(path, uid, gid):
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        )
+    _clear_world_write(path)
+
+
+def _install_bytes(path: Path, payload: bytes) -> None:
+    try:
+        path.write_bytes(payload)
+        path.chmod(GPU_OUTPUT_FILE_MODE)
+        return
+    except OSError:
+        pass
+    if not _sudo_run(("/usr/bin/tee", str(path)), payload=payload):
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        )
+    uid, gid = gpu_container_uid_gid()
+    if not _sudo_chown(path, uid, gid):
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        )
+    _sudo_run(("/usr/bin/chmod", "644", str(path)))
+
+
+def _clear_world_write(path: Path) -> None:
+    try:
+        mode = path.stat().st_mode & 0o777
+    except OSError as exc:
+        raise WorkerSandboxError(
+            "GPU output is not writable by the container user",
+            code="gpu-output-unwritable",
+        ) from exc
+    if mode & 0o002 == 0:
+        return
+    wanted = GPU_OUTPUT_DIR_MODE if path.is_dir() else GPU_OUTPUT_FILE_MODE
+    try:
+        path.chmod(wanted)
+        mode = path.stat().st_mode & 0o777
+    except OSError:
+        if _sudo_run(("/usr/bin/chmod", f"{wanted:o}", str(path))):
+            try:
+                mode = path.stat().st_mode & 0o777
+            except OSError as exc:
+                raise WorkerSandboxError(
+                    "GPU output must not be world-writable",
+                    code="gpu-output-unwritable",
+                ) from exc
+        else:
+            raise WorkerSandboxError(
+                "GPU output must not be world-writable",
+                code="gpu-output-unwritable",
+            ) from None
+    if mode & 0o002:
+        raise WorkerSandboxError(
+            "GPU output must not be world-writable",
+            code="gpu-output-unwritable",
+        )
 
 
 def _install_restore_observe(output_dir: Path) -> None:
     dest = output_dir / ".researchos"
-    dest.mkdir(exist_ok=True)
-    dest.chmod(0o775)
+    _ensure_gpu_dir(dest)
     source = Path(__file__).with_name("gpu_restore_observe.py")
-    copied = dest / "gpu_restore_observe.py"
-    shutil.copyfile(source, copied)
-    copied.chmod(0o644)
-    site = dest / "sitecustomize.py"
-    site.write_text(
-        "import gpu_restore_observe\n\ngpu_restore_observe.install()\n",
-        encoding="utf-8",
+    _install_bytes(dest / "gpu_restore_observe.py", source.read_bytes())
+    _install_bytes(
+        dest / "sitecustomize.py",
+        b"import gpu_restore_observe\n\ngpu_restore_observe.install()\n",
     )
-    site.chmod(0o644)
 
 
 def _path_digest(path: Path) -> str:
@@ -747,8 +1126,7 @@ def _write_host_code_identity(output_dir: Path) -> None:
     payload = {"kind": "GpuCodeIdentity", **_observe_identity()}
     path = output_dir / "researchos-code-identity.json"
     encoded = json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
-    path.write_text(encoded, encoding="utf-8")
-    path.chmod(0o664)
+    _install_bytes(path, encoded.encode("utf-8"))
 
 
 def snapshot_gpu_checkpoints(output: Path) -> dict[str, dict[str, object]]:

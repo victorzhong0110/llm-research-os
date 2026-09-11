@@ -6,11 +6,14 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from llm_research_os.workers.errors import WorkerGrantError
+
+_IMAGE_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 GRANT_TOKEN_VERSION = "rg1"  # noqa: S105
 WORKER_SESSION_VERSION = "ws1"
@@ -76,6 +79,24 @@ def issue_grant_token(
     return _sign(key, GRANT_TOKEN_VERSION, claims)
 
 
+def peek_grant_token_image_digest(token: object) -> str:
+    """Read imageDigest from a grant token without HMAC verification.
+
+    Isolated GPU Workers use this only to run a pre-claim output probe
+    against the digest the grant already names. Poll still authenticates
+    the token on the control plane.
+    """
+
+    document = _decode_grant_payload(token)
+    image_digest = document.get("imageDigest")
+    if type(image_digest) is not str or _IMAGE_DIGEST.fullmatch(image_digest) is None:
+        raise WorkerGrantError(
+            "grant token is missing a required claim",
+            code="grant-token-invalid",
+        )
+    return image_digest
+
+
 def verify_grant_token(
     key: bytes, token: object, *, now: datetime, require_live: bool = True
 ) -> dict[str, str]:
@@ -129,6 +150,21 @@ def _sign(key: bytes, version: str, claims: Mapping[str, str]) -> str:
     payload = _encode_payload(claims)
     mac = hmac.new(key, payload.encode("ascii"), hashlib.sha256).hexdigest()
     return f"{version}.{payload}.{mac}"
+
+
+def _decode_grant_payload(token: object) -> dict[str, Any]:
+    if type(token) is not str or token.count(".") != 2:
+        raise WorkerGrantError("token encoding is invalid", code="grant-token-invalid")
+    prefix, payload, _mac = token.split(".")
+    if prefix != GRANT_TOKEN_VERSION:
+        raise WorkerGrantError("token version is not supported", code="grant-token-invalid")
+    try:
+        document = json.loads(_decode_payload(payload))
+    except (ValueError, json.JSONDecodeError):
+        raise WorkerGrantError("token payload is not JSON", code="grant-token-invalid") from None
+    if type(document) is not dict:
+        raise WorkerGrantError("token payload must be an object", code="grant-token-invalid")
+    return document
 
 
 def _verify(key: bytes, version: str, token: object) -> dict[str, Any]:

@@ -22,6 +22,10 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
    poll it may start docker with `--gpus device=0` (never `all`),
    observe cancel, and fail closed without docker or a digest-pinned
    image. The closed argv keeps `--read-only` and `--user 65534:65534`.
+   Before poll, the Worker MUST grant that user write on the dedicated
+   output root (ownership or ACL, not mode `775` alone, never `0777`)
+   and prove it with a file-ops probe in the same image, user, mounts,
+   and read-only root. The probe does not load a model or use a GPU.
    UID 65534 has passwd `HOME=/nonexistent`; HuggingFace datasets mkdir
    on that path is EROFS. The launch MUST set `HOME=/tmp`, `HF_HOME=/tmp/hf`,
    and `HF_DATASETS_CACHE=/tmp/hf/datasets` on the existing `/tmp` tmpfs.
@@ -73,6 +77,8 @@ an 8 GB RTX 4060 cannot use that envelope. Two-host Worker transport
    `--memory`.
 5. Prepared GPU argv keeps `--read-only` and sets `HOME=/tmp` on the
    existing `/tmp` tmpfs (not passwd `/nonexistent`).
+6. Root-owned dedicated output + UID 65534 either becomes writable
+   after prepare (real container probe) or is refused before claim.
 
 ## References
 
