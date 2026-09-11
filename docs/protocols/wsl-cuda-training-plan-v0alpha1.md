@@ -12,7 +12,9 @@ Pinned values:
 - model directory `/work/model` at Hub revision
   `7ae557604adf67be50417f59c2c2f167def9a775`
 - dataset `/work/data/sft.jsonl` (offline; container network is denied)
-- LoRA rank 8, batch 1, `max_length` 256, `max_steps` 20, `save_steps` 10
+- LoRA rank 8, batch 1, `max_length` 256
+- authorized step pairs only: `max_steps` 20 / `save_steps` 10, or
+  `max_steps` 12 / `save_steps` 2
 - `torchDtype: bfloat16`, `accDevice: cuda`
 - output `/work/output`
 
@@ -23,8 +25,10 @@ grant config MAY include `resume: full-checkpoint` and
 `checkpoint: /work/output/checkpoint-N` when `commandDigest` is the
 overlay argv. File presence in a checkpoint is not a restore. A report
 MAY list `requestedLoads` from that overlay. It MUST NOT mark
-optimizer / scheduler / rng as observed unless a framework load log
-(or equivalent state record) says so. Step growth and argv alone are
-not a full restore. Checkpoints that already existed in the output
+optimizer / scheduler / rng as observed unless the container Trainer
+load hook wrote `researchos-restore-observe.jsonl` with `phase=loaded`,
+a source file digest, and a post-load summary. Prepare-to-load strings,
+argv, and file presence are not that record. Step growth and argv alone
+are not a full restore. Checkpoints that already existed in the output
 directory before the container started are leftovers, not this-run
 products.

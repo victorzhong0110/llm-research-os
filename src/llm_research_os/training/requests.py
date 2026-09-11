@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
 from llm_research_os.events.models import EventDocumentModel
 from llm_research_os.spec.io import load_document
@@ -21,6 +21,7 @@ WSL_CUDA_TRAINING_PLAN_SCHEMA_ID = (
     "https://researchos.dev/schemas/wsl-cuda-training-plan/v0alpha1.schema.json"
 )
 TRAINING_BACKEND_PLAN_API_VERSION = "researchos.dev/v0alpha1"
+WSL_CUDA_STEP_PAIRS: frozenset[tuple[int, int]] = frozenset({(20, 10), (12, 2)})
 
 
 class TrainingBackendPlan(EventDocumentModel):
@@ -93,17 +94,23 @@ class WslCudaTrainingPlan(EventDocumentModel):
     tuner_type: Literal["lora"] = Field(alias="tunerType")
     torch_dtype: Literal["bfloat16"] = Field(alias="torchDtype")
     acc_device: Literal["cuda"] = Field(alias="accDevice")
-    max_steps: Literal[20] = Field(alias="maxSteps")
+    max_steps: Literal[12, 20] = Field(alias="maxSteps")
     per_device_train_batch_size: Literal[1] = Field(alias="perDeviceTrainBatchSize")
     gradient_accumulation_steps: Literal[1] = Field(alias="gradientAccumulationSteps")
     learning_rate: Literal["1e-4"] = Field(alias="learningRate")
     lora_rank: Literal[8] = Field(alias="loraRank")
     lora_alpha: Literal[16] = Field(alias="loraAlpha")
     output_dir: Literal["/work/output"] = Field(alias="outputDir")
-    save_steps: Literal[10] = Field(alias="saveSteps")
+    save_steps: Literal[2, 10] = Field(alias="saveSteps")
     logging_steps: Literal[1] = Field(alias="loggingSteps")
     max_length: Literal[256] = Field(alias="maxLength")
     seed: Literal[42]
+
+    @model_validator(mode="after")
+    def closed_step_pair(self) -> Self:
+        if (self.max_steps, self.save_steps) not in WSL_CUDA_STEP_PAIRS:
+            raise ValueError("WSL CUDA maxSteps/saveSteps pair is not authorized")
+        return self
 
 
 def load_training_backend_plan(path: str | Path) -> TrainingBackendPlan:

@@ -19,10 +19,13 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   and a single checkpoint no longer sets `parametersUpdated: true`.
   Restore records split `requestedLoads` from `observedLoads`; leftover
   checkpoints in the pre-docker snapshot are not this-run products.
-  `run_gpu_training` applies a grant `resume` overlay when `commandDigest`
-  matches. Live serve reads `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800).
-  Invalid GPU launch config returns `SandboxDisposition.FAILED` so the
-  Worker can fail the lease instead of leaving a claimed grant dangling.
+  optimizer / scheduler / rng need a Trainer load-hook JSONL
+  (`phase=loaded`, source digest, post-load summary); a “Loading
+  optimizer” substring is not verified. `run_gpu_training` applies a
+  grant `resume` overlay when `commandDigest` matches. Live serve reads
+  `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800). Invalid GPU launch
+  config returns `SandboxDisposition.FAILED` so the Worker can fail the
+  lease instead of leaving a claimed grant dangling.
 - `_reap_process_group` does not `killpg` the caller's process group.
   A MPS unit test spawned `/bin/sleep` in pytest's group; Linux CI then
   SIGKILLed the runner and the job sat until the cap. Worker HTTPS GET
@@ -33,6 +36,10 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ### Added
 
+- Closed WSL CUDA restore plan pair `maxSteps=12` / `saveSteps=2` and a
+  container Trainer load hook (`gpu_restore_observe`) that records
+  optimizer / scheduler / rng source digests after a successful load.
+  GPU launch sets closed `PYTHONPATH=/work/output/.researchos`.
 - ADR-0059 WSL2 CUDA laptop profile (`wsl2-cuda-laptop-8g`) and
   `run_gpu_training` as the authorized container start. Plan/bind and
   `execute_gpu_training` stay `gpu-not-run`. Live two-host/CUDA evidence

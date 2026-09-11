@@ -77,6 +77,20 @@ def test_wsl_cuda_plan_prints_argv_and_does_not_execute(capsys: object) -> None:
     assert payload["argv"][payload["argv"].index("--max_steps") + 1] == "20"
 
 
+def test_wsl_cuda_restore_12_plan_prints_argv_and_does_not_execute(capsys: object) -> None:
+    plan = ROOT / "examples" / "training-backend" / "valid" / "wsl-cuda-restore-12.json"
+    assert main(["training", "plan", str(plan), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)  # type: ignore[attr-defined]
+    assert payload["executed"] is False
+    assert payload["argv"][payload["argv"].index("--max_steps") + 1] == "12"
+    assert payload["argv"][payload["argv"].index("--save_steps") + 1] == "2"
+
+
+def test_wsl_cuda_plan_rejects_unauthorized_step_pair(capsys: object) -> None:
+    plan = INVALID / "wsl-cuda-step-pair.json"
+    assert main(["training", "plan", str(plan), "--format", "json"]) == 2
+
+
 def test_wsl_cuda_plan_rejects_extra_fields(capsys: object) -> None:
     plan = INVALID / "wsl-cuda-extra-field.json"
     assert main(["training", "plan", str(plan), "--format", "json"]) == 2

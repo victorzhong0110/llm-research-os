@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from collections.abc import Callable, Mapping
@@ -35,6 +36,12 @@ from llm_research_os.training.requests import TrainingBackendPlan, WslCudaTraini
 from llm_research_os.training.wsl_bind import bind_ms_swift_wsl_cuda_command
 from llm_research_os.training.wsl_bind import plan_document_digest as wsl_plan_document_digest
 from llm_research_os.workers.errors import WorkerSandboxError
+from llm_research_os.workers.gpu_restore_observe import (
+    CONTAINER_PYTHONPATH,
+    OBSERVE_ENV,
+    OBSERVE_FILENAME,
+    OBSERVE_KIND,
+)
 from llm_research_os.workers.sandbox import (
     SandboxDisposition,
     SandboxResult,
@@ -60,6 +67,8 @@ GPU_CACHE_ENV: tuple[str, ...] = (
     f"HOME={GPU_CONTAINER_HOME}",
     f"HF_HOME={GPU_HF_HOME}",
     f"HF_DATASETS_CACHE={GPU_HF_DATASETS_CACHE}",
+    f"PYTHONPATH={CONTAINER_PYTHONPATH}",
+    f"{OBSERVE_ENV}=1",
 )
 GPU_DATA_MOUNT: Literal["/work/data"] = "/work/data"
 GPU_MODEL_MOUNT: Literal["/work/model"] = "/work/model"
@@ -697,6 +706,49 @@ def _prepare_gpu_output_root(output_dir: Path) -> None:
     output_dir.chmod(0o775)
     (output_dir / "tmp").mkdir(exist_ok=True)
     (output_dir / "tmp").chmod(0o775)
+    _install_restore_observe(output_dir)
+    _write_host_code_identity(output_dir)
+
+
+def _install_restore_observe(output_dir: Path) -> None:
+    dest = output_dir / ".researchos"
+    dest.mkdir(exist_ok=True)
+    dest.chmod(0o775)
+    source = Path(__file__).with_name("gpu_restore_observe.py")
+    copied = dest / "gpu_restore_observe.py"
+    shutil.copyfile(source, copied)
+    copied.chmod(0o644)
+    site = dest / "sitecustomize.py"
+    site.write_text(
+        "import gpu_restore_observe\n\ngpu_restore_observe.install()\n",
+        encoding="utf-8",
+    )
+    site.chmod(0o644)
+
+
+def _path_digest(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _observe_identity() -> dict[str, object]:
+    observe = Path(__file__).with_name("gpu_restore_observe.py")
+    gpu = Path(__file__).resolve()
+    return {
+        "gpuModule": str(gpu),
+        "gpuDigest": _path_digest(gpu),
+        "observeModule": str(observe.resolve()),
+        "observeDigest": _path_digest(observe),
+        "python": sys.executable,
+        "pythonPath": os.environ.get("PYTHONPATH"),
+    }
+
+
+def _write_host_code_identity(output_dir: Path) -> None:
+    payload = {"kind": "GpuCodeIdentity", **_observe_identity()}
+    path = output_dir / "researchos-code-identity.json"
+    encoded = json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
+    path.write_text(encoded, encoding="utf-8")
+    path.chmod(0o664)
 
 
 def snapshot_gpu_checkpoints(output: Path) -> dict[str, dict[str, object]]:
@@ -923,22 +975,6 @@ def _logging_step_markers(output: Path) -> tuple[str, ...]:
     return tuple(markers)
 
 
-def _load_log_hits(output: Path, needles: tuple[str, ...]) -> tuple[str, ...]:
-    hits: list[str] = []
-    lowered = tuple(item.lower() for item in needles)
-    for path in (output / "logging.jsonl", output / "train.log", output / "trainer.log"):
-        if not path.is_file():
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for needle, raw in zip(lowered, needles, strict=True):
-            if needle in text.lower() and raw not in hits:
-                hits.append(raw)
-    return tuple(hits)
-
-
 def _has_any(directory: Path, names: tuple[str, ...]) -> bool:
     return any((directory / name).is_file() for name in names)
 
@@ -981,6 +1017,7 @@ def _restore_record(
             "loadBasis": None,
             "thisRunCheckpoints": [path.name for path in this_run],
             "sourceDigest": None,
+            "observeIdentity": _observe_identity(),
         }
     requested = list(resume_loads(resume_mode))
     load_basis = (
@@ -1029,6 +1066,7 @@ def _restore_record(
         "loadBasis": load_basis,
         "thisRunCheckpoints": [path.name for path in this_run],
         "sourceDigest": source_digest,
+        "observeIdentity": _observe_identity(),
     }
 
 
@@ -1089,25 +1127,59 @@ def _observe_restore_loads(
                     "detail": None,
                 }
             continue
-        needles = {
-            "optimizer": ("loading optimizer", "loaded optimizer"),
-            "scheduler": ("loading scheduler", "loaded scheduler"),
-            "rng": ("loading rng", "rng_state loaded"),
-        }.get(name, ())
-        hits = _load_log_hits(output, needles)
-        if hits:
+        record = _observe_loaded(output, name)
+        if record is not None:
             observed[name] = {
                 "status": "verified",
-                "basis": "framework-load-log",
-                "detail": hits[0],
+                "basis": "trainer-load-hook",
+                "detail": record["sourcePath"],
+                "sourceDigest": record["sourceDigest"],
+                "after": record["after"],
             }
         else:
             observed[name] = {
                 "status": "unverified",
-                "basis": "no-framework-load-log",
+                "basis": "no-trainer-load-hook",
                 "detail": None,
             }
     return observed
+
+
+def _observe_loaded(output: Path, name: str) -> dict[str, object] | None:
+    path = output / OBSERVE_FILENAME
+    if not path.is_file():
+        return None
+    chosen: dict[str, object] | None = None
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            document = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if type(document) is not dict:
+            continue
+        if document.get("kind") != OBSERVE_KIND:
+            continue
+        if document.get("phase") != "loaded":
+            continue
+        if document.get("name") != name:
+            continue
+        source = document.get("sourcePath")
+        digest = document.get("sourceDigest")
+        after = document.get("after")
+        if type(source) is not str or source == "":
+            continue
+        if type(digest) is not str or not digest.startswith("sha256:"):
+            continue
+        if type(after) is not dict or not after:
+            continue
+        chosen = document
+    return chosen
 
 
 def command_digest_of(argv: tuple[str, ...]) -> str:

@@ -215,6 +215,8 @@ def test_gpu_policy_pins_device_mounts_and_command(tmp_path: Path) -> None:
     for value in GPU_CACHE_ENV:
         assert prepared.docker_argv[prepared.docker_argv.index(value) - 1] == "--env"
     assert "HOME=/nonexistent" not in prepared.docker_argv
+    assert "PYTHONPATH=/work/output/.researchos" in prepared.docker_argv
+    assert "RESEARCHOS_GPU_RESTORE_OBSERVE=1" in prepared.docker_argv
 
 
 @pytest.mark.parametrize(
@@ -798,6 +800,22 @@ def test_gpu_docker_argv_records_cidfile(tmp_path: Path) -> None:
     assert argv.count("--tmpfs") == 1
 
 
+def test_prepare_gpu_output_installs_restore_observe(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import _prepare_gpu_output_root
+
+    output = tmp_path / "output"
+    output.mkdir()
+    _prepare_gpu_output_root(output)
+    copied = output / ".researchos" / "gpu_restore_observe.py"
+    site = output / ".researchos" / "sitecustomize.py"
+    identity = json.loads((output / "researchos-code-identity.json").read_text(encoding="utf-8"))
+    assert copied.is_file()
+    assert "install()" in site.read_text(encoding="utf-8")
+    assert identity["kind"] == "GpuCodeIdentity"
+    assert identity["observeDigest"].startswith("sha256:")
+    assert identity["gpuDigest"].startswith("sha256:")
+
+
 def test_execute_gpu_training_without_host_dirs_is_not_run(tmp_path: Path) -> None:
     artifacts_root = tmp_path / "artifacts"
     artifacts_root.mkdir()
@@ -1286,7 +1304,7 @@ def test_leftover_checkpoint_is_excluded_when_this_run_writes_another(
     assert report["checkpoint"]["adapterDigest"] != leftover_digest
 
 
-def test_framework_load_log_verifies_optimizer_only(tmp_path: Path) -> None:
+def test_framework_load_substring_does_not_verify_optimizer(tmp_path: Path) -> None:
     from llm_research_os.workers.gpu import _cuda_training_report, snapshot_gpu_checkpoints
 
     output = tmp_path / "output"
@@ -1306,10 +1324,100 @@ def test_framework_load_log_verifies_optimizer_only(tmp_path: Path) -> None:
         baseline=baseline,
     )
     observed = report["restore"]["observedLoads"]
-    assert observed["optimizer"]["status"] == "verified"
-    assert observed["optimizer"]["basis"] == "framework-load-log"
+    assert observed["optimizer"]["status"] == "unverified"
+    assert observed["optimizer"]["basis"] == "no-trainer-load-hook"
     assert observed["scheduler"]["status"] == "unverified"
     assert observed["rng"]["status"] == "unverified"
+
+
+def test_prepare_observe_record_does_not_verify_optimizer(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import (
+        OBSERVE_FILENAME,
+        _cuda_training_report,
+        snapshot_gpu_checkpoints,
+    )
+
+    output = tmp_path / "output"
+    source = _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    baseline = snapshot_gpu_checkpoints(output)
+    _write_cuda_checkpoint(output, 12, adapter=b"adapter-v2-changed")
+    (output / "logging.jsonl").write_text(
+        json.dumps({"global_step/max_steps": "11/12", "loss": 0.1}) + "\n",
+        encoding="utf-8",
+    )
+    (output / OBSERVE_FILENAME).write_text(
+        json.dumps(
+            {
+                "kind": "GpuRestoreObserve",
+                "phase": "prepare",
+                "name": "optimizer",
+                "sourcePath": str(source / "optimizer.pt"),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
+    )
+    observed = report["restore"]["observedLoads"]
+    assert observed["optimizer"]["status"] == "unverified"
+    assert observed["global_step"]["status"] == "verified"
+
+
+def test_trainer_load_hook_jsonl_verifies_optimizer_only(tmp_path: Path) -> None:
+    from llm_research_os.workers.gpu import (
+        OBSERVE_FILENAME,
+        _cuda_training_report,
+        snapshot_gpu_checkpoints,
+    )
+
+    output = tmp_path / "output"
+    source = _write_cuda_checkpoint(output, 10, adapter=b"adapter-v1")
+    baseline = snapshot_gpu_checkpoints(output)
+    _write_cuda_checkpoint(output, 12, adapter=b"adapter-v2-changed")
+    (output / "logging.jsonl").write_text(
+        json.dumps({"global_step/max_steps": "11/12", "loss": 0.1}) + "\n",
+        encoding="utf-8",
+    )
+    digest = "sha256:" + hashlib.sha256((source / "optimizer.pt").read_bytes()).hexdigest()
+    after = {"stateDigest": "sha256:" + ("ab" * 32), "keyCount": 2}
+    (output / OBSERVE_FILENAME).write_text(
+        json.dumps(
+            {
+                "kind": "GpuRestoreObserve",
+                "phase": "loaded",
+                "name": "optimizer",
+                "sourcePath": "/work/output/checkpoint-10/optimizer.pt",
+                "sourceDigest": digest,
+                "after": after,
+                "trainerClass": "transformers.trainer.Trainer",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    report = _cuda_training_report(
+        output,
+        profile="wsl2-cuda-laptop-8g",
+        resume_mode="full-checkpoint",
+        checkpoint_path="/work/output/checkpoint-10",
+        baseline=baseline,
+    )
+    observed = report["restore"]["observedLoads"]
+    assert observed["optimizer"]["status"] == "verified"
+    assert observed["optimizer"]["basis"] == "trainer-load-hook"
+    assert observed["optimizer"]["sourceDigest"] == digest
+    assert observed["optimizer"]["after"] == after
+    assert observed["scheduler"]["status"] == "unverified"
+    assert observed["rng"]["status"] == "unverified"
+    identity = report["restore"]["observeIdentity"]
+    assert type(identity["observeDigest"]) is str
+    assert identity["observeDigest"].startswith("sha256:")
 
 
 def test_wsl_resume_overlay_is_bound_into_authorized_command(tmp_path: Path) -> None:

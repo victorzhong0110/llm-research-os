@@ -65,7 +65,10 @@
       "type": "integer"
     },
     "maxSteps": {
-      "const": 20,
+      "enum": [
+        12,
+        20
+      ],
       "title": "Maxsteps",
       "type": "integer"
     },
@@ -95,7 +98,10 @@
       "type": "integer"
     },
     "saveSteps": {
-      "const": 10,
+      "enum": [
+        2,
+        10
+      ],
       "title": "Savesteps",
       "type": "integer"
     },
