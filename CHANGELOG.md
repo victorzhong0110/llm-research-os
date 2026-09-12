@@ -8,6 +8,12 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ## Unreleased
 
+### Added
+
+- Detached Ed25519 authorization attestations with explicit keygen/sign/verify
+  commands, pinned public-key scope, validity and revocation checks. These prove
+  audit facts and never replace a Worker grant (ADR-0061).
+
 ### Fixed
 
 - Loopback Worker TLS material is minted for 14 days. A 1-day cert

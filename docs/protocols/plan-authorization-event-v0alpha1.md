@@ -118,3 +118,10 @@ conclusion. Locating recorded evaluations by plan identity is a separate read-on
 `not-consumed`. SimulatedRuntime may cite `{eventId, sequence}` of one row on *this* EventStore
 ([ADR-0042](../adr/0042-m1-local-authorization-consume-and-closure.md)); mere event existence
 or a non-empty lineage candidate set is still insufficient, and the event is still not a launch JWT.
+
+## Detached attestations
+
+[AuthorizationAttestation v0alpha1](authorization-attestation-v0alpha1.md) can
+sign the complete stored fact after verification without altering this event's
+unauthenticated/audit-only flags. A valid public-key signature is not a grant,
+human-authorship proof, or NativeProcessRuntime launch permit.

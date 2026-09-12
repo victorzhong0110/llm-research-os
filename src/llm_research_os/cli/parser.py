@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from llm_research_os.cli.contracts import DEFAULT_SCHEMA_CONTRACT, SCHEMA_CONTRACTS
+from llm_research_os.cli.signature_commands import add_signature_parsers
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE
 
 
@@ -84,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="authorizations_command",
         required=True,
     )
+    add_signature_parsers(authorization_commands)
     authorization_record = authorization_commands.add_parser(
         "record",
         help="recompute and append one audit-only authorization fact",
