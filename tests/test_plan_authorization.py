@@ -87,7 +87,7 @@ def _manifest_with_permissions() -> BlockManifest:
             "metadata": {"id": "example.access", "version": "0.1.0"},
             "runtime": {"type": "simulated"},
             "configSchema": {"type": "object", "additionalProperties": False},
-            "capabilities": ["z.capability", "a.capability"],
+            "capabilities": ["write.experiment_draft", "read.local_evidence"],
             "permissions": ["write.local", "read.private"],
         }
     )
@@ -128,12 +128,12 @@ def test_missing_permission_denies_and_access_is_sorted() -> None:
     report = _access_report()
     policy = _policy(
         report,
-        capabilities=("z.capability", "a.capability"),
+        capabilities=("write.experiment_draft", "read.local_evidence"),
         permissions=("write.local",),
     )
     result = authorize_plan(report, policy)
     assert result.status is PlanAuthorizationStatus.DENIED
-    assert result.required_capabilities == ("a.capability", "z.capability")
+    assert result.required_capabilities == ("read.local_evidence", "write.experiment_draft")
     assert result.required_permissions == ("read.private", "write.local")
     assert result.missing_permissions == ("read.private",)
 
@@ -418,3 +418,18 @@ def test_prompt_and_config_values_never_enter_authorization_result() -> None:
     rendered = repr(result)
     assert secret_prompt not in rendered
     assert "review this plan" not in rendered
+
+
+def test_manifest_cannot_register_an_unknown_capability() -> None:
+    document = load_document(EXAMPLES / "valid/minimal.yaml")
+    task = document["workflows"][0]["graph"]["nodes"][0]
+    task["blockType"] = "example.access"
+    task["config"] = {}
+    manifest = _manifest_with_permissions().model_dump(mode="json", by_alias=True)
+    manifest["capabilities"] = ["provision.gpu"]
+    registry = BlockRegistry()
+    registry.register(BlockManifest.model_validate(manifest))
+    registry.seal()
+    report = TrustedKernel(registry).dry_run(ResearchSpec.model_validate(document))
+    with pytest.raises(PlanAuthorizationError, match="unregistered capability"):
+        authorize_plan(report, _policy(report, capabilities=("provision.gpu",)))

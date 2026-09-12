@@ -1,9 +1,11 @@
 # M2 charter §14.4 closure matrix (not M2 complete)
 
 Charter: [docs/charter-v0.1.md](../../charter-v0.1.md) §14.4.
-Issue [#38](https://github.com/victorzhong0110/llm-research-os/issues/38)
-stays **open**. PR [#73](https://github.com/victorzhong0110/llm-research-os/pull/73)
-stays **open**; this document does not merge anything.
+Integration correction: PR [#73](https://github.com/victorzhong0110/llm-research-os/pull/73)
+was merged into `main` as `229d1b0` from accepted evidence `57ffdae`.
+PRs #55–#72 were closed as superseded. The live records below retain their
+original runtime identity and limitations. Integration is not a public release.
+Issue #38 tracks the independent M1 checkpoint, not the CUDA experiment.
 
 Platform claim, where live: **Windows/WSL2 + Docker Engine**. Not native
 Linux. Not paid cloud GPU.
@@ -33,31 +35,11 @@ Linux. Not paid cloud GPU.
 | Code identity | cuda.7 overlay `b3da4bd` / e47279d tree; cuda.8 shared venv miss; cuda.9 `PYTHONPATH` overlay; independent venv of `041365a` (no `workers run`); cuda.10 independent venv of `6e60115`; cuda.11 independent venv of `b7d960c` | cuda.11 is the restore runtime; see [code-identity.md](code-identity.md) |
 | Leftover checkpoint-20 | cuda.9 checkpoint-20 mtime is new vs freeze-copied checkpoint-10; adapter SHA matches cuda.7 checkpoint-20 | That match is leftover copy. |
 
-## Stacked PRs (do not merge)
+## Integration history
 
-Merge into `main` from the bottom. Do not merge in this slice.
-
-1. [#55](https://github.com/victorzhong0110/llm-research-os/pull/55) `m2/worker-protocol-cpu-loop` → `main`
-2. [#56](https://github.com/victorzhong0110/llm-research-os/pull/56)
-3. [#57](https://github.com/victorzhong0110/llm-research-os/pull/57)
-4. [#58](https://github.com/victorzhong0110/llm-research-os/pull/58)
-5. [#59](https://github.com/victorzhong0110/llm-research-os/pull/59)
-6. [#60](https://github.com/victorzhong0110/llm-research-os/pull/60)
-7. [#61](https://github.com/victorzhong0110/llm-research-os/pull/61)
-8. [#62](https://github.com/victorzhong0110/llm-research-os/pull/62)
-9. [#63](https://github.com/victorzhong0110/llm-research-os/pull/63)
-10. [#64](https://github.com/victorzhong0110/llm-research-os/pull/64)
-11. [#65](https://github.com/victorzhong0110/llm-research-os/pull/65)
-12. [#66](https://github.com/victorzhong0110/llm-research-os/pull/66)
-13. [#67](https://github.com/victorzhong0110/llm-research-os/pull/67)
-14. [#68](https://github.com/victorzhong0110/llm-research-os/pull/68)
-15. [#69](https://github.com/victorzhong0110/llm-research-os/pull/69)
-16. [#70](https://github.com/victorzhong0110/llm-research-os/pull/70)
-17. [#71](https://github.com/victorzhong0110/llm-research-os/pull/71)
-18. [#72](https://github.com/victorzhong0110/llm-research-os/pull/72) `m2/macos-mps-training`
-19. [#73](https://github.com/victorzhong0110/llm-research-os/pull/73) `m2/wsl2-cuda-live` (this slice)
-
-[#43](https://github.com/victorzhong0110/llm-research-os/pull/43) Dependabot is outside this stack.
+The nineteen-PR stack was integrated through #73 alone after changing its base
+to main. Do not replay the historical bottom-up merge instructions. Dependabot
+updates are independent of this experiment pack.
 
 ## GitHub required checks
 

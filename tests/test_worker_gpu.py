@@ -969,8 +969,8 @@ def test_grant_container_user_write_prefers_chown_when_root(
     seen: list[tuple[Path, int, int]] = []
     monkeypatch.setattr("llm_research_os.workers.gpu.os.geteuid", lambda: 0)
     monkeypatch.setattr(
-        "llm_research_os.workers.gpu.os.chown",
-        lambda path, uid, gid: seen.append((Path(path), uid, gid)),
+        "llm_research_os.workers.gpu.os.fchown",
+        lambda fd, uid, gid: seen.append((path, uid, gid)),
     )
     path = tmp_path / "output"
     path.mkdir()

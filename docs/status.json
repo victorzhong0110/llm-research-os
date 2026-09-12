@@ -1,0 +1,14 @@
+{
+  "baseline": "229d1b0ced56689fabd1be2bcf715d29f0f12bed",
+  "acceptedEvidence": "57ffdae1358484b047a091e5d9a60d41c9615d3e",
+  "rows": [
+    ["M0", "Closed (ADR-0037)", "已收口（ADR-0037）"],
+    ["M1", "Offline research/decision/question/report loop implemented; checkpoint tracked in #38", "离线研究、决定、提问、报告闭环已实现；检查点由 #38 跟踪"],
+    ["M2 integration", "#73 merged; #55–#72 superseded", "#73 已合并；#55–#72 已由其替代"],
+    ["Mac / MPS", "Live LoRA; process-group isolation", "LoRA 已实测；进程组隔离"],
+    ["Windows / WSL2 + Docker Engine", "Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live", "两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测"],
+    ["Paid cloud", "Not run; ¥0. No paid-cloud claim", "未执行；¥0，不宣称付费云验收"],
+    ["Unknown execution", "Unit/loopback coverage; no dedicated two-host unknown live", "已有单测与回环验证；无专门两机 unknown 实测"],
+    ["Public MVP", "Not released; usable SSH onboarding and Web UI belong to M3", "未发布；可用的 SSH 接入与 Web 界面属于 M3"]
+  ]
+}

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+import re
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import StringConstraints
@@ -24,19 +25,14 @@ MoneyAmount = Annotated[
 
 
 def parse_money(value: str) -> Decimal:
-    if type(value) is not str:
-        raise BudgetError("money amount must be a decimal string", code="invalid-money")
-    try:
-        amount = Decimal(value)
-    except InvalidOperation:
-        raise BudgetError("money amount must be a decimal string", code="invalid-money") from None
-    quantized = amount.quantize(Decimal("0.01"))
-    if quantized != amount or amount < 0:
+    if type(value) is not str or re.fullmatch(MONEY_PATTERN, value) is None:
         raise BudgetError("money amount must be a two-decimal CNY string", code="invalid-money")
-    return amount
+    return Decimal(value)
 
 
 def format_money(value: Decimal) -> str:
+    if not value.is_finite() or value < 0 or value > Decimal("9999999.99"):
+        raise BudgetError("money amount is outside the supported range", code="invalid-money")
     quantized = value.quantize(Decimal("0.01"))
     rendered = f"{quantized:.2f}"
     parse_money(rendered)

@@ -1,0 +1,1977 @@
+{
+  "catalogVersion": "v0alpha1",
+  "payloads": {
+    "ai.call.completed": {
+      "$defs": {
+        "ModelCapability": {
+          "enum": [
+            "generate",
+            "stream",
+            "json-schema",
+            "tools",
+            "image",
+            "embedding",
+            "logprobs",
+            "seed"
+          ],
+          "title": "ModelCapability",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allowedCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Allowedcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "declaredCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Declaredcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "measuredCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Measuredcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "outputArtifact": {
+          "anyOf": [
+            {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outputartifact"
+        },
+        "outputDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Outputdigest",
+          "type": "string"
+        },
+        "promptArtifact": {
+          "anyOf": [
+            {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Promptartifact"
+        }
+      },
+      "required": [
+        "callId",
+        "outputDigest",
+        "declaredCapabilities",
+        "measuredCapabilities",
+        "allowedCapabilities"
+      ],
+      "title": "AiCallCompletedPayload",
+      "type": "object"
+    },
+    "ai.call.failed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "reasonCode": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "callId",
+        "reasonCode"
+      ],
+      "title": "AiCallFailedPayload",
+      "type": "object"
+    },
+    "ai.call.started": {
+      "$defs": {
+        "ModelCapability": {
+          "enum": [
+            "generate",
+            "stream",
+            "json-schema",
+            "tools",
+            "image",
+            "embedding",
+            "logprobs",
+            "seed"
+          ],
+          "title": "ModelCapability",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allowedCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Allowedcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "contextTokens": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Contexttokens",
+          "type": "integer"
+        },
+        "costKnown": {
+          "title": "Costknown",
+          "type": "boolean"
+        },
+        "dataLeavesMachine": {
+          "title": "Dataleavesmachine",
+          "type": "boolean"
+        },
+        "declaredCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Declaredcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "local": {
+          "title": "Local",
+          "type": "boolean"
+        },
+        "maxOutputTokens": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Maxoutputtokens",
+          "type": "integer"
+        },
+        "measuredCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Measuredcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "modelId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Modelid",
+          "type": "string"
+        },
+        "promptDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Promptdigest",
+          "type": "string"
+        },
+        "providerId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Providerid",
+          "type": "string"
+        },
+        "requestedCapabilities": {
+          "items": {
+            "$ref": "#/$defs/ModelCapability"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Requestedcapabilities",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "callId",
+        "providerId",
+        "modelId",
+        "promptDigest",
+        "requestedCapabilities",
+        "declaredCapabilities",
+        "measuredCapabilities",
+        "allowedCapabilities",
+        "local",
+        "costKnown",
+        "dataLeavesMachine",
+        "contextTokens",
+        "maxOutputTokens"
+      ],
+      "title": "AiCallStartedPayload",
+      "type": "object"
+    },
+    "attempt.cancel.requested": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reasonCode"
+      ],
+      "title": "ReasonCodePayload",
+      "type": "object"
+    },
+    "attempt.cancelled": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "attempt.failed": {
+      "$defs": {
+        "RetryHint": {
+          "enum": [
+            "retryable",
+            "not-retryable",
+            "unknown"
+          ],
+          "title": "RetryHint",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        },
+        "retryHint": {
+          "$ref": "#/$defs/RetryHint"
+        }
+      },
+      "required": [
+        "reasonCode",
+        "retryHint"
+      ],
+      "title": "AttemptFailedPayload",
+      "type": "object"
+    },
+    "attempt.heartbeat": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "attempt.lost": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reasonCode"
+      ],
+      "title": "ReasonCodePayload",
+      "type": "object"
+    },
+    "attempt.queued": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ordinal": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "retryDecisionId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Retrydecisionid"
+        },
+        "retryOf": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Retryof"
+        }
+      },
+      "required": [
+        "ordinal",
+        "retryOf",
+        "retryDecisionId"
+      ],
+      "title": "AttemptQueuedPayload",
+      "type": "object"
+    },
+    "attempt.recovered": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "attempt.started": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "attempt.succeeded": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "attempt.unknown": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reasonCode"
+      ],
+      "title": "ReasonCodePayload",
+      "type": "object"
+    },
+    "authorization.grant.consumed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "grantId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Grantid",
+          "type": "string"
+        },
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "nonce": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Nonce",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grantId",
+        "leaseId",
+        "nonce"
+      ],
+      "title": "GrantConsumedPayload",
+      "type": "object"
+    },
+    "authorization.grant.recorded": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "authorizationEventId": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Authorizationeventid",
+          "type": "string"
+        },
+        "authorizationSequence": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Authorizationsequence",
+          "type": "string"
+        },
+        "configDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Configdigest",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "title": "Expiresat",
+          "type": "string"
+        },
+        "grantId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Grantid",
+          "type": "string"
+        },
+        "imageDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Imagedigest",
+          "type": "string"
+        },
+        "keyId": {
+          "const": "local.hmac.1",
+          "title": "Keyid",
+          "type": "string"
+        },
+        "nonce": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Nonce",
+          "type": "string"
+        },
+        "taskId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Taskid",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workerid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grantId",
+        "workerId",
+        "taskId",
+        "nonce",
+        "expiresAt",
+        "keyId",
+        "authorizationEventId",
+        "authorizationSequence",
+        "imageDigest",
+        "configDigest"
+      ],
+      "title": "GrantRecordedPayload",
+      "type": "object"
+    },
+    "authorization.grant.revoked": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "grantId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Grantid",
+          "type": "string"
+        },
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grantId",
+        "reasonCode"
+      ],
+      "title": "GrantRevokedPayload",
+      "type": "object"
+    },
+    "budget.consumed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "budgetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Budgetid",
+          "type": "string"
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "cap": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Cap",
+          "type": "string"
+        },
+        "currency": {
+          "const": "CNY",
+          "default": "CNY",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "budgetId",
+        "callId",
+        "amount",
+        "cap"
+      ],
+      "title": "BudgetConsumedPayload",
+      "type": "object"
+    },
+    "budget.exceeded": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "attempted": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Attempted",
+          "type": "string"
+        },
+        "budgetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Budgetid",
+          "type": "string"
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "cap": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Cap",
+          "type": "string"
+        },
+        "currency": {
+          "const": "CNY",
+          "default": "CNY",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "budgetId",
+        "callId",
+        "attempted",
+        "cap"
+      ],
+      "title": "BudgetExceededPayload",
+      "type": "object"
+    },
+    "budget.limit.recorded": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cap": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Cap",
+          "type": "string"
+        },
+        "currency": {
+          "const": "CNY",
+          "default": "CNY",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cap"
+      ],
+      "title": "BudgetLimitPayload",
+      "type": "object"
+    },
+    "budget.released": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "budgetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Budgetid",
+          "type": "string"
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "cap": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Cap",
+          "type": "string"
+        },
+        "currency": {
+          "const": "CNY",
+          "default": "CNY",
+          "title": "Currency",
+          "type": "string"
+        },
+        "reasonCode": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "budgetId",
+        "callId",
+        "amount",
+        "cap",
+        "reasonCode"
+      ],
+      "title": "BudgetReleasedPayload",
+      "type": "object"
+    },
+    "budget.reserved": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "budgetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Budgetid",
+          "type": "string"
+        },
+        "callId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Callid",
+          "type": "string"
+        },
+        "cap": {
+          "maxLength": 11,
+          "minLength": 4,
+          "pattern": "^(?:0|[1-9][0-9]{0,6})\\.[0-9]{2}$",
+          "title": "Cap",
+          "type": "string"
+        },
+        "currency": {
+          "const": "CNY",
+          "default": "CNY",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "budgetId",
+        "callId",
+        "amount",
+        "cap"
+      ],
+      "title": "BudgetReservedPayload",
+      "type": "object"
+    },
+    "decision.recorded": {
+      "$defs": {
+        "DecisionOutcome": {
+          "enum": [
+            "accept",
+            "reject",
+            "modify",
+            "continue",
+            "defer"
+          ],
+          "title": "DecisionOutcome",
+          "type": "string"
+        },
+        "DecisionTargetKind": {
+          "enum": [
+            "proposal",
+            "run",
+            "dissent",
+            "question"
+          ],
+          "title": "DecisionTargetKind",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "decisionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Decisionid",
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "overriddenDissentIds": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Overriddendissentids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "targetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Targetid",
+          "type": "string"
+        },
+        "targetKind": {
+          "$ref": "#/$defs/DecisionTargetKind"
+        }
+      },
+      "required": [
+        "decisionId",
+        "targetKind",
+        "targetId",
+        "outcome",
+        "rationale",
+        "overriddenDissentIds",
+        "evidenceRefs"
+      ],
+      "title": "DecisionRecordedPayload",
+      "type": "object"
+    },
+    "dissent.recorded": {
+      "$defs": {
+        "DissentObjection": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ObjectionKind"
+            },
+            "statement": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Statement",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "statement"
+          ],
+          "title": "DissentObjection",
+          "type": "object"
+        },
+        "DissentTargetKind": {
+          "enum": [
+            "proposal",
+            "decision"
+          ],
+          "title": "DissentTargetKind",
+          "type": "string"
+        },
+        "ObjectionKind": {
+          "enum": [
+            "falsifiability",
+            "alternative-explanation",
+            "data-leakage",
+            "baseline-or-ablation",
+            "metric-validity",
+            "cost-benefit",
+            "negative-result-value",
+            "other"
+          ],
+          "title": "ObjectionKind",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "dissentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Dissentid",
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "objections": {
+          "items": {
+            "$ref": "#/$defs/DissentObjection"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Objections",
+          "type": "array"
+        },
+        "targetId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Targetid",
+          "type": "string"
+        },
+        "targetKind": {
+          "$ref": "#/$defs/DissentTargetKind"
+        }
+      },
+      "required": [
+        "dissentId",
+        "targetKind",
+        "targetId",
+        "objections",
+        "evidenceRefs"
+      ],
+      "title": "DissentRecordedPayload",
+      "type": "object"
+    },
+    "evidence.imported": {
+      "$defs": {
+        "DataUse": {
+          "enum": [
+            "research-read",
+            "retrieval",
+            "training",
+            "redistribution"
+          ],
+          "title": "DataUse",
+          "type": "string"
+        },
+        "EvidenceSourceType": {
+          "enum": [
+            "paper",
+            "code",
+            "note",
+            "dataset",
+            "web",
+            "experiment",
+            "other"
+          ],
+          "title": "EvidenceSourceType",
+          "type": "string"
+        },
+        "RightsStatus": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "unknown"
+          ],
+          "title": "RightsStatus",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allowedUses": {
+          "items": {
+            "$ref": "#/$defs/DataUse"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Alloweduses",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "byteLength": {
+          "maximum": 8388608,
+          "minimum": 1,
+          "title": "Bytelength",
+          "type": "integer"
+        },
+        "evidenceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Evidenceid",
+          "type": "string"
+        },
+        "license": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.+_-]*$",
+          "title": "License",
+          "type": "string"
+        },
+        "mediaType": {
+          "enum": [
+            "text/markdown",
+            "application/pdf"
+          ],
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "rights": {
+          "$ref": "#/$defs/RightsStatus"
+        },
+        "snapshotDigest": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Snapshotdigest",
+          "type": "string"
+        },
+        "sourceType": {
+          "$ref": "#/$defs/EvidenceSourceType"
+        },
+        "sourceUri": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^(?:[A-Za-z][A-Za-z0-9+.-]*:(?://(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|:)*@)?(?:\\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|::(?:[0-9A-Fa-f]{1,4}:){5}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,1})?::(?:[0-9A-Fa-f]{1,4}:){3}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,2})?::(?:[0-9A-Fa-f]{1,4}:){2}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,3})?::[0-9A-Fa-f]{1,4}:(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,4})?::(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,5})?::[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?::)|v[0-9A-Fa-f]+\\.(?:[A-Za-z0-9._~-]|[!$&'()*+,;=]|:)+)\\]|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=])*)(?::[0-9]*)?(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|/(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*)?|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|)(?:\\?(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?(?:#(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?|(?://(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|:)*@)?(?:\\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|::(?:[0-9A-Fa-f]{1,4}:){5}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,1})?::(?:[0-9A-Fa-f]{1,4}:){3}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,2})?::(?:[0-9A-Fa-f]{1,4}:){2}(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,3})?::[0-9A-Fa-f]{1,4}:(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,4})?::(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,5})?::[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?::)|v[0-9A-Fa-f]+\\.(?:[A-Za-z0-9._~-]|[!$&'()*+,;=]|:)+)\\]|(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=])*)(?::[0-9]*)?(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|/(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*)?|(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|@)+(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])*)*|)(?:\\?(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?(?:#(?:(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2}|[!$&'()*+,;=]|[:@])|[/?])*)?)$",
+          "title": "Sourceuri",
+          "type": "string"
+        },
+        "textArtifact": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Textartifact",
+          "type": "string"
+        },
+        "textCharacters": {
+          "maximum": 400000,
+          "minimum": 1,
+          "title": "Textcharacters",
+          "type": "integer"
+        },
+        "textDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Textdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidenceId",
+        "sourceUri",
+        "mediaType",
+        "sourceType",
+        "snapshotDigest",
+        "textDigest",
+        "textArtifact",
+        "license",
+        "rights",
+        "allowedUses",
+        "byteLength",
+        "textCharacters"
+      ],
+      "title": "EvidenceImportedPayload",
+      "type": "object"
+    },
+    "proposal.submitted": {
+      "$defs": {
+        "ExpectedDirection": {
+          "enum": [
+            "increase",
+            "decrease",
+            "unchanged",
+            "range",
+            "unknown"
+          ],
+          "title": "ExpectedDirection",
+          "type": "string"
+        },
+        "ProposalPrediction": {
+          "additionalProperties": false,
+          "properties": {
+            "expectedDirection": {
+              "$ref": "#/$defs/ExpectedDirection"
+            },
+            "id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Id",
+              "type": "string"
+            },
+            "metric": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Metric"
+            },
+            "statement": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Statement",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "statement",
+            "expectedDirection"
+          ],
+          "title": "ProposalPrediction",
+          "type": "object"
+        },
+        "RiskAssessment": {
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "maxLength": 4000,
+              "minLength": 0,
+              "title": "Cost",
+              "type": "string"
+            },
+            "data": {
+              "maxLength": 4000,
+              "minLength": 0,
+              "title": "Data",
+              "type": "string"
+            },
+            "method": {
+              "maxLength": 4000,
+              "minLength": 0,
+              "title": "Method",
+              "type": "string"
+            },
+            "safety": {
+              "maxLength": 4000,
+              "minLength": 0,
+              "title": "Safety",
+              "type": "string"
+            }
+          },
+          "required": [
+            "data",
+            "method",
+            "safety",
+            "cost"
+          ],
+          "title": "RiskAssessment",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "baseRevision": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Baserevision",
+          "type": "integer"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "falsificationConditions": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Falsificationconditions",
+          "type": "array"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/ProposalPrediction"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Predictions",
+          "type": "array"
+        },
+        "proposalId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Proposalid",
+          "type": "string"
+        },
+        "proposedSpecDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Proposedspecdigest",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "riskAssessment": {
+          "$ref": "#/$defs/RiskAssessment"
+        },
+        "specDiffDigest": {
+          "maxLength": 75,
+          "minLength": 75,
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Specdiffdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposalId",
+        "baseRevision",
+        "specDiffDigest",
+        "proposedSpecDigest",
+        "rationale",
+        "predictions",
+        "falsificationConditions",
+        "riskAssessment",
+        "evidenceRefs"
+      ],
+      "title": "ProposalSubmittedPayload",
+      "type": "object"
+    },
+    "question.answered": {
+      "$defs": {
+        "AnswerRights": {
+          "additionalProperties": false,
+          "properties": {
+            "allowedUses": {
+              "default": [
+                "research-read"
+              ],
+              "items": {
+                "$ref": "#/$defs/DataUse"
+              },
+              "maxItems": 4,
+              "minItems": 1,
+              "title": "Alloweduses",
+              "type": "array",
+              "uniqueItems": true
+            },
+            "status": {
+              "$ref": "#/$defs/RightsStatus"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "title": "AnswerRights",
+          "type": "object"
+        },
+        "DataUse": {
+          "enum": [
+            "research-read",
+            "retrieval",
+            "training",
+            "redistribution"
+          ],
+          "title": "DataUse",
+          "type": "string"
+        },
+        "QuestionAnswerValue": {
+          "additionalProperties": false,
+          "properties": {
+            "option": {
+              "anyOf": [
+                {
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Option"
+            },
+            "text": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Text"
+            }
+          },
+          "title": "QuestionAnswerValue",
+          "type": "object"
+        },
+        "RightsStatus": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "unknown"
+          ],
+          "title": "RightsStatus",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "$ref": "#/$defs/QuestionAnswerValue"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "questionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Questionid",
+          "type": "string"
+        },
+        "rights": {
+          "$ref": "#/$defs/AnswerRights"
+        }
+      },
+      "required": [
+        "questionId",
+        "answer",
+        "rights",
+        "evidenceRefs"
+      ],
+      "title": "QuestionAnsweredPayload",
+      "type": "object"
+    },
+    "question.asked": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "blocking": {
+          "title": "Blocking",
+          "type": "boolean"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "options": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 32,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Options"
+        },
+        "question": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "questionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Questionid",
+          "type": "string"
+        },
+        "relatedProposalId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relatedproposalid"
+        },
+        "uncertainty": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Uncertainty",
+          "type": "string"
+        },
+        "whyNotObservable": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Whynotobservable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "questionId",
+        "question",
+        "uncertainty",
+        "whyNotObservable",
+        "blocking",
+        "evidenceRefs"
+      ],
+      "title": "QuestionAskedPayload",
+      "type": "object"
+    },
+    "run.cancel.requested": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reasonCode"
+      ],
+      "title": "ReasonCodePayload",
+      "type": "object"
+    },
+    "run.cancelled": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "run.completed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "run.failed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reasonCode"
+      ],
+      "title": "ReasonCodePayload",
+      "type": "object"
+    },
+    "run.queued": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "authorizationEventId": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorizationeventid"
+        },
+        "authorizationSequence": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^(?:[1-9][0-9]{0,8}|1[0-9]{9}|20[0-9]{8}|21[0-3][0-9]{7}|214[0-6][0-9]{6}|2147[0-3][0-9]{5}|21474[0-7][0-9]{4}|214748[0-2][0-9]{3}|2147483[0-5][0-9]{2}|21474836[0-3][0-9]|214748364[0-7])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorizationsequence"
+        },
+        "decisionDigest": {
+          "anyOf": [
+            {
+              "maxLength": 75,
+              "minLength": 71,
+              "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decisiondigest"
+        },
+        "maxAttempts": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Maxattempts",
+          "type": "integer"
+        },
+        "planDigest": {
+          "maxLength": 75,
+          "minLength": 71,
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Plandigest",
+          "type": "string"
+        },
+        "registryDigest": {
+          "maxLength": 75,
+          "minLength": 71,
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Registrydigest",
+          "type": "string"
+        },
+        "specDigest": {
+          "maxLength": 75,
+          "minLength": 71,
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        },
+        "workflowId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workflowid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workflowId",
+        "specDigest",
+        "registryDigest",
+        "planDigest",
+        "maxAttempts"
+      ],
+      "title": "RunQueuedPayload",
+      "type": "object"
+    },
+    "run.reviewed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "decisionId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Decisionid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decisionId"
+      ],
+      "title": "RunReviewedPayload",
+      "type": "object"
+    },
+    "run.started": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Closed empty object used by lifecycle types with no fields.",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "work.claimed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "nonce": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Nonce",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workerid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leaseId",
+        "workerId",
+        "nonce"
+      ],
+      "title": "WorkClaimedPayload",
+      "type": "object"
+    },
+    "work.completed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "artifactDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Artifactdigest",
+          "type": "string"
+        },
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "resultDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Resultdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leaseId",
+        "resultDigest",
+        "artifactDigest"
+      ],
+      "title": "WorkCompletedPayload",
+      "type": "object"
+    },
+    "work.failed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leaseId",
+        "reasonCode"
+      ],
+      "title": "WorkFailedPayload",
+      "type": "object"
+    },
+    "work.lease.expired": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "reasonCode": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leaseId",
+        "reasonCode"
+      ],
+      "title": "WorkLeaseExpiredPayload",
+      "type": "object"
+    },
+    "work.leased": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "expiresAt": {
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "title": "Expiresat",
+          "type": "string"
+        },
+        "grantId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Grantid",
+          "type": "string"
+        },
+        "leaseId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Leaseid",
+          "type": "string"
+        },
+        "taskId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Taskid",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workerid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leaseId",
+        "workerId",
+        "taskId",
+        "grantId",
+        "expiresAt"
+      ],
+      "title": "WorkLeasedPayload",
+      "type": "object"
+    },
+    "work.queued": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "configDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Configdigest",
+          "type": "string"
+        },
+        "imageDigest": {
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F-\\x9F]+$",
+          "title": "Imagedigest",
+          "type": "string"
+        },
+        "imageMediaType": {
+          "default": "researchos.python-brick/v0alpha1",
+          "enum": [
+            "researchos.python-brick/v0alpha1",
+            "researchos.oci-image/v0alpha1",
+            "researchos.mps-swift-env/v0alpha1"
+          ],
+          "title": "Imagemediatype",
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "title": "Inputs",
+          "type": "object"
+        },
+        "requiredAccelerators": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Requiredaccelerators",
+          "type": "array"
+        },
+        "runtime": {
+          "default": "python-sandbox",
+          "enum": [
+            "python-sandbox",
+            "oci-container",
+            "gpu-oci-container",
+            "macos-mps-process"
+          ],
+          "title": "Runtime",
+          "type": "string"
+        },
+        "taskId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Taskid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "taskId",
+        "imageDigest",
+        "configDigest"
+      ],
+      "title": "WorkQueuedPayload",
+      "type": "object"
+    },
+    "worker.registered": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "accelerators": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Accelerators",
+          "type": "array"
+        },
+        "protocol": {
+          "const": "researchos.worker-longpoll/v0alpha1",
+          "default": "researchos.worker-longpoll/v0alpha1",
+          "title": "Protocol",
+          "type": "string"
+        },
+        "runtime": {
+          "default": "python-sandbox",
+          "enum": [
+            "python-sandbox",
+            "oci-container",
+            "gpu-oci-container",
+            "macos-mps-process"
+          ],
+          "title": "Runtime",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Workerid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workerId"
+      ],
+      "title": "WorkerRegisteredPayload",
+      "type": "object"
+    }
+  },
+  "scope": "core domain payloads; envelope and consumer rules remain separate"
+}

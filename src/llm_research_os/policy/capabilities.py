@@ -32,3 +32,18 @@ def require_known_kernel_capabilities(values: tuple[object, ...]) -> tuple[Kerne
     if len(names) != len(set(names)):
         raise ValueError("grantedKernelCapabilities entries must be unique")
     return names
+
+
+class ExecutionCapability(StrEnum):
+    LOCAL = "execute.local"
+    OCI = "execute.oci"
+    GPU = "execute.gpu"
+    MPS = "execute.mps"
+
+
+# train.simulated is the inert bounded-loop corpus capability, not GPU authority.
+KNOWN_PLAN_CAPABILITIES = frozenset(
+    [item.value for item in KernelCapability]
+    + [item.value for item in ExecutionCapability]
+    + ["train.simulated", "process.native"]
+)
