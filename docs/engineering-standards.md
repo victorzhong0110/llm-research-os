@@ -43,7 +43,7 @@ comment above the Pydantic model.
 
 ## Tests
 
-- CI coverage floor is 85% of `llm_research_os` (`--cov-fail-under=85`). The M0
+- CI coverage floor is an unrounded 85% of `llm_research_os` (`--cov-fail-under=85`). The M0
   tree sits in the high 80s with branch coverage; do not treat 90% as a gate.
 - Prefer a property or a table of fixtures over a story-shaped test. Hypothesis
   covers JCS stability, Run/Attempt folds that ignore foreign runs, and Pydantic
@@ -110,3 +110,9 @@ Python 3.12 and 3.13 on Ubuntu and macOS; 3.14 on Ubuntu is allowed to fail.
 The GitHub ruleset on `main` requires a pull request and the Ubuntu 3.12 / 3.13
 jobs. macOS is extra signal, not a required check, so a queued macOS runner cannot
 block a merge.
+
+Coverage uses statement plus branch counts. `scripts/check_coverage.py coverage.json`
+independently compares integer counts; report formatting cannot relax the floor.
+`event_catalog.py --check` and `project_status.py --check` must reproduce their
+committed outputs. The installed-wheel smoke runs outside source with no training
+extras; protocol tests do not substitute for designated Linux OCI CI.

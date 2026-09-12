@@ -19,115 +19,23 @@ durable, auditable facts. The researcher is a teacher, not only an approver
 
 ## Current status
 
-Project charter v0.1 and chapter 18 are the accepted baseline. **The M0 kernel
-proof closed on 2026-09-03**; scope is
-[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md); the native-process milestone
-erratum is [ADR-0034](docs/adr/0034-m0-scope-clarification.md). Post-closure
-charter errata, M0 debt, and the M1 slice order, security gates, checkpoint, and
-budget are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23.
-The field-level contract for M1-1 research decision objects is
-[research-decision-objects-v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md).
-M1-0 is in tree: schema v2 query tables and a verified high-water cache
-([ADR-0041](docs/adr/0041-verified-high-water-cache-and-query-tables.md)), typed
-[`SecretRef`](docs/protocols/secret-ref-v0alpha1.md), optional ResearchEvent
-actor `kind` / `modelId`, and SimulatedRuntime emission of `attempt.cancelled` /
-`run.cancelled`. M1-1 lands `proposal.submitted`, `dissent.recorded`,
-`decision.recorded`, a rebuildable `ResearchLedger`, and the matching CLI.
-M1-2 lands [`ModelProvider`](docs/adr/0017-minimal-model-interface.md), a
-deterministic mock, and `ai.call.*` digest facts (never inline prompt/output).
-M1-3 lands local Markdown/PDF import as `evidence.imported` with default
-`LicenseRef-Unknown`. PDF extraction is bounded in a subprocess with a minimal
-worker environment. M1-4 lands an
-OpenAI-compatible HTTP adapter (loopback default) gated by `SecretRef`,
-`read.external_api`, HTTPS, a positive remote CNY cap/reserve, and atomic
-budget reserve-or-exceed. M1-5 emits seeded synthetic
-`training.step` / `evaluation.metric` facts and `researchos report RUN`
-static HTML/Markdown (React Flow deferred). M1-6 lets SimulatedRuntime consume
-one local `{eventId, sequence}` citation of `plan.authorization.evaluated`
-([ADR-0042](docs/adr/0042-m1-local-authorization-consume-and-closure.md)); that
-is not a signed launch JWT. Issue #19's local consume is delivered; signatures,
-expiry, and revocation are [Issue #53](https://github.com/victorzhong0110/llm-research-os/issues/53).
-The question channel is `question.asked` / `question.answered` with
-`questions ask` / `questions answer`. `researchos m1 prove` records one offline
-corpus chain (Mock proposal through simulated report, or reject without a Run).
-Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
-M2-0 is a free loopback Worker CPU loop
-([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)): HMAC
-grants with expiry/revoke bound to an authorized `execute.local` brick,
-CAS-pinned python helper, artifact + report. Isolated control-plane and
-Worker processes use pinned loopback HTTPS
-([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
-that is not a cross-machine proof. Remote Worker transport is
-[ADR-0021](docs/adr/0021-remote-worker-transport.md): a pending-live pack
-with independent EventStore/CAS roots (`secondHost: not-provisioned`),
-not a two-host run. CPU OCIContainerRuntime is a
-digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md));
-a missing engine fails closed and is not a mocked success. Worker
-stop/fault recovery is [ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md):
-a cancel request is not a stopped process; completed work reconciles
-Run/Attempt; unknown cannot auto-succeed. Observed execution identity is
-[ADR-0050](docs/adr/0050-observed-execution-identity.md). Live CPU fault
-acceptance is [ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md):
-`plane.fail` is not a stop. EventStore 10k/100k baseline
-and CAS metric chunks are [ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md);
-bench receipts are not SLA. It is not GPU
-completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
+<!-- generated-status:start -->
 
-Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
-protocol foundations, a pure static planning kernel, a SQLite append-only event
-fact store with rebuildable query tables, a local content-addressed artifact
-object layer, a pure Run/Attempt state machine, RunControl that preflights
-before write with global CAS, a GPU-free and network-free deterministic
-SimulatedRuntime that can consume a cancel request, a plan-authorization gate
-bound to three digests, a non-credential authorization CLI, audit-only
-evaluation events, read-only lineage, in-process `decisionDigest`, a local
-`{eventId, sequence}` consume on SimulatedRuntime, explicit
-simulated-run / cancellation-request / artifact-object / research-decision /
-mock-model-call / evidence-import / OpenAI-compat / static-report /
-M1-checkpoint CLIs, a non-launching NativeProcessPreflight, loopback Worker
-registration / HMAC grants / `researchos m2 prove`, a host-python helper that
-is not NativeProcessRuntime and not a kernel sandbox, and a CPU
-`OCIContainerRuntime` adapter that fails closed without a live digest-pinned
-image.
+| Scope | Status |
+| --- | --- |
+| M0 | Closed (ADR-0037) |
+| M1 | Offline research/decision/question/report loop implemented; checkpoint tracked in #38 |
+| M2 integration | #73 merged; #55–#72 superseded |
+| Mac / MPS | Live LoRA; process-group isolation |
+| Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
+| Paid cloud | Not run; ¥0. No paid-cloud claim |
+| Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
+| Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
 
-`researchos m2 bench` records 10k/100k EventStore timings (not SLA).
-`researchos m2 usage` measures the Worker/RunControl path (not that fill).
+[Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
+Integrated baseline: `229d1b0`; accepted evidence: `57ffdae`.
 
-The tree can run a closed Apple Silicon LoRA through
-`researchos m2 mps` when extras `ms-swift==4.5.2` is installed
-([ADR-0058](docs/adr/0058-macos-mps-training-profile.md)). It still does
-not execute CUDA/OCI training or paid GPU workloads. Authorization
-events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
-receipts or launch permits. SimulatedRuntime does consume one local
-`{eventId, sequence}` citation of the audit fact on this EventStore (ADR-0042);
-lineage stays `not-consumed`. A cancellation-request CLI still does not send a process signal;
-the observed cancelled outcome is a later SimulatedRuntime fact. A real
-NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
-credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
-([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
-loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
-ADR-0045 and is not a live GPU proof. Designated Linux OCI CI (ADR-0049)
-must not skip; ordinary hosts without docker may skip `oci_live`. Worker
-stop/fault recovery is ADR-0046. EventStore performance baseline is ADR-0047.
-Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
-Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill).
-The GPU experiment sheet is ADR-0053 (named AutoDL 4090 combo, unpaid).
-Process observation is ADR-0054 (running/exited/unknown; failed probes
-are not exited). Live OCI faults are ADR-0055: designated Linux CI runs
-every `oci_live` test; inspect failure is unknown. Independent GPU
-execution is ADR-0056 (`gpu-oci-container` / `execute.gpu`; `gpu-not-run`).
-Data snapshot and checkpoint collect is ADR-0057 (Hub revision, pending-live
-dataset SHA, overlay resume; not a CUDA result).
-GPU execution-chain acceptance is
-[docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)
-(not M2 close, not a CUDA result). Independent macOS/MPS training is
-ADR-0058 (`macos-mps-process` / `execute.mps`; process-group isolation,
-not OCI). The three-column matrix is
-[docs/guides/m2-mps-acceptance.md](docs/guides/m2-mps-acceptance.md):
-Mac/MPS live, CUDA/OCI pending-live, two-host pending-live.
-WSL2 CUDA laptop bind/run split is ADR-0059
-([docs/guides/m2-wsl2-cuda-acceptance.md](docs/guides/m2-wsl2-cuda-acceptance.md));
-live two-host and CUDA rows stay pending until recorded on that platform.
+<!-- generated-status:end -->
 
 ## M0 goals
 
@@ -155,6 +63,7 @@ acceptance checklist of that milestone.
 
 ## Project documents
 
+- [Consolidated charter v0.2 (review candidate)](docs/charter-v0.2.md)
 - [Project charter and minimal kernel spec v0.1](docs/charter-v0.1.md) (Chinese original)
 - [Chapter 18 decision guide v0.1](docs/chapter-18-decision-guide-v0.1.md) (Chinese original)
 - [Engineering standards](docs/engineering-standards.md)
