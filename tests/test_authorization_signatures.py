@@ -249,6 +249,9 @@ def test_cli_keygen_sign_verify_and_revocation(case: Any, tmp_path: Path, capsys
     assert json.loads(capsys.readouterr().out)["launchAllowed"] is False
     assert main([*argv, "--revoked-receipt-id", "receipt.cli"]) == 2
     assert original.hex() not in capsys.readouterr().err
+    # A duplicate key must not depend on another parser's first/last-wins rule.
+    output.write_text('{"claims": {}, ' + output.read_text()[1:])
+    assert main(argv) == 2
 
 
 def test_key_and_receipt_file_boundaries(tmp_path: Path) -> None:

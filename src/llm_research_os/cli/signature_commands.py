@@ -27,6 +27,15 @@ from llm_research_os.storage import EventStore, EventStoreError
 MAX_DOCUMENT_BYTES = 16384
 
 
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise AuthorizationSignatureError("duplicate attestation field")
+        result[name] = value
+    return result
+
+
 @contextmanager
 def _parent(path: Path) -> Iterator[tuple[int, str]]:
     absolute = path.absolute()
@@ -111,7 +120,7 @@ def run_signature(args: argparse.Namespace) -> int:
                 public_key = Ed25519PublicKey.from_public_bytes(_read(args.public_key))
                 claims = verify_authorization_attestation(
                     store,
-                    json.loads(_read(args.receipt)),
+                    json.loads(_read(args.receipt), object_pairs_hook=_unique_object),
                     public_key=public_key,
                     key_id=args.key_id,
                     audience=args.audience,

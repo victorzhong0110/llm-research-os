@@ -27,6 +27,7 @@ one NUL byte, then UTF-8 RFC 8785 canonical JSON of `claims`. Verification inclu
 the prefix. Reordering JSON properties does not invalidate a receipt; changing a
 claim does. Public keys, private keys and algorithm-selected key URLs are not
 allowed inside the receipt.
+Duplicate JSON object keys are rejected before verification.
 
 ## Explicit CLI use
 
