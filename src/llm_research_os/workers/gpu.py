@@ -13,11 +13,13 @@ import math
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
@@ -150,8 +152,6 @@ for ckpt in sorted(root.glob("checkpoint-*")):
 
 print("gpu-output-probe-ok")
 """
-_SETFACL = ("/usr/bin/setfacl", "-m")
-_SUDO = "/usr/bin/sudo"
 _ADAPTER_NAMES = ("adapter_model.safetensors", "adapter_model.bin")
 _OPTIMIZER_NAMES = ("optimizer.pt", "optimizer.bin")
 _SCHEDULER_NAMES = ("scheduler.pt", "scheduler.bin")
@@ -961,139 +961,121 @@ def _apply_gpu_output_ownership(paths: tuple[Path, ...]) -> None:
         _clear_world_write(path)
 
 
+@contextmanager
+def _gpu_path_fd(path: Path, *, write: bool = False, create: bool = False) -> Iterator[int]:
+    """Walk from the filesystem root without following symlinks (TM-061).
+
+    Open descriptors anchor mutations; regular files must not have other hard
+    links. Never fall back to sudo, ACL commands, or path-based truncation.
+    """
+    current = os.open(path.absolute().anchor, os.O_RDONLY | os.O_DIRECTORY)
+    target = -1
+    try:
+        parts = path.absolute().parts[1:]
+        if not parts or any(part == ".." for part in parts):
+            raise OSError("invalid output path")
+        for part in parts[:-1]:
+            next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=current)
+            os.close(current)
+            current = next_fd
+        flags = (os.O_WRONLY if write else os.O_RDONLY) | os.O_NOFOLLOW | os.O_NONBLOCK
+        if create:
+            flags |= os.O_CREAT | os.O_EXCL
+        target = os.open(parts[-1], flags, GPU_OUTPUT_FILE_MODE, dir_fd=current)
+        info = os.fstat(target)
+        if not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
+            raise OSError("unsupported output object")
+        if stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
+            raise OSError("output file has other hard links")
+        yield target
+    finally:
+        if target >= 0:
+            os.close(target)
+        os.close(current)
+
+
 def _owned_or_granted(path: Path, uid: int, gid: int) -> bool:
     try:
-        stat_result = path.stat()
+        with _gpu_path_fd(path) as fd:
+            info = os.fstat(fd)
+            if info.st_uid == uid and info.st_gid == gid:
+                return True
     except OSError:
         return False
-    if stat_result.st_uid == uid and stat_result.st_gid == gid:
-        return True
     return _grant_container_user_write(path, uid, gid)
 
 
 def _grant_container_user_write(path: Path, uid: int, gid: int) -> bool:
-    host_uid = os.geteuid() if hasattr(os, "geteuid") else -1
-    if host_uid == 0:
-        try:
-            os.chown(path, uid, gid)
-            return True
-        except OSError:
-            pass
-    if _setfacl_user(path, uid):
-        return True
+    # An already-privileged operator can prepare only these pinned objects.
+    # Non-root workers require pre-provisioned ownership; never acquire privilege.
+    if not hasattr(os, "geteuid") or os.geteuid() != 0:
+        return False
     try:
-        os.chown(path, uid, gid)
+        with _gpu_path_fd(path) as fd:
+            os.fchown(fd, uid, gid)
         return True
     except OSError:
-        pass
-    return _sudo_chown(path, uid, gid)
-
-
-def _sudo_run(argv: tuple[str, ...], *, payload: bytes | None = None) -> bool:
-    try:
-        completed = subprocess.run(  # noqa: S603
-            [_SUDO, "-n", *argv],
-            check=False,
-            capture_output=True,
-            input=payload,
-            timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
         return False
-    return completed.returncode == 0
-
-
-def _sudo_chown(path: Path, uid: int, gid: int) -> bool:
-    return _sudo_run(("/usr/bin/chown", f"{uid}:{gid}", str(path)))
-
-
-def _setfacl_user(path: Path, uid: int) -> bool:
-    spec = f"u:{uid}:rwx" if path.is_dir() else f"u:{uid}:rw"
-    argv = [*_SETFACL, spec, str(path)]
-    try:
-        completed = subprocess.run(  # noqa: S603
-            argv,
-            check=False,
-            capture_output=True,
-            timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return completed.returncode == 0
 
 
 def _ensure_gpu_dir(path: Path) -> None:
     try:
-        path.mkdir(exist_ok=True)
-    except OSError:
-        if not _sudo_run(("/usr/bin/mkdir", "-p", str(path))):
-            raise WorkerSandboxError(
-                "GPU output is not writable by the container user",
-                code="gpu-output-unwritable",
-            ) from None
-    uid, gid = gpu_container_uid_gid()
-    if not _owned_or_granted(path, uid, gid):
+        with _gpu_path_fd(path.parent) as parent_fd, suppress(FileExistsError):
+            os.mkdir(path.name, GPU_OUTPUT_DIR_MODE, dir_fd=parent_fd)
+        with _gpu_path_fd(path) as fd:
+            if not stat.S_ISDIR(os.fstat(fd).st_mode):
+                raise OSError("output directory is not a directory")
+        uid, gid = gpu_container_uid_gid()
+        if not _owned_or_granted(path, uid, gid):
+            raise OSError("output requires operator-provisioned ownership")
+        _clear_world_write(path)
+    except OSError as exc:
         raise WorkerSandboxError(
-            "GPU output is not writable by the container user",
+            "GPU output requires operator-provisioned writable directories",
             code="gpu-output-unwritable",
-        )
-    _clear_world_write(path)
+        ) from exc
 
 
 def _install_bytes(path: Path, payload: bytes) -> None:
     try:
-        path.write_bytes(payload)
-        path.chmod(GPU_OUTPUT_FILE_MODE)
-        return
-    except OSError:
-        pass
-    if not _sudo_run(("/usr/bin/tee", str(path)), payload=payload):
+        try:
+            with _gpu_path_fd(path, write=True, create=True) as fd:
+                _write_gpu_bytes(fd, payload)
+        except FileExistsError:
+            with _gpu_path_fd(path, write=True) as fd:
+                _write_gpu_bytes(fd, payload)
+    except OSError as exc:
         raise WorkerSandboxError(
-            "GPU output is not writable by the container user",
+            "GPU output requires operator-provisioned writable files",
             code="gpu-output-unwritable",
-        )
-    uid, gid = gpu_container_uid_gid()
-    if not _sudo_chown(path, uid, gid):
-        raise WorkerSandboxError(
-            "GPU output is not writable by the container user",
-            code="gpu-output-unwritable",
-        )
-    _sudo_run(("/usr/bin/chmod", "644", str(path)))
+        ) from exc
+
+
+def _write_gpu_bytes(fd: int, payload: bytes) -> None:
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        raise OSError("output is not a regular file")
+    os.ftruncate(fd, 0)
+    with os.fdopen(os.dup(fd), "wb") as stream:
+        stream.write(payload)
+        stream.flush()
+    os.fchmod(fd, GPU_OUTPUT_FILE_MODE)
 
 
 def _clear_world_write(path: Path) -> None:
     try:
-        mode = path.stat().st_mode & 0o777
+        with _gpu_path_fd(path) as fd:
+            info = os.fstat(fd)
+            mode = stat.S_IMODE(info.st_mode)
+            if mode & 0o002:
+                wanted = GPU_OUTPUT_DIR_MODE if stat.S_ISDIR(info.st_mode) else GPU_OUTPUT_FILE_MODE
+                os.fchmod(fd, wanted)
+                if os.fstat(fd).st_mode & 0o002:
+                    raise OSError("output remains world writable")
     except OSError as exc:
-        raise WorkerSandboxError(
-            "GPU output is not writable by the container user",
-            code="gpu-output-unwritable",
-        ) from exc
-    if mode & 0o002 == 0:
-        return
-    wanted = GPU_OUTPUT_DIR_MODE if path.is_dir() else GPU_OUTPUT_FILE_MODE
-    try:
-        path.chmod(wanted)
-        mode = path.stat().st_mode & 0o777
-    except OSError:
-        if _sudo_run(("/usr/bin/chmod", f"{wanted:o}", str(path))):
-            try:
-                mode = path.stat().st_mode & 0o777
-            except OSError as exc:
-                raise WorkerSandboxError(
-                    "GPU output must not be world-writable",
-                    code="gpu-output-unwritable",
-                ) from exc
-        else:
-            raise WorkerSandboxError(
-                "GPU output must not be world-writable",
-                code="gpu-output-unwritable",
-            ) from None
-    if mode & 0o002:
         raise WorkerSandboxError(
             "GPU output must not be world-writable",
             code="gpu-output-unwritable",
-        )
+        ) from exc
 
 
 def _install_restore_observe(output_dir: Path) -> None:

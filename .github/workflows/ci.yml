@@ -69,12 +69,24 @@ jobs:
           -m "not oci_live and not slow"
           --cov=llm_research_os
           --cov-report=term-missing:skip-covered
+          --cov-report=json:coverage.json
           --cov-fail-under=85
           --durations=25
+      - name: Enforce unrounded coverage
+        run: uv run python scripts/check_coverage.py coverage.json
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
+      - name: Verify payload catalog and project status
+        run: |
+          uv run python scripts/event_catalog.py --check
+          uv run python scripts/project_status.py --check
       - name: Build package
         run: uv build
+      - name: Installed wheel without training extras
+        run: |
+          uv venv .wheel-smoke
+          uv pip install --python .wheel-smoke/bin/python dist/*.whl
+          .wheel-smoke/bin/python -I scripts/wheel_smoke.py examples/m1-checkpoint
 
   oci-linux:
     # Designated Linux OCI integration (ADR-0049). Missing docker, a failed

@@ -179,9 +179,7 @@ def test_task_selection_and_single_task_shape_are_exact() -> None:
             "exact Python manifest",
         ),
         (
-            lambda value: value.__setitem__(
-                "capabilities", ["process.native", "process.unrestricted"]
-            ),
+            lambda value: value.__setitem__("capabilities", ["process.native", "execute.local"]),
             "restricted M0 capability profile",
         ),
         (

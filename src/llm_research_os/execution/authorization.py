@@ -22,6 +22,7 @@ from llm_research_os.execution.models import (
     PlannedLoop,
     PlannedTask,
 )
+from llm_research_os.policy.capabilities import KNOWN_PLAN_CAPABILITIES
 
 _DIGEST_PATTERN = re.compile(SEMANTIC_DIGEST_PATTERN)
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -127,6 +128,8 @@ def authorize_plan(
         raise PlanAuthorizationError("authorization policy does not match the plan binding")
 
     required_capabilities, required_permissions = _declared_access(plan.graph)
+    if not required_capabilities.issubset(KNOWN_PLAN_CAPABILITIES):
+        raise PlanAuthorizationError("authorization plan declares an unregistered capability")
     requirement_ids = tuple(item.id for item in plan.policy_requirements)
     if len(requirement_ids) != len(set(requirement_ids)):
         raise PlanAuthorizationError("authorization plan contains duplicate requirements")

@@ -1,0 +1,88 @@
+{
+  "installedWheel": true,
+  "trainingExtras": false,
+  "receipts": {
+    "accept": {
+      "answeredQuestionCount": 1,
+      "apiVersion": "researchos.dev/v0alpha1",
+      "decision": "accept",
+      "decisionCount": 1,
+      "eventIds": [
+        "evt.call.started.1",
+        "evt.call.completed.1",
+        "evt.proposal.1",
+        "evt.dissent.1",
+        "evt.question.1",
+        "evt.question.answer.1",
+        "evt.decision.1",
+        "evt.authorization.example-minimal.1",
+        "evt.1.run.queued",
+        "evt.2.run.started",
+        "evt.3.attempt.queued",
+        "evt.4.attempt.started",
+        "evt.5.attempt.succeeded",
+        "evt.6.run.completed"
+      ],
+      "eventTypes": [
+        "ai.call.started",
+        "ai.call.completed",
+        "proposal.submitted",
+        "dissent.recorded",
+        "question.asked",
+        "question.answered",
+        "decision.recorded",
+        "plan.authorization.evaluated",
+        "run.queued",
+        "run.started",
+        "attempt.queued",
+        "attempt.started",
+        "attempt.succeeded",
+        "run.completed"
+      ],
+      "kind": "M1CheckpointReceipt",
+      "outputDigest": "jcs-sha256:211297ad478b1a13910733cafd8015eaa4defcd9ea20143303046544ce761d8b",
+      "overriddenDissentCount": 1,
+      "projectId": "example-minimal",
+      "proposedSpecDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+      "queued": true,
+      "rationaleCharacters": 36,
+      "runId": "run.simulated",
+      "specDiffDigest": "jcs-sha256:1ed2abbfa0789302d7dc2a6d94c5c41c68856b10e5555e47283f9c0c049f50d2",
+      "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0"
+    },
+    "reject": {
+      "answeredQuestionCount": 1,
+      "apiVersion": "researchos.dev/v0alpha1",
+      "decision": "reject",
+      "decisionCount": 1,
+      "eventIds": [
+        "evt.call.started.1",
+        "evt.call.completed.1",
+        "evt.proposal.1",
+        "evt.dissent.1",
+        "evt.question.1",
+        "evt.question.answer.1",
+        "evt.decision.reject.1"
+      ],
+      "eventTypes": [
+        "ai.call.started",
+        "ai.call.completed",
+        "proposal.submitted",
+        "dissent.recorded",
+        "question.asked",
+        "question.answered",
+        "decision.recorded"
+      ],
+      "kind": "M1CheckpointReceipt",
+      "outputDigest": "jcs-sha256:211297ad478b1a13910733cafd8015eaa4defcd9ea20143303046544ce761d8b",
+      "overriddenDissentCount": 0,
+      "projectId": "example-minimal",
+      "proposedSpecDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0",
+      "queued": false,
+      "rationaleCharacters": 43,
+      "runId": null,
+      "specDiffDigest": "jcs-sha256:1ed2abbfa0789302d7dc2a6d94c5c41c68856b10e5555e47283f9c0c049f50d2",
+      "specDigest": "jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0"
+    }
+  }
+}

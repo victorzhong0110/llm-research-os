@@ -18,6 +18,7 @@ from llm_research_os.execution.errors import PlanAuthorizationError, PlanAuthori
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport, DryRunStatus, PlannedLoop, PlannedTask
 from llm_research_os.execution.planner import PlanningError
+from llm_research_os.policy.capabilities import ExecutionCapability
 from llm_research_os.spec.models import LoopBlock, ResearchSpec, TaskBlock
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
@@ -32,10 +33,10 @@ from llm_research_os.workers.models import (
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
 
-PYTHON_BRICK_CAPABILITY = "execute.local"
-OCI_BRICK_CAPABILITY = "execute.oci"
-GPU_TRAINING_CAPABILITY = "execute.gpu"
-MPS_TRAINING_CAPABILITY = "execute.mps"
+PYTHON_BRICK_CAPABILITY = ExecutionCapability.LOCAL.value
+OCI_BRICK_CAPABILITY = ExecutionCapability.OCI.value
+GPU_TRAINING_CAPABILITY = ExecutionCapability.GPU.value
+MPS_TRAINING_CAPABILITY = ExecutionCapability.MPS.value
 EXECUTION_CAPABILITIES = frozenset(
     {
         PYTHON_BRICK_CAPABILITY,
