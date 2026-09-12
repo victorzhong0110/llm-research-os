@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "GpuDatasetSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "contentDigest": {
+          "anyOf": [
+            {
+              "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contentdigest"
+        },
+        "hub": {
+          "const": "modelscope",
+          "title": "Hub",
+          "type": "string"
+        },
+        "id": {
+          "const": "AI-ModelScope/alpaca-gpt4-data-en",
+          "title": "Id",
+          "type": "string"
+        },
+        "lineageHub": {
+          "const": "huggingface",
+          "title": "Lineagehub",
+          "type": "string"
+        },
+        "lineageId": {
+          "const": "vicgalle/alpaca-gpt4",
+          "title": "Lineageid",
+          "type": "string"
+        },
+        "lineageRevision": {
+          "const": "f7e3ded725cb81e8e564e32feb12860f376f2b51",
+          "title": "Lineagerevision",
+          "type": "string"
+        },
+        "mount": {
+          "const": "/work/data",
+          "default": "/work/data",
+          "title": "Mount",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^(?:pending-live|[0-9a-f]{40})$",
+          "title": "Revision",
+          "type": "string"
+        },
+        "rowLimit": {
+          "const": 8,
+          "title": "Rowlimit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "hub",
+        "rowLimit",
+        "revision",
+        "lineageHub",
+        "lineageId",
+        "lineageRevision"
+      ],
+      "title": "GpuDatasetSnapshot",
+      "type": "object"
+    },
+    "GpuModelSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "contentDigest": {
+          "anyOf": [
+            {
+              "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contentdigest"
+        },
+        "hub": {
+          "const": "huggingface",
+          "title": "Hub",
+          "type": "string"
+        },
+        "id": {
+          "const": "Qwen/Qwen2.5-0.5B-Instruct",
+          "title": "Id",
+          "type": "string"
+        },
+        "mount": {
+          "const": "/work/model",
+          "default": "/work/model",
+          "title": "Mount",
+          "type": "string"
+        },
+        "revision": {
+          "const": "7ae557604adf67be50417f59c2c2f167def9a775",
+          "title": "Revision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "hub",
+        "revision"
+      ],
+      "title": "GpuModelSnapshot",
+      "type": "object"
+    },
+    "GpuOutputBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "maxUploadBytes": {
+          "const": 1048576,
+          "title": "Maxuploadbytes",
+          "type": "integer"
+        },
+        "maxUploadFiles": {
+          "const": 32,
+          "title": "Maxuploadfiles",
+          "type": "integer"
+        },
+        "mount": {
+          "const": "/work/output",
+          "default": "/work/output",
+          "title": "Mount",
+          "type": "string"
+        },
+        "persist": {
+          "const": "bind",
+          "default": "bind",
+          "title": "Persist",
+          "type": "string"
+        }
+      },
+      "required": [
+        "maxUploadBytes",
+        "maxUploadFiles"
+      ],
+      "title": "GpuOutputBinding",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/gpu-data-checkpoint/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Pins model/data identity and output persistence. Not a CUDA receipt.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "dataset": {
+      "$ref": "#/$defs/GpuDatasetSnapshot"
+    },
+    "kind": {
+      "const": "GpuDataCheckpointBinding",
+      "title": "Kind",
+      "type": "string"
+    },
+    "model": {
+      "$ref": "#/$defs/GpuModelSnapshot"
+    },
+    "offline": {
+      "const": true,
+      "default": true,
+      "title": "Offline",
+      "type": "boolean"
+    },
+    "output": {
+      "$ref": "#/$defs/GpuOutputBinding"
+    },
+    "planDigest": {
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+      "title": "Plandigest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "planDigest",
+    "model",
+    "dataset",
+    "output"
+  ],
+  "title": "GpuDataCheckpointBinding",
+  "type": "object"
+}

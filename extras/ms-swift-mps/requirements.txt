@@ -1,0 +1,2 @@
+# Isolated extras pin. Do not copy into the core uv.lock (ADR-0012).
+ms-swift==4.5.2

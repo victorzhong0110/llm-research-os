@@ -1,0 +1,3 @@
+775 root root /root/researchos/gpu/output-resume-12
+777 nobody nogroup /root/researchos/gpu/output-resume-12/checkpoint-10
+664 root root /root/researchos/gpu/output-resume-12/researchos-code-identity.json

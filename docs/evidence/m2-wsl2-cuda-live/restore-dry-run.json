@@ -1,0 +1,10 @@
+{
+  "dryRun": "ready",
+  "commandDigest": "jcs-sha256:411120ecc09852a717d43ad1dd53210af86ca9901c496bfa13d5398c3b67901d",
+  "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639",
+  "configDigest": "jcs-sha256:28e9ac5f46f2a3c7a0f017f90af0776dad1d89d93a129c0de3f6e425a333abc8",
+  "resume": "full-checkpoint",
+  "checkpoint": "/work/output/checkpoint-10",
+  "executed": false,
+  "grantIssued": false
+}

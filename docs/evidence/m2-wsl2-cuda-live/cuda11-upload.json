@@ -1,0 +1,95 @@
+{
+  "kind": "WslCuda11ArtifactUploadReceipt",
+  "controlPlane": "https://100.69.150.10:8443",
+  "method": "POST /v0alpha1/artifacts",
+  "workerId": "worker.wsl.gpu.1",
+  "fileCount": 12,
+  "bytesUploaded": 106366068,
+  "seconds": 8.626,
+  "files": [
+    {
+      "path": "researchos-restore-observe.jsonl",
+      "digest": "sha256:c1fcc3f980219e3bf95c03f5d8071be29ef8799c652189f6b0a33dd58941856e",
+      "size": 1132,
+      "seconds": 0.029,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "logging.jsonl",
+      "digest": "sha256:7959c9d36137868d83bf7937f255348ce9d98923077a7d4f9c02f031b9b46ddd",
+      "size": 3103,
+      "seconds": 0.019,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/README.md",
+      "digest": "sha256:4e3ef9dc161313a84faa63b92804a6203c7937f2e2996f2f27222685a9a8b383",
+      "size": 5176,
+      "seconds": 0.022,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/adapter_config.json",
+      "digest": "sha256:ee0814bc74b37a32170839accebd75cdecf67f3a00f262627188adf2f8a4d791",
+      "size": 1087,
+      "seconds": 0.016,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/adapter_model.safetensors",
+      "digest": "sha256:7adaf622e061ed83a8e8db158609083029f1d8ecfba8d92565ded112967985cc",
+      "size": 17640136,
+      "seconds": 1.194,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/additional_config.json",
+      "digest": "sha256:c7799462ebedae6557ffad31566029e2d2f958b7b40e46e972cf901bcaf45733",
+      "size": 67,
+      "seconds": 0.022,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/args.json",
+      "digest": "sha256:fb3a9f26ce2ba824ad5ade86456ec9428187799f0c352ff6c0d24a005d03bc16",
+      "size": 39122,
+      "seconds": 0.038,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/optimizer.pt",
+      "digest": "sha256:addc8bd49c62c4e32bb4d70c98c8f8d4586f76904fe6b038f173eefdcdf521f9",
+      "size": 35474963,
+      "seconds": 2.144,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/rng_state.pth",
+      "digest": "sha256:a750354847979c578250ac2e84c59a7d8ca2b834ac19f514002efffc84ca8e24",
+      "size": 14645,
+      "seconds": 0.021,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/scheduler.pt",
+      "digest": "sha256:08e0953e8f40363e88ff684b0f55109fccd7e62bd8fd0b237f9290f92674f27a",
+      "size": 53176867,
+      "seconds": 4.991,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/trainer_state.json",
+      "digest": "sha256:e9aa038746e5dedbc5572e78b4c6dcc1ffc1d9af71f269771eea70e1bbdd5273",
+      "size": 3097,
+      "seconds": 0.017,
+      "via": "POST /v0alpha1/artifacts"
+    },
+    {
+      "path": "checkpoint-12/training_args.bin",
+      "digest": "sha256:56ebca430bba650c67f41ab4a38304d759d1a03c86ccef0bca9532fe5e3d191b",
+      "size": 6673,
+      "seconds": 0.014,
+      "via": "POST /v0alpha1/artifacts"
+    }
+  ]
+}

@@ -33,7 +33,7 @@ from llm_research_os.runs.errors import RunStateError, RunTransitionError
 from llm_research_os.runs.models import RunSnapshot
 from llm_research_os.runs.reducer import RunStateProjection
 from llm_research_os.storage.models import StoredEvent
-from llm_research_os.storage.store import EventStore
+from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 
 _IDENTIFIER = TypeAdapter(EventIdentifier)
 
@@ -73,42 +73,42 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
     bound_run = _require_identifier("run_id", run_id)
     bound_project = None if project_id is None else _require_identifier("project_id", project_id)
     high_water = store.freeze_high_water()
-    prefix = list(
-        replay_events(
-            store,
-            freeze_high_water=False,
-            until_sequence=high_water,
-        )
-    )
     matching: list[StoredEvent] = []
     projects: set[str] = set()
-    for stored in prefix:
-        if stored.event.data.run_id != bound_run:
+    other_projects: set[str] = set()
+    authorization_by_id: dict[str, StoredEvent] = {}
+    project_folds: dict[str, _ProjectFold] = {}
+    for stored in replay_events(
+        store,
+        page_size=MAX_READ_PAGE_SIZE,
+        freeze_high_water=False,
+        until_sequence=high_water,
+    ):
+        event = stored.event
+        fold = project_folds.get(event.data.project_id)
+        if fold is None:
+            fold = _ProjectFold(event.data.project_id)
+            project_folds[event.data.project_id] = fold
+        fold.apply(stored)
+        if event.type == PLAN_AUTHORIZATION_EVALUATED_TYPE:
+            authorization_by_id[event.id] = stored
+        if event.data.run_id != bound_run:
             continue
-        if bound_project is not None and stored.event.data.project_id != bound_project:
+        if bound_project is not None and event.data.project_id != bound_project:
+            other_projects.add(event.data.project_id)
             continue
         matching.append(stored)
-        projects.add(stored.event.data.project_id)
+        projects.add(event.data.project_id)
     if not matching:
-        if bound_project is not None:
-            others = {
-                stored.event.data.project_id
-                for stored in prefix
-                if stored.event.data.run_id == bound_run
-            }
-            if others:
-                raise ReportError("run project does not match", code="run-project-mismatch")
+        if bound_project is not None and other_projects:
+            raise ReportError("run project does not match", code="run-project-mismatch")
         raise ReportError("run not found", code="run-not-found")
     if bound_project is None and len(projects) != 1:
         raise ReportError("run is bound to more than one project", code="run-project-mismatch")
     observed_project = next(iter(projects))
     snapshot = _fold_snapshot(matching, observed_project, bound_run)
     try:
-        ledger, budget, budget_events = _fold_project_prefix(
-            prefix,
-            project_id=observed_project,
-            last_sequence=high_water,
-        )
+        ledger, budget, budget_events = project_folds[observed_project].snapshot(high_water)
     except (BudgetError, ResearchLedgerError, ResearchPayloadError) as exc:
         raise ReportError(str(exc), code=getattr(exc, "code", "report-fold")) from None
     training: list[TrainingStepRecord] = []
@@ -132,7 +132,7 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
     consumed = None
     if snapshot is not None and snapshot.consumed_authorization is not None:
         consumed = _consumed_authorization_from_prefix(
-            prefix,
+            authorization_by_id,
             snapshot=snapshot,
             high_water=high_water,
         )
@@ -151,28 +151,34 @@ def build_run_report(store: EventStore, run_id: str, *, project_id: str | None =
     )
 
 
-def _fold_project_prefix(
-    prefix: list[StoredEvent],
-    *,
-    project_id: str,
-    last_sequence: int,
-) -> tuple[ResearchLedger, BudgetFold, list[StoredEvent]]:
-    projection = ResearchLedgerProjection(project_id=project_id)
-    ledger_fold: LedgerFold | None = None
-    budget = BudgetFold()
-    budget_events: list[StoredEvent] = []
-    for stored in prefix:
-        ledger_fold = projection.apply(ledger_fold, stored.event)
-        budget = apply_budget_fold(budget, stored.event, project_id=project_id)
-        if stored.event.data.project_id == project_id and stored.event.type in BUDGET_EVENT_TYPES:
-            budget_events.append(stored)
-    if ledger_fold is None:
-        ledger_fold = LedgerFold()
-    return projection.snapshot(ledger_fold, last_sequence), budget, budget_events
+class _ProjectFold:
+    """Streaming ledger/budget fold for one project. Does not retain unrelated events."""
+
+    def __init__(self, project_id: str) -> None:
+        self._project_id = project_id
+        self._projection = ResearchLedgerProjection(project_id=project_id)
+        self._ledger: LedgerFold | None = None
+        self._budget = BudgetFold()
+        self._budget_events: list[StoredEvent] = []
+
+    def apply(self, stored: StoredEvent) -> None:
+        event = stored.event
+        self._ledger = self._projection.apply(self._ledger, event)
+        self._budget = apply_budget_fold(self._budget, event, project_id=self._project_id)
+        if event.data.project_id == self._project_id and event.type in BUDGET_EVENT_TYPES:
+            self._budget_events.append(stored)
+
+    def snapshot(self, last_sequence: int) -> tuple[ResearchLedger, BudgetFold, list[StoredEvent]]:
+        ledger_fold = LedgerFold() if self._ledger is None else self._ledger
+        return (
+            self._projection.snapshot(ledger_fold, last_sequence),
+            self._budget,
+            self._budget_events,
+        )
 
 
 def _consumed_authorization_from_prefix(
-    prefix: list[StoredEvent],
+    events_by_id: dict[str, StoredEvent],
     *,
     snapshot: RunSnapshot,
     high_water: int,
@@ -183,7 +189,6 @@ def _consumed_authorization_from_prefix(
             "consumed authorization event was not found",
             code="authorization-event-not-found",
         )
-    events_by_id = {stored.event.id: stored for stored in prefix}
     stored = events_by_id.get(citation.event_id)
     if stored is None or stored.sequence > high_water:
         raise ReportError(

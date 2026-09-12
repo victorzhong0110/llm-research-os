@@ -533,6 +533,312 @@ def build_parser() -> argparse.ArgumentParser:
         help="researcher outcome; reject must not queue a Run",
     )
     add_registry_arguments(m1_prove)
+
+    grants = subparsers.add_parser(
+        "grants",
+        help="record HMAC authorization grants as EventStore facts",
+    )
+    grants_commands = grants.add_subparsers(dest="grants_command", required=True)
+    grants_record = grants_commands.add_parser(
+        "record",
+        help="append one human-recorded HMAC grant; the token is not stored",
+    )
+    grants_record.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    grants_record.add_argument(
+        "request",
+        type=Path,
+        help="AuthorizationGrantRequest v0alpha1 YAML or JSON file",
+    )
+    grants_record.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    grants_record.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="must match the cited authorization workflow when supplied",
+    )
+    grants_record.add_argument(
+        "--registry",
+        type=Path,
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="manifest file or non-recursive directory; repeat to add more",
+    )
+    add_event_format_argument(grants_record)
+
+    workers = subparsers.add_parser(
+        "workers",
+        help="register, serve, run, or write a pending-live pack",
+    )
+    workers_commands = workers.add_subparsers(dest="workers_command", required=True)
+    workers_register = workers_commands.add_parser(
+        "register",
+        help="append one worker.registered fact",
+    )
+    workers_register.add_argument(
+        "request",
+        type=Path,
+        help="WorkerRegisterRequest v0alpha1 YAML or JSON file",
+    )
+    workers_register.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    add_event_format_argument(workers_register)
+    workers_serve = workers_commands.add_parser(
+        "serve",
+        help="serve HTTPS/JSON; default host is loopback and is not a cross-machine proof",
+    )
+    workers_serve.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    workers_serve.add_argument(
+        "--artifacts",
+        type=Path,
+        required=True,
+        metavar="ROOT",
+        help="control-plane CAS root",
+    )
+    workers_serve.add_argument(
+        "--state",
+        type=Path,
+        required=True,
+        metavar="DIR",
+        help="HMAC key and loopback TLS material; created if missing",
+    )
+    workers_serve.add_argument("--project", required=True, metavar="ID")
+    workers_serve.add_argument("--source", required=True, metavar="URI")
+    workers_serve.add_argument(
+        "--revision",
+        type=int,
+        default=1,
+        help="experiment revision matching the grant",
+    )
+    workers_serve.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="loopback default; unspecified binds fail; TLS unicast is pending-live",
+    )
+    workers_serve.add_argument(
+        "--port",
+        type=int,
+        default=0,
+        help="TCP port; 0 selects an ephemeral port",
+    )
+    workers_pack = workers_commands.add_parser(
+        "pack",
+        help="write a remote Worker pack; pending-live, not a two-host proof",
+    )
+    workers_pack.add_argument(
+        "output",
+        type=Path,
+        help="empty output directory for STATUS, worker CA, and scripts",
+    )
+    workers_pack.add_argument(
+        "--url",
+        required=True,
+        help="https control-plane URL the Worker will dial; loopback is not cross-machine",
+    )
+    workers_pack.add_argument("--project", required=True, metavar="ID")
+    workers_pack.add_argument("--source", required=True, metavar="URI")
+    workers_pack.add_argument(
+        "--state",
+        type=Path,
+        metavar="DIR",
+        help="existing control-plane state; copies CA only, never tls-key.pem",
+    )
+    workers_run = workers_commands.add_parser(
+        "run",
+        help="run one isolated Worker from a credential file and a private CAS",
+    )
+    workers_run.add_argument(
+        "credential",
+        type=Path,
+        help="WorkerCredential file; tokens must not be logged",
+    )
+    workers_run.add_argument(
+        "--artifacts",
+        type=Path,
+        required=True,
+        metavar="ROOT",
+        help="Worker-private CAS root; must not be the control-plane CAS",
+    )
+    workers_run.add_argument("--gpu-data-dir", type=Path, dest="gpu_data_dir")
+    workers_run.add_argument("--gpu-model-dir", type=Path, dest="gpu_model_dir")
+    workers_run.add_argument("--gpu-output-dir", type=Path, dest="gpu_output_dir")
+
+    m2 = subparsers.add_parser(
+        "m2",
+        help="run M2-0 CPU Worker paths; does not spend GPU or close Issue #38",
+    )
+    m2_commands = m2.add_subparsers(dest="m2_command", required=True)
+    m2_prove = m2_commands.add_parser(
+        "prove",
+        help="record one loopback Worker CPU loop from a corpus",
+    )
+    m2_prove.add_argument(
+        "corpus",
+        type=Path,
+        help="checkpoint corpus directory",
+    )
+    m2_prove.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_prove.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_prove)
+    m2_oci = m2_commands.add_parser(
+        "oci",
+        help="record one CPU OCI Worker loop; fails closed without a live runtime",
+    )
+    m2_oci.add_argument(
+        "corpus",
+        type=Path,
+        help="OCI checkpoint corpus directory",
+    )
+    m2_oci.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_oci.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_oci)
+    m2_mps = m2_commands.add_parser(
+        "mps",
+        help="record one macOS/MPS Worker training loop; process-group isolation, not OCI",
+    )
+    m2_mps.add_argument(
+        "corpus",
+        type=Path,
+        help="MPS checkpoint corpus directory",
+    )
+    m2_mps.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; existing stores must be empty",
+    )
+    m2_mps.add_argument(
+        "--artifacts",
+        type=Path,
+        metavar="ROOT",
+        help="local artifact root; created if missing",
+    )
+    add_event_format_argument(m2_mps)
+    m2_bench = m2_commands.add_parser(
+        "bench",
+        help="measure 10k or 100k EventStore append/replay/claim/report; not GPU",
+    )
+    m2_bench.add_argument(
+        "database",
+        type=Path,
+        help="SQLite event store to create; must not already exist",
+    )
+    m2_bench.add_argument(
+        "--events",
+        type=int,
+        choices=(10_000, 100_000),
+        default=10_000,
+        help="reproducible baseline size",
+    )
+    add_event_format_argument(m2_bench)
+    m2_usage = m2_commands.add_parser(
+        "usage",
+        help="measure Worker/RunControl usage plus isolated Worker; not EventStore fill",
+    )
+    m2_usage.add_argument(
+        "output",
+        type=Path,
+        help="empty directory for USAGE.json, isolated Worker, and OCI receipts",
+    )
+    add_event_format_argument(m2_usage)
+    training = subparsers.add_parser(
+        "training",
+        help="parse a pinned training-backend plan; does not launch GPU work",
+    )
+    training_commands = training.add_subparsers(dest="training_command", required=True)
+    training_plan = training_commands.add_parser(
+        "plan",
+        help="validate one pinned ms-swift SFT plan and print argv; does not execute",
+    )
+    training_plan.add_argument(
+        "request",
+        type=Path,
+        help="TrainingBackendPlan document",
+    )
+    add_event_format_argument(training_plan)
+    training_bind = training_commands.add_parser(
+        "bind",
+        help="bind a pinned ms-swift plan to the GPU launch profile; does not execute",
+    )
+    training_bind.add_argument("request", type=Path, help="TrainingBackendPlan document")
+    training_bind.add_argument(
+        "--image",
+        required=True,
+        help="digest-pinned GPU image identity (sha256:…)",
+    )
+    training_bind.add_argument("--data-dir", type=Path, required=True)
+    training_bind.add_argument("--model-dir", type=Path, required=True)
+    training_bind.add_argument("--output-dir", type=Path, required=True)
+    add_event_format_argument(training_bind)
+    training_overlay = training_commands.add_parser(
+        "overlay",
+        help="print resume overlay argv; does not execute",
+    )
+    training_overlay.add_argument("request", type=Path, help="TrainingBackendPlan document")
+    training_overlay.add_argument(
+        "--resume",
+        choices=("none", "adapter-only", "full-checkpoint"),
+        required=True,
+    )
+    training_overlay.add_argument(
+        "--checkpoint",
+        help="resume path under /work/output or output/ depending on the plan kind",
+    )
+    add_event_format_argument(training_overlay)
+    training_snapshot = training_commands.add_parser(
+        "snapshot",
+        help="verify offline model/data trees; does not download or train",
+    )
+    training_snapshot.add_argument("binding", type=Path, help="GpuDataCheckpointBinding document")
+    training_snapshot.add_argument("--plan", type=Path, help="TrainingBackendPlan document")
+    training_snapshot.add_argument("--model-dir", type=Path)
+    training_snapshot.add_argument("--data-dir", type=Path)
+    add_event_format_argument(training_snapshot)
+    training_collect = training_commands.add_parser(
+        "collect",
+        help="put persistent /work/output files into CAS; does not train",
+    )
+    training_collect.add_argument("output", type=Path, help="host directory bound to /work/output")
+    training_collect.add_argument("--artifacts", type=Path, required=True)
+    training_collect.add_argument(
+        "--resume-from",
+        type=Path,
+        help="prior GpuCheckpointCollectReceipt JSON for interrupt resume",
+    )
+    training_collect.add_argument(
+        "--profile",
+        choices=("gpu", "mps", "wsl2-cuda"),
+        default="gpu",
+        help="gpu keeps the 1 MiB CAS bound; mps and wsl2-cuda allow 256 MiB",
+    )
+    add_event_format_argument(training_collect)
     return parser
 
 

@@ -1,0 +1,37 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-minimal
+  revision: 1
+  title: CPU OCI Worker brick
+questions:
+  - id: rq.loss
+    question: Can the simulated intervention reduce validation loss?
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+workflows:
+  - id: workflow.oci
+    graph:
+      nodes:
+        - kind: task
+          id: task.oci
+          blockType: researchos.oci-python-brick
+          blockVersion: 0.1.0
+          config:
+            imageDigest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+            imageMediaType: researchos.oci-image/v0alpha1
+            runtime: oci-container
+            config:
+              network: denied
+            inputs:
+              brickDigest: sha256:074997b9f4edddccf70ad1090a01201b462ba9e62a9d450d50fe8823f332eacf
+      edges: []
+evaluations: []
+resources: []
+policies:
+  paidActionsRequireApproval: true
+  destructiveActionsRequireApproval: true
+  preserveAiDissent: true
+  unknownEvidenceMayTrain: false

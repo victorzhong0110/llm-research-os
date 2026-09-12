@@ -1,0 +1,58 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "Block",
+  "metadata": {
+    "id": "researchos.python-brick",
+    "version": "0.1.0",
+    "title": "Host-python JSON-stdio brick",
+    "description": "Corpus declaration for a CAS-pinned CPU brick. The kernel does not import the entrypoint."
+  },
+  "runtime": {
+    "type": "python",
+    "entrypoint": "researchos.python-brick"
+  },
+  "inputs": [],
+  "outputs": [],
+  "configSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "config",
+      "imageDigest",
+      "imageMediaType",
+      "inputs",
+      "runtime"
+    ],
+    "properties": {
+      "config": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "imageDigest": {
+        "maxLength": 71,
+        "minLength": 71,
+        "type": "string"
+      },
+      "imageMediaType": {
+        "const": "researchos.python-brick/v0alpha1"
+      },
+      "inputs": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "runtime": {
+        "const": "python-sandbox"
+      }
+    }
+  },
+  "capabilities": [
+    "execute.local"
+  ],
+  "permissions": [],
+  "telemetry": [],
+  "reproducibility": {
+    "deterministicWhenSeeded": true
+  },
+  "extensions": {}
+}

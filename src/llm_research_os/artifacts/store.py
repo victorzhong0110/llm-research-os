@@ -22,6 +22,7 @@ from llm_research_os.artifacts.models import ArtifactRecord
 
 CHUNK_SIZE: Final[int] = 65_536
 MAX_PUT_BYTES: Final[int] = 1_048_576
+MAX_WORKER_PUT_BYTES: Final[int] = 268_435_456
 DIGEST_PATTERN: Final[re.Pattern[str]] = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PRIVATE_FILE_MODE: Final[int] = stat.S_IRUSR | stat.S_IWUSR
 _PRIVATE_DIR_MODE: Final[int] = stat.S_IRWXU
@@ -128,16 +129,19 @@ class LocalArtifactStore:
             _close_all(owned)
             _close_quietly(source_fd)
 
-    def put_bytes(self, payload: bytes) -> ArtifactRecord:
+    def put_bytes(self, payload: bytes, *, limit: int = MAX_PUT_BYTES) -> ArtifactRecord:
         """Publish in-memory bytes as one content-addressed object.
 
         Intended for small protocol objects (prompt/output JSON). Source-file
-        ``put`` remains the path for arbitrary local files.
+        ``put`` remains the path for arbitrary local files. Worker HTTPS may
+        raise ``limit`` to ``MAX_WORKER_PUT_BYTES`` for checkpoint bytes.
         """
 
         if type(payload) is not bytes:
             raise ArtifactPathError("artifact payload must be bytes")
-        if len(payload) > MAX_PUT_BYTES:
+        if type(limit) is not int or isinstance(limit, bool) or limit < 1:
+            raise ArtifactPathError("artifact put limit is invalid")
+        if len(payload) > limit:
             raise ArtifactPathError("artifact payload exceeds put_bytes limit")
         owned: list[int] = []
         tmp_fd: int | None = None

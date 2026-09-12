@@ -1,0 +1,18 @@
+{
+  "kind": "WslCuda11Preflight",
+  "sourceCommit": "b7d960c7c78a8c6fbdbdbdc006d50285165e50a6",
+  "python": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/.venv/bin/python",
+  "pythonVersion": "3.12.14",
+  "prefix": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/.venv",
+  "pythonpath": null,
+  "venvIsSymlink": false,
+  "gpuFile": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu.py",
+  "gpuSha256": "sha256:5749a8f7cabe41357415c186dcdc2b927692d72e0df3e9004aad7762b8ea3f40",
+  "observeFile": "/root/researchos/src-b7d960c7c78a8c6fbdbdbdc006d50285165e50a6/src/llm_research_os/workers/gpu_restore_observe.py",
+  "observeSha256": "sha256:9b921d4f0d4325ef04f884c439119a92e87028df6ede85c7d45d4be1bede2c9f",
+  "containerUser": "65534:65534",
+  "probeEntrypoint": "python3",
+  "outputDir": "/root/researchos/gpu/output-resume-12b",
+  "frozenCheckpoint": "/root/researchos/gpu/output-cuda7-frozen/checkpoint-10",
+  "image": "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151"
+}

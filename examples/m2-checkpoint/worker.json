@@ -1,0 +1,17 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "WorkerRegisterRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "workerId": "worker.loopback.1",
+  "actor": {
+    "id": "researcher.alice",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.worker.registered.1",
+    "time": "2026-09-07T12:00:00Z"
+  },
+  "accelerators": []
+}

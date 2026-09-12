@@ -1,0 +1,6 @@
+{
+  "peft_type": "LORA",
+  "r": 8,
+  "lora_alpha": 16,
+  "note": "CPU fixture; not a CUDA adapter"
+}

@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "LLM Research OS · M0 内核",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "m0-kernel.architecture.html",
+    "repository": {
+      "url": "https://github.com/victorzhong0110/llm-research-os",
+      "revision": "d17043a588b8ca89c78248cd9072b7ddb4247273"
+    },
+    "views": [
+      {
+        "id": "main-loop",
+        "label": "主路径",
+        "focus": ["researcher", "cli", "planner", "authz", "runctl", "events"],
+        "note": "研究者经 researchos CLI 做静态规划与授权门，再由 RunControl 以全局 CAS 追加 ResearchEvent。"
+      },
+      {
+        "id": "simulation",
+        "label": "模拟闭环",
+        "focus": ["runctl", "sim", "events"],
+        "note": "SimulatedRuntime 走 RunControl 写生命周期，不导入 Block 入口，也不跑真实 runtime。"
+      },
+      {
+        "id": "non-launch",
+        "label": "不启动边界",
+        "focus": ["cli", "authz", "native", "artifacts"],
+        "note": "制品在 SQLite 外内容寻址；NativeProcessPreflight 只冻结启动契约，不 spawn。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "researcher",
+      "type": "external",
+      "label": "研究者",
+      "sublabel": "最终决定权",
+      "pos": [40, 300],
+      "size": [120, 64]
+    },
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "researchos CLI",
+      "sublabel": "validate · dry-run · runs",
+      "pos": [220, 300],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/cli/__init__.py",
+          "line": 18,
+          "end_line": 39,
+          "label": "main"
+        }
+      ]
+    },
+    {
+      "id": "planner",
+      "type": "backend",
+      "label": "静态规划内核",
+      "sublabel": "TrustedKernel",
+      "tag": "无 GPU",
+      "pos": [430, 300],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/execution/planner.py",
+          "line": 1,
+          "end_line": 40,
+          "label": "planner"
+        },
+        {
+          "path": "src/llm_research_os/execution/kernel.py",
+          "line": 31,
+          "label": "TrustedKernel"
+        }
+      ]
+    },
+    {
+      "id": "authz",
+      "type": "security",
+      "label": "计划授权门",
+      "sublabel": "authorize_plan",
+      "tag": "三摘要",
+      "pos": [640, 300],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/execution/authorization.py",
+          "line": 95,
+          "label": "authorize_plan"
+        }
+      ]
+    },
+    {
+      "id": "runctl",
+      "type": "backend",
+      "label": "RunControl",
+      "sublabel": "预检 + 全局 CAS",
+      "pos": [850, 300],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/runs/control.py",
+          "line": 47,
+          "end_line": 54,
+          "label": "RunControl"
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "type": "database",
+      "label": "EventStore",
+      "sublabel": "SQLite 追加事实",
+      "pos": [1060, 300],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/storage/store.py",
+          "line": 134,
+          "label": "EventStore"
+        }
+      ]
+    },
+    {
+      "id": "artifacts",
+      "type": "database",
+      "label": "LocalArtifactStore",
+      "sublabel": "SQLite 外 sha256",
+      "pos": [850, 120],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/artifacts/store.py",
+          "line": 57,
+          "label": "LocalArtifactStore"
+        }
+      ]
+    },
+    {
+      "id": "sim",
+      "type": "backend",
+      "label": "SimulatedRuntime",
+      "sublabel": "确定性纵向闭环",
+      "pos": [850, 460],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/execution/simulated.py",
+          "line": 136,
+          "label": "SimulatedRuntime"
+        }
+      ]
+    },
+    {
+      "id": "native",
+      "type": "backend",
+      "label": "NativePreflight",
+      "sublabel": "不 spawn 进程",
+      "pos": [640, 460],
+      "size": [150, 64],
+      "sources": [
+        {
+          "path": "src/llm_research_os/execution/native_preflight.py",
+          "line": 94,
+          "label": "preflight_native_process"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "M0 控制面 · 本机 · 无 GPU",
+      "wraps": ["cli", "planner", "authz", "runctl", "events", "artifacts", "sim", "native"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "researcher-to-cli",
+      "from": "researcher",
+      "to": "cli",
+      "label": "本地调用",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cli-to-planner",
+      "from": "cli",
+      "to": "planner",
+      "label": "dry-run"
+    },
+    {
+      "id": "planner-to-authz",
+      "from": "planner",
+      "to": "authz",
+      "label": "ExecutionPlan",
+      "labelDy": -26
+    },
+    {
+      "id": "authz-to-runctl",
+      "from": "authz",
+      "to": "runctl",
+      "label": "仅 authorized",
+      "variant": "security",
+      "labelDy": 56
+    },
+    {
+      "id": "runctl-to-events",
+      "from": "runctl",
+      "to": "events",
+      "label": "CAS append"
+    },
+    {
+      "id": "cli-to-artifacts",
+      "from": "cli",
+      "to": "artifacts",
+      "label": "制品对象",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "runctl-to-sim",
+      "from": "runctl",
+      "to": "sim",
+      "label": "模拟生命周期",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "cli-to-native",
+      "from": "cli",
+      "to": "native",
+      "label": "preflight",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "已交付",
+      "items": [
+        "ResearchSpec / ResearchEvent / BlockManifest 协议与 JSON Schema",
+        "纯静态规划、授权门、RunControl、SQLite 事实源、本地制品、SimulatedRuntime"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "写入模型",
+      "items": [
+        "EventStore 是唯一事实源；RunSnapshot 可重建、不落盘",
+        "append 前全量校验并冻结全局 head，作为 CAS token"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "明确不做",
+      "items": [
+        "不执行训练或真实 GPU；NativeProcessPreflight 不是启动许可",
+        "授权结果、preflight、血缘与 decisionDigest 都不是已认证收据"
+      ]
+    }
+  ]
+}

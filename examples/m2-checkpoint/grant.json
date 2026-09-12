@@ -1,0 +1,26 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "AuthorizationGrantRequest",
+  "projectId": "example-minimal",
+  "experimentRevision": 1,
+  "source": "https://researchos.dev/projects/example-minimal",
+  "grantId": "grant.cpu.1",
+  "workerId": "worker.loopback.1",
+  "taskId": "task.cpu",
+  "runId": "run.worker.cpu",
+  "attemptId": "attempt.worker.1",
+  "nonce": "nonce.cpu.1",
+  "expiresAt": "2099-01-01T00:00:00Z",
+  "authorizationEventId": "evt.authorization.example-minimal.1",
+  "authorizationSequence": "1",
+  "imageDigest": "sha256:08ed11a2e28bd0d286e2b202fe458ba930e9f387f603a9de0dc1f0b2cec9c535",
+  "configDigest": "jcs-sha256:df7ab7f348bc06e0070465343a8f9541e7b337832902aac20ec7deaf3f5300f5",
+  "actor": {
+    "id": "researcher.alice",
+    "kind": "human"
+  },
+  "event": {
+    "id": "evt.grant.recorded.1",
+    "time": "2026-09-07T12:00:00Z"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "kind": "ResearchOSEventStoreExcerpt",
+  "recordedAt": "2026-09-11T16:06:10Z",
+  "database": "/Users/zhongxudong/researchos-control-wsl2/research.db",
+  "priorMaxSequence": 153,
+  "maxSequence": 166,
+  "note": "Append-only after the 153-event freeze. cuda.7 seq 116, cuda.9 seq 140, and cuda.10 seq 153 are unchanged.",
+  "cuda11Completed": {
+    "sequence": 164,
+    "id": "evt.work.completed.lease.grant.wsl.cuda.11",
+    "resultDigest": "sha256:ab90b95280727d8452e70c737ad99c786cb40de582ecee924080e58cfb3da0b3",
+    "artifactDigest": "sha256:ab90b95280727d8452e70c737ad99c786cb40de582ecee924080e58cfb3da0b3",
+    "runCompletedSequence": 166
+  },
+  "events": [
+    {
+      "sequence": 154,
+      "id": "evt.authorization.example-minimal.wsl.cuda.11",
+      "type": "plan.authorization.evaluated"
+    },
+    {
+      "sequence": 155,
+      "id": "evt.grant.recorded.grant.wsl.cuda.11",
+      "type": "authorization.grant.recorded"
+    },
+    {
+      "sequence": 156,
+      "id": "evt.run.queued.wsl.cuda.11",
+      "type": "run.queued"
+    },
+    {
+      "sequence": 157,
+      "id": "evt.run.started.wsl.cuda.11",
+      "type": "run.started"
+    },
+    {
+      "sequence": 158,
+      "id": "evt.attempt.queued.wsl.cuda.11",
+      "type": "attempt.queued"
+    },
+    {
+      "sequence": 159,
+      "id": "evt.attempt.started.wsl.cuda.11",
+      "type": "attempt.started"
+    },
+    {
+      "sequence": 160,
+      "id": "evt.work.queued.task.gpu.restore12b.wsl.11",
+      "type": "work.queued"
+    },
+    {
+      "sequence": 161,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.11",
+      "type": "work.leased"
+    },
+    {
+      "sequence": 162,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.11",
+      "type": "work.claimed"
+    },
+    {
+      "sequence": 163,
+      "id": "evt.grant.consumed.grant.wsl.cuda.11",
+      "type": "authorization.grant.consumed"
+    },
+    {
+      "sequence": 164,
+      "id": "evt.work.completed.lease.grant.wsl.cuda.11",
+      "type": "work.completed"
+    },
+    {
+      "sequence": 165,
+      "id": "evt.attempt.succeeded.wsl.cuda.11",
+      "type": "attempt.succeeded"
+    },
+    {
+      "sequence": 166,
+      "id": "evt.run.completed.wsl.cuda.11",
+      "type": "run.completed"
+    }
+  ]
+}

@@ -8,7 +8,59 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
 
 ## Unreleased
 
+### Fixed
+
+- Loopback Worker TLS material is minted for 14 days. A 1-day cert
+  expired on the live control plane (notAfter 2026-09-10) and made
+  `workers run` report `http-disconnect` before claim.
+- GPU output prepare grants UID/GID `65534:65534` ownership or a
+  controlled ACL on the dedicated output root, `tmp`, and `.researchos`.
+  Mode `775` alone is not a write grant. The Worker then runs a short
+  file-ops probe in the pinned image (`--user 65534:65534`, `--read-only`,
+  same data/model/output mounts) before `work/poll`. The probe creates,
+  writes, renames, and deletes only `.researchos-perm-probe` files and
+  reads `checkpoint-*` without touching `args.json`. Failure is
+  `gpu-output-unwritable` / `gpu-checkpoint-unreadable` and does not
+  claim. Training stays non-root and does not use mode `0777`. The
+  probe interpreter is `python3` so the CUDA image (no `python`) and
+  the Linux OCI brick image both run it.
+- GPU `--read-only` launch sets closed `HOME` / `HF_HOME` /
+  `HF_DATASETS_CACHE` on the existing `/tmp` tmpfs so UID 65534 can mkdir
+  a HuggingFace datasets cache (passwd `HOME` is `/nonexistent`). GPU
+  `/tmp` tmpfs allows exec so Triton can load a JIT `.so`; the CUDA image
+  installs `python3-dev` for `Python.h`.
+- WSL CUDA reports no longer treat checkpoint file presence as a restore,
+  and a single checkpoint no longer sets `parametersUpdated: true`.
+  Restore records split `requestedLoads` from `observedLoads`; leftover
+  checkpoints in the pre-docker snapshot are not this-run products.
+  optimizer / scheduler / rng need a Trainer load-hook JSONL
+  (`phase=loaded`, source digest, post-load summary); a “Loading
+  optimizer” substring is not verified. `run_gpu_training` applies a
+  grant `resume` overlay when `commandDigest` matches. Live serve reads
+  `RESEARCHOS_LEASE_SECONDS` (20-step needs 1800). Invalid GPU launch
+  config returns `SandboxDisposition.FAILED` so the Worker can fail the
+  lease instead of leaving a claimed grant dangling.
+- `_reap_process_group` does not `killpg` the caller's process group.
+  A MPS unit test spawned `/bin/sleep` in pytest's group; Linux CI then
+  SIGKILLed the runner and the job sat until the cap. Worker HTTPS GET
+  no longer calls ``read(256MiB+1)``. Required pytest uses
+  `-m "not oci_live and not slow"`. Worker HTTP sockets default to 10s.
+- Static run reports render Evaluation and System as their own sections.
+  Training no longer lists `evaluation.metric` facts.
+
 ### Added
+
+- Closed WSL CUDA restore plan pair `maxSteps=12` / `saveSteps=2` and a
+  container Trainer load hook (`gpu_restore_observe`) that records
+  optimizer / scheduler / rng source digests after a successful load.
+  GPU launch sets closed `PYTHONPATH=/work/output/.researchos`.
+- ADR-0059 WSL2 CUDA laptop profile (`wsl2-cuda-laptop-8g`) and
+  `run_gpu_training` as the authorized container start. Plan/bind and
+  `execute_gpu_training` stay `gpu-not-run`. Live two-host/CUDA evidence
+  is not claimed until recorded on Windows/WSL2 + Docker Engine.
+- M0 kernel architecture diagram source and HTML under
+  `docs/architecture/` (visual-check review still pending).
+- Charter §14.4 closure matrix for the WSL live pack (not M2 complete).
 
 - M0 kernel proof (closed 2026-09-03; [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)).
 - Post-M0 governance: [ADR-0038](docs/adr/0038-charter-errata-after-m0.md),
@@ -65,6 +117,79 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   answer fields; `answered` requires them.
 - `researchos m1 prove`: one offline corpus chain (Mock proposal through
   simulated report, or reject without `run.queued`). Issue #38 stays open.
+- M2-0 loopback Worker plane, HMAC grants (expiry/revoke/consume), CPU
+  helper over a CAS-pinned brick bound to an authorized `execute.local`
+  plan, and `researchos m2 prove`
+  ([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Not a
+  paid GPU run, not NativeProcessRuntime, and not a kernel sandbox.
+- Isolated control plane and Worker processes with private CAS, pinned
+  loopback HTTPS/JSON, credential files, and reconnect
+  ([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md)).
+  Not a cross-machine proof.
+- CPU `OCIContainerRuntime` with digest-pinned docker, `execute.oci`, and
+  a CAS python brick inside the container
+  ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md)). Host Python
+  stays the trusted helper. A missing engine fails closed and is not a
+  mocked container success. Not GPU.
+- Non-root OCI `/in` bind (0755/0444 for UID 65534) and designated Linux
+  OCI CI that must not skip ([ADR-0049](docs/adr/0049-oci-nobody-bind-and-required-linux-ci.md)).
+- Worker stop/fault recovery: cancel request is not observed stop;
+  `work.completed` reconciles Run/Attempt; unknown cannot auto-succeed or
+  rerun; CPU checkpoint JSON is inspectable
+  ([ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md)).
+- EventStore 10k/100k append/replay/claim/report baseline and CAS metric
+  chunks (`researchos m2 bench`); receipts are not SLA
+  ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).
+- Pinned `ms-swift==4.5.2` parse/plan adapter (`researchos training plan`);
+  argv only, no GPU execution
+  ([ADR-0048](docs/adr/0048-pinned-ms-swift-adapter.md)).
+- Observed execution identity and cancel supervision: resumed
+  `cancelRequested` is not `cancel-observed`; host process groups and OCI
+  containers are stopped then confirmed; cloud instance stop is forbidden
+  ([ADR-0050](docs/adr/0050-observed-execution-identity.md)).
+- Live CPU fault acceptance: cancel, timeout, Worker kill, control-plane
+  restart, and disconnect-after-upload assert real process state;
+  `plane.fail` is not observed stop; pending complete retries without
+  rerun ([ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md)).
+- Worker/RunControl usage evidence: mixed research/budget/Worker append,
+  claim, cancel, and coordinate; isolated Worker plus cited report;
+  `m2 bench` fill is not this path; ordinary hosts label
+  `skipped-no-runtime` / `skipped-no-image`
+  ([ADR-0052](docs/adr/0052-control-path-usage-evidence.md)).
+- GPU experiment sheet: AutoDL RTX 4090, 45 minute wall, proposed ¥20 cap,
+  CUDA image method, instance 关机 ≠ container stop; `gpu: not-run`
+  ([ADR-0053](docs/adr/0053-gpu-experiment-sheet.md)).
+- Process observation is running/exited/unknown; a failed `ps` or `/proc`
+  probe is not exited; stop waits for the process group
+  ([ADR-0054](docs/adr/0054-process-observation-tristate.md)).
+- Live OCI fault acceptance: cancel, timeout, Worker kill, control-plane
+  restart, external stop, and inspect failure assert real container
+  state; designated CI runs `-m oci_live` and must not skip
+  ([ADR-0055](docs/adr/0055-live-oci-fault-acceptance.md)).
+- Independent GPU training execution profile: `gpu-oci-container` /
+  `execute.gpu`, closed device and mounts, pinned ms-swift argv bound;
+  `researchos training bind` does not execute
+  ([ADR-0056](docs/adr/0056-gpu-training-execution-profile.md)).
+- GPU data snapshot and checkpoint loop: pinned Hub revision, offline
+  `training snapshot`, overlay `--resume_from_checkpoint` vs `--adapters`,
+  bounded CAS collect of `/work/output`; receipts stay `gpu-not-run`
+  ([ADR-0057](docs/adr/0057-gpu-data-checkpoint.md)).
+- Remote Worker pack: TLS SAN bind policy, independent EventStore/CAS
+  workdirs, environment inventory and live step list; `secondHost` is
+  `not-provisioned`; STATUS is `pending-live`. A loopback URL is not a
+  cross-machine proof ([ADR-0021](docs/adr/0021-remote-worker-transport.md)).
+- GPU execution-chain acceptance checklist: PR stack, stop/resume/artifact
+  matrix, Linux OCI live evidence, pending-live two-host, unpaid experiment
+  sheet ([docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)).
+- Independent macOS/MPS training profile: `macos-mps-process` /
+  `execute.mps`, closed `MacMpsTrainingPlan`, process-group isolation,
+  `researchos m2 mps` Worker loop, 256 MiB checkpoint collect
+  ([ADR-0058](docs/adr/0058-macos-mps-training-profile.md)). Live Apple M4
+  evidence: [`examples/m2-mps-checkpoint/live-evidence.json`](examples/m2-mps-checkpoint/live-evidence.json)
+  (train / cancel-observed / full resume 10→20 with optimizer and scheduler
+  byte change / CAS verify). Environment artifact includes
+  `sitecustomizeDigest`. Worker RSS is not MPS allocation. Not CUDA, not
+  NativeProcessRuntime, not Issue #38 close.
 
 ### Changed
 
@@ -106,3 +231,18 @@ closes. Until then the version in `pyproject.toml` stays `0.0.0`.
   Committed M0 request files without that field no longer validate.
   SimulatedRuntime resume of a Run that omitted the citation fails closed
   (`authorization-citation-missing`).
+- M2-0: Worker grants cite a recorded `execute.local` authorization and the
+  CAS execution object (image, config, inputs, runtime). Grant recording
+  rebuilds that plan from spec+registry and binds project, revision,
+  workflow, planned task, and execution object. `simulate` cannot start a
+  brick. Script A's authorization cannot grant script B. complete/fail bind
+  token, grant, and lease (project, worker, grant, task, run, attempt,
+  nonce, expiry). Revoked or expired grants reject new results; matching
+  terminal complete/fail stays idempotent. Stdout/stderr limits apply while
+  pipes are read. POSIX process groups are killed after the parent exits so
+  inherited-pipe children cannot outlive the helper.
+- Worker claim-path rebuild folds only Worker event types after a verified
+  high-water. Static reports stream the frozen prefix and keep lineage on
+  the matching Run; they cite spec/runtime/image/config/output digests.
+  High-frequency metrics go to CAS chunks, not one EventStore fact per
+  step ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).

@@ -81,8 +81,18 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     capsys.readouterr()  # type: ignore[attr-defined]
     assert main(["report", RUN, "--database", str(database), "--format", "markdown"]) == 0
     output = capsys.readouterr().out  # type: ignore[attr-defined]
-    for heading in ("## Research", "## Training", "## Cost", "## Lineage"):
+    for heading in (
+        "## Research",
+        "## Training",
+        "## Evaluation",
+        "## System",
+        "## Cost",
+        "## Lineage",
+    ):
         assert heading in output
+    assert "No `evaluation.metric` facts for this run." not in output
+    assert "attempt.started" in output
+    assert "attempt.succeeded" in output
     training = synthetic_training_payload(RUN, ATTEMPT)
     evaluation = synthetic_evaluation_payload(RUN, ATTEMPT)
     assert training["loss"] in output
@@ -90,6 +100,9 @@ def test_report_markdown_cites_event_ids(tmp_path: Path, capsys: object) -> None
     assert '<a href="#evt.training.step"><code>evt.training.step</code></a>' in output
     assert '<a href="#evt.evaluation.metric"><code>evt.evaluation.metric</code></a>' in output
     assert '<a href="#evt.6.run.completed"><code>evt.6.run.completed</code></a>' in output
+    assert "Spec digest" in output
+    assert "Registry digest" in output
+    assert "Plan digest" in output
     assert (
         '<a href="#evt.authorization.example-minimal.1">'
         "<code>evt.authorization.example-minimal.1</code></a>"
@@ -105,6 +118,8 @@ def test_report_html_is_static_and_anchored(tmp_path: Path, capsys: object) -> N
     assert main(["report", RUN, "--database", str(database), "--format", "html"]) == 0
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert output.startswith("<!DOCTYPE html>")
+    assert 'id="evaluation"' in output
+    assert 'id="system"' in output
     assert 'href="#evt.training.step"' in output
     assert 'id="evt.training.step"' in output
     assert "<script>" not in output

@@ -1,0 +1,1688 @@
+{
+  "kind": "ResearchOSEventStoreExcerpt",
+  "recordedAt": "2026-09-10T12:03:01Z",
+  "database": "/Users/zhongxudong/researchos-control-wsl2/research.db",
+  "eventCount": 118,
+  "maxSequence": 118,
+  "cuda7Completed": {
+    "sequence": 116,
+    "id": "evt.work.completed.lease.grant.wsl.cuda.7",
+    "type": "work.completed",
+    "time": "2026-09-09T23:48:52Z",
+    "payload": {
+      "artifactDigest": "sha256:9da93e29a6263aa05aacb7a61cee15a6f34eccd66832b3471805a65f69daea76",
+      "leaseId": "lease.grant.wsl.cuda.7",
+      "resultDigest": "sha256:9da93e29a6263aa05aacb7a61cee15a6f34eccd66832b3471805a65f69daea76"
+    }
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "id": "evt.worker.registered.wsl.1",
+      "type": "worker.registered",
+      "time": "2026-09-10T02:48:00Z",
+      "payload": {
+        "accelerators": [],
+        "protocol": "researchos.worker-longpoll/v0alpha1",
+        "runtime": "oci-container",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 2,
+      "id": "evt.authorization.example-minimal.wsl.oci.1",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:eec02c2b3169c0d92148d43a25a2c307eea4baa7be053579317bccefe98f7d20",
+          "planDigest": "jcs-sha256:11743227b5773e9b52e48b729592b19d5f88c456bf6dc3b4aa1dcfc38acab565",
+          "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+          "specDigest": "jcs-sha256:ead9c345ab62e031e67903aac2fca462ae6fa017463b06ead946bea1cf140929"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.oci"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.oci"
+      }
+    },
+    {
+      "sequence": 3,
+      "id": "evt.grant.recorded.wsl.oci.1",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.oci.1",
+        "authorizationSequence": "2",
+        "configDigest": "jcs-sha256:4b79304583e901103f9d20be074fb1e952c66c3a01b8d5d0fd65fe4876e42cbb",
+        "expiresAt": "2026-09-17T03:50:00Z",
+        "grantId": "grant.wsl.oci.1",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.oci.1",
+        "taskId": "task.oci",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 4,
+      "id": "evt.run.queued.wsl.oci.1",
+      "type": "run.queued",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.oci.1",
+        "authorizationSequence": "2",
+        "decisionDigest": "jcs-sha256:eec02c2b3169c0d92148d43a25a2c307eea4baa7be053579317bccefe98f7d20",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:11743227b5773e9b52e48b729592b19d5f88c456bf6dc3b4aa1dcfc38acab565",
+        "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+        "specDigest": "jcs-sha256:ead9c345ab62e031e67903aac2fca462ae6fa017463b06ead946bea1cf140929",
+        "workflowId": "workflow.oci"
+      }
+    },
+    {
+      "sequence": 5,
+      "id": "evt.run.started.wsl.oci.1",
+      "type": "run.started",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 6,
+      "id": "evt.attempt.queued.wsl.oci.1",
+      "type": "attempt.queued",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 7,
+      "id": "evt.attempt.started.wsl.oci.1",
+      "type": "attempt.started",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 8,
+      "id": "evt.work.queued.task.oci.wsl.1",
+      "type": "work.queued",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {
+        "config": {
+          "network": "denied"
+        },
+        "configDigest": "jcs-sha256:4b79304583e901103f9d20be074fb1e952c66c3a01b8d5d0fd65fe4876e42cbb",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "brickDigest": "sha256:074997b9f4edddccf70ad1090a01201b462ba9e62a9d450d50fe8823f332eacf"
+        },
+        "requiredAccelerators": [],
+        "runtime": "oci-container",
+        "taskId": "task.oci"
+      }
+    },
+    {
+      "sequence": 9,
+      "id": "evt.work.leased.lease.grant.wsl.oci.1",
+      "type": "work.leased",
+      "time": "2026-09-09T20:15:38Z",
+      "payload": {
+        "expiresAt": "2026-09-09T20:16:38Z",
+        "grantId": "grant.wsl.oci.1",
+        "leaseId": "lease.grant.wsl.oci.1",
+        "taskId": "task.oci",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 10,
+      "id": "evt.work.claimed.lease.grant.wsl.oci.1",
+      "type": "work.claimed",
+      "time": "2026-09-09T20:15:38Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.oci.1",
+        "nonce": "nonce.wsl.oci.1",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 11,
+      "id": "evt.grant.consumed.grant.wsl.oci.1",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T20:15:38Z",
+      "payload": {
+        "grantId": "grant.wsl.oci.1",
+        "leaseId": "lease.grant.wsl.oci.1",
+        "nonce": "nonce.wsl.oci.1"
+      }
+    },
+    {
+      "sequence": 12,
+      "id": "evt.work.completed.lease.grant.wsl.oci.1",
+      "type": "work.completed",
+      "time": "2026-09-09T20:15:39Z",
+      "payload": {
+        "artifactDigest": "sha256:16ddaa274bd9fddfee693ae35f19d8215dca1a7179c5958bb25523f379634fb6",
+        "leaseId": "lease.grant.wsl.oci.1",
+        "resultDigest": "jcs-sha256:63660f69c58658b072916cb8f648fd847b8ba89f061db0d40490f82451aabfb5"
+      }
+    },
+    {
+      "sequence": 13,
+      "id": "evt.attempt.succeeded.wsl.oci.1",
+      "type": "attempt.succeeded",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 14,
+      "id": "evt.run.completed.wsl.oci.1",
+      "type": "run.completed",
+      "time": "2026-09-10T03:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 15,
+      "id": "evt.worker.registered.wsl.gpu.1",
+      "type": "worker.registered",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "accelerators": [
+          "cuda"
+        ],
+        "protocol": "researchos.worker-longpoll/v0alpha1",
+        "runtime": "gpu-oci-container",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 16,
+      "id": "evt.authorization.example-minimal.wsl.reconnect.1",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:02c728b3837ea536115bbf7c041b28a1ea52460f35a01653bdf40b183f09cadf",
+          "planDigest": "jcs-sha256:2b0df7c86f0c4e297242ec02b68a1528049df4bd6d9a159bd345fbe540e97dbc",
+          "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+          "specDigest": "jcs-sha256:05ee41090860775de62d6f1e55a9b27909be4b8768f5662546b1158816512431"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.oci"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.reconnect"
+      }
+    },
+    {
+      "sequence": 17,
+      "id": "evt.grant.recorded.grant.wsl.reconnect.1",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.reconnect.1",
+        "authorizationSequence": "16",
+        "configDigest": "jcs-sha256:0c3ee0ddad7132bfc1ac3f6680d794a58ab07517059b59fdd2616f4c8595f2d3",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.reconnect.1",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.reconnect.1",
+        "taskId": "task.oci.reconnect",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 18,
+      "id": "evt.run.queued.reconnect.1",
+      "type": "run.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.reconnect.1",
+        "authorizationSequence": "16",
+        "decisionDigest": "jcs-sha256:02c728b3837ea536115bbf7c041b28a1ea52460f35a01653bdf40b183f09cadf",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:2b0df7c86f0c4e297242ec02b68a1528049df4bd6d9a159bd345fbe540e97dbc",
+        "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+        "specDigest": "jcs-sha256:05ee41090860775de62d6f1e55a9b27909be4b8768f5662546b1158816512431",
+        "workflowId": "workflow.reconnect"
+      }
+    },
+    {
+      "sequence": 19,
+      "id": "evt.run.started.reconnect.1",
+      "type": "run.started",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 20,
+      "id": "evt.attempt.queued.reconnect.1",
+      "type": "attempt.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 21,
+      "id": "evt.attempt.started.reconnect.1",
+      "type": "attempt.started",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 22,
+      "id": "evt.work.queued.task.oci.reconnect",
+      "type": "work.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "config": {
+          "network": "denied",
+          "wallTimeSeconds": 25
+        },
+        "configDigest": "jcs-sha256:0c3ee0ddad7132bfc1ac3f6680d794a58ab07517059b59fdd2616f4c8595f2d3",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "brickDigest": "sha256:703900157dd9c1c75cb299d44d066a976302c720e2ca277203d85db2af9d9b72"
+        },
+        "requiredAccelerators": [],
+        "runtime": "oci-container",
+        "taskId": "task.oci.reconnect"
+      }
+    },
+    {
+      "sequence": 23,
+      "id": "evt.authorization.example-minimal.wsl.cancel.1",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:64a0d4a6d867aaa198ad570c76439e4b9b3c19615a0be7aae8887923826205fc",
+          "planDigest": "jcs-sha256:e7e479359cc465df21040027c5848aa0edc76f2fe536efd784a7c841e958de74",
+          "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+          "specDigest": "jcs-sha256:05ee41090860775de62d6f1e55a9b27909be4b8768f5662546b1158816512431"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.oci"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.cancel"
+      }
+    },
+    {
+      "sequence": 24,
+      "id": "evt.grant.recorded.grant.wsl.cancel.1",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cancel.1",
+        "authorizationSequence": "23",
+        "configDigest": "jcs-sha256:0c3ee0ddad7132bfc1ac3f6680d794a58ab07517059b59fdd2616f4c8595f2d3",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cancel.1",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cancel.1",
+        "taskId": "task.oci.cancel",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 25,
+      "id": "evt.run.queued.cancel.1",
+      "type": "run.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cancel.1",
+        "authorizationSequence": "23",
+        "decisionDigest": "jcs-sha256:64a0d4a6d867aaa198ad570c76439e4b9b3c19615a0be7aae8887923826205fc",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:e7e479359cc465df21040027c5848aa0edc76f2fe536efd784a7c841e958de74",
+        "registryDigest": "jcs-sha256:f92f19437d44a66e507a0dd72b13e279d84ba03f855e3e1e8dd9ab0fb0c77a13",
+        "specDigest": "jcs-sha256:05ee41090860775de62d6f1e55a9b27909be4b8768f5662546b1158816512431",
+        "workflowId": "workflow.cancel"
+      }
+    },
+    {
+      "sequence": 26,
+      "id": "evt.run.started.cancel.1",
+      "type": "run.started",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 27,
+      "id": "evt.attempt.queued.cancel.1",
+      "type": "attempt.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 28,
+      "id": "evt.attempt.started.cancel.1",
+      "type": "attempt.started",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 29,
+      "id": "evt.work.queued.task.oci.cancel",
+      "type": "work.queued",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {
+        "config": {
+          "network": "denied",
+          "wallTimeSeconds": 25
+        },
+        "configDigest": "jcs-sha256:0c3ee0ddad7132bfc1ac3f6680d794a58ab07517059b59fdd2616f4c8595f2d3",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "brickDigest": "sha256:703900157dd9c1c75cb299d44d066a976302c720e2ca277203d85db2af9d9b72"
+        },
+        "requiredAccelerators": [],
+        "runtime": "oci-container",
+        "taskId": "task.oci.cancel"
+      }
+    },
+    {
+      "sequence": 30,
+      "id": "evt.authorization.example-minimal.wsl.cuda.1",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:5e8f155333ec92d719ec5fb07dbea5737a71e10f2d71a74df3e69ce7f06769b8",
+          "planDigest": "jcs-sha256:64c47d5570e201de6857fcb837a8d353d733e09a7f5e29a387da89c8ba2b3caf",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:c3585c5eec16324bc1173b5c872b1ec87a9f87c89b3b1b4f62b42ff065d97338"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 31,
+      "id": "evt.grant.recorded.grant.wsl.cuda.1",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.1",
+        "authorizationSequence": "30",
+        "configDigest": "jcs-sha256:21f01cbff02801a69bbcb69818a9003ed058bf5ac5115488d30955c1f014722f",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.1",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.1",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 32,
+      "id": "evt.run.queued.wsl.cuda.1",
+      "type": "run.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.1",
+        "authorizationSequence": "30",
+        "decisionDigest": "jcs-sha256:5e8f155333ec92d719ec5fb07dbea5737a71e10f2d71a74df3e69ce7f06769b8",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:64c47d5570e201de6857fcb837a8d353d733e09a7f5e29a387da89c8ba2b3caf",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:c3585c5eec16324bc1173b5c872b1ec87a9f87c89b3b1b4f62b42ff065d97338",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 33,
+      "id": "evt.run.started.wsl.cuda.1",
+      "type": "run.started",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 34,
+      "id": "evt.attempt.queued.wsl.cuda.1",
+      "type": "attempt.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 35,
+      "id": "evt.attempt.started.wsl.cuda.1",
+      "type": "attempt.started",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 36,
+      "id": "evt.work.queued.task.gpu.wsl.1",
+      "type": "work.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:21f01cbff02801a69bbcb69818a9003ed058bf5ac5115488d30955c1f014722f",
+        "imageDigest": "sha256:78e98729f8fc4099e53cffb3fe59fd15b18dfa4ace8c914dee0cefa5320068eb",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 37,
+      "id": "evt.grant.revoked.grant.wsl.cuda.1",
+      "type": "authorization.grant.revoked",
+      "time": "2026-09-09T20:41:38Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.1",
+        "reasonCode": "human.revoke"
+      }
+    },
+    {
+      "sequence": 38,
+      "id": "evt.work.leased.lease.grant.wsl.reconnect.1",
+      "type": "work.leased",
+      "time": "2026-09-09T20:57:50Z",
+      "payload": {
+        "expiresAt": "2026-09-09T21:27:50Z",
+        "grantId": "grant.wsl.reconnect.1",
+        "leaseId": "lease.grant.wsl.reconnect.1",
+        "taskId": "task.oci.reconnect",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 39,
+      "id": "evt.work.claimed.lease.grant.wsl.reconnect.1",
+      "type": "work.claimed",
+      "time": "2026-09-09T20:57:50Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.reconnect.1",
+        "nonce": "nonce.wsl.reconnect.1",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 40,
+      "id": "evt.grant.consumed.grant.wsl.reconnect.1",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T20:57:50Z",
+      "payload": {
+        "grantId": "grant.wsl.reconnect.1",
+        "leaseId": "lease.grant.wsl.reconnect.1",
+        "nonce": "nonce.wsl.reconnect.1"
+      }
+    },
+    {
+      "sequence": 41,
+      "id": "evt.work.completed.lease.grant.wsl.reconnect.1",
+      "type": "work.completed",
+      "time": "2026-09-09T20:58:09Z",
+      "payload": {
+        "artifactDigest": "sha256:d07a74ca540777a45952dafd814fb6458d3a528e86a024585f16b59731f739f7",
+        "leaseId": "lease.grant.wsl.reconnect.1",
+        "resultDigest": "jcs-sha256:ddb2a968f649bbe67ff08480804a784295c390321c7bf7154d20b8eee16bb4ff"
+      }
+    },
+    {
+      "sequence": 42,
+      "id": "evt.attempt.succeeded.reconnect.1",
+      "type": "attempt.succeeded",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 43,
+      "id": "evt.run.completed.reconnect.1",
+      "type": "run.completed",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 44,
+      "id": "evt.work.leased.lease.grant.wsl.cancel.1",
+      "type": "work.leased",
+      "time": "2026-09-09T20:58:10Z",
+      "payload": {
+        "expiresAt": "2026-09-09T21:28:10Z",
+        "grantId": "grant.wsl.cancel.1",
+        "leaseId": "lease.grant.wsl.cancel.1",
+        "taskId": "task.oci.cancel",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 45,
+      "id": "evt.work.claimed.lease.grant.wsl.cancel.1",
+      "type": "work.claimed",
+      "time": "2026-09-09T20:58:10Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cancel.1",
+        "nonce": "nonce.wsl.cancel.1",
+        "workerId": "worker.wsl.1"
+      }
+    },
+    {
+      "sequence": 46,
+      "id": "evt.grant.consumed.grant.wsl.cancel.1",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T20:58:10Z",
+      "payload": {
+        "grantId": "grant.wsl.cancel.1",
+        "leaseId": "lease.grant.wsl.cancel.1",
+        "nonce": "nonce.wsl.cancel.1"
+      }
+    },
+    {
+      "sequence": 47,
+      "id": "evt.run.cancel.requested.wsl.cancel.1",
+      "type": "run.cancel.requested",
+      "time": "2026-09-09T20:58:10Z",
+      "payload": {
+        "reasonCode": "researcher.requested"
+      }
+    },
+    {
+      "sequence": 48,
+      "id": "evt.work.failed.lease.grant.wsl.cancel.1",
+      "type": "work.failed",
+      "time": "2026-09-09T20:58:13Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cancel.1",
+        "reasonCode": "cancel-observed"
+      }
+    },
+    {
+      "sequence": 49,
+      "id": "evt.attempt.cancelled.cancel.1",
+      "type": "attempt.cancelled",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 50,
+      "id": "evt.run.cancelled.cancel.1",
+      "type": "run.cancelled",
+      "time": "2026-09-10T04:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 51,
+      "id": "evt.authorization.example-minimal.wsl.cuda.2",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+          "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 52,
+      "id": "evt.grant.recorded.grant.wsl.cuda.2",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.2",
+        "authorizationSequence": "51",
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.2",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.2",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 53,
+      "id": "evt.run.queued.wsl.cuda.2",
+      "type": "run.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.2",
+        "authorizationSequence": "51",
+        "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 54,
+      "id": "evt.run.started.wsl.cuda.2",
+      "type": "run.started",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 55,
+      "id": "evt.attempt.queued.wsl.cuda.2",
+      "type": "attempt.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 56,
+      "id": "evt.attempt.started.wsl.cuda.2",
+      "type": "attempt.started",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 57,
+      "id": "evt.work.queued.task.gpu.wsl.2",
+      "type": "work.queued",
+      "time": "2026-09-10T04:50:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 58,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.2",
+      "type": "work.leased",
+      "time": "2026-09-09T21:13:18Z",
+      "payload": {
+        "expiresAt": "2026-09-09T21:43:18Z",
+        "grantId": "grant.wsl.cuda.2",
+        "leaseId": "lease.grant.wsl.cuda.2",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 59,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.2",
+      "type": "work.claimed",
+      "time": "2026-09-09T21:13:18Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.2",
+        "nonce": "nonce.wsl.cuda.2",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 60,
+      "id": "evt.grant.consumed.grant.wsl.cuda.2",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T21:13:18Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.2",
+        "leaseId": "lease.grant.wsl.cuda.2",
+        "nonce": "nonce.wsl.cuda.2"
+      }
+    },
+    {
+      "sequence": 61,
+      "id": "evt.work.failed.lease.grant.wsl.cuda.2",
+      "type": "work.failed",
+      "time": "2026-09-09T21:13:30Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.2",
+        "reasonCode": "worker.brick.failed"
+      }
+    },
+    {
+      "sequence": 62,
+      "id": "evt.authorization.example-minimal.wsl.cuda.3",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+          "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 63,
+      "id": "evt.grant.recorded.grant.wsl.cuda.3",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.3",
+        "authorizationSequence": "62",
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.3",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.3",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 64,
+      "id": "evt.run.queued.wsl.cuda.3",
+      "type": "run.queued",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.3",
+        "authorizationSequence": "62",
+        "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 65,
+      "id": "evt.run.started.wsl.cuda.3",
+      "type": "run.started",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 66,
+      "id": "evt.attempt.queued.wsl.cuda.3",
+      "type": "attempt.queued",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 67,
+      "id": "evt.attempt.started.wsl.cuda.3",
+      "type": "attempt.started",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 68,
+      "id": "evt.work.queued.task.gpu.wsl.3",
+      "type": "work.queued",
+      "time": "2026-09-10T05:30:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 69,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.3",
+      "type": "work.leased",
+      "time": "2026-09-09T21:36:42Z",
+      "payload": {
+        "expiresAt": "2026-09-09T22:06:42Z",
+        "grantId": "grant.wsl.cuda.3",
+        "leaseId": "lease.grant.wsl.cuda.3",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 70,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.3",
+      "type": "work.claimed",
+      "time": "2026-09-09T21:36:42Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.3",
+        "nonce": "nonce.wsl.cuda.3",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 71,
+      "id": "evt.grant.consumed.grant.wsl.cuda.3",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T21:36:42Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.3",
+        "leaseId": "lease.grant.wsl.cuda.3",
+        "nonce": "nonce.wsl.cuda.3"
+      }
+    },
+    {
+      "sequence": 72,
+      "id": "evt.work.failed.lease.grant.wsl.cuda.3",
+      "type": "work.failed",
+      "time": "2026-09-09T21:36:56Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.3",
+        "reasonCode": "worker.brick.failed"
+      }
+    },
+    {
+      "sequence": 73,
+      "id": "evt.authorization.example-minimal.wsl.cuda.4",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+          "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 74,
+      "id": "evt.grant.recorded.grant.wsl.cuda.4",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.4",
+        "authorizationSequence": "73",
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.4",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.4",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 75,
+      "id": "evt.run.queued.wsl.cuda.4",
+      "type": "run.queued",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.4",
+        "authorizationSequence": "73",
+        "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 76,
+      "id": "evt.run.started.wsl.cuda.4",
+      "type": "run.started",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 77,
+      "id": "evt.attempt.queued.wsl.cuda.4",
+      "type": "attempt.queued",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 78,
+      "id": "evt.attempt.started.wsl.cuda.4",
+      "type": "attempt.started",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 79,
+      "id": "evt.work.queued.task.gpu.wsl.4",
+      "type": "work.queued",
+      "time": "2026-09-10T05:40:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 80,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.4",
+      "type": "work.leased",
+      "time": "2026-09-09T21:49:48Z",
+      "payload": {
+        "expiresAt": "2026-09-09T22:19:48Z",
+        "grantId": "grant.wsl.cuda.4",
+        "leaseId": "lease.grant.wsl.cuda.4",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 81,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.4",
+      "type": "work.claimed",
+      "time": "2026-09-09T21:49:48Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.4",
+        "nonce": "nonce.wsl.cuda.4",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 82,
+      "id": "evt.grant.consumed.grant.wsl.cuda.4",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T21:49:48Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.4",
+        "leaseId": "lease.grant.wsl.cuda.4",
+        "nonce": "nonce.wsl.cuda.4"
+      }
+    },
+    {
+      "sequence": 83,
+      "id": "evt.work.failed.lease.grant.wsl.cuda.4",
+      "type": "work.failed",
+      "time": "2026-09-09T21:50:08Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.4",
+        "reasonCode": "worker.brick.failed"
+      }
+    },
+    {
+      "sequence": 84,
+      "id": "evt.authorization.example-minimal.wsl.cuda.5",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+          "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 85,
+      "id": "evt.grant.recorded.grant.wsl.cuda.5",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.5",
+        "authorizationSequence": "84",
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.5",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.5",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 86,
+      "id": "evt.run.queued.wsl.cuda.5",
+      "type": "run.queued",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.5",
+        "authorizationSequence": "84",
+        "decisionDigest": "jcs-sha256:10aacd14f060eb3254ee1a85acfa3bdb546042c5aef3bceb788e0fb771d34394",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:104113e3351bca8e0c80fb8e0ac588574d263afb5d5b4cef9e1f628a11216c61",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:81826123eba23261688d74f51a579cf1c1412f1ea4c72fb9f3000a9ffdd9b1b2",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 87,
+      "id": "evt.run.started.wsl.cuda.5",
+      "type": "run.started",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 88,
+      "id": "evt.attempt.queued.wsl.cuda.5",
+      "type": "attempt.queued",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 89,
+      "id": "evt.attempt.started.wsl.cuda.5",
+      "type": "attempt.started",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 90,
+      "id": "evt.work.queued.task.gpu.wsl.5",
+      "type": "work.queued",
+      "time": "2026-09-10T06:25:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:2c6aa261dd6001065b94fd0a4c052122b28581067b1ba3745db6dc066529ac6d",
+        "imageDigest": "sha256:865726017bfea6f46bd78563a6eb3c4574cddc0a643080b44b9574c8ec867af6",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 91,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.5",
+      "type": "work.leased",
+      "time": "2026-09-09T23:36:57Z",
+      "payload": {
+        "expiresAt": "2026-09-10T00:06:57Z",
+        "grantId": "grant.wsl.cuda.5",
+        "leaseId": "lease.grant.wsl.cuda.5",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 92,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.5",
+      "type": "work.claimed",
+      "time": "2026-09-09T23:36:57Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.5",
+        "nonce": "nonce.wsl.cuda.5",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 93,
+      "id": "evt.grant.consumed.grant.wsl.cuda.5",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T23:36:57Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.5",
+        "leaseId": "lease.grant.wsl.cuda.5",
+        "nonce": "nonce.wsl.cuda.5"
+      }
+    },
+    {
+      "sequence": 94,
+      "id": "evt.work.failed.lease.grant.wsl.cuda.5",
+      "type": "work.failed",
+      "time": "2026-09-09T23:37:15Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.5",
+        "reasonCode": "worker.brick.failed"
+      }
+    },
+    {
+      "sequence": 95,
+      "id": "evt.authorization.example-minimal.wsl.cuda.6",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:eca069fe8fca6d81fa495ccf1d2864f9bf314f9f287559e3a3413f2f3b31f8b8",
+          "planDigest": "jcs-sha256:940b46c37f9ba2c9c2b1c3d224f054a164a5255eefd06172412ab23d0f690308",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:c66a8b850a1b01d94365116131890572c8ea4bd5acb8d1324aee288f233608a4"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 96,
+      "id": "evt.grant.recorded.grant.wsl.cuda.6",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.6",
+        "authorizationSequence": "95",
+        "configDigest": "jcs-sha256:fe7a5b6c24543f9c7f6d05acc5353cb5f424b097b7916828f99088eef68f3910",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.6",
+        "imageDigest": "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.6",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 97,
+      "id": "evt.run.queued.wsl.cuda.6",
+      "type": "run.queued",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.6",
+        "authorizationSequence": "95",
+        "decisionDigest": "jcs-sha256:eca069fe8fca6d81fa495ccf1d2864f9bf314f9f287559e3a3413f2f3b31f8b8",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:940b46c37f9ba2c9c2b1c3d224f054a164a5255eefd06172412ab23d0f690308",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:c66a8b850a1b01d94365116131890572c8ea4bd5acb8d1324aee288f233608a4",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 98,
+      "id": "evt.run.started.wsl.cuda.6",
+      "type": "run.started",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 99,
+      "id": "evt.attempt.queued.wsl.cuda.6",
+      "type": "attempt.queued",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 100,
+      "id": "evt.attempt.started.wsl.cuda.6",
+      "type": "attempt.started",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 101,
+      "id": "evt.work.queued.task.gpu.wsl.6",
+      "type": "work.queued",
+      "time": "2026-09-10T07:50:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:fe7a5b6c24543f9c7f6d05acc5353cb5f424b097b7916828f99088eef68f3910",
+        "imageDigest": "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 102,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.6",
+      "type": "work.leased",
+      "time": "2026-09-09T23:46:36Z",
+      "payload": {
+        "expiresAt": "2026-09-10T00:16:36Z",
+        "grantId": "grant.wsl.cuda.6",
+        "leaseId": "lease.grant.wsl.cuda.6",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 103,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.6",
+      "type": "work.claimed",
+      "time": "2026-09-09T23:46:36Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.6",
+        "nonce": "nonce.wsl.cuda.6",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 104,
+      "id": "evt.grant.consumed.grant.wsl.cuda.6",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T23:46:36Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.6",
+        "leaseId": "lease.grant.wsl.cuda.6",
+        "nonce": "nonce.wsl.cuda.6"
+      }
+    },
+    {
+      "sequence": 105,
+      "id": "evt.work.failed.lease.grant.wsl.cuda.6",
+      "type": "work.failed",
+      "time": "2026-09-09T23:46:54Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.6",
+        "reasonCode": "worker.brick.failed"
+      }
+    },
+    {
+      "sequence": 106,
+      "id": "evt.authorization.example-minimal.wsl.cuda.7",
+      "type": "plan.authorization.evaluated",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {
+        "approvalAuthentication": "not-authenticated",
+        "approvedRequirements": [],
+        "authority": "audit-only",
+        "authorized": true,
+        "binding": {
+          "decisionDigest": "jcs-sha256:eca069fe8fca6d81fa495ccf1d2864f9bf314f9f287559e3a3413f2f3b31f8b8",
+          "planDigest": "jcs-sha256:940b46c37f9ba2c9c2b1c3d224f054a164a5255eefd06172412ab23d0f690308",
+          "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+          "specDigest": "jcs-sha256:c66a8b850a1b01d94365116131890572c8ea4bd5acb8d1324aee288f233608a4"
+        },
+        "deniedRequirements": [],
+        "execution": "not-executed",
+        "missingCapabilities": [],
+        "missingPermissions": [],
+        "pendingRequirements": [],
+        "requiredCapabilities": [
+          "execute.gpu"
+        ],
+        "requiredPermissions": [],
+        "status": "authorized",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 107,
+      "id": "evt.grant.recorded.grant.wsl.cuda.7",
+      "type": "authorization.grant.recorded",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.7",
+        "authorizationSequence": "106",
+        "configDigest": "jcs-sha256:fe7a5b6c24543f9c7f6d05acc5353cb5f424b097b7916828f99088eef68f3910",
+        "expiresAt": "2026-09-17T12:00:00Z",
+        "grantId": "grant.wsl.cuda.7",
+        "imageDigest": "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151",
+        "keyId": "local.hmac.1",
+        "nonce": "nonce.wsl.cuda.7",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 108,
+      "id": "evt.run.queued.wsl.cuda.7",
+      "type": "run.queued",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {
+        "authorizationEventId": "evt.authorization.example-minimal.wsl.cuda.7",
+        "authorizationSequence": "106",
+        "decisionDigest": "jcs-sha256:eca069fe8fca6d81fa495ccf1d2864f9bf314f9f287559e3a3413f2f3b31f8b8",
+        "maxAttempts": 1,
+        "planDigest": "jcs-sha256:940b46c37f9ba2c9c2b1c3d224f054a164a5255eefd06172412ab23d0f690308",
+        "registryDigest": "jcs-sha256:5a2c4d7e1185ec206c75b97953b0179862476921c6a9d3fe6671939567ab15fb",
+        "specDigest": "jcs-sha256:c66a8b850a1b01d94365116131890572c8ea4bd5acb8d1324aee288f233608a4",
+        "workflowId": "workflow.gpu"
+      }
+    },
+    {
+      "sequence": 109,
+      "id": "evt.run.started.wsl.cuda.7",
+      "type": "run.started",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 110,
+      "id": "evt.attempt.queued.wsl.cuda.7",
+      "type": "attempt.queued",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {
+        "ordinal": 1,
+        "retryDecisionId": null,
+        "retryOf": null
+      }
+    },
+    {
+      "sequence": 111,
+      "id": "evt.attempt.started.wsl.cuda.7",
+      "type": "attempt.started",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 112,
+      "id": "evt.work.queued.task.gpu.wsl.7",
+      "type": "work.queued",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {
+        "config": {
+          "commandDigest": "jcs-sha256:92209253e85328dfad155e07a59d138a2302a25fd8224a14683b4ace0fd4b691",
+          "cpuMillis": 4000,
+          "device": "nvidia.com/gpu=0",
+          "diskBytes": 8589934592,
+          "memoryBytes": 3221225472,
+          "network": "denied",
+          "pidsLimit": 256,
+          "profile": "wsl2-cuda-laptop-8g",
+          "wallTimeSeconds": 1800
+        },
+        "configDigest": "jcs-sha256:fe7a5b6c24543f9c7f6d05acc5353cb5f424b097b7916828f99088eef68f3910",
+        "imageDigest": "sha256:78a31edde58ca329c3b4d769bc020917b45afa41c8ff4eb9de594ca24b75b151",
+        "imageMediaType": "researchos.oci-image/v0alpha1",
+        "inputs": {
+          "planArtifactDigest": "sha256:a840fda745eb84b3ec7687c8fbcf50ff39116d5698084ae78593df32ff3771ba",
+          "planDigest": "jcs-sha256:cc6da519be35f1cb6ac3e49415cac17b718941502d38a7408ae70908a4741639"
+        },
+        "requiredAccelerators": [
+          "cuda"
+        ],
+        "runtime": "gpu-oci-container",
+        "taskId": "task.gpu"
+      }
+    },
+    {
+      "sequence": 113,
+      "id": "evt.work.leased.lease.grant.wsl.cuda.7",
+      "type": "work.leased",
+      "time": "2026-09-09T23:48:25Z",
+      "payload": {
+        "expiresAt": "2026-09-10T00:18:25Z",
+        "grantId": "grant.wsl.cuda.7",
+        "leaseId": "lease.grant.wsl.cuda.7",
+        "taskId": "task.gpu",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 114,
+      "id": "evt.work.claimed.lease.grant.wsl.cuda.7",
+      "type": "work.claimed",
+      "time": "2026-09-09T23:48:25Z",
+      "payload": {
+        "leaseId": "lease.grant.wsl.cuda.7",
+        "nonce": "nonce.wsl.cuda.7",
+        "workerId": "worker.wsl.gpu.1"
+      }
+    },
+    {
+      "sequence": 115,
+      "id": "evt.grant.consumed.grant.wsl.cuda.7",
+      "type": "authorization.grant.consumed",
+      "time": "2026-09-09T23:48:25Z",
+      "payload": {
+        "grantId": "grant.wsl.cuda.7",
+        "leaseId": "lease.grant.wsl.cuda.7",
+        "nonce": "nonce.wsl.cuda.7"
+      }
+    },
+    {
+      "sequence": 116,
+      "id": "evt.work.completed.lease.grant.wsl.cuda.7",
+      "type": "work.completed",
+      "time": "2026-09-09T23:48:52Z",
+      "payload": {
+        "artifactDigest": "sha256:9da93e29a6263aa05aacb7a61cee15a6f34eccd66832b3471805a65f69daea76",
+        "leaseId": "lease.grant.wsl.cuda.7",
+        "resultDigest": "sha256:9da93e29a6263aa05aacb7a61cee15a6f34eccd66832b3471805a65f69daea76"
+      }
+    },
+    {
+      "sequence": 117,
+      "id": "evt.attempt.succeeded.wsl.cuda.7",
+      "type": "attempt.succeeded",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {}
+    },
+    {
+      "sequence": 118,
+      "id": "evt.run.completed.wsl.cuda.7",
+      "type": "run.completed",
+      "time": "2026-09-10T07:55:00Z",
+      "payload": {}
+    }
+  ]
+}

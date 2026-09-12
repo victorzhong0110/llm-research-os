@@ -54,4 +54,4 @@ experiment, and by M0 refusing to treat SimulatedRuntime as a network Worker.
 - [Project charter v0.1 §8.4](../charter-v0.1.md)
 - [Chapter 18 decision 5-WA](../chapter-18-decision-guide-v0.1.md)
 - [ADR-0008 Native Process and OCI Runtimes](0008-native-process-and-oci-runtimes.md)
-- [ADR-0021](README.md) remains the deferred first remote-binding experiment; it has no standalone record yet.
+- [ADR-0021](0021-remote-worker-transport.md) is the first remote-binding pack; live two-host verification remains pending-live.

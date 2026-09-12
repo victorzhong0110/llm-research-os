@@ -163,6 +163,51 @@ def test_bounded_reads_verify_and_preserve_global_order(tmp_path: Path) -> None:
         assert store.read_events(after_sequence=5) == []
 
 
+def test_reads_filter_event_types_and_until_sequence(tmp_path: Path) -> None:
+    with EventStore(tmp_path / "research.db", clock=_clock) as store:
+        for index in range(1, 4):
+            draft = _event_draft(index)
+            if index == 2:
+                draft["type"] = "run.heartbeat"
+            store.append(draft)
+        heartbeats = store.read_events(event_types=frozenset({"run.heartbeat"}))
+        assert [item.sequence for item in heartbeats] == [2]
+        prefix = store.read_events(until_sequence=2)
+        assert [item.sequence for item in prefix] == [1, 2]
+        assert store.read_events(event_types=frozenset()) == []
+        started = store.read_events(
+            after_sequence=1,
+            until_sequence=3,
+            event_types=frozenset({"run.started"}),
+        )
+        assert [item.sequence for item in started] == [3]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"until_sequence": -1}, "until_sequence is outside the supported sequence range"),
+        ({"until_sequence": True}, "until_sequence must be an integer"),
+        ({"event_types": {"run.started"}}, "event_types must be a frozenset"),
+        ({"event_types": frozenset({""})}, "event_types entries must be non-empty strings"),
+        (
+            {"event_types": frozenset(f"t.{index}" for index in range(33))},
+            "event_types exceeds the closed list limit",
+        ),
+    ],
+)
+def test_reads_reject_invalid_type_and_until_filters(
+    tmp_path: Path,
+    kwargs: dict[str, object],
+    match: str,
+) -> None:
+    with (
+        EventStore(tmp_path / "research.db", clock=_clock) as store,
+        pytest.raises(ValueError, match=match),
+    ):
+        store.read_events(**kwargs)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("after_sequence", "limit", "match"),
     [

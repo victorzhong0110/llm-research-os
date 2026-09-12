@@ -21,7 +21,10 @@ jobs:
     # and may fail.
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})${{ matrix.experimental && ' forward-compat, allowed to fail' || '' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Required pytest is the protocol suite, not live docker (oci-linux job)
+    # and not the 10k/100k EventStore baselines. HTTPS Worker sockets default
+    # to 10s; 120s was stalling GitHub jobs when a handler did not answer.
+    timeout-minutes: 25
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
@@ -52,12 +55,51 @@ jobs:
         run: uv run mypy src
       - name: Verify RFC 8785 digest conformance
         run: node conformance/digest/verify.mjs
+      - name: Count selected tests
+        run: >
+          uv run pytest --collect-only -q
+          -m "not oci_live and not slow"
+          | tail -n 20
       - name: Test with coverage report
-        run: uv run pytest --cov=llm_research_os --cov-report=term-missing:skip-covered --cov-fail-under=85
+        timeout-minutes: 15
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: >
+          uv run pytest
+          -m "not oci_live and not slow"
+          --cov=llm_research_os
+          --cov-report=term-missing:skip-covered
+          --cov-fail-under=85
+          --durations=25
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
       - name: Build package
         run: uv build
+
+  oci-linux:
+    # Designated Linux OCI integration (ADR-0049). Missing docker, a failed
+    # image build, or a skip of oci_live MUST fail this job. Ordinary pytest
+    # on developer machines and macOS CI may skip when no engine is present.
+    name: Linux OCI integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: uv sync --locked --all-groups
+      - name: Require a live docker engine
+        run: docker info
+      - name: Live OCI brick and faults
+        env:
+          RESEARCHOS_OCI_REQUIRED: "1"
+        run: uv run pytest -m oci_live --tb=short
 
   authorship:
     name: Human authorship

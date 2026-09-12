@@ -1,0 +1,501 @@
+{
+  "kind": "MacMpsLiveEvidence",
+  "apiVersion": "researchos.dev/v0alpha1",
+  "status": "live",
+  "effectNotAcceptance": true,
+  "cpuFallback": false,
+  "cpuFallbackBasis": {
+    "probeDevice": "mps",
+    "reportCpuFallback": false,
+    "rule": "Worker probe must return device mps; any other device is mps-unavailable",
+    "mpsFallbackOps": [],
+    "sourceArtifactDigest": "sha256:98b98f4b60a755494bc05dde802c2caf2de5b6954bdd8df3a68736efae3df2f3"
+  },
+  "isolation": {
+    "runtime": "macos-mps-process",
+    "capability": "execute.mps",
+    "declared": "process-group",
+    "ociIsolationClaimed": false,
+    "nativeProcessRuntime": false
+  },
+  "host": {
+    "system": "Darwin",
+    "release": "25.6.0",
+    "machine": "arm64",
+    "chip": "Apple M4",
+    "python": "3.12.13",
+    "memBytes": 25769803776
+  },
+  "environmentDigest": "sha256:5fcaa51704a4086135bdc9a4f41bc43fab2043e68a90f6d4f799f321b402459d",
+  "environment": {
+    "kind": "MacMpsEnvironment",
+    "backendId": "ms-swift",
+    "backendVersion": "4.5.2",
+    "python": "3.12.13",
+    "torch": "2.14.0",
+    "accelerator": "mps",
+    "stub": false,
+    "probeDevice": "mps",
+    "cpuFallbackRule": "probe device must be mps; any other device is mps-unavailable",
+    "deviceMapArgv": "absent",
+    "weightLoad": "cpu-then-trainer-mps",
+    "tmpdir": "/tmp",
+    "sitecustomizeDigest": "sha256:9721271dd442d8fe3754dca391e610ef9dde8ca0678761e8c1b89dbd1538cfd1",
+    "pytorchMpsFallback": "1"
+  },
+  "planDigest": "jcs-sha256:7c38182de294a01b8c6460f124b719c192e6abd93a8077c51bc67e3657533aac",
+  "planArtifactDigest": "sha256:964bc6e9277263f452e0b60084aa36d15ef3d82b7a31fa3f9481f72960d6a658",
+  "datasetDigest": "jcs-sha256:38e6af8274c1063511dc6a9ef684f451c49a6ff4f24746d194c5fbd37676abae",
+  "modelDigest": "jcs-sha256:50c17012b8aece03e8d247540bd9c7f6b3fac19302be0a0d1fa086cfe8f5d5d0",
+  "memory": {
+    "workerPeakRssBytes": 466173952,
+    "workerPeakRssSource": "ps -o rss= sampled while the Worker process ran",
+    "workerPeakRssIncludesMpsAllocations": false,
+    "mpsAllocatedBytes": null,
+    "mpsAllocatedStatus": "unmeasured"
+  },
+  "train": {
+    "runId": "run.worker.mps",
+    "artifactDigest": "sha256:98b98f4b60a755494bc05dde802c2caf2de5b6954bdd8df3a68736efae3df2f3",
+    "report": {
+      "kind": "MacMpsTrainingReport",
+      "status": "ok",
+      "executed": true,
+      "device": "mps",
+      "cpuFallback": false,
+      "mpsFallbackOps": [],
+      "backendId": "ms-swift",
+      "backendVersion": "4.5.2",
+      "torchVersion": "2.14.0",
+      "pythonVersion": "3.12.13",
+      "isolation": "process-group",
+      "ociIsolationClaimed": false,
+      "networkEnforcement": "offline-env-flags",
+      "globalStep": 20,
+      "losses": [
+        1.1545233726501465,
+        0.5991127490997314,
+        0.13521340489387512,
+        0.017897773534059525,
+        0.0022217249497771263,
+        0.0011731680715456605,
+        0.00012563630298245698,
+        0.00011931397602893412,
+        0.0004415204166434705,
+        5.785376197309233e-05,
+        0.00010158737131860107,
+        5.75764242967125e-05,
+        0.00011824481771327555,
+        3.5245277103967965e-05,
+        4.0569648263044655e-05,
+        0.00010278057015966624,
+        6.210502760950476e-05,
+        5.4088370234239846e-05,
+        4.5565044274553657e-05,
+        6.252258754102513e-05
+      ],
+      "lossFinite": true,
+      "parametersUpdated": true,
+      "checkpoint": {
+        "path": "checkpoint-20",
+        "optimizer": true,
+        "scheduler": true,
+        "rng": true,
+        "adapter": true,
+        "globalStep": 20
+      },
+      "wallSeconds": 14.134597749973182,
+      "peakRssBytes": 466173952,
+      "stub": false
+    },
+    "eventTypes": [
+      "plan.authorization.evaluated",
+      "worker.registered",
+      "authorization.grant.recorded",
+      "run.queued",
+      "run.started",
+      "attempt.queued",
+      "attempt.started",
+      "work.queued",
+      "work.leased",
+      "work.claimed",
+      "authorization.grant.consumed",
+      "work.completed",
+      "run.queued",
+      "run.started",
+      "attempt.queued",
+      "attempt.started",
+      "authorization.grant.recorded",
+      "work.queued",
+      "work.leased",
+      "work.claimed",
+      "authorization.grant.consumed",
+      "run.cancel.requested",
+      "work.failed",
+      "attempt.cancelled",
+      "run.cancelled",
+      "plan.authorization.evaluated",
+      "run.queued",
+      "run.started",
+      "attempt.queued",
+      "attempt.started",
+      "authorization.grant.recorded",
+      "work.queued",
+      "work.leased",
+      "work.claimed",
+      "authorization.grant.consumed",
+      "work.completed",
+      "attempt.succeeded",
+      "run.completed",
+      "attempt.succeeded",
+      "run.completed"
+    ],
+    "eventIds": [
+      "evt.authorization.example-minimal.mps.1",
+      "evt.worker.registered.mps.1",
+      "evt.grant.recorded.mps.1",
+      "evt.run.queued.worker.mps",
+      "evt.run.started.worker.mps",
+      "evt.attempt.queued.worker.mps",
+      "evt.attempt.started.worker.mps",
+      "evt.work.queued.task.mps",
+      "evt.work.leased.lease.grant.mps.1",
+      "evt.work.claimed.lease.grant.mps.1",
+      "evt.grant.consumed.grant.mps.1",
+      "evt.work.completed.lease.grant.mps.1",
+      "evt.run.queued.mps-cancel",
+      "evt.run.started.mps-cancel",
+      "evt.attempt.queued.mps-cancel",
+      "evt.attempt.started.mps-cancel",
+      "evt.grant.recorded.mps.cancel",
+      "evt.work.queued.task.mps.cancel",
+      "evt.work.leased.lease.grant.mps.cancel",
+      "evt.work.claimed.lease.grant.mps.cancel",
+      "evt.grant.consumed.grant.mps.cancel",
+      "evt.run.cancel.requested.mps",
+      "evt.work.failed.lease.grant.mps.cancel",
+      "evt.attempt.cancelled.mps-cancel",
+      "evt.run.cancelled.mps-cancel",
+      "evt.authorization.example-minimal.mps-resume",
+      "evt.run.queued.mps-resume",
+      "evt.run.started.mps-resume",
+      "evt.attempt.queued.mps-resume",
+      "evt.attempt.started.mps-resume",
+      "evt.grant.recorded.mps.resume",
+      "evt.work.queued.task.mps.resume",
+      "evt.work.leased.lease.grant.mps.resume",
+      "evt.work.claimed.lease.grant.mps.resume",
+      "evt.grant.consumed.grant.mps.resume",
+      "evt.work.completed.lease.grant.mps.resume",
+      "evt.attempt.succeeded.mps-resume",
+      "evt.run.completed.mps-resume",
+      "evt.attempt.succeeded.worker.mps",
+      "evt.run.completed.worker.mps"
+    ]
+  },
+  "cancel": {
+    "runId": "run.worker.mps.cancel",
+    "observed": true,
+    "reasonCode": "cancel-observed",
+    "status": "cancelled",
+    "cancelRequestEventId": "evt.run.cancel.requested.mps",
+    "eventTypes": [
+      "plan.authorization.evaluated",
+      "worker.registered",
+      "authorization.grant.recorded",
+      "run.queued",
+      "run.started",
+      "attempt.queued",
+      "attempt.started",
+      "work.queued",
+      "work.leased",
+      "work.claimed",
+      "authorization.grant.consumed",
+      "work.completed",
+      "run.queued",
+      "run.started",
+      "attempt.queued",
+      "attempt.started",
+      "authorization.grant.recorded",
+      "work.queued",
+      "work.leased",
+      "work.claimed",
+      "authorization.grant.consumed",
+      "run.cancel.requested",
+      "work.failed",
+      "attempt.cancelled",
+      "run.cancelled"
+    ],
+    "eventIds": [
+      "evt.authorization.example-minimal.mps.1",
+      "evt.worker.registered.mps.1",
+      "evt.grant.recorded.mps.1",
+      "evt.run.queued.worker.mps",
+      "evt.run.started.worker.mps",
+      "evt.attempt.queued.worker.mps",
+      "evt.attempt.started.worker.mps",
+      "evt.work.queued.task.mps",
+      "evt.work.leased.lease.grant.mps.1",
+      "evt.work.claimed.lease.grant.mps.1",
+      "evt.grant.consumed.grant.mps.1",
+      "evt.work.completed.lease.grant.mps.1",
+      "evt.run.queued.mps-cancel",
+      "evt.run.started.mps-cancel",
+      "evt.attempt.queued.mps-cancel",
+      "evt.attempt.started.mps-cancel",
+      "evt.grant.recorded.mps.cancel",
+      "evt.work.queued.task.mps.cancel",
+      "evt.work.leased.lease.grant.mps.cancel",
+      "evt.work.claimed.lease.grant.mps.cancel",
+      "evt.grant.consumed.grant.mps.cancel",
+      "evt.run.cancel.requested.mps",
+      "evt.work.failed.lease.grant.mps.cancel",
+      "evt.attempt.cancelled.mps-cancel",
+      "evt.run.cancelled.mps-cancel"
+    ]
+  },
+  "resume": {
+    "runId": "run.worker.mps.resume",
+    "mode": "full-checkpoint",
+    "declaredLoads": [
+      "weights",
+      "optimizer",
+      "scheduler",
+      "rng",
+      "global_step"
+    ],
+    "argvFlags": [
+      "--resume_from_checkpoint",
+      "output/checkpoint-10"
+    ],
+    "fromStep": 10,
+    "toStep": 20,
+    "commandDigest": "jcs-sha256:666915bf4a9f87c0cc03eb7265ee934f7b9e6700a34d4e2eaba1f31a5499852e",
+    "artifactDigest": "sha256:2f2a327a27944a26af653b25ddf9b8560282703e57a5dd65e82201f6b9c4eb7d",
+    "report": {
+      "kind": "MacMpsTrainingReport",
+      "status": "ok",
+      "executed": true,
+      "device": "mps",
+      "cpuFallback": false,
+      "mpsFallbackOps": [],
+      "backendId": "ms-swift",
+      "backendVersion": "4.5.2",
+      "torchVersion": "2.14.0",
+      "pythonVersion": "3.12.13",
+      "isolation": "process-group",
+      "ociIsolationClaimed": false,
+      "networkEnforcement": "offline-env-flags",
+      "globalStep": 20,
+      "losses": [
+        1.1545233726501465,
+        0.5991127490997314,
+        0.13521340489387512,
+        0.017897773534059525,
+        0.0022217249497771263,
+        0.0011731680715456605,
+        0.00012563630298245698,
+        0.00011931397602893412,
+        0.0004415204166434705,
+        5.785376197309233e-05,
+        9.526911890134215e-05,
+        6.111275433795527e-05,
+        0.00012408418115228415,
+        3.484792250674218e-05,
+        4.013258148916066e-05,
+        9.804304863791913e-05,
+        6.267112621571869e-05,
+        5.587631676462479e-05,
+        4.4373085984261706e-05,
+        6.460857548518106e-05
+      ],
+      "lossFinite": true,
+      "parametersUpdated": true,
+      "checkpoint": {
+        "path": "checkpoint-20",
+        "optimizer": true,
+        "scheduler": true,
+        "rng": true,
+        "adapter": true,
+        "globalStep": 20
+      },
+      "wallSeconds": 13.104212583974004,
+      "peakRssBytes": 466255872,
+      "stub": false
+    },
+    "observed": {
+      "globalStep": {
+        "before": 10,
+        "after": 20,
+        "source": "trainer_state.json global_step",
+        "continuous": true
+      },
+      "optimizer": {
+        "digestBefore": "sha256:ea3ae0fd298d0f9672ca35b0e3d8e337e6a43faa5babab588630d6233480dcd7",
+        "digestAfter": "sha256:7f076be8c8e4643458fada5bab76cae50dc9af1e39f07035d63dd56adf22f11c",
+        "digestChanged": true,
+        "status": "bytes-changed"
+      },
+      "scheduler": {
+        "digestBefore": "sha256:bc068b0c5d247f4cedcfe3eb402e1544eb9f1de07c67ef4a3717721c6ec28e74",
+        "digestAfter": "sha256:28a9735eae40c49411832cd34b016417a3aed91c6cdd6dad338ce727ba9cd7f0",
+        "digestChanged": true,
+        "status": "bytes-changed"
+      },
+      "rng": {
+        "digestBefore": "sha256:2cddf27219365242ec1046a3532a63a24c3f350c77f100e4f973369db2cc849d",
+        "digestAfter": "sha256:2cddf27219365242ec1046a3532a63a24c3f350c77f100e4f973369db2cc849d",
+        "digestChanged": false,
+        "status": "file-present-digest-unchanged"
+      },
+      "adapter": {
+        "digestBefore": "sha256:17b9278613b24aa7e8dd2459ac29781760266a1a8845e6e19b1edda3b14ca541",
+        "digestAfter": "sha256:1f86a1abc957bb63822bd73c618c55c2dea5c1b8eb086353d4f3c652f1ac8908",
+        "digestChanged": true,
+        "status": "bytes-changed"
+      }
+    },
+    "optimizerContinued": true,
+    "adapterOnly": false
+  },
+  "checkpoint10BeforeResume": {
+    "path": "output/checkpoint-10",
+    "present": true,
+    "globalStep": 10,
+    "optimizer": true,
+    "optimizerDigest": "sha256:ea3ae0fd298d0f9672ca35b0e3d8e337e6a43faa5babab588630d6233480dcd7",
+    "scheduler": true,
+    "schedulerDigest": "sha256:bc068b0c5d247f4cedcfe3eb402e1544eb9f1de07c67ef4a3717721c6ec28e74",
+    "rng": true,
+    "rngDigest": "sha256:2cddf27219365242ec1046a3532a63a24c3f350c77f100e4f973369db2cc849d",
+    "adapter": true,
+    "adapterDigest": "sha256:17b9278613b24aa7e8dd2459ac29781760266a1a8845e6e19b1edda3b14ca541"
+  },
+  "collect": {
+    "profile": "mps",
+    "status": "complete",
+    "bytesUploaded": 106437542,
+    "manifestDigest": "jcs-sha256:e1f2028ea01a446723f1be2d76475eeb5bb761ffa031fe01b0e86797facfb725",
+    "files": [
+      {
+        "path": "args.json",
+        "digest": "sha256:3374b955d77cc10675460a534cacf88bff2112a27b5441f3e41537c4afa5df74",
+        "size": 39951
+      },
+      {
+        "path": "checkpoint-10/README.md",
+        "digest": "sha256:950c3d4e5ea6a6041e0c830a3b021dc601791a4605341d10543d9303a7f88865",
+        "size": 5344
+      },
+      {
+        "path": "checkpoint-10/adapter_config.json",
+        "digest": "sha256:1619d123969b6c808a420b4c36dc866d60dec050d0898ab577279356ac3e52b8",
+        "size": 1171
+      },
+      {
+        "path": "checkpoint-10/adapter_model.safetensors",
+        "digest": "sha256:17b9278613b24aa7e8dd2459ac29781760266a1a8845e6e19b1edda3b14ca541",
+        "size": 17640136
+      },
+      {
+        "path": "checkpoint-10/additional_config.json",
+        "digest": "sha256:c7799462ebedae6557ffad31566029e2d2f958b7b40e46e972cf901bcaf45733",
+        "size": 67
+      },
+      {
+        "path": "checkpoint-10/args.json",
+        "digest": "sha256:68d40acd3348580bfbd35e76a535e9771858da92756ea07a246c61aa4aeef9ee",
+        "size": 39735
+      },
+      {
+        "path": "checkpoint-10/optimizer.pt",
+        "digest": "sha256:ea3ae0fd298d0f9672ca35b0e3d8e337e6a43faa5babab588630d6233480dcd7",
+        "size": 35465555
+      },
+      {
+        "path": "checkpoint-10/rng_state.pth",
+        "digest": "sha256:2cddf27219365242ec1046a3532a63a24c3f350c77f100e4f973369db2cc849d",
+        "size": 14455
+      },
+      {
+        "path": "checkpoint-10/scheduler.pt",
+        "digest": "sha256:bc068b0c5d247f4cedcfe3eb402e1544eb9f1de07c67ef4a3717721c6ec28e74",
+        "size": 1401
+      },
+      {
+        "path": "checkpoint-10/trainer_state.json",
+        "digest": "sha256:1814e8d30317541445b3f840c54391a075a9d3ac88a5595f61876ff2bf431a07",
+        "size": 2732
+      },
+      {
+        "path": "checkpoint-10/training_args.bin",
+        "digest": "sha256:8ab50385116a38589fae558c4ec5d17a02f636ca196f726c0f227c50f261e5b9",
+        "size": 6801
+      },
+      {
+        "path": "checkpoint-20/README.md",
+        "digest": "sha256:950c3d4e5ea6a6041e0c830a3b021dc601791a4605341d10543d9303a7f88865",
+        "size": 5344
+      },
+      {
+        "path": "checkpoint-20/adapter_config.json",
+        "digest": "sha256:c25dd8d1ec72868b3734fae1682592430cda5edd4c0b4599e624a06c0e85548c",
+        "size": 1171
+      },
+      {
+        "path": "checkpoint-20/adapter_model.safetensors",
+        "digest": "sha256:1f86a1abc957bb63822bd73c618c55c2dea5c1b8eb086353d4f3c652f1ac8908",
+        "size": 17640136
+      },
+      {
+        "path": "checkpoint-20/additional_config.json",
+        "digest": "sha256:c7799462ebedae6557ffad31566029e2d2f958b7b40e46e972cf901bcaf45733",
+        "size": 67
+      },
+      {
+        "path": "checkpoint-20/args.json",
+        "digest": "sha256:3374b955d77cc10675460a534cacf88bff2112a27b5441f3e41537c4afa5df74",
+        "size": 39951
+      },
+      {
+        "path": "checkpoint-20/optimizer.pt",
+        "digest": "sha256:7f076be8c8e4643458fada5bab76cae50dc9af1e39f07035d63dd56adf22f11c",
+        "size": 35465555
+      },
+      {
+        "path": "checkpoint-20/rng_state.pth",
+        "digest": "sha256:2cddf27219365242ec1046a3532a63a24c3f350c77f100e4f973369db2cc849d",
+        "size": 14455
+      },
+      {
+        "path": "checkpoint-20/scheduler.pt",
+        "digest": "sha256:28a9735eae40c49411832cd34b016417a3aed91c6cdd6dad338ce727ba9cd7f0",
+        "size": 1401
+      },
+      {
+        "path": "checkpoint-20/trainer_state.json",
+        "digest": "sha256:0b233c3ecf22002e850d22cec6c7582c206a9bb03096b5ddc0c0fee23cfba243",
+        "size": 4731
+      },
+      {
+        "path": "checkpoint-20/training_args.bin",
+        "digest": "sha256:068ef2b7f2f1400b4b98e867e6ca500621240342759c8364db9285225550cfe3",
+        "size": 6929
+      },
+      {
+        "path": "logging.jsonl",
+        "digest": "sha256:fd21921a3c88026f74c5258788b4ff9c299ab8a8114d11d18a93c945b38e6b3f",
+        "size": 14446
+      },
+      {
+        "path": "train.log",
+        "digest": "sha256:4f82aac1b464912c8588c01cb2697166a7d822a42c8fa6c5558b12fefa695da4",
+        "size": 26008
+      }
+    ]
+  },
+  "reportTraceable": true,
+  "cudaOci": "pending-live",
+  "twoHost": "pending-live",
+  "issue38": "open"
+}

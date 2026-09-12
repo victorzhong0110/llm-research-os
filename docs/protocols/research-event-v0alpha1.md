@@ -153,6 +153,10 @@ project cap; request `budgetCap` values MUST match it. Outstanding reservations 
 consume, full release, or (when dispatch is uncertain) reconciliation. `training.step` / `evaluation.metric` are defined
 by [Synthetic metrics and static Run report v0alpha1](run-report-v0alpha1.md);
 payloads are `kind: synthetic` and are not scientific metrics.
+`worker.registered` / `work.*` / `authorization.grant.*` are defined by
+[Worker v0alpha1](worker-v0alpha1.md) and
+[Authorization grant v0alpha1](authorization-grant-v0alpha1.md); HMAC tokens,
+script bodies, logs and heartbeats MUST NOT appear in payloads.
 
 ## 6. Conformance commands
 

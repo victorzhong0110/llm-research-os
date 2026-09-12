@@ -1,0 +1,45 @@
+apiVersion: researchos.dev/v0alpha1
+kind: ResearchProject
+metadata:
+  id: example-minimal
+  revision: 1
+  title: macOS MPS ms-swift native process
+questions:
+  - id: rq.mps
+    question: Can the pinned ms-swift plan run on Apple MPS through the Worker chain?
+hypotheses: []
+evidence: []
+datasets: []
+models: []
+workflows:
+  - id: workflow.mps
+    graph:
+      nodes:
+        - kind: task
+          id: task.mps
+          blockType: researchos.macos-mps-ms-swift
+          blockVersion: 0.1.0
+          config:
+            imageDigest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+            imageMediaType: researchos.mps-swift-env/v0alpha1
+            runtime: macos-mps-process
+            config:
+              network: denied
+              accDevice: mps
+              isolation: process-group
+              commandDigest: jcs-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              wallTimeSeconds: 1800
+              resume: none
+            inputs:
+              planDigest: jcs-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+              planArtifactDigest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+              datasetDigest: jcs-sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+              modelDigest: jcs-sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+      edges: []
+evaluations: []
+resources: []
+policies:
+  paidActionsRequireApproval: true
+  destructiveActionsRequireApproval: true
+  preserveAiDissent: true
+  unknownEvidenceMayTrain: false

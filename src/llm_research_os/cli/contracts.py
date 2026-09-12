@@ -173,6 +173,28 @@ from llm_research_os.secrets.schema import write_schema as write_secret_ref_sche
 from llm_research_os.spec.schema import canonical_schema as canonical_research_schema
 from llm_research_os.spec.schema import schema_matches as research_schema_matches
 from llm_research_os.spec.schema import write_schema as write_research_schema
+from llm_research_os.training.schema import (
+    canonical_gpu_data_checkpoint_schema,
+    canonical_mac_mps_training_plan_schema,
+    canonical_training_backend_plan_schema,
+    canonical_wsl_cuda_training_plan_schema,
+    gpu_data_checkpoint_schema_matches,
+    mac_mps_training_plan_schema_matches,
+    training_backend_plan_schema_matches,
+    write_gpu_data_checkpoint_schema,
+    write_mac_mps_training_plan_schema,
+    write_training_backend_plan_schema,
+    write_wsl_cuda_training_plan_schema,
+    wsl_cuda_training_plan_schema_matches,
+)
+from llm_research_os.workers.schema import (
+    authorization_grant_request_schema_matches,
+    canonical_authorization_grant_request_schema,
+    canonical_worker_register_request_schema,
+    worker_register_request_schema_matches,
+    write_authorization_grant_request_schema,
+    write_worker_register_request_schema,
+)
 
 DEFAULT_SCHEMA_CONTRACT = "research-spec"
 
@@ -381,6 +403,42 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         evidence_citation_schema_matches,
         write_evidence_citation_schema,
         "schemas/evidence-citation/v0alpha1.schema.json",
+    ),
+    "worker-register-request": _contract(
+        canonical_worker_register_request_schema,
+        worker_register_request_schema_matches,
+        write_worker_register_request_schema,
+        "schemas/worker-register-request/v0alpha1.schema.json",
+    ),
+    "authorization-grant-request": _contract(
+        canonical_authorization_grant_request_schema,
+        authorization_grant_request_schema_matches,
+        write_authorization_grant_request_schema,
+        "schemas/authorization-grant-request/v0alpha1.schema.json",
+    ),
+    "training-backend-plan": _contract(
+        canonical_training_backend_plan_schema,
+        training_backend_plan_schema_matches,
+        write_training_backend_plan_schema,
+        "schemas/training-backend-plan/v0alpha1.schema.json",
+    ),
+    "gpu-data-checkpoint": _contract(
+        canonical_gpu_data_checkpoint_schema,
+        gpu_data_checkpoint_schema_matches,
+        write_gpu_data_checkpoint_schema,
+        "schemas/gpu-data-checkpoint/v0alpha1.schema.json",
+    ),
+    "mac-mps-training-plan": _contract(
+        canonical_mac_mps_training_plan_schema,
+        mac_mps_training_plan_schema_matches,
+        write_mac_mps_training_plan_schema,
+        "schemas/mac-mps-training-plan/v0alpha1.schema.json",
+    ),
+    "wsl-cuda-training-plan": _contract(
+        canonical_wsl_cuda_training_plan_schema,
+        wsl_cuda_training_plan_schema_matches,
+        write_wsl_cuda_training_plan_schema,
+        "schemas/wsl-cuda-training-plan/v0alpha1.schema.json",
     ),
 }
 

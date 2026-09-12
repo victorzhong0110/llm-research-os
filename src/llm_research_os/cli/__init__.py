@@ -13,6 +13,7 @@ from llm_research_os.cli.budget_commands import run_budget
 from llm_research_os.cli.events_commands import run_events
 from llm_research_os.cli.evidence_commands import run_evidence
 from llm_research_os.cli.m1_commands import run_m1
+from llm_research_os.cli.m2_commands import run_m2
 from llm_research_os.cli.models_commands import run_models
 from llm_research_os.cli.native_commands import run_native
 from llm_research_os.cli.parser import build_parser
@@ -26,6 +27,14 @@ from llm_research_os.cli.research_commands import (
 )
 from llm_research_os.cli.runs_commands import run_runs
 from llm_research_os.cli.spec_commands import run_diff, run_dry_run, run_schema, run_validate
+from llm_research_os.cli.worker_commands import run_grants, run_workers
+
+
+def _run_training(args: argparse.Namespace) -> int:
+    from llm_research_os.cli.training_commands import run_training
+
+    return run_training(args)
+
 
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "validate": run_validate,
@@ -49,6 +58,10 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "questions": run_questions,
     "report": run_report,
     "m1": run_m1,
+    "grants": run_grants,
+    "workers": run_workers,
+    "m2": run_m2,
+    "training": _run_training,
 }
 
 

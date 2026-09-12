@@ -1,0 +1,28 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "GpuDataCheckpointBinding",
+  "planDigest": "jcs-sha256:2359fe9e4926009631adbecfc73cea85de1b82f29c025f6309bc0cbed44f9ea0",
+  "offline": true,
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "hub": "huggingface",
+    "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "mount": "/work/model"
+  },
+  "dataset": {
+    "id": "AI-ModelScope/alpaca-gpt4-data-en",
+    "hub": "modelscope",
+    "rowLimit": 8,
+    "revision": "pending-live",
+    "lineageHub": "huggingface",
+    "lineageId": "vicgalle/alpaca-gpt4",
+    "lineageRevision": "f7e3ded725cb81e8e564e32feb12860f376f2b51",
+    "mount": "/work/data"
+  },
+  "output": {
+    "mount": "/work/output",
+    "persist": "bind",
+    "maxUploadBytes": 1048576,
+    "maxUploadFiles": 32
+  }
+}

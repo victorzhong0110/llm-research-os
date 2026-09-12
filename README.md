@@ -51,6 +51,27 @@ The question channel is `question.asked` / `question.answered` with
 `questions ask` / `questions answer`. `researchos m1 prove` records one offline
 corpus chain (Mock proposal through simulated report, or reject without a Run).
 Umbrella #38 stays open. Numbered slices are not the M1 checkpoint.
+M2-0 is a free loopback Worker CPU loop
+([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)): HMAC
+grants with expiry/revoke bound to an authorized `execute.local` brick,
+CAS-pinned python helper, artifact + report. Isolated control-plane and
+Worker processes use pinned loopback HTTPS
+([ADR-0044](docs/adr/0044-isolated-control-plane-and-loopback-https.md));
+that is not a cross-machine proof. Remote Worker transport is
+[ADR-0021](docs/adr/0021-remote-worker-transport.md): a pending-live pack
+with independent EventStore/CAS roots (`secondHost: not-provisioned`),
+not a two-host run. CPU OCIContainerRuntime is a
+digest-pinned docker adapter ([ADR-0045](docs/adr/0045-cpu-oci-container-runtime.md));
+a missing engine fails closed and is not a mocked success. Worker
+stop/fault recovery is [ADR-0046](docs/adr/0046-worker-stop-fault-recovery.md):
+a cancel request is not a stopped process; completed work reconciles
+Run/Attempt; unknown cannot auto-succeed. Observed execution identity is
+[ADR-0050](docs/adr/0050-observed-execution-identity.md). Live CPU fault
+acceptance is [ADR-0051](docs/adr/0051-live-cpu-fault-acceptance.md):
+`plane.fail` is not a stop. EventStore 10k/100k baseline
+and CAS metric chunks are [ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md);
+bench receipts are not SLA. It is not GPU
+completion, not NativeProcessRuntime, not a kernel sandbox, and not Issue #38.
 
 Delivered capabilities include: ResearchSpec / ResearchEvent / BlockManifest
 protocol foundations, a pure static planning kernel, a SQLite append-only event
@@ -63,17 +84,50 @@ evaluation events, read-only lineage, in-process `decisionDigest`, a local
 `{eventId, sequence}` consume on SimulatedRuntime, explicit
 simulated-run / cancellation-request / artifact-object / research-decision /
 mock-model-call / evidence-import / OpenAI-compat / static-report /
-M1-checkpoint CLIs,
-and a non-launching NativeProcessPreflight.
+M1-checkpoint CLIs, a non-launching NativeProcessPreflight, loopback Worker
+registration / HMAC grants / `researchos m2 prove`, a host-python helper that
+is not NativeProcessRuntime and not a kernel sandbox, and a CPU
+`OCIContainerRuntime` adapter that fails closed without a live digest-pinned
+image.
 
-The tree still does not execute training jobs or real GPU workloads. Authorization
+`researchos m2 bench` records 10k/100k EventStore timings (not SLA).
+`researchos m2 usage` measures the Worker/RunControl path (not that fill).
+
+The tree can run a closed Apple Silicon LoRA through
+`researchos m2 mps` when extras `ms-swift==4.5.2` is installed
+([ADR-0058](docs/adr/0058-macos-mps-training-profile.md)). It still does
+not execute CUDA/OCI training or paid GPU workloads. Authorization
 events, preflight reports, lineage rebuilds, and `decisionDigest` are not signed
 receipts or launch permits. SimulatedRuntime does consume one local
 `{eventId, sequence}` citation of the audit fact on this EventStore (ADR-0042);
 lineage stays `not-consumed`. A cancellation-request CLI still does not send a process signal;
 the observed cancelled outcome is a later SimulatedRuntime fact. A real
-NativeProcessRuntime, remote Workers, and signed launch credentials are
-not M0 or M1 deliverables.
+NativeProcessRuntime, non-loopback Workers, paid GPU, and JWT launch
+credentials are not M0 or M1 deliverables. M2-0 loopback CPU is in tree
+([ADR-0043](docs/adr/0043-m2-loopback-worker-and-hmac-grants.md)). Isolated
+loopback HTTPS is ADR-0044 and is not a cross-machine Worker. CPU OCI is
+ADR-0045 and is not a live GPU proof. Designated Linux OCI CI (ADR-0049)
+must not skip; ordinary hosts without docker may skip `oci_live`. Worker
+stop/fault recovery is ADR-0046. EventStore performance baseline is ADR-0047.
+Pinned ms-swift parse/plan is ADR-0048 and is not a GPU run.
+Worker/RunControl usage evidence is ADR-0052 (`m2 usage` is not `m2 bench` fill).
+The GPU experiment sheet is ADR-0053 (named AutoDL 4090 combo, unpaid).
+Process observation is ADR-0054 (running/exited/unknown; failed probes
+are not exited). Live OCI faults are ADR-0055: designated Linux CI runs
+every `oci_live` test; inspect failure is unknown. Independent GPU
+execution is ADR-0056 (`gpu-oci-container` / `execute.gpu`; `gpu-not-run`).
+Data snapshot and checkpoint collect is ADR-0057 (Hub revision, pending-live
+dataset SHA, overlay resume; not a CUDA result).
+GPU execution-chain acceptance is
+[docs/guides/m2-gpu-chain-acceptance.md](docs/guides/m2-gpu-chain-acceptance.md)
+(not M2 close, not a CUDA result). Independent macOS/MPS training is
+ADR-0058 (`macos-mps-process` / `execute.mps`; process-group isolation,
+not OCI). The three-column matrix is
+[docs/guides/m2-mps-acceptance.md](docs/guides/m2-mps-acceptance.md):
+Mac/MPS live, CUDA/OCI pending-live, two-host pending-live.
+WSL2 CUDA laptop bind/run split is ADR-0059
+([docs/guides/m2-wsl2-cuda-acceptance.md](docs/guides/m2-wsl2-cuda-acceptance.md));
+live two-host and CUDA rows stay pending until recorded on that platform.
 
 ## M0 goals
 
@@ -143,6 +197,14 @@ acceptance checklist of that milestone.
 - [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
 - [M1 OpenAI-compatible generate CLI](docs/guides/m1-openai-compat.md)
 - [M1 synthetic metrics and static Run report](docs/guides/m1-run-report.md)
+- [M1 checkpoint CLI](docs/guides/m1-checkpoint.md)
+- [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
+- [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
+- [M2 Worker CLI](docs/guides/m2-worker.md)
+- [M2 CPU OCI](docs/guides/m2-oci.md)
+- [M2 GPU slice (direction only)](docs/guides/m2-gpu-slice.md)
+- [M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md)
+- [First experiment](docs/guides/first-experiment.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Living threat model](docs/security/threat-model.md)
 - [Contributing](CONTRIBUTING.md)
@@ -372,6 +434,31 @@ uv run researchos m1 prove \
 `--decision reject` records the same research facts and must not queue a Run.
 See [M1 checkpoint CLI](docs/guides/m1-checkpoint.md).
 
+One command records a loopback Worker CPU loop (CAS brick, artifact, report).
+It does not spend GPU and does not close Issue #38:
+
+```bash
+uv run researchos m2 prove \
+  examples/m2-checkpoint \
+  research.db \
+  --format json
+```
+
+Mac/MPS Worker loop (process-group isolation, not OCI):
+
+```bash
+uv run researchos m2 mps \
+  examples/m2-mps-checkpoint \
+  research-mps.db \
+  --format json
+```
+
+See [M2 Worker CLI](docs/guides/m2-worker.md),
+[M2 CPU OCI](docs/guides/m2-oci.md),
+[M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md),
+[M2 performance baseline](docs/guides/m2-perf.md), and
+[first experiment](docs/guides/first-experiment.md).
+
 Research proposals, dissents, decisions, and questions are separate EventStore
 facts. The database must already exist. `accept` is not a launch credential.
 An answer is data with rights, not an instruction:
@@ -491,15 +578,41 @@ defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`
 matches that limit. Uncertain transport after dispatch keeps the reservation.
 `researchos m1 prove` records one empty-store research chain from a corpus; it
 does not close Issue #38.
+`researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
+does not spend GPU and does not close Issue #38.
+`researchos m2 mps` records one macOS/MPS Worker training loop
+(`execute.mps`, process-group isolation). Stub pytest does not require
+Apple GPU. A live extras interpreter must probe MPS and fail closed on
+CPU. It does not inherit OCI isolation, does not spend cloud GPU, and
+does not close Issue #38.
+`researchos m2 oci` records the digest-pinned OCI CPU loop when a live
+engine has the planned image; otherwise it fails closed and MUST NOT be
+described as a successful container run. Ordinary pytest may skip
+`oci_live`; the GitHub job `Linux OCI integration` runs `-m oci_live`
+(success brick and live faults) and must fail instead of skip.
+`researchos m2 bench` records 10k or 100k EventStore timings; it is not
+an SLA and does not spend GPU.
+`researchos training plan` prints pinned `swift sft` argv and MUST NOT
+execute. It is not a real training run.
+`researchos training bind` prints the GPU docker argv for that plan and
+MUST NOT start a container (`gpu: not-run`).
+`researchos training snapshot` / `overlay` / `collect` pin Hub identity,
+print resume argv, and put `/work/output` files into CAS. They MUST NOT
+download, train, or claim a GPU checkpoint.
+`researchos workers serve` / `workers run` split that loop across two
+processes over pinned loopback HTTPS; they do not prove a remote Worker.
+Cancel supervision records a process or container identity and confirms
+exit; it does not stop a cloud instance.
 `evidence import` stores a local Markdown or PDF snapshot in CAS and appends
 digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
 minimal worker environment; unknown
 rights cannot authorize training.
 `report` rebuilds a static HTML or Markdown projection; it is not a fact source.
 The tree does not import block entrypoints, does not execute arbitrary training
-code, expressions, plugins, or remote Workers, does not write a SQLite artifact
-index or durable projections, and does not provide object export/delete, a real
-stop adapter, an executable NativeProcessRuntime, or network upload.
+frameworks, expressions, plugins, or non-loopback Workers, does not write a
+SQLite artifact index or durable projections, and does not provide object
+export/delete, a real GPU stop adapter, an executable NativeProcessRuntime, or
+network upload of training artifacts.
 A simulated `completed` is not scientific success; `unknown` stays unresolved.
 Any real GPU spend, external-account action, or irreversible operation still needs
 a separate approval. See the [security policy](SECURITY.md).

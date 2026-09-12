@@ -1,0 +1,34 @@
+{
+  "kind": "WslCuda9HostObservationSupplement",
+  "recordedAt": "2026-09-10T14:45:00Z",
+  "outputDir": "/root/researchos/gpu/output-resume",
+  "frozenDir": "/root/researchos/gpu/output-cuda7-frozen",
+  "notANewGrant": true,
+  "loggingFirstMarkers": ["11/20", "12/20", "13/20"],
+  "loggingMarkerCount": 11,
+  "loadLogHits": {
+    "loading optimizer": false,
+    "loaded optimizer": false,
+    "loading scheduler": false,
+    "loaded scheduler": false,
+    "loading rng": false,
+    "rng_state loaded": false,
+    "resume_from_checkpoint": false
+  },
+  "mtimeNs": {
+    "checkpoint10TrainerState": 1788997726354228916,
+    "checkpoint20TrainerState": 1789044518395746519,
+    "rootArgsJson": 1789044513314267999,
+    "loggingJsonl": 1789044518398130828
+  },
+  "adapterSha256": {
+    "resumeCheckpoint10": "3a0260a51c22347a09e69cfaa046f3727fde3a5da800ac2cebea65d3bf78a4d5",
+    "resumeCheckpoint20": "9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58",
+    "frozenCheckpoint20": "9d5ec47068c05809c4fb23f8d9e3d624e3c1279b10308edc6cd355b099c8ff58"
+  },
+  "reading": {
+    "checkpoint20IsLeftover": false,
+    "checkpoint20MatchesFrozenAdapter": true,
+    "reason": "checkpoint-20 trainer_state mtime is in the logging/args window; checkpoint-10 retains the older freeze copy mtime. Matching cuda.7 adapter bytes is deterministic resume, not a pre-run copy of checkpoint-20."
+  }
+}

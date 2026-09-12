@@ -39,6 +39,8 @@ are listed as still reserved when actual cost is unknown.
 
 The report lineage section also cites the consumed authorization fact by
 `eventId` even though that event has a null `runId` and is therefore absent from
-`report.lineage`.
+`report.lineage`. Worker CPU reports additionally cite spec, runtime, image,
+config, and output artifact digests from the Run's queued/completed facts.
 
 Protocol: [Synthetic metrics and static Run report v0alpha1](../protocols/run-report-v0alpha1.md).
+High-frequency series: [Metric chunk v0alpha1](../protocols/metric-chunk-v0alpha1.md).

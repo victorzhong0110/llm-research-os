@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+from dataclasses import dataclass
 from urllib.parse import quote
 
 from llm_research_os.budget.models import TYPE_BUDGET_LIMIT_RECORDED
@@ -27,6 +28,12 @@ def render_markdown(report: RunReport) -> str:
         "",
         "## Training",
         *_training_markdown(report),
+        "",
+        "## Evaluation",
+        *_evaluation_markdown(report),
+        "",
+        "## System",
+        *_system_markdown(report),
         "",
         "## Cost",
         *_cost_markdown(report),
@@ -53,6 +60,10 @@ def render_html(report: RunReport) -> str:
         *_research_html(report),
         '<h2 id="training">Training</h2>',
         *_training_html(report),
+        '<h2 id="evaluation">Evaluation</h2>',
+        *_evaluation_html(report),
+        '<h2 id="system">System</h2>',
+        *_system_html(report),
         '<h2 id="cost">Cost</h2>',
         *_cost_html(report),
         '<h2 id="lineage">Lineage</h2>',
@@ -108,18 +119,38 @@ def _research_markdown(report: RunReport) -> list[str]:
 
 
 def _training_markdown(report: RunReport) -> list[str]:
-    if not report.training and not report.evaluation:
-        return ["No `training.step` or `evaluation.metric` facts for this run."]
+    if not report.training:
+        return ["No `training.step` facts for this run."]
     lines: list[str] = []
     for step in report.training:
         lines.append(
             f"- Synthetic step {step.payload.step} loss `{_md(step.payload.loss)}` "
             f"{_md_link(step.stored.event.id)}."
         )
+    return lines
+
+
+def _evaluation_markdown(report: RunReport) -> list[str]:
+    if not report.evaluation:
+        return ["No `evaluation.metric` facts for this run."]
+    lines: list[str] = []
     for metric in report.evaluation:
         lines.append(
             f"- Synthetic `{_md(metric.payload.name)}` `{_md(metric.payload.value)}` "
             f"split `{_md(metric.payload.split)}` {_md_link(metric.stored.event.id)}."
+        )
+    return lines
+
+
+def _system_markdown(report: RunReport) -> list[str]:
+    lines = [f"- Store head sequence {report.last_sequence}."]
+    events = _system_events(report)
+    if not events:
+        lines.append("No worker, work, or attempt facts for this run.")
+        return lines
+    for stored in events:
+        lines.append(
+            f"- `{_md(stored.event.type)}` sequence {stored.sequence} {_md_link(stored.event.id)}."
         )
     return lines
 
@@ -151,6 +182,56 @@ def _cost_markdown(report: RunReport) -> list[str]:
     return lines
 
 
+@dataclass(frozen=True, slots=True)
+class _BindingCite:
+    label: str
+    value: str
+    event_id: str | None = None
+
+
+def _payload_text(payload: object, key: str) -> str | None:
+    if type(payload) is not dict:
+        return None
+    value = payload.get(key)
+    return value if type(value) is str and value != "" else None
+
+
+def _binding_cites(report: RunReport) -> tuple[_BindingCite, ...]:
+    cites: list[_BindingCite] = []
+    snapshot = report.snapshot
+    if snapshot is not None:
+        queued = next(
+            (item for item in report.lineage if item.event.type == "run.queued"),
+            None,
+        )
+        queued_id = None if queued is None else queued.event.id
+        cites.append(_BindingCite("Spec digest", snapshot.digests.spec, queued_id))
+        cites.append(_BindingCite("Registry digest", snapshot.digests.registry, queued_id))
+        cites.append(_BindingCite("Plan digest", snapshot.digests.plan, queued_id))
+    for stored in report.lineage:
+        payload = stored.event.data.payload
+        event_id = stored.event.id
+        if stored.event.type == "worker.registered":
+            runtime = _payload_text(payload, "runtime")
+            if runtime is not None:
+                cites.append(_BindingCite("Worker runtime", runtime, event_id))
+        elif stored.event.type == "work.queued":
+            runtime = _payload_text(payload, "runtime")
+            image = _payload_text(payload, "imageDigest")
+            config = _payload_text(payload, "configDigest")
+            if runtime is not None:
+                cites.append(_BindingCite("Worker runtime", runtime, event_id))
+            if image is not None:
+                cites.append(_BindingCite("Image digest", image, event_id))
+            if config is not None:
+                cites.append(_BindingCite("Config digest", config, event_id))
+        elif stored.event.type == "work.completed":
+            artifact = _payload_text(payload, "artifactDigest")
+            if artifact is not None:
+                cites.append(_BindingCite("Output artifact", artifact, event_id))
+    return tuple(cites)
+
+
 def _lineage_markdown(report: RunReport) -> list[str]:
     if report.snapshot is None:
         status = "none"
@@ -165,6 +246,11 @@ def _lineage_markdown(report: RunReport) -> list[str]:
             f"- Consumed authorization `{_md(stored.event.type)}` "
             f"sequence {stored.sequence} {_md_link(stored.event.id)}."
         )
+    for cite in _binding_cites(report):
+        if cite.event_id is None:
+            lines.append(f"- {cite.label} `{_md(cite.value)}`.")
+        else:
+            lines.append(f"- {cite.label} `{_md(cite.value)}` {_md_link(cite.event_id)}.")
     for stored in report.lineage:
         lines.append(
             f"- `{_md(stored.event.type)}` sequence {stored.sequence} {_md_link(stored.event.id)}."
@@ -231,11 +317,8 @@ def _research_html(report: RunReport) -> list[str]:
 
 
 def _training_html(report: RunReport) -> list[str]:
-    if not report.training and not report.evaluation:
-        return [
-            "<p>No <code>training.step</code> or "
-            "<code>evaluation.metric</code> facts for this run.</p>"
-        ]
+    if not report.training:
+        return ["<p>No <code>training.step</code> facts for this run.</p>"]
     items: list[str] = []
     for step in report.training:
         items.append(
@@ -243,6 +326,13 @@ def _training_html(report: RunReport) -> list[str]:
             f"<code>{_html(step.payload.loss)}</code> "
             f"{_html_link(step.stored.event.id)}.</li>"
         )
+    return ["<ul>", *items, "</ul>"]
+
+
+def _evaluation_html(report: RunReport) -> list[str]:
+    if not report.evaluation:
+        return ["<p>No <code>evaluation.metric</code> facts for this run.</p>"]
+    items: list[str] = []
     for metric in report.evaluation:
         items.append(
             f"<li>Synthetic <code>{_html(metric.payload.name)}</code> "
@@ -251,6 +341,38 @@ def _training_html(report: RunReport) -> list[str]:
             f"{_html_link(metric.stored.event.id)}.</li>"
         )
     return ["<ul>", *items, "</ul>"]
+
+
+def _system_html(report: RunReport) -> list[str]:
+    items = [f"<li>Store head sequence {report.last_sequence}.</li>"]
+    events = _system_events(report)
+    if not events:
+        return [
+            "<ul>",
+            *items,
+            "</ul>",
+            "<p>No worker, work, or attempt facts for this run.</p>",
+        ]
+    for stored in events:
+        items.append(
+            f"<li><code>{_html(stored.event.type)}</code> sequence {stored.sequence} "
+            f"{_html_link(stored.event.id)}.</li>"
+        )
+    return ["<ul>", *items, "</ul>"]
+
+
+def _system_events(report: RunReport) -> tuple[StoredEvent, ...]:
+    matching = [stored for stored in report.lineage if _is_system_event(stored.event.type)]
+    return tuple(matching)
+
+
+def _is_system_event(event_type: str) -> bool:
+    return (
+        event_type.startswith("worker.")
+        or event_type.startswith("work.")
+        or event_type.startswith("attempt.")
+        or event_type.startswith("authorization.grant.")
+    )
 
 
 def _cost_html(report: RunReport) -> list[str]:
@@ -302,6 +424,14 @@ def _lineage_html(report: RunReport) -> list[str]:
             f"<li>Consumed authorization <code>{_html(stored.event.type)}</code> "
             f"sequence {stored.sequence} {_html_link(stored.event.id)}.</li>"
         )
+    for cite in _binding_cites(report):
+        if cite.event_id is None:
+            items.append(f"<li>{_html(cite.label)} <code>{_html(cite.value)}</code>.</li>")
+        else:
+            items.append(
+                f"<li>{_html(cite.label)} <code>{_html(cite.value)}</code> "
+                f"{_html_link(cite.event_id)}.</li>"
+            )
     for stored in report.lineage:
         items.append(
             f"<li><code>{_html(stored.event.type)}</code> sequence {stored.sequence} "
