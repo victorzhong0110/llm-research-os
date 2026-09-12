@@ -87,6 +87,15 @@ from llm_research_os.execution.authorization_request_schema import (
 from llm_research_os.execution.authorization_request_schema import (
     write_schema as write_plan_authorization_request_schema,
 )
+from llm_research_os.execution.authorization_signature_schema import (
+    canonical_schema as canonical_attestation_schema,
+)
+from llm_research_os.execution.authorization_signature_schema import (
+    schema_matches as attestation_schema_matches,
+)
+from llm_research_os.execution.authorization_signature_schema import (
+    write_schema as write_attestation_schema,
+)
 from llm_research_os.execution.native_preflight_report_schema import (
     canonical_schema as canonical_native_process_preflight_report_schema,
 )
@@ -277,6 +286,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         plan_authorization_event_request_schema_matches,
         write_plan_authorization_event_request_schema,
         "schemas/plan-authorization-event-request/v0alpha1.schema.json",
+    ),
+    "authorization-attestation": _contract(
+        canonical_attestation_schema,
+        attestation_schema_matches,
+        write_attestation_schema,
+        "schemas/authorization-attestation/v0alpha1.schema.json",
     ),
     "plan-authorization-lineage-query": _contract(
         canonical_plan_authorization_lineage_query_schema,

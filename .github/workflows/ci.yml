@@ -69,8 +69,11 @@ jobs:
           -m "not oci_live and not slow"
           --cov=llm_research_os
           --cov-report=term-missing:skip-covered
+          --cov-report=json:coverage.json
           --cov-fail-under=85
           --durations=25
+      - name: Enforce unrounded coverage
+        run: uv run python scripts/check_coverage.py coverage.json
       - name: Verify generated schemas
         run: uv run researchos schema --check-all
       - name: Build package

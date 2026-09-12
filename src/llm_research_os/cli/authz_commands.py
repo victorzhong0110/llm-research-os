@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from llm_research_os.blocks.io import ManifestLoadError
 from llm_research_os.blocks.registry import RegistryError, build_registry
 from llm_research_os.cli.output import dumps_json, print_error, print_event, safe_text
+from llm_research_os.cli.signature_commands import run_signature
 from llm_research_os.execution import (
     PlanAuthorizationError,
     PlanAuthorizationEventRecordResult,
@@ -57,6 +58,8 @@ def run_authorize(args: argparse.Namespace) -> int:
 
 
 def run_authorizations(args: argparse.Namespace) -> int:
+    if args.authorizations_command in {"keygen", "sign", "verify-signature"}:
+        return run_signature(args)
     if args.authorizations_command == "record":
         return _record_authorization_event(
             args.spec,

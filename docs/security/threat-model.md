@@ -293,3 +293,18 @@ Before merging executable capability, the following gates apply:
   A minimal worker environment is not a seccomp or container boundary.
 
 These risks must not be described as solved until their corresponding executable gates pass.
+
+## TM-063: Detached authorization attestation boundary
+
+A portable signature must not turn an old audit fact into a launch permit, trust
+an embedded public key, or be replayed in another project/audience. ADR-0061 binds
+all claims using domain-separated Ed25519 over RFC 8785 bytes. A verified source
+fact, caller-pinned key/scope, bounded validity and explicit revocation snapshot
+are required. CLI key I/O is bounded, no-follow, exclusive on create, and owner-only
+for private keys. Tests: `tests/test_authorization_signatures.py`.
+
+Residual limits: operator-supplied revocations have no online freshness guarantee;
+a malicious host or compromised signing key remains trusted-host risk. A signature
+attests bytes and key possession, not the original human actor's authentication.
+Historical audit flags and Worker HMAC lifecycle are unchanged. Native execution
+remains a separate reviewed boundary.
