@@ -1,6 +1,7 @@
-# M2 charter §14.4 closure matrix (not M2 complete)
+# M2 local/two-host acceptance matrix
 
 Charter: [docs/charter-v0.1.md](../../charter-v0.1.md) §14.4.
+Accepted scope and explicit deferrals: [ADR-0062](../../adr/0062-m1-m2-acceptance-and-m3-boundary.md).
 Integration correction: PR [#73](https://github.com/victorzhong0110/llm-research-os/pull/73)
 was merged into `main` as `229d1b0` from accepted evidence `57ffdae`.
 PRs #55–#72 were closed as superseded. The live records below retain their
@@ -14,7 +15,7 @@ Linux. Not paid cloud GPU.
 
 | Requirement | Implementation | Evidence | Remaining |
 | --- | --- | --- | --- |
-| Remote Worker | Loopback HTTPS Worker plus two-host TLS Worker (`worker.wsl.1`, `worker.wsl.gpu.1`) | EventStore seq 1–166; [eventstore-redacted.json](eventstore-redacted.json); [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json); [eventstore-redacted-cuda10.json](eventstore-redacted-cuda10.json); [eventstore-redacted-cuda11.json](eventstore-redacted-cuda11.json); [https-locate.md](https-locate.md) | Not a productized multi-tenant Worker. #38 open. |
+| Remote Worker | Loopback HTTPS Worker plus two-host TLS Worker (`worker.wsl.1`, `worker.wsl.gpu.1`) | EventStore seq 1–166; [eventstore-redacted.json](eventstore-redacted.json); [eventstore-redacted-cuda8-9.json](eventstore-redacted-cuda8-9.json); [eventstore-redacted-cuda10.json](eventstore-redacted-cuda10.json); [eventstore-redacted-cuda11.json](eventstore-redacted-cuda11.json); [https-locate.md](https-locate.md) | Not a productized multi-tenant Worker. #38 is the separate M1 checkpoint. |
 | `OCIContainerRuntime` | Digest-pinned CPU OCI runtime; Linux CI `oci_live`; two-host CPU grant | `grant.wsl.oci.1` completed seq 12–14; GitHub job Linux OCI integration | GPU path uses `run_gpu_training` / `gpu-oci-container`, not a second generic GPU OCI class. |
 | GPU capability report | Worker advertised `cuda`; grants require it | `work.queued` payloads for cuda.7/cuda.9; Worker register `worker.wsl.gpu.1` | No cloud GPU advertisement. |
 | Generic Python training brick | CPU brick + GPU bind stay `gpu-not-run` until grant | ADR-0056; `execute_gpu_training` tests | Unchanged. |

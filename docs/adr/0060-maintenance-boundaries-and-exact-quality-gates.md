@@ -1,6 +1,6 @@
 # ADR-0060: Maintenance boundaries and exact quality gates
 
-Status: Proposed for review with the M1/M2 maintenance change.
+Status: Accepted through PR #77; formal acceptance recorded in ADR-0062.
 
 ## Problem
 

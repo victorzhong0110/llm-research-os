@@ -13,7 +13,7 @@ This maintenance change does not rerun GPU jobs or rewrite experiment receipts.
 | Money accepts non-contract forms | Validate canonical money syntax before Decimal arithmetic | Nonfinite, exponent, excess precision, negative and range tests |
 | Wheel can silently rely on checkout/training extras | New installed-wheel accept/reject smoke in CI | Local wheel import used an isolated venv with copied locked runtime dependencies; CI performs normal wheel dependency installation |
 | README contradicts accepted live evidence | Generated bilingual tables from docs/status.json | Generator drift gate; experiment records preserved |
-| Charter errata scattered | Consolidated v0.2 reading with source clause map | Review candidate, no new constitutional or spending decision |
+| Charter errata scattered | Consolidated v0.2 reading with source clause map | Accepted consolidated reading under ADR-0062; no spending approval |
 | M1 checkpoint / cancellation (#38, #40) | Revalidate existing research and cancellation paths | wheel-smoke.json; test_m1_checkpoint.py and test_simulated_runtime.py |
 | Authorization lifecycle (#53) | M2 already implements HMAC grants/session, expiry and revoke | Worker tests and accepted two-host evidence. Asymmetric signatures on facts and NativeProcessRuntime remain outside delivered scope |
 
@@ -38,3 +38,11 @@ ProxyJump onboarding, public Web UX, a restricted non-OCI process runtime and
 third-party adapter isolation are feature/security projects. They are not marked
 complete by this maintenance patch. No public tag or release is created as an
 administrative substitute for their acceptance.
+
+## Integrated outcome
+
+#77 and #78 were merged as `130ddbf` and `7e5fc33`. The latter combines both
+accepted code trees. Final milestone scope and remaining M3 work are recorded in
+[ADR-0062](../../adr/0062-m1-m2-acceptance-and-m3-boundary.md). Actual main CI links
+and Issue closure receipts are recorded in the closure PR and #38; historical
+restricted-local failures above are retained, not relabeled as passing runs.
