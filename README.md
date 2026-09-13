@@ -24,16 +24,17 @@ durable, auditable facts. The researcher is a teacher, not only an approver
 | Scope | Status |
 | --- | --- |
 | M0 | Closed (ADR-0037) |
-| M1 | Offline research/decision/question/report loop implemented; checkpoint tracked in #38 |
-| M2 integration | #73 merged; #55–#72 superseded |
+| M1 | Accepted offline checkpoint (ADR-0062); #38 closure |
+| M2 | Accepted local/two-host scope (ADR-0062); #73/#77/#78 merged |
 | Mac / MPS | Live LoRA; process-group isolation |
 | Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
 | Paid cloud | Not run; ¥0. No paid-cloud claim |
 | Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
+| NativeProcessRuntime | Not implemented; #53 continues in M3 SSH/non-OCI work |
 | Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
-Integrated baseline: `229d1b0`; accepted evidence: `57ffdae`.
+Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 
 <!-- generated-status:end -->
 
@@ -63,7 +64,9 @@ acceptance checklist of that milestone.
 
 ## Project documents
 
-- [Consolidated charter v0.2 (review candidate)](docs/charter-v0.2.md)
+- [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
+
+- [Consolidated charter v0.2](docs/charter-v0.2.md)
 - [Project charter and minimal kernel spec v0.1](docs/charter-v0.1.md) (Chinese original)
 - [Chapter 18 decision guide v0.1](docs/chapter-18-decision-guide-v0.1.md) (Chinese original)
 - [Engineering standards](docs/engineering-standards.md)

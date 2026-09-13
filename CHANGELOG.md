@@ -3,10 +3,17 @@
 All notable changes to this project are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-This tree has no tagged release yet. The first tag is `v0.1.0-m1`, cut when M1
-closes. Until then the version in `pyproject.toml` stays `0.0.0`.
+This tree has no tagged release yet. Milestone acceptance does not publish a
+tag or package (ADR-0062). The version remains `0.0.0` until a separately
+authorized release.
 
 ## Unreleased
+
+### Milestones
+
+- M1 offline checkpoint and M2 local/two-host scope accepted under ADR-0062.
+  #77/#78 integrated; NativeProcessRuntime remains M3 work in #53. No release
+  or paid-cloud acceptance is implied.
 
 ### Added
 

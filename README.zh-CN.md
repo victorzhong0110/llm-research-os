@@ -15,16 +15,17 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 | Scope | Status |
 | --- | --- |
 | M0 | 已收口（ADR-0037） |
-| M1 | 离线研究、决定、提问、报告闭环已实现；检查点由 #38 跟踪 |
-| M2 integration | #73 已合并；#55–#72 已由其替代 |
+| M1 | 离线检查点已验收（ADR-0062）；#38 收口 |
+| M2 | 本地／两机范围已验收（ADR-0062）；#73/#77/#78 已合并 |
 | Mac / MPS | LoRA 已实测；进程组隔离 |
 | Windows / WSL2 + Docker Engine | 两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测 |
 | Paid cloud | 未执行；¥0，不宣称付费云验收 |
 | Unknown execution | 已有单测与回环验证；无专门两机 unknown 实测 |
+| NativeProcessRuntime | 未实现；#53 随 M3 SSH／非 OCI 工作包继续 |
 | Public MVP | 未发布；可用的 SSH 接入与 Web 界面属于 M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
-Integrated baseline: `229d1b0`; accepted evidence: `57ffdae`.
+Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 
 <!-- generated-status:end -->
 
@@ -51,7 +52,9 @@ Integrated baseline: `229d1b0`; accepted evidence: `57ffdae`.
 
 ## 项目文档
 
-- [宪章 v0.2 合并阅读版（待审）](docs/charter-v0.2.md)
+- [M1/M2 验收与 M3 边界](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
+
+- [宪章 v0.2 合并阅读版](docs/charter-v0.2.md)
 
 - [项目宪章与最小内核规格 v0.1](docs/charter-v0.1.md)
 - [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)

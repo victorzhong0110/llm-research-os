@@ -1,7 +1,7 @@
 # Project charter v0.2 — consolidated reading
 
-Status: review candidate. This consolidation changes no accepted constitutional
-decision and creates no release or spending approval. On acceptance, it replaces
+Status: Accepted under [ADR-0062](adr/0062-m1-m2-acceptance-and-m3-boundary.md).
+This consolidation creates no release or spending approval. It replaces
 the need to interpret the v0.1 errata in chronological order. The Chinese v0.1
 and chapter 18 remain the preserved source texts.
 
@@ -43,8 +43,11 @@ and security gates. Tags, releases and cloud payments remain separate actions.
 
 ## Maintenance interpretation
 
-[ADR-0060](adr/0060-maintenance-boundaries-and-exact-quality-gates.md) proposes
+[ADR-0060](adr/0060-maintenance-boundaries-and-exact-quality-gates.md) records
 strict coverage, explicit output ownership, centralized capability names and
 generated core payload schemas without changing existing event payloads or
 historical digests. The maintained [status index](status.json) distinguishes
 implementation, platform evidence and public release; it is not an authorization.
+
+M1/M2 milestone acceptance and explicit M3 deferrals are recorded in
+[ADR-0062](adr/0062-m1-m2-acceptance-and-m3-boundary.md).

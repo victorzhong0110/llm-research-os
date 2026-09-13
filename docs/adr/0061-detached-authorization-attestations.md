@@ -1,6 +1,6 @@
 # ADR-0061: Detached authorization fact attestations
 
-Status: Proposed. Scope: the signature-on-facts portion of Issue #53.
+Status: Accepted through PR #78. Scope: the signature-on-facts portion of Issue #53.
 
 ## Context
 
