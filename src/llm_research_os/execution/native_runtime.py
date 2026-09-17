@@ -39,6 +39,16 @@ from llm_research_os.execution.errors import (
     SimulationError,
 )
 from llm_research_os.execution.models import DryRunReport
+from llm_research_os.execution.native_identity import (
+    NATIVE_RUNTIME_INTERPRETER_RECORDED,
+    NATIVE_RUNTIME_PROFILE_V1,
+    NATIVE_RUNTIME_PROFILE_V2,
+    NativeInterpreterIdentity,
+    environment_identity,
+    is_native_runtime_profile,
+    resolve_interpreter_identity,
+    verify_interpreter_identity,
+)
 from llm_research_os.execution.native_preflight import (
     NativeProcessPreflightPolicy,
     NativeProcessPreflightResult,
@@ -47,12 +57,12 @@ from llm_research_os.execution.native_preflight import (
 from llm_research_os.secrets.redaction import message_without_secrets
 from llm_research_os.storage.store import EventStore
 
-NATIVE_RUNTIME_PROFILE: str = "restricted-v0alpha1"
+NATIVE_RUNTIME_PROFILE: str = NATIVE_RUNTIME_PROFILE_V1
 NATIVE_RUNTIME_TRANSPORT_LOCAL: str = "local"
 NATIVE_RUNTIME_TRANSPORT_SSH: str = "ssh"
 NATIVE_RUNTIME_ISOLATION: str = "process-group"
 NATIVE_RUNTIME_NETWORK_ENFORCEMENT: str = "not-enforced"
-NATIVE_RUNTIME_INTERPRETER: str = "host-recorded-not-pinned"
+NATIVE_RUNTIME_INTERPRETER: str = NATIVE_RUNTIME_INTERPRETER_RECORDED
 
 _PASSTHROUGH = ("PATH", "SYSTEMROOT", "WINDIR")
 _READ_CHUNK = 4_096
@@ -108,6 +118,9 @@ class NativeProcessRuntimeResult:
     network_enforcement: str
     observation: str
     python_version: str
+    interpreter_digest: str
+    environment_digest: str
+    interpreter_pinned: bool
 
 
 def execute_native_process(
@@ -164,7 +177,7 @@ def execute_native_process(
             "ssh transport is not implemented in this slice",
             code="ssh-transport-not-implemented",
         )
-    return _run_helper(preflight, should_cancel=should_cancel)
+    return _run_helper(preflight, profile=profile, should_cancel=should_cancel)
 
 
 def native_runtime_receipt(result: NativeProcessRuntimeResult) -> dict[str, object]:
@@ -182,6 +195,9 @@ def native_runtime_receipt(result: NativeProcessRuntimeResult) -> dict[str, obje
         "networkEnforcement": result.network_enforcement,
         "observation": result.observation,
         "pythonVersion": result.python_version,
+        "interpreterDigest": result.interpreter_digest,
+        "environmentDigest": result.environment_digest,
+        "interpreterPinned": result.interpreter_pinned,
         "stdoutBytes": len(result.stdout),
     }
 
@@ -200,7 +216,7 @@ def _require_transport_shape(transport: object) -> None:
 
 
 def _require_profile_shape(profile: object) -> None:
-    if type(profile) is not str or profile != NATIVE_RUNTIME_PROFILE:
+    if not is_native_runtime_profile(profile):
         raise NativeProcessRuntimeError(
             "native runtime profile is invalid",
             code="native-profile-invalid",
@@ -251,6 +267,7 @@ def _consume_binding(
 def _run_helper(
     preflight: NativeProcessPreflightResult,
     *,
+    profile: str,
     should_cancel: Callable[[], bool] | None,
 ) -> NativeProcessRuntimeResult:
     payload = json.dumps(
@@ -259,6 +276,18 @@ def _run_helper(
         separators=(",", ":"),
     ).encode("utf-8")
     workspace = Path(tempfile.mkdtemp(prefix="researchos-native-"))
+    env = _runtime_env(workspace)
+    environment_digest = environment_identity(env)
+    identity = resolve_interpreter_identity()
+    pinned = profile == NATIVE_RUNTIME_PROFILE_V2
+    if pinned:
+        identity = verify_interpreter_identity(identity)
+    binding = _SpawnBinding(
+        profile=profile,
+        identity=identity,
+        environment_digest=environment_digest,
+        interpreter_pinned=pinned,
+    )
     process: subprocess.Popen[bytes] | None = None
     pgid: int | None = None
     try:
@@ -268,7 +297,7 @@ def _run_helper(
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=_runtime_env(workspace),
+                env=env,
                 cwd=workspace,
                 close_fds=True,
                 start_new_session=os.name == "posix",
@@ -276,6 +305,7 @@ def _run_helper(
         except OSError:
             return _result(
                 preflight,
+                binding,
                 disposition=NativeProcessDisposition.UNKNOWN,
                 stdout=b"",
                 result_digest=None,
@@ -284,11 +314,21 @@ def _run_helper(
                 observation="unknown",
             )
         pgid = _process_group(process)
-        return _run_bounded(process, payload, preflight, pgid, should_cancel=should_cancel)
+        return _run_bounded(process, payload, preflight, pgid, binding, should_cancel=should_cancel)
     finally:
         if process is not None:
             _reap_process_group(process, pgid)
         shutil.rmtree(workspace, ignore_errors=True)
+
+
+@dataclass(frozen=True, slots=True)
+class _SpawnBinding:
+    """Pinned identity context for one spawn, fixed before Popen."""
+
+    profile: str
+    identity: NativeInterpreterIdentity
+    environment_digest: str
+    interpreter_pinned: bool
 
 
 def _run_bounded(
@@ -296,6 +336,7 @@ def _run_bounded(
     payload: bytes,
     preflight: NativeProcessPreflightResult,
     pgid: int | None,
+    binding: _SpawnBinding,
     *,
     should_cancel: Callable[[], bool] | None,
 ) -> NativeProcessRuntimeResult:
@@ -310,6 +351,7 @@ def _run_bounded(
         _reap_process_group(process, pgid)
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.UNKNOWN,
             stdout=b"",
             result_digest=None,
@@ -366,7 +408,7 @@ def _run_bounded(
             except subprocess.TimeoutExpired:
                 continue
     if cancelled:
-        return _finish_cancelled(process, pgid, preflight, stdout_thread, stderr_thread)
+        return _finish_cancelled(process, pgid, preflight, binding, stdout_thread, stderr_thread)
     _reap_process_group(process, pgid)
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
@@ -375,6 +417,7 @@ def _run_bounded(
     if timed_out:
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.UNKNOWN,
             stdout=b"",
             result_digest=None,
@@ -385,6 +428,7 @@ def _run_bounded(
     if overflow.is_set():
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.FAILED,
             stdout=stdout,
             result_digest=None,
@@ -396,6 +440,7 @@ def _run_bounded(
     if returncode is None or returncode < 0:
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.UNKNOWN,
             stdout=b"",
             result_digest=None,
@@ -406,6 +451,7 @@ def _run_bounded(
     if returncode != 0:
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.FAILED,
             stdout=stdout,
             result_digest=None,
@@ -413,13 +459,14 @@ def _run_bounded(
             diagnostics=diagnostics,
             observation="exited",
         )
-    return _parse_report(stdout, preflight, diagnostics)
+    return _parse_report(stdout, preflight, binding, diagnostics)
 
 
 def _finish_cancelled(
     process: subprocess.Popen[bytes],
     pgid: int | None,
     preflight: NativeProcessPreflightResult,
+    binding: _SpawnBinding,
     stdout_thread: threading.Thread,
     stderr_thread: threading.Thread,
 ) -> NativeProcessRuntimeResult:
@@ -429,6 +476,7 @@ def _finish_cancelled(
     if process.poll() is not None:
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.FAILED,
             stdout=b"",
             result_digest=None,
@@ -438,6 +486,7 @@ def _finish_cancelled(
         )
     return _result(
         preflight,
+        binding,
         disposition=NativeProcessDisposition.UNKNOWN,
         stdout=b"",
         result_digest=None,
@@ -450,6 +499,7 @@ def _finish_cancelled(
 def _parse_report(
     stdout: bytes,
     preflight: NativeProcessPreflightResult,
+    binding: _SpawnBinding,
     diagnostics: str | None,
 ) -> NativeProcessRuntimeResult:
     try:
@@ -457,6 +507,7 @@ def _parse_report(
     except (UnicodeDecodeError, json.JSONDecodeError):
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.FAILED,
             stdout=stdout,
             result_digest=None,
@@ -472,6 +523,7 @@ def _parse_report(
     ):
         return _result(
             preflight,
+            binding,
             disposition=NativeProcessDisposition.FAILED,
             stdout=stdout,
             result_digest=None,
@@ -481,6 +533,7 @@ def _parse_report(
         )
     return _result(
         preflight,
+        binding,
         disposition=NativeProcessDisposition.SUCCEEDED,
         stdout=stdout,
         result_digest=content_digest(document),
@@ -492,6 +545,7 @@ def _parse_report(
 
 def _result(
     preflight: NativeProcessPreflightResult,
+    binding: _SpawnBinding,
     *,
     disposition: NativeProcessDisposition,
     stdout: bytes,
@@ -508,12 +562,15 @@ def _result(
         diagnostics=diagnostics,
         preflight_digest=preflight.preflight_digest,
         transport=NATIVE_RUNTIME_TRANSPORT_LOCAL,
-        profile=NATIVE_RUNTIME_PROFILE,
+        profile=binding.profile,
         entrypoint_executed=False,
         isolation=NATIVE_RUNTIME_ISOLATION,
         network_enforcement=NATIVE_RUNTIME_NETWORK_ENFORCEMENT,
         observation=observation,
-        python_version=sys.version.split()[0],
+        python_version=binding.identity.python_version,
+        interpreter_digest=binding.identity.digest,
+        environment_digest=binding.environment_digest,
+        interpreter_pinned=binding.interpreter_pinned,
     )
 
 

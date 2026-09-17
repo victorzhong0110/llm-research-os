@@ -61,6 +61,18 @@ from llm_research_os.execution.errors import (
 )
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.models import DryRunReport
+from llm_research_os.execution.native_identity import (
+    NATIVE_RUNTIME_INTERPRETER_PINNED,
+    NATIVE_RUNTIME_INTERPRETER_RECORDED,
+    NATIVE_RUNTIME_PROFILE_V1,
+    NATIVE_RUNTIME_PROFILE_V2,
+    NATIVE_RUNTIME_PROFILES,
+    NativeInterpreterIdentity,
+    environment_identity,
+    is_native_runtime_profile,
+    resolve_interpreter_identity,
+    verify_interpreter_identity,
+)
 from llm_research_os.execution.native_preflight import (
     MAX_NATIVE_OUTPUT_BYTES,
     MAX_NATIVE_TASK_PATH_ITEMS,
@@ -110,8 +122,14 @@ from llm_research_os.execution.native_ssh import (
     NATIVE_SSH_PROFILE,
     NATIVE_SSH_TRANSPORT,
     NativeSshTarget,
+    authorized_keys_fragment,
     parse_ssh_target,
+    ssh_config_fragment,
     write_native_ssh_pack,
+)
+from llm_research_os.execution.native_web import (
+    ONBOARDING_PAGE_NAME,
+    write_onboarding_page,
 )
 from llm_research_os.execution.planner import PlannerLimits, PlanningInputError
 from llm_research_os.execution.request import (
@@ -144,14 +162,20 @@ __all__ = [
     "NATIVE_PROCESS_TERMINATION",
     "NATIVE_PROCESS_WORKSPACE",
     "NATIVE_RUNTIME_INTERPRETER",
+    "NATIVE_RUNTIME_INTERPRETER_PINNED",
+    "NATIVE_RUNTIME_INTERPRETER_RECORDED",
     "NATIVE_RUNTIME_ISOLATION",
     "NATIVE_RUNTIME_NETWORK_ENFORCEMENT",
     "NATIVE_RUNTIME_PROFILE",
+    "NATIVE_RUNTIME_PROFILES",
+    "NATIVE_RUNTIME_PROFILE_V1",
+    "NATIVE_RUNTIME_PROFILE_V2",
     "NATIVE_RUNTIME_TRANSPORT_LOCAL",
     "NATIVE_RUNTIME_TRANSPORT_SSH",
     "NATIVE_SSH_API_VERSION",
     "NATIVE_SSH_PROFILE",
     "NATIVE_SSH_TRANSPORT",
+    "ONBOARDING_PAGE_NAME",
     "PLAN_AUTHORIZATION_API_VERSION",
     "PLAN_AUTHORIZATION_EVALUATED_TYPE",
     "PLAN_AUTHORIZATION_EVENT_API_VERSION",
@@ -162,6 +186,7 @@ __all__ = [
     "PLAN_AUTHORIZATION_REPORT_SCHEMA_ID",
     "PLAN_AUTHORIZATION_REQUEST_SCHEMA_ID",
     "DryRunReport",
+    "NativeInterpreterIdentity",
     "NativeProcessDisposition",
     "NativeProcessLaunchConstraints",
     "NativeProcessLimits",
@@ -214,8 +239,11 @@ __all__ = [
     "SimulationResult",
     "TrustedKernel",
     "authorize_plan",
+    "authorized_keys_fragment",
     "consume_local_authorization",
+    "environment_identity",
     "execute_native_process",
+    "is_native_runtime_profile",
     "load_native_process_preflight_request",
     "load_plan_authorization_event_request",
     "load_plan_authorization_lineage_query",
@@ -227,6 +255,8 @@ __all__ = [
     "preflight_native_process",
     "query_plan_authorization_lineage",
     "record_plan_authorization_event",
+    "resolve_interpreter_identity",
+    "ssh_config_fragment",
     "validate_native_process_preflight_request_document",
     "validate_plan_authorization_evaluated_event",
     "validate_plan_authorization_event_request_document",
@@ -234,5 +264,7 @@ __all__ = [
     "validate_plan_authorization_lineage_report_document",
     "validate_plan_authorization_request_document",
     "validate_simulation_request_document",
+    "verify_interpreter_identity",
     "write_native_ssh_pack",
+    "write_onboarding_page",
 ]

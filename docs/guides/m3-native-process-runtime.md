@@ -1,9 +1,12 @@
-# M3 native process runtime (slice 1)
+# M3 native process runtime (slices 1–2)
 
-Local restricted execution over a sealed preflight. Protocol:
-[NativeProcessRuntime v0alpha1](../protocols/native-process-runtime-v0alpha1.md).
-Constraint record:
-[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md).
+Local restricted execution over a sealed preflight. Protocols:
+[NativeProcessRuntime v0alpha1](../protocols/native-process-runtime-v0alpha1.md)
+(slice 1) and
+[NativeProcessRuntime v0alpha2](../protocols/native-process-runtime-v0alpha2.md)
+(slice 2 profiles and pinning). Constraint records:
+[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md) and
+[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md).
 
 This path does **not** close Issue #53, does not execute the manifest
 entrypoint, does not dial SSH, does not spend paid cloud, and does not start
@@ -75,6 +78,33 @@ uv run researchos native run ... --transport ssh --format json
   process-group reap with a caller-group guard.
 - Tristate outcome mapping: timeout/lost stay `unknown`; cancel is
   `cancel-observed` only after the group is reaped.
+
+## Slice 2: pinned identity and a second profile
+
+`--profile restricted-v0alpha2` keeps every slice-1 bound and additionally
+digests the resolved interpreter binary and the exact spawn environment
+before `Popen`, then re-resolves the interpreter immediately before spawn
+and refuses with `native-interpreter-changed` on any drift. The receipt
+carries `interpreterDigest`, `environmentDigest`, and
+`interpreterPinned: true` (v0alpha1 reports the same digests with
+`interpreterPinned: false`: recorded, not pinned).
+
+```bash
+uv run researchos native run \
+  examples/native-process-preflight/spec.yaml \
+  examples/native-process-preflight/authorization-request.json \
+  examples/native-process-preflight/preflight-request.json \
+  native.db \
+  --registry examples/native-process-preflight/manifest.yaml \
+  --authorization-event-id evt.auth.native.1 \
+  --authorization-sequence 1 \
+  --profile restricted-v0alpha2 \
+  --format json
+```
+
+Pinning detects substitution; it is not a sandbox. Entrypoint execution,
+network enforcement, and namespaces/cgroups/seccomp stay non-goals for both
+profiles (see the v0alpha2 protocol).
 
 ## What is not claimed
 

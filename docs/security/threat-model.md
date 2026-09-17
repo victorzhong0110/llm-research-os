@@ -26,7 +26,10 @@ slice 1 adds a local restricted native helper over a sealed preflight with
 this-store authorization consume (ADR-0063, TM-064): fixed noop argv only,
 process-group supervision, bounded capture, no entrypoint import, no
 lifecycle append, and SSH transport refused without a socket. Native SSH
-onboarding is a pending-live checklist pack only (TM-065).
+onboarding is a pending-live checklist pack only (TM-065). M3 slice 2 adds
+content-pinned interpreter/environment identity with a reverified
+`restricted-v0alpha2` profile (TM-066) and an optional static local
+onboarding page with no script or network surface (TM-067, ADR-0064).
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -211,6 +214,8 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-062 | A rounded coverage total passes the floor, or an unknown capability acquires launch authority | Undetected untested paths or capability drift | Integer-count coverage gate; central known capability set; payload catalog drift check | `tests/test_coverage_gate.py`, `tests/test_plan_authorization.py`, `tests/test_event_catalog.py` |
 | TM-064 | A stale or foreign authorization launches a native process, an SSH request spawns locally, or the helper is treated as entrypoint execution with network/OCI isolation | Unreviewed code execution; false isolation claims | Sealed preflight recompute plus this-store human `{eventId, sequence}` consume before spawn; `ssh` validated past authorization then refused without a socket; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; no lifecycle/grant/artifact writes; receipt says `entrypointExecuted: false`, `not-enforced` network (ADR-0063) | `tests/test_native_process_runtime.py` |
 | TM-065 | An SSH pack dials a host, stores a private key or password, allows root, or is treated as a live two-host proof | Credential exposure; false remote proof | Pure validator plus pack writer with no socket/subprocess; pinned host key required, root/password/agent-forwarding/private-key refused; STATUS stays `pending-live` with `ssh-pending` transport; loopback labeled not-cross-machine (ADR-0063) | `tests/test_native_ssh_onboard.py` |
+| TM-066 | A swapped interpreter binary or a mutated spawn environment runs unreviewed code, or a recorded version string is treated as a pinned identity | Unreviewed code execution; false identity claims | `restricted-v0alpha2` digests the resolved binary and the exact spawn env before `Popen` and re-resolves immediately before spawn, refusing with `native-interpreter-changed` on drift; errors carry no paths; v0alpha1 keeps recorded-not-pinned semantics (ADR-0064) | `tests/test_native_identity.py`, `tests/test_native_process_runtime_slice2.py` |
+| TM-067 | A local onboarding page exfiltrates key material, runs script, or is served as a public service | Credential exposure; unsolicited bind; false remote proof | Pure file writer with no socket/subprocess/network imports; static HTML with inline CSS only, no `<script>` or links; all operator text escaped; host-key body never rendered; `file://` use documented (ADR-0064) | `tests/test_native_web_onboard.py` |
 
 
 ## 7. M0 security gates

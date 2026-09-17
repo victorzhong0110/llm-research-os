@@ -30,7 +30,7 @@ durable, auditable facts. The researcher is a teacher, not only an approver
 | Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
 | Paid cloud | Not run; ¥0. No paid-cloud claim |
 | Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
-| NativeProcessRuntime | M3 slice 1 in progress (ADR-0063): local restricted helper + SSH onboard pending-live; SSH execution refused; #53 stays open |
+| NativeProcessRuntime | M3 slices 1-2 in progress (ADR-0063/0064): local restricted helper + pinned identity profile + SSH onboard pending-live with optional local page; SSH execution refused; #53 stays open |
 | Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).

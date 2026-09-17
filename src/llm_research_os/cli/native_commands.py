@@ -66,6 +66,7 @@ def run_native(args: argparse.Namespace) -> int:
             args.profile,
             args.project,
             args.source,
+            args.web,
             args.format,
         )
     raise AssertionError(f"unhandled native command: {args.native_command}")
@@ -168,6 +169,7 @@ def _native_ssh_onboard(
     profile: str,
     project: str,
     source: str,
+    include_web: bool,
     output_format: str,
 ) -> int:
     try:
@@ -179,7 +181,9 @@ def _native_ssh_onboard(
             host_key=host_key,
             profile=profile,
         )
-        status = write_native_ssh_pack(output, target, project_id=project, source=source)
+        status = write_native_ssh_pack(
+            output, target, project_id=project, source=source, include_web=include_web
+        )
     except (NativeSshError, OSError, ValueError) as exc:
         print_error(exc, output_format)
         return 2
@@ -195,6 +199,8 @@ def _native_ssh_onboard(
     print("transport: ssh-pending")
     print("live status: pending-live")
     print("ssh execution: not-implemented")
+    if include_web:
+        print("web page: ONBOARDING.html (local file only, no server)")
     return 0
 
 
@@ -235,6 +241,8 @@ def _print_native_run(
     print(f"transport: {safe_text(receipt['transport'])}")
     print(f"profile: {safe_text(receipt['profile'])}")
     print("entrypoint executed: false")
+    print(f"interpreter pinned: {safe_text(str(receipt['interpreterPinned']).lower())}")
+    print(f"interpreter digest: {safe_text(receipt['interpreterDigest'])}")
     print(f"isolation: {safe_text(receipt['isolation'])}")
     print(f"network enforcement: {safe_text(receipt['networkEnforcement'])}")
     print(f"observation: {safe_text(receipt['observation'])}")

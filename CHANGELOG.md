@@ -17,9 +17,26 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
+- M3 slice 2 (ADR-0064, Issue #53): pinned interpreter/environment identity
+  with a reverified `restricted-v0alpha2` profile, plus an optional static
+  local onboarding page (`ssh-onboard --web`). Entrypoint execution, live
+  SSH, paid cloud, and public MVP remain out of scope.
 
 ### Added
 
+- M3 slice 2 pinned identity and second profile (`ADR-0064`):
+  `restricted-v0alpha2` digests the resolved interpreter binary and the
+  exact spawn environment before `Popen`, re-verifies the interpreter
+  immediately before spawn (`native-interpreter-changed` on drift), and
+  reports `interpreterDigest`, `environmentDigest`, `interpreterPinned` in
+  the receipt. v0alpha1 keeps recorded-not-pinned semantics with the same
+  additive fields. Entrypoint execution and network enforcement stay
+  documented non-goals per profile. `transport=ssh` still fails closed.
+- M3 slice 2 local Web onboarding foundation (`ADR-0064`): `researchos
+  native ssh-onboard --web` additionally writes a static `ONBOARDING.html`
+  into the pending-live pack (no server, no JavaScript, no network calls,
+  escaped operator text, host-key body never rendered). Without `--web`
+  the pack is unchanged. No public MVP is claimed.
 - M3 slice 1 local restricted `NativeProcessRuntime` (`ADR-0063`): sealed
   preflight recompute plus this-store human `{eventId, sequence}` consume
   before spawn, fixed noop helper with bounded capture, empty environment

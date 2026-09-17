@@ -199,9 +199,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     native_run.add_argument(
         "--profile",
-        choices=("restricted-v0alpha1",),
+        choices=("restricted-v0alpha1", "restricted-v0alpha2"),
         default="restricted-v0alpha1",
-        help="restricted process profile; the only executable profile",
+        help="restricted process profile; v0alpha2 pins interpreter and environment identity",
     )
     add_registry_arguments(native_run)
     native_onboard = native_commands.add_parser(
@@ -234,9 +234,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     native_onboard.add_argument(
         "--profile",
-        choices=("restricted-v0alpha1",),
+        choices=("restricted-v0alpha1", "restricted-v0alpha2"),
         default="restricted-v0alpha1",
         help="restricted process profile recorded in the pack",
+    )
+    native_onboard.add_argument(
+        "--web",
+        action="store_true",
+        help="also write a local-only static ONBOARDING.html page (no server, no network)",
     )
     native_onboard.add_argument("--project", required=True, metavar="ID")
     native_onboard.add_argument("--source", required=True, metavar="URI")

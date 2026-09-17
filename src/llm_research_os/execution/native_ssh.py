@@ -19,6 +19,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from llm_research_os.execution.errors import NativeSshError
+from llm_research_os.execution.native_identity import (
+    is_native_runtime_profile,
+)
 
 NATIVE_SSH_PROFILE: Literal["restricted-v0alpha1"] = "restricted-v0alpha1"
 NATIVE_SSH_API_VERSION: Literal["researchos.dev/v0alpha1"] = "researchos.dev/v0alpha1"
@@ -71,7 +74,8 @@ def parse_ssh_target(
     clean_user = _require_user(user)
     clean_workdir = _require_workdir(workdir)
     clean_key = _require_host_key(host_key)
-    if type(profile) is not str or profile != NATIVE_SSH_PROFILE:
+    clean_profile = profile if type(profile) is str else ""
+    if not is_native_runtime_profile(clean_profile):
         raise NativeSshError(
             "ssh onboarding profile is invalid",
             code="ssh-profile-invalid",
@@ -82,7 +86,7 @@ def parse_ssh_target(
         user=clean_user,
         workdir=clean_workdir,
         host_key=clean_key,
-        profile=NATIVE_SSH_PROFILE,
+        profile=clean_profile,
     )
 
 
@@ -92,6 +96,7 @@ def write_native_ssh_pack(
     *,
     project_id: str,
     source: str,
+    include_web: bool = False,
 ) -> dict[str, Any]:
     """Write a pending-live onboarding pack without contacting the host."""
 
@@ -110,6 +115,14 @@ def write_native_ssh_pack(
         )
     output.mkdir(parents=True, exist_ok=True)
     status = _status_document(target, project_id=project_id, source=source)
+    web_page: str | None = None
+    if include_web:
+        from llm_research_os.execution.native_web import write_onboarding_page
+
+        web_page = write_onboarding_page(output, target, project_id=project_id, source=source)
+    status["webPage"] = web_page
+    # NOTE: the web writer is imported lazily because native_web renders
+    # these fragments and therefore imports this module back.
     (output / "STATUS.json").write_text(
         json.dumps(status, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -126,6 +139,20 @@ def write_native_ssh_pack(
     os.chmod(config_path, _PRIVATE_FILE_MODE)
     (output / "authorized_keys.fragment").write_text(_authorized_keys_fragment(), encoding="utf-8")
     return status
+
+
+def ssh_config_fragment(target: NativeSshTarget) -> str:
+    """Return the pending-live client config fragment for one target."""
+
+    if type(target) is not NativeSshTarget:
+        raise NativeSshError("ssh onboarding target is invalid", code="ssh-target-invalid")
+    return _ssh_config_fragment(target)
+
+
+def authorized_keys_fragment() -> str:
+    """Return the restricted authorized_keys prefix with a key placeholder."""
+
+    return _authorized_keys_fragment()
 
 
 def _require_host(host: object) -> str:
