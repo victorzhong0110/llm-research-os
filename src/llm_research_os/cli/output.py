@@ -10,7 +10,11 @@ from pydantic import ValidationError
 from llm_research_os.budget.errors import BudgetError, BudgetRequestError
 from llm_research_os.events.models import ResearchEvent
 from llm_research_os.evidence.errors import EvidenceError, EvidenceRequestError
-from llm_research_os.execution.errors import SimulationError
+from llm_research_os.execution.errors import (
+    NativeProcessRuntimeError,
+    NativeSshError,
+    SimulationError,
+)
 from llm_research_os.execution.planner import PlanningInputError
 from llm_research_os.problem import ProblemDetail, ProblemReport
 from llm_research_os.providers.errors import ModelProviderError, ModelRequestError
@@ -71,6 +75,8 @@ def problem_report(exc: Exception) -> ProblemReport:
         BudgetError,
         EvidenceError,
         ModelProviderError,
+        NativeProcessRuntimeError,
+        NativeSshError,
         ReportError,
         ResearchDecisionError,
         SimulationError,

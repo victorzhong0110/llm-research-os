@@ -33,6 +33,32 @@ class NativeProcessPreflightError(ValueError):
     """
 
 
+class NativeProcessRuntimeError(ValueError):
+    """Refuse an unsafe native-process launch or report an uncertified outcome.
+
+    Messages MUST NOT include entrypoints, task configuration, host paths,
+    interpreter paths, SSH host keys, or other potentially sensitive caller
+    data. ``code`` is a stable diagnostic token for the rejecting branch.
+    """
+
+    def __init__(self, message: str, *, code: str = "native-runtime") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class NativeSshError(ValueError):
+    """Reject an unsafe or incomplete SSH onboarding target or pack.
+
+    Messages MUST NOT include host keys, key paths, usernames combined with
+    hosts, or other potentially sensitive caller data. ``code`` is a stable
+    diagnostic token for the rejecting branch.
+    """
+
+    def __init__(self, message: str, *, code: str = "native-ssh") -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class SimulationError(ValueError):
     """Fail-closed error from the deterministic simulated vertical slice.
 

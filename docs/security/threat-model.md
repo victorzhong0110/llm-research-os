@@ -2,7 +2,7 @@
 
 > Status: Active M0 baseline; kernel-proof closed 2026-09-03 ([ADR-0037](../adr/0037-m0-kernel-proof-closure.md))
 >
-> Last reviewed: 2026-09-08
+> Last reviewed: 2026-09-17
 >
 > Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, SimulatedRuntime consume of one local `{eventId, sequence}` citation of `plan.authorization.evaluated` (not a signed launch JWT), non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger including `question.asked` / `question.answered`, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, runtime CNY budget facts, seeded synthetic `training.step` / `evaluation.metric` facts, and static HTML/Markdown Run reports. M2-0 adds a loopback Worker long-poll
 binding, HMAC grants bound to an authorized `execute.local` execution object, and a
@@ -21,7 +21,12 @@ request is still not a stop; `cancel-observed` requires a confirmed
 process or container exit; container stop is not cloud-instance stop.
 Live CPU fault acceptance is ADR-0051.
 Remote Worker transport (ADR-0021) is a pending-live pack: loopback is not
-a two-host proof; the Worker directory must not contain `tls-key.pem`.
+a two-host proof; the Worker directory must not contain `tls-key.pem`. M3
+slice 1 adds a local restricted native helper over a sealed preflight with
+this-store authorization consume (ADR-0063, TM-064): fixed noop argv only,
+process-group supervision, bounded capture, no entrypoint import, no
+lifecycle append, and SSH transport refused without a socket. Native SSH
+onboarding is a pending-live checklist pack only (TM-065).
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -82,6 +87,8 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | Plan authorization event recorder | Trusted-kernel audit append over one recomputed decision | Implemented; existing verified store and CAS, but actor is unauthenticated and event is not executable authority |
 | Plan authorization lineage query | Trusted-kernel read-only fold over recorded evaluation facts | Implemented; exact plan-identity join, frozen verified prefix, but not a Run citation or executable authority |
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
+| NativeProcessRuntime slice 1 | Local restricted helper over a sealed preflight | Implemented (ADR-0063, TM-064); recomputed preflight plus this-store human `{eventId, sequence}` consume before spawn; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; SSH refused without a socket; no lifecycle/grant/artifact writes |
+| Native SSH onboarding | Pending-live checklist pack | Implemented as validator plus pack writer (TM-065); pinned host key, non-root, no password/agent-forwarding/private-key; STATUS stays `pending-live`; never dials SSH |
 | AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + recorded CNY limit; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -131,6 +138,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 - Every planned task resolves one exact block version and manifest digest.
 - Dry-run cannot execute a block or claim an execution result.
 - Native-process preflight cannot import an entrypoint, enforce isolation or authorize a launch.
+- NativeProcessRuntime slice 1 cannot execute the manifest entrypoint, enforce network denial, pin the interpreter, append lifecycle facts, or dial SSH; SSH transport is refused after authorization checks.
 
 ResearchSpec, exact block resolution, pure planning, exact plan authorization, append-only
 event-store, local artifact object and RunControl preflight/CAS invariants have executable checks.
@@ -201,6 +209,8 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-060 | AutoDL 16–24 GiB memory is used on a 6 GiB WSL laptop, `--gpus all` is treated as the authorized launch, a jammy rootfs or image tag is used as grant identity, `execute_gpu_training` is called a CUDA result, ping or Windows-host reachability is called a WSL Worker proof, or this slice is filed as M2 close | Host OOM; extra GPU attach; false image identity; false two-host/CUDA acceptance | Closed `wsl2-cuda-laptop-8g` (3 GiB default); docker `--gpus device=0`; grant identity is local `docker image inspect .Id`; bind stays `gpu-not-run`; live start is `run_gpu_training`; two-host/CUDA rows stay pending-live until recorded from Ubuntu on Windows/WSL2 + Docker Engine (ADR-0059) | Profile/bind/run-split tests in `tests/test_worker_gpu.py`; live evidence is scoped to [cuda.11 and the two-host pack](../evidence/m2-wsl2-cuda-live/m2-closure-matrix.md) |
 | TM-061 | Output preparation implicitly elevates authority or follows a symlink/hardlink during host mutation | Host file overwrite or unexpected privileged command | No sudo/setfacl fallback; descriptor-based no-follow traversal, regular-file link-count check before truncate; operator-provisioned ownership for non-root (ADR-0060) | `tests/test_gpu_output_boundary.py`; no new GPU live claim |
 | TM-062 | A rounded coverage total passes the floor, or an unknown capability acquires launch authority | Undetected untested paths or capability drift | Integer-count coverage gate; central known capability set; payload catalog drift check | `tests/test_coverage_gate.py`, `tests/test_plan_authorization.py`, `tests/test_event_catalog.py` |
+| TM-064 | A stale or foreign authorization launches a native process, an SSH request spawns locally, or the helper is treated as entrypoint execution with network/OCI isolation | Unreviewed code execution; false isolation claims | Sealed preflight recompute plus this-store human `{eventId, sequence}` consume before spawn; `ssh` validated past authorization then refused without a socket; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; no lifecycle/grant/artifact writes; receipt says `entrypointExecuted: false`, `not-enforced` network (ADR-0063) | `tests/test_native_process_runtime.py` |
+| TM-065 | An SSH pack dials a host, stores a private key or password, allows root, or is treated as a live two-host proof | Credential exposure; false remote proof | Pure validator plus pack writer with no socket/subprocess; pinned host key required, root/password/agent-forwarding/private-key refused; STATUS stays `pending-live` with `ssh-pending` transport; loopback labeled not-cross-machine (ADR-0063) | `tests/test_native_ssh_onboard.py` |
 
 
 ## 7. M0 security gates
@@ -237,6 +247,12 @@ Before merging executable capability, the following gates apply:
 - Native-process preflight does not bind an interpreter, enforce its requested workspace/network/
   environment/limit constraints, create or supervise a child, or persist a receipt. Its digest is
   neither a credential nor evidence that an operating-system control was applied.
+- M3 slice 1 native execution runs only a fixed noop helper after sealed
+  preflight plus this-store consume. It does not import the manifest
+  entrypoint, enforce network denial, pin the interpreter, append lifecycle
+  facts, or dial SSH. The receipt is digest-only and `entrypointExecuted` is
+  always false. SSH onboarding writes a `pending-live` checklist pack and
+  never opens a socket; `ssh-transport-not-implemented` is not a live run.
 - Cancellation-request `actor.id` is claimed metadata, not authentication; local OS access to
   the request and database is the current authority boundary.
 - `config` and `extensions` are structurally declared but their future consumers must perform capability-specific validation.

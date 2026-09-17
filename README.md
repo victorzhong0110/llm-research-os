@@ -30,7 +30,7 @@ durable, auditable facts. The researcher is a teacher, not only an approver
 | Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
 | Paid cloud | Not run; ¥0. No paid-cloud claim |
 | Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
-| NativeProcessRuntime | Not implemented; #53 continues in M3 SSH/non-OCI work |
+| NativeProcessRuntime | M3 slice 1 in progress (ADR-0063): local restricted helper + SSH onboard pending-live; SSH execution refused; #53 stays open |
 | Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
@@ -92,6 +92,7 @@ acceptance checklist of that milestone.
 - [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
 - [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
+- [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)
 - [Static planning kernel guide](docs/guides/m0-static-planning.md)
 - [M0 SQLite event store](docs/guides/m0-event-store.md)
 - [M0 local artifact store](docs/guides/m0-artifact-store.md)
@@ -101,6 +102,8 @@ acceptance checklist of that milestone.
 - [M0 plan-authorization evaluation events](docs/guides/m0-plan-authorization-events.md)
 - [M0 plan-authorization lineage](docs/guides/m0-plan-authorization-lineage.md)
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
+- [M3 native process runtime](docs/guides/m3-native-process-runtime.md)
+- [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)
 - [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -267,6 +270,16 @@ only means the report is reviewable; the report is always `launchAllowed=false`,
 only as a digest. The command does not resolve an interpreter, import a module,
 create a workspace, start a process, send a signal, or write durable storage.
 See [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md).
+
+M3 slice 1 adds a local restricted run over that sealed preflight plus a
+pending-live SSH onboarding pack ([ADR-0063](docs/adr/0063-m3-native-process-runtime-slice-1.md)).
+`native run` consumes one local authorization citation on an existing store
+before spawning a fixed noop helper; the manifest entrypoint is never
+imported and no lifecycle fact is appended. `--transport ssh` is validated
+past authorization and then refused without a socket. `native ssh-onboard`
+writes a `pending-live` checklist without dialing. See
+[M3 native process runtime](docs/guides/m3-native-process-runtime.md) and
+[M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md).
 
 ## Event query and replay
 
@@ -477,6 +490,14 @@ an existing event store, but the actor is still unauthenticated, the event is
 audit-only, and no runtime may launch from it.
 `native preflight` only freezes the fixed process-review shape of a single task,
 explicitly forbids launch, and does not enforce the declared isolation.
+`native run` (M3 slice 1) recomputes that sealed preflight, consumes one local
+human authorization citation on the existing store before spawn, and then runs
+only a fixed noop helper with bounded capture, an empty environment allowlist,
+an isolated temporary cwd, and process-group supervision. The manifest
+entrypoint is never imported, no lifecycle fact is appended, network denial is
+requested but not enforced, and `--transport ssh` fails closed without a
+socket. `native ssh-onboard` writes a `pending-live` checklist pack and never
+dials SSH.
 `runs simulate` only hands a strict local request to that existing boundary and
 does not retry conflicts.
 `runs cancel` likewise appends a single request fact through RunControl, requires

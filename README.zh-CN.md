@@ -21,7 +21,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 | Windows / WSL2 + Docker Engine | 两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测 |
 | Paid cloud | 未执行；¥0，不宣称付费云验收 |
 | Unknown execution | 已有单测与回环验证；无专门两机 unknown 实测 |
-| NativeProcessRuntime | 未实现；#53 随 M3 SSH／非 OCI 工作包继续 |
+| NativeProcessRuntime | M3 首片进行中（ADR-0063）：本地受限 helper＋SSH 接入 pending-live；SSH 执行已拒绝；#53 保持开放 |
 | Public MVP | 未发布；可用的 SSH 接入与 Web 界面属于 M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
@@ -79,6 +79,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
 - [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
+- [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)（英文）
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
@@ -88,6 +89,8 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)
 - [M0 计划授权血缘查询](docs/guides/m0-plan-authorization-lineage.md)
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
+- [M3 本地受限执行](docs/guides/m3-native-process-runtime.md)（英文）
+- [M3 SSH 接入](docs/guides/m3-native-ssh-onboarding.md)（英文）
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -238,6 +241,14 @@ runner、`shell=false`、network denied、空环境 allowlist、隔离临时 wor
 `isolation=not-enforced`、`execution=not-executed`，入口点仅以摘要出现。命令不解析解释器、导入
 模块、创建 workspace、启动进程、发信号或写入持久存储。详见
 [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)。
+
+M3 首片在该密封预检之上增加本地受限执行与 pending-live SSH 接入包
+（[ADR-0063](docs/adr/0063-m3-native-process-runtime-slice-1.md)，英文）。
+`native run` 先消费既有库中的本地授权引用，再启动固定 noop helper；清单入口点永不导入，
+不追加生命周期事实。`--transport ssh` 在授权检查之后失败关闭，不打开 socket。
+`native ssh-onboard` 只写 `pending-live` 清单，不拨号。详见英文指南
+[M3 native process runtime](docs/guides/m3-native-process-runtime.md) 与
+[M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)。
 
 ## 事件查询与回放
 
@@ -416,6 +427,10 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 `authorizations record` 可向既有事件库追加精确四摘要绑定的求值事实，但 actor 仍未认证，事件
 只具有审计意义，任何 runtime 都不能据此启动。
 `native preflight` 只冻结单 task 的固定进程审查形状，明确禁止启动且不实施所声明的隔离。
+`native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
+固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
+导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开
+socket。`native ssh-onboard` 只写 `pending-live` 清单，不拨号。
 `runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
 `runs cancel` 同样只通过 RunControl 追加单个请求事实，要求既有数据库，且不发送信号或
 推断取消结果。

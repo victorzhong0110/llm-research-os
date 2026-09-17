@@ -130,7 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     native = subparsers.add_parser(
         "native",
-        help="review native-process launch contracts without executing them",
+        help="review native-process launch contracts and run the restricted slice",
     )
     native_commands = native.add_subparsers(dest="native_command", required=True)
     native_preflight = native_commands.add_parser(
@@ -154,6 +154,93 @@ def build_parser() -> argparse.ArgumentParser:
         help="exact workflow ID (required when the spec contains multiple workflows)",
     )
     add_registry_arguments(native_preflight)
+    native_run = native_commands.add_parser(
+        "run",
+        help="consume local authorization then run the restricted noop helper",
+    )
+    native_run.add_argument("spec", type=Path, help="ResearchSpec YAML or JSON file")
+    native_run.add_argument(
+        "authorization_request",
+        type=Path,
+        help="PlanAuthorizationRequest v0alpha1 YAML or JSON file",
+    )
+    native_run.add_argument(
+        "preflight_request",
+        type=Path,
+        help="NativeProcessPreflightRequest v0alpha1 YAML or JSON file",
+    )
+    native_run.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    native_run.add_argument(
+        "--workflow",
+        metavar="ID",
+        help="exact workflow ID (required when the spec contains multiple workflows)",
+    )
+    native_run.add_argument(
+        "--authorization-event-id",
+        required=True,
+        metavar="ID",
+        help="cited plan.authorization.evaluated event id on this store",
+    )
+    native_run.add_argument(
+        "--authorization-sequence",
+        required=True,
+        metavar="SEQ",
+        help="store-assigned sequence of the cited authorization fact",
+    )
+    native_run.add_argument(
+        "--transport",
+        choices=("local", "ssh"),
+        default="local",
+        help="local executes the helper; ssh always fails closed in this slice",
+    )
+    native_run.add_argument(
+        "--profile",
+        choices=("restricted-v0alpha1",),
+        default="restricted-v0alpha1",
+        help="restricted process profile; the only executable profile",
+    )
+    add_registry_arguments(native_run)
+    native_onboard = native_commands.add_parser(
+        "ssh-onboard",
+        help="write a pending-live SSH onboarding pack without dialing",
+    )
+    native_onboard.add_argument(
+        "output",
+        type=Path,
+        help="empty output directory for STATUS and onboarding files",
+    )
+    native_onboard.add_argument("--host", required=True, help="SSH target host or IP")
+    native_onboard.add_argument("--user", required=True, help="non-root SSH login user")
+    native_onboard.add_argument(
+        "--port",
+        type=int,
+        default=22,
+        help="SSH TCP port (1..65535)",
+    )
+    native_onboard.add_argument(
+        "--workdir",
+        required=True,
+        help="absolute isolated workdir on the target host",
+    )
+    native_onboard.add_argument(
+        "--host-key",
+        required=True,
+        metavar="KEY",
+        help="pinned host key like ssh-ed25519:BASE64; private keys are refused",
+    )
+    native_onboard.add_argument(
+        "--profile",
+        choices=("restricted-v0alpha1",),
+        default="restricted-v0alpha1",
+        help="restricted process profile recorded in the pack",
+    )
+    native_onboard.add_argument("--project", required=True, metavar="ID")
+    native_onboard.add_argument("--source", required=True, metavar="URI")
+    add_event_format_argument(native_onboard)
 
     blocks = subparsers.add_parser("blocks", help="inspect inert BlockManifest registrations")
     block_commands = blocks.add_subparsers(dest="blocks_command", required=True)
