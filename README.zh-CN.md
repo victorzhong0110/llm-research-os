@@ -52,6 +52,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 
 ## 项目文档
 
+- [M3 开发计划](docs/plans/m3-development-plan.md) — 顺序工作包、验收标准与工作量估算（英文）
 - [M1/M2 验收与 M3 边界](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
 
 - [宪章 v0.2 合并阅读版](docs/charter-v0.2.md)
