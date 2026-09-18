@@ -1,12 +1,13 @@
-# M3 native process runtime (slices 1–2)
+# M3 native process runtime (slices 1–3)
 
 Local restricted execution over a sealed preflight. Protocols:
 [NativeProcessRuntime v0alpha1](../protocols/native-process-runtime-v0alpha1.md)
 (slice 1) and
 [NativeProcessRuntime v0alpha2](../protocols/native-process-runtime-v0alpha2.md)
 (slice 2 profiles and pinning). Constraint records:
-[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md) and
-[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md).
+[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md),
+[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md), and
+[ADR-0065](../adr/0065-m3-pack-output-hardening.md).
 
 This path does **not** close Issue #53, does not execute the manifest
 entrypoint, does not dial SSH, does not spend paid cloud, and does not start
@@ -106,9 +107,22 @@ Pinning detects substitution; it is not a sandbox. Entrypoint execution,
 network enforcement, and namespaces/cgroups/seccomp stay non-goals for both
 profiles (see the v0alpha2 protocol).
 
+## Slice 3: pack output handling and profile registry
+
+Slice 3 changes no run semantics. It hardens the onboarding pack writer
+(see [SSH onboarding](m3-native-ssh-onboarding.md)): symlinked or
+non-directory pack outputs are refused fail-closed
+(`pack-output-invalid` for the pack, `ssh-output-invalid` for the page)
+before any file is written, and `STATUS.json` joins
+`ssh_config.fragment` as owner-only (`0600`) on POSIX. CLI `--profile`
+choices and defaults for `native run` and `native ssh-onboard` are pinned
+to `NATIVE_RUNTIME_PROFILES` by test, so a future profile cannot be added
+in one place only.
+
 ## What is not claimed
 
 The manifest entrypoint is never imported. Network denial is requested, not
-enforced. The interpreter is the host `sys.executable` recorded by version,
-not pinned. No lifecycle fact is appended, no artifact is collected, and no
+enforced. The interpreter is the host `sys.executable`: recorded by version
+only on `restricted-v0alpha1`, digest-pinned and re-verified on
+`restricted-v0alpha2`. No lifecycle fact is appended, no artifact is collected, and no
 cloud, Web, or plugin boundary is provided.

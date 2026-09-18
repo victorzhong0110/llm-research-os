@@ -1,9 +1,10 @@
-# M3 local Web onboarding foundation (slice 2)
+# M3 local Web onboarding foundation (slices 2–3)
 
 Local-only static page inside the pending-live SSH pack. Protocol:
 [NativeProcessRuntime v0alpha2](../protocols/native-process-runtime-v0alpha2.md#local-web-onboarding-shape).
-Constraint record:
-[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md).
+Constraint records:
+[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md) and
+[ADR-0065](../adr/0065-m3-pack-output-hardening.md).
 
 This page is **not** a public MVP, not a server, and not a live proof. Open
 it from disk (`file://`). It makes no network requests, runs no script,
@@ -27,6 +28,11 @@ uv run researchos native ssh-onboard /tmp/native-ssh-pack \
 Without `--web`, the pack is exactly the slice-1 file set and `STATUS.json`
 records `"webPage": null`. With `--web`, the pack additionally contains
 `ONBOARDING.html` and records `"webPage": "ONBOARDING.html"`.
+
+Slice 3 output handling: a symlinked page output is refused with
+`ssh-output-invalid` before any write, and a non-directory output is
+refused the same way — no page file is written on either refusal path
+(see [SSH onboarding](m3-native-ssh-onboarding.md)).
 
 ## What the page contains
 
