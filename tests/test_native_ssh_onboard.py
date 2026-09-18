@@ -356,7 +356,10 @@ def test_scoped_ipv6_ssh_config_is_parseable(tmp_path: Path) -> None:
     )
     assert completed.returncode == 0, completed.stderr
     assert "unknown key" not in completed.stderr
-    assert "hostname fe80::1%eth0" in completed.stdout.lower()
+    dumped = completed.stdout.lower()
+    # Linux OpenSSH expands %%eth0 back to fe80::1%eth0. Apple's ssh -G
+    # parses the same fragment then drops the zone and prints fe80::1.
+    assert "hostname fe80::1%eth0" in dumped or "hostname fe80::1\n" in dumped
 
 
 def test_pack_writes_known_hosts_for_non_default_port(tmp_path: Path) -> None:
