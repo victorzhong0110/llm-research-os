@@ -176,11 +176,7 @@ def _link_local_pairs() -> list[tuple[str, str]]:
 def _usable_scoped_ipv6_host() -> str | None:
     indexed = _indexed_zones()
     indexed_set = set(indexed)
-    pairs = [
-        pair
-        for pair in _link_local_pairs()
-        if not indexed_set or pair[1] in indexed_set
-    ]
+    pairs = [pair for pair in _link_local_pairs() if not indexed_set or pair[1] in indexed_set]
     preferred = [pair for pair in pairs if not _is_loopback_zone(pair[1])]
     loopback = [pair for pair in pairs if _is_loopback_zone(pair[1])]
     chosen = preferred or loopback
