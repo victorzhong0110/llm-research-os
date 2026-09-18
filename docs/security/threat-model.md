@@ -30,6 +30,9 @@ onboarding is a pending-live checklist pack only (TM-065). M3 slice 2 adds
 content-pinned interpreter/environment identity with a reverified
 `restricted-v0alpha2` profile (TM-066) and an optional static local
 onboarding page with no script or network surface (TM-067, ADR-0064).
+M3 slice 3 hardens pack output handling (TM-068, ADR-0065): symlinked or
+non-directory outputs are refused before any write, and key-body-bearing
+pack files are owner-only on POSIX.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -216,6 +219,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-065 | An SSH pack dials a host, stores a private key or password, allows root, or is treated as a live two-host proof | Credential exposure; false remote proof | Pure validator plus pack writer with no socket/subprocess; pinned host key required, root/password/agent-forwarding/private-key refused; STATUS stays `pending-live` with `ssh-pending` transport; loopback labeled not-cross-machine (ADR-0063) | `tests/test_native_ssh_onboard.py` |
 | TM-066 | A swapped interpreter binary or a mutated spawn environment runs unreviewed code, or a recorded version string is treated as a pinned identity | Unreviewed code execution; false identity claims | `restricted-v0alpha2` digests the resolved binary and the exact spawn env before `Popen` and re-resolves immediately before spawn, refusing with `native-interpreter-changed` on drift; errors carry no paths; v0alpha1 keeps recorded-not-pinned semantics (ADR-0064) | `tests/test_native_identity.py`, `tests/test_native_process_runtime_slice2.py` |
 | TM-067 | A local onboarding page exfiltrates key material, runs script, or is served as a public service | Credential exposure; unsolicited bind; false remote proof | Pure file writer with no socket/subprocess/network imports; static HTML with inline CSS only, no `<script>` or links; all operator text escaped; host-key body never rendered; `file://` use documented (ADR-0064) | `tests/test_native_web_onboard.py` |
+| TM-068 | A symlinked pack output redirects writes outside the intended directory, or a key-body pack file is left world-readable | Writes outside operator intent; host-key body exposure | Symlinked/non-directory outputs refused fail-closed (`pack-output-invalid` / `ssh-output-invalid`) before any write; `STATUS.json` and `ssh_config.fragment` written `0600` on POSIX; CLI `--profile` choices pinned to `NATIVE_RUNTIME_PROFILES` (ADR-0065) | `tests/test_native_pack_hardening.py` |
 
 
 ## 7. M0 security gates

@@ -21,7 +21,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 | Windows / WSL2 + Docker Engine | 两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测 |
 | Paid cloud | 未执行；¥0，不宣称付费云验收 |
 | Unknown execution | 已有单测与回环验证；无专门两机 unknown 实测 |
-| NativeProcessRuntime | M3 首两片进行中（ADR-0063/0064）：本地受限 helper＋身份绑定 profile＋SSH 接入 pending-live（含可选本地页面）；SSH 执行已拒绝；#53 保持开放 |
+| NativeProcessRuntime | M3 首三片进行中（ADR-0063/0064/0065）：本地受限 helper＋身份绑定 profile＋SSH 接入 pending-live（含可选本地页面）＋输出目录加固；SSH 执行已拒绝；#53 保持开放 |
 | Public MVP | 未发布；可用的 SSH 接入与 Web 界面属于 M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).

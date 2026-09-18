@@ -108,6 +108,11 @@ def write_native_ssh_pack(
         raise NativeSshError("ssh onboarding source is invalid", code="ssh-source-invalid")
     if not isinstance(output, Path):
         raise NativeSshError("ssh onboarding output is invalid", code="ssh-output-invalid")
+    if output.is_symlink() or (output.exists() and not output.is_dir()):
+        raise NativeSshError(
+            "ssh onboarding output directory is invalid",
+            code="pack-output-invalid",
+        )
     if output.exists() and any(output.iterdir()):
         raise NativeSshError(
             "ssh onboarding output directory is not empty",
@@ -123,10 +128,12 @@ def write_native_ssh_pack(
     status["webPage"] = web_page
     # NOTE: the web writer is imported lazily because native_web renders
     # these fragments and therefore imports this module back.
-    (output / "STATUS.json").write_text(
+    status_path = output / "STATUS.json"
+    status_path.write_text(
         json.dumps(status, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    os.chmod(status_path, _PRIVATE_FILE_MODE)
     (output / "ENVIRONMENT.json").write_text(
         json.dumps(_environment_document(target), ensure_ascii=True, indent=2, sort_keys=True)
         + "\n",

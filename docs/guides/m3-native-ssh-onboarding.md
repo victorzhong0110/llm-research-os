@@ -1,11 +1,12 @@
-# M3 native SSH onboarding (slices 1–2)
+# M3 native SSH onboarding (slices 1–3)
 
 Usable onboarding checklist without live execution. Protocol:
 [NativeProcessRuntime v0alpha1](../protocols/native-process-runtime-v0alpha1.md#ssh-onboarding-shape)
 and [v0alpha2](../protocols/native-process-runtime-v0alpha2.md#local-web-onboarding-shape).
 Constraint records:
-[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md) and
-[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md).
+[ADR-0063](../adr/0063-m3-native-process-runtime-slice-1.md),
+[ADR-0064](../adr/0064-m3-native-runtime-slice-2.md), and
+[ADR-0065](../adr/0065-m3-pack-output-hardening.md).
 
 This path does **not** dial SSH, does not prove a second host, does not spend
 paid cloud, and does not start a public service. `STATUS.json` stays
@@ -28,9 +29,14 @@ uv run researchos native ssh-onboard /tmp/native-ssh-pack \
 Requirements: non-root user, absolute isolated workdir (not `/`), pinned
 host key (`ssh-ed25519:` / `ecdsa-sha2-nistp256:` / `ecdsa-sha2-nistp384:` /
 `ssh-rsa:` plus base64; private-key material is refused), and profile
-`restricted-v0alpha1` or `restricted-v0alpha2`. Exit `0` writes `STATUS.json`,
-`ENVIRONMENT.json`, `ONBOARDING.md`, `ACCEPTANCE.md`, `ssh_config.fragment`,
-and `authorized_keys.fragment`. Exit `2` is a validation or filesystem error
+`restricted-v0alpha1` or `restricted-v0alpha2`. The output path must be a
+real directory: symlinks and non-directory paths are refused with
+`pack-output-invalid`, and a non-empty directory is refused with
+`pack-exists` — no files are written on either refusal path. Exit `0`
+writes `STATUS.json`, `ENVIRONMENT.json`, `ONBOARDING.md`, `ACCEPTANCE.md`,
+`ssh_config.fragment`, and `authorized_keys.fragment`. `STATUS.json`
+(embeds the pinned host-key body) and `ssh_config.fragment` are written
+owner-only (`0600`) on POSIX. Exit `2` is a validation or filesystem error
 and writes no pack. No socket is opened on either path.
 
 With `--web`, the pack additionally contains a static local

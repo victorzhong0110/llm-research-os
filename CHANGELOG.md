@@ -21,8 +21,20 @@ authorized release.
   with a reverified `restricted-v0alpha2` profile, plus an optional static
   local onboarding page (`ssh-onboard --web`). Entrypoint execution, live
   SSH, paid cloud, and public MVP remain out of scope.
+- M3 slice 3 (ADR-0065, Issue #53): onboarding pack output hardening —
+  symlinked/non-directory outputs refused before any write, key-body pack
+  files owner-only on POSIX. Live SSH, paid cloud, and public MVP remain
+  out of scope.
 
 ### Added
+
+- M3 slice 3 pack output hardening (`ADR-0065`): symlinked or
+  non-directory pack outputs are refused fail-closed
+  (`pack-output-invalid` / `ssh-output-invalid`) before any file is
+  written; `STATUS.json` (embeds the pinned host-key body) is written
+  `0600` on POSIX like `ssh_config.fragment`; CLI `--profile` choices
+  and defaults are pinned to `NATIVE_RUNTIME_PROFILES` by test.
+  `transport=ssh` still fails closed.
 
 - M3 slice 2 pinned identity and second profile (`ADR-0064`):
   `restricted-v0alpha2` digests the resolved interpreter binary and the

@@ -37,6 +37,8 @@ def write_onboarding_page(
         raise NativeSshError("ssh onboarding target is invalid", code="ssh-target-invalid")
     if not isinstance(output, Path):
         raise NativeSshError("ssh onboarding output is invalid", code="ssh-output-invalid")
+    if output.is_symlink():
+        raise NativeSshError("ssh onboarding output is invalid", code="ssh-output-invalid")
     if not output.is_dir():
         raise NativeSshError("ssh onboarding output is invalid", code="ssh-output-invalid")
     page = output / ONBOARDING_PAGE_NAME

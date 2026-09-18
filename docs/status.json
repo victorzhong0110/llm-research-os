@@ -39,8 +39,8 @@
     ],
     [
       "NativeProcessRuntime",
-      "M3 slices 1-2 in progress (ADR-0063/0064): local restricted helper + pinned identity profile + SSH onboard pending-live with optional local page; SSH execution refused; #53 stays open",
-      "M3 首两片进行中（ADR-0063/0064）：本地受限 helper＋身份绑定 profile＋SSH 接入 pending-live（含可选本地页面）；SSH 执行已拒绝；#53 保持开放"
+      "M3 slices 1-3 in progress (ADR-0063/0064/0065): local restricted helper + pinned identity profile + SSH onboard pending-live with optional local page + pack-output hardening; SSH execution refused; #53 stays open",
+      "M3 首三片进行中（ADR-0063/0064/0065）：本地受限 helper＋身份绑定 profile＋SSH 接入 pending-live（含可选本地页面）＋输出目录加固；SSH 执行已拒绝；#53 保持开放"
     ],
     [
       "Public MVP",
