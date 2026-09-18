@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import socket
 import subprocess
 from pathlib import Path
@@ -66,7 +67,7 @@ def test_hostname_and_loopback_targets_are_valid() -> None:
         ("host", "192.0.2.10;ProxyCommand=x", "ssh-host-invalid"),
         ("host", "192.0.2.10|nc", "ssh-host-invalid"),
         ("host", "host`id`", "ssh-host-invalid"),
-        ("host", 'host$(id)', "ssh-host-invalid"),
+        ("host", "host$(id)", "ssh-host-invalid"),
         ("host", None, "ssh-host-invalid"),
         ("port", 0, "ssh-port-invalid"),
         ("port", 70000, "ssh-port-invalid"),
@@ -308,6 +309,7 @@ def test_module_does_not_import_banned_clients() -> None:
     assert "import subprocess" not in source
     assert "paramiko" not in source
 
+
 def test_host_injection_payloads_rejected() -> None:
     payloads = (
         "fe80::1%eth0\nProxyCommand x",
@@ -332,6 +334,31 @@ def test_scoped_ipv6_with_safe_zone_accepted() -> None:
     assert target.host == "fe80::1%eth0"
 
 
+def test_scoped_ipv6_ssh_config_is_parseable(tmp_path: Path) -> None:
+    target = _target(host="fe80::1%eth0")
+    output = tmp_path / "pack"
+    write_native_ssh_pack(output, target, project_id=PROJECT, source=SOURCE)
+    fragment = output / "ssh_config.fragment"
+    config = fragment.read_text(encoding="utf-8")
+    assert "HostName fe80::1%%eth0\n" in config
+    assert "HostName fe80::1%eth0\n" not in config
+    known = (output / "known_hosts.native").read_text(encoding="utf-8")
+    assert known.startswith("fe80::1%eth0 ")
+    ssh = shutil.which("ssh")
+    if ssh is None:
+        pytest.skip("ssh is not available")
+    completed = subprocess.run(
+        [ssh, "-G", "-F", str(fragment), "researchos-native"],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=output,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "unknown key" not in completed.stderr
+    assert "hostname fe80::1%eth0" in completed.stdout.lower()
+
+
 def test_pack_writes_known_hosts_for_non_default_port(tmp_path: Path) -> None:
     target = _target(port=2222, host="2001:db8::10")
     output = tmp_path / "pack"
@@ -341,4 +368,3 @@ def test_pack_writes_known_hosts_for_non_default_port(tmp_path: Path) -> None:
     config = (output / "ssh_config.fragment").read_text(encoding="utf-8")
     assert "UserKnownHostsFile known_hosts.native" in config
     assert "GlobalKnownHostsFile /dev/null" in config
-

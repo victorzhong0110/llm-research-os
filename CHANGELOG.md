@@ -38,6 +38,9 @@ authorized release.
 
 ### Fixed
 
+- Native cancel uses the authorized `terminationGraceSeconds` (SIGTERM,
+  wait, then SIGKILL), matching the timeout path. Scoped IPv6 `HostName`
+  values escape `%` as `%%` so OpenSSH can parse the onboarding fragment.
 - Loopback Worker TLS material is minted for 14 days. A 1-day cert
   expired on the live control plane (notAfter 2026-09-10) and made
   `workers run` report `http-disconnect` before claim.

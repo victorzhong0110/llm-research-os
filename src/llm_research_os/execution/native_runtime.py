@@ -366,10 +366,14 @@ def _run_bounded(
             except subprocess.TimeoutExpired:
                 continue
     if cancelled:
-        return _finish_cancelled(process, pgid, preflight, stdout_thread, stderr_thread)
-    grace_seconds = (
-        float(preflight.limits.termination_grace_seconds) if timed_out else 0.0
-    )
+        return _finish_cancelled(
+            process,
+            pgid,
+            preflight,
+            stdout_thread,
+            stderr_thread,
+        )
+    grace_seconds = float(preflight.limits.termination_grace_seconds) if timed_out else 0.0
     _reap_process_group(process, pgid, grace_seconds=grace_seconds)
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
@@ -426,7 +430,11 @@ def _finish_cancelled(
     stdout_thread: threading.Thread,
     stderr_thread: threading.Thread,
 ) -> NativeProcessRuntimeResult:
-    _reap_process_group(process, pgid, grace_seconds=0)
+    _reap_process_group(
+        process,
+        pgid,
+        grace_seconds=float(preflight.limits.termination_grace_seconds),
+    )
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
     main_exited = process.poll() is not None
@@ -611,11 +619,10 @@ def _reap_process_group(
             caller_pgid = os.getpgid(0)
     # A child without start_new_session shares the caller's group; killpg
     # would SIGKILL the test runner and leave CI hanging until the cap.
-    group_kill_allowed = (
-        os.name == "posix" and target is not None and target != caller_pgid
-    )
-    if group_kill_allowed:
-        assert target is not None
+    if os.name != "posix" or target is None or target == caller_pgid:
+        if process.poll() is None:
+            process.kill()
+    else:
         main_dead = process.poll() is not None
         group_dead = not _process_group_alive(target)
         if main_dead and group_dead:
@@ -639,8 +646,6 @@ def _reap_process_group(
         else:
             with contextlib.suppress(ProcessLookupError, PermissionError):
                 os.killpg(target, signal.SIGKILL)
-    elif process.poll() is None:
-        process.kill()
     try:
         process.wait(timeout=_REAP_WAIT_SECONDS)
     except subprocess.TimeoutExpired:

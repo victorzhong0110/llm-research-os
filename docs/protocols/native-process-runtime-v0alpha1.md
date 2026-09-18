@@ -45,7 +45,7 @@ silently narrows a caller request and never spawns before checks 1–3 pass.
 | environment | empty allowlist | Only `PATH`/`SYSTEMROOT`/`WINDIR` passthrough plus fixed `PYTHON*` |
 | stdin | JSON object | `{"preflightDigest": "<digest>"}` only; no config or entrypoint text |
 | stdout/stderr | bounded capture | Preflight byte caps applied while pipes are read |
-| termination | `terminate-then-kill` via group reap | Process-group SIGKILL with caller-group guard |
+| termination | `terminate-then-kill` via group reap | Timeout and cancel use authorized `terminationGraceSeconds` (SIGTERM, wait, then SIGKILL) with a caller-group guard |
 | interpreter | host recorded, not pinned | `pythonVersion` is recorded; no digest pin or venv proof |
 | isolation | `process-group` | No namespace, cgroup, seccomp, or mount jail |
 | persistence | none | No lifecycle fact, grant, artifact collect, or projection write |

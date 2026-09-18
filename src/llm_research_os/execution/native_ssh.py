@@ -168,14 +168,10 @@ def _require_host(host: object) -> str:
     address = host
     if "%" in host:
         if host.count("%") != 1:
-            raise NativeSshError(
-                "ssh onboarding host is invalid", code="ssh-host-invalid"
-            )
+            raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
         address, zone = host.split("%", 1)
         if _ZONE_PATTERN.fullmatch(zone) is None:
-            raise NativeSshError(
-                "ssh onboarding host is invalid", code="ssh-host-invalid"
-            )
+            raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
     try:
         ip = ipaddress.ip_address(address)
     except ValueError:
@@ -363,19 +359,26 @@ def _known_hosts_line(target: NativeSshTarget) -> str:
     prefix = next(item for item in _HOST_KEY_TYPES if target.host_key.startswith(item))
     key_type = prefix[:-1]
     key_body = target.host_key[len(prefix) :]
-    if target.port == 22:
-        host_marker = target.host
-    else:
-        host_marker = f"[{target.host}]:{target.port}"
+    host_marker = target.host if target.port == 22 else f"[{target.host}]:{target.port}"
     return f"{host_marker} {key_type} {key_body}\n"
+
+
+def _ssh_config_literal(value: str) -> str:
+    """Escape OpenSSH config tokens so interpolated values stay literal.
+
+    ``%`` starts a percent-token (``%h``, ``%e``, …). A scoped IPv6 address
+    such as ``fe80::1%eth0`` must be written as ``fe80::1%%eth0``.
+    """
+
+    return value.replace("%", "%%")
 
 
 def _ssh_config_fragment(target: NativeSshTarget) -> str:
     return (
         "# Native SSH fragment (pending-live). Do not add keys here.\n"
         "Host researchos-native\n"
-        f"    HostName {target.host}\n"
-        f"    User {target.user}\n"
+        f"    HostName {_ssh_config_literal(target.host)}\n"
+        f"    User {_ssh_config_literal(target.user)}\n"
         f"    Port {target.port}\n"
         "    IdentityFile ~/.ssh/researchos_native_ed25519\n"
         "    PasswordAuthentication no\n"

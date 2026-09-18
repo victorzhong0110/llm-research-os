@@ -72,7 +72,8 @@ uv run researchos native run ... --transport ssh --format json
   spawn nothing.
 - Fixed helper argv, `shell=false`, empty environment allowlist, isolated
   temporary cwd, preflight wall/output caps while pipes are read, and
-  process-group reap with a caller-group guard.
+  process-group reap with a caller-group guard. Timeout and cancel both
+  honor `terminationGraceSeconds` (SIGTERM, wait, then SIGKILL).
 - Tristate outcome mapping: timeout/lost stay `unknown`; cancel is
   `cancel-observed` only after the group is reaped.
 

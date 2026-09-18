@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import contextlib
 import importlib
 import json
 import os
@@ -650,6 +651,7 @@ def test_native_run_cli_missing_citation_is_input_error(
     assert output.out == ""
     assert "authorization-event-not-found" in output.err
 
+
 def test_cancel_unobserved_when_process_group_still_alive(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -666,10 +668,8 @@ def test_cancel_unobserved_when_process_group_still_alive(
         # Simulate main appearing reaped while the group stays alive.
         if process.poll() is None:
             process.kill()
-        try:
+        with contextlib.suppress(subprocess.TimeoutExpired):
             process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            pass
 
     monkeypatch.setattr(runtime_module, "_reap_process_group", reap_without_confirming)
     with EventStore(tmp_path / "events.db") as store:
@@ -705,9 +705,7 @@ def test_wall_timeout_sends_sigterm_before_sigkill(
     monkeypatch.setattr(
         runtime_module,
         "_HELPER_SCRIPT",
-        "import signal, time\n"
-        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        "time.sleep(30)\n",
+        "import signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\ntime.sleep(30)\n",
     )
     signals: list[int] = []
     real_killpg = os.killpg
@@ -723,6 +721,53 @@ def test_wall_timeout_sends_sigterm_before_sigkill(
         result = _run(store, report, registry, authorization_policy, policy, stored)
     assert result.disposition is NativeProcessDisposition.UNKNOWN
     assert result.reason_code == "native.process.timeout"
+    assert signals, "expected process-group signals"
+    assert signals[0] == signal.SIGTERM
+    assert signal.SIGKILL in signals
+    assert signals.index(signal.SIGTERM) < signals.index(signal.SIGKILL)
+
+
+def test_cancel_with_grace_sends_sigterm_before_sigkill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry, report, authorization_policy, policy = _case(
+        limits=NativeProcessLimits(
+            wall_time_seconds=10,
+            stdout_bytes=65_536,
+            stderr_bytes=65_536,
+            termination_grace_seconds=1,
+        )
+    )
+    # Ignore SIGTERM so grace must escalate to SIGKILL, same as timeout.
+    monkeypatch.setattr(
+        runtime_module,
+        "_HELPER_SCRIPT",
+        "import signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\ntime.sleep(30)\n",
+    )
+    signals: list[int] = []
+    real_killpg = os.killpg
+
+    def spy_killpg(pgid: int, sig: int) -> None:
+        if sig != 0:
+            signals.append(sig)
+        real_killpg(pgid, sig)
+
+    monkeypatch.setattr(os, "killpg", spy_killpg)
+    with EventStore(tmp_path / "events.db") as store:
+        stored = _record_native_auth(store, report, authorization_policy)
+        result = execute_native_process(
+            store,
+            report,
+            registry,
+            authorization_policy,
+            policy,
+            authorization_event_id=stored.event.id,
+            authorization_sequence=stored.event.sequence,
+            project_id=PROJECT,
+            should_cancel=lambda: True,
+        )
+    assert result.disposition is NativeProcessDisposition.FAILED
+    assert result.reason_code == "cancel-observed"
     assert signals, "expected process-group signals"
     assert signals[0] == signal.SIGTERM
     assert signal.SIGKILL in signals
@@ -766,4 +811,3 @@ def test_reap_process_group_grace_zero_is_immediate_kill(
     monkeypatch.setattr(runtime_module.os, "name", "posix")
     runtime_module._reap_process_group(fake, 9999, grace_seconds=0)  # type: ignore[arg-type]
     assert signals == [signal.SIGKILL]
-
