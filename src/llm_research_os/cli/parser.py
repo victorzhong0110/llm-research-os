@@ -7,6 +7,10 @@ from pathlib import Path
 
 from llm_research_os.cli.contracts import DEFAULT_SCHEMA_CONTRACT, SCHEMA_CONTRACTS
 from llm_research_os.cli.signature_commands import add_signature_parsers
+from llm_research_os.execution.native_identity import (
+    NATIVE_RUNTIME_PROFILE_V1,
+    NATIVE_RUNTIME_PROFILES,
+)
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE
 
 
@@ -199,8 +203,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     native_run.add_argument(
         "--profile",
-        choices=("restricted-v0alpha1", "restricted-v0alpha2"),
-        default="restricted-v0alpha1",
+        choices=tuple(NATIVE_RUNTIME_PROFILES),
+        default=NATIVE_RUNTIME_PROFILE_V1,
         help="restricted process profile; v0alpha2 pins interpreter and environment identity",
     )
     add_registry_arguments(native_run)
@@ -234,8 +238,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     native_onboard.add_argument(
         "--profile",
-        choices=("restricted-v0alpha1", "restricted-v0alpha2"),
-        default="restricted-v0alpha1",
+        choices=tuple(NATIVE_RUNTIME_PROFILES),
+        default=NATIVE_RUNTIME_PROFILE_V1,
         help="restricted process profile recorded in the pack",
     )
     native_onboard.add_argument(
