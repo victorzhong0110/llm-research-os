@@ -34,6 +34,8 @@ _HOSTNAME_PATTERN = re.compile(r"^(?=.{1,253}$)[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[
 _USER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 _BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/=]{44,512}$")
 _PROJECT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_ZONE_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
+_HOST_METACHARS = (";", "|", "&", "$", "`", '"', "'", "\\", "@", "/", "?", "#", " ")
 _PRIVATE_FILE_MODE = stat.S_IRUSR | stat.S_IWUSR
 _LIVE_STEPS = (
     "connect",
@@ -97,6 +99,25 @@ def write_native_ssh_pack(
 
     if type(target) is not NativeSshTarget:
         raise NativeSshError("ssh onboarding target is invalid", code="ssh-target-invalid")
+    # Re-validate interpolated fields; never trust a frozen dataclass alone.
+    clean_host = _require_host(target.host)
+    clean_port = _require_port(target.port)
+    clean_user = _require_user(target.user)
+    clean_workdir = _require_workdir(target.workdir)
+    clean_key = _require_host_key(target.host_key)
+    if type(target.profile) is not str or target.profile != NATIVE_SSH_PROFILE:
+        raise NativeSshError(
+            "ssh onboarding profile is invalid",
+            code="ssh-profile-invalid",
+        )
+    target = NativeSshTarget(
+        host=clean_host,
+        port=clean_port,
+        user=clean_user,
+        workdir=clean_workdir,
+        host_key=clean_key,
+        profile=NATIVE_SSH_PROFILE,
+    )
     if type(project_id) is not str or _PROJECT_PATTERN.fullmatch(project_id) is None:
         raise NativeSshError("ssh onboarding project is invalid", code="ssh-project-invalid")
     if type(source) is not str or not source.startswith("https://") or " " in source:
@@ -121,6 +142,9 @@ def write_native_ssh_pack(
     )
     (output / "ONBOARDING.md").write_text(_onboarding_markdown(target), encoding="utf-8")
     (output / "ACCEPTANCE.md").write_text(_acceptance_markdown(), encoding="utf-8")
+    known_hosts_path = output / "known_hosts.native"
+    known_hosts_path.write_text(_known_hosts_line(target), encoding="utf-8")
+    os.chmod(known_hosts_path, _PRIVATE_FILE_MODE)
     config_path = output / "ssh_config.fragment"
     config_path.write_text(_ssh_config_fragment(target), encoding="utf-8")
     os.chmod(config_path, _PRIVATE_FILE_MODE)
@@ -131,17 +155,35 @@ def write_native_ssh_pack(
 def _require_host(host: object) -> str:
     if type(host) is not str or host == "":
         raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in host):
+        raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
     if host in {"0.0.0.0", "::", "*"}:  # noqa: S104
         raise NativeSshError(
             "ssh onboarding host is unspecified",
             code="ssh-host-unspecified",
         )
-    if any(token in host for token in ("@", "/", "?", "#", " ")):
+    if any(token in host for token in _HOST_METACHARS):
         raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
+    zone: str | None = None
+    address = host
+    if "%" in host:
+        if host.count("%") != 1:
+            raise NativeSshError(
+                "ssh onboarding host is invalid", code="ssh-host-invalid"
+            )
+        address, zone = host.split("%", 1)
+        if _ZONE_PATTERN.fullmatch(zone) is None:
+            raise NativeSshError(
+                "ssh onboarding host is invalid", code="ssh-host-invalid"
+            )
     try:
-        ip = ipaddress.ip_address(host)
+        ip = ipaddress.ip_address(address)
     except ValueError:
-        if ":" in host or "\\" in host or host.startswith("-") or ".." in host:
+        if zone is not None:
+            raise NativeSshError(
+                "ssh onboarding host is invalid", code="ssh-host-invalid"
+            ) from None
+        if ":" in host or host.startswith("-") or ".." in host:
             raise NativeSshError(
                 "ssh onboarding host is invalid", code="ssh-host-invalid"
             ) from None
@@ -157,7 +199,10 @@ def _require_host(host: object) -> str:
         )
     if ip.is_multicast or (ip.is_reserved and not ip.is_loopback):
         raise NativeSshError("ssh onboarding host is invalid", code="ssh-host-invalid")
-    return host
+    canonical = str(ip)
+    if zone is not None:
+        return f"{canonical}%{zone}"
+    return canonical
 
 
 def _require_port(port: object) -> int:
@@ -278,12 +323,14 @@ def _onboarding_markdown(target: NativeSshTarget) -> str:
         "   ssh-keygen -t ed25519 -f ~/.ssh/researchos_native_ed25519 -C researchos-native\n"
         "   ```\n\n"
         "   Never copy the private key into this pack or the repository.\n\n"
-        "2. Pin the host key before first use:\n\n"
+        "2. This pack already wrote `known_hosts.native` from the recorded host key. "
+        "Verify it against the live host before first use (or regenerate and compare):\n\n"
         "   ```bash\n"
         "   ssh-keyscan -t ed25519 -p "
-        f"{target.port} {target.host} | tee known_hosts.native\n"
+        f"{target.port} {target.host}\n"
         "   ```\n\n"
-        "   Compare the output with the `hostKey` in STATUS.json. Abort on mismatch.\n\n"
+        "   Compare `ssh-keyscan` output with `known_hosts.native` and the `hostKey` "
+        "in STATUS.json. Abort on mismatch.\n\n"
         "3. Provision the isolated workdir on the target host and append\n"
         "   `authorized_keys.fragment` for the dedicated public key only. Keep the\n"
         "   `command=` prefix, `no-agent-forwarding`, `no-X11-forwarding`, `no-pty`,\n"
@@ -312,6 +359,17 @@ def _acceptance_markdown() -> str:
     )
 
 
+def _known_hosts_line(target: NativeSshTarget) -> str:
+    prefix = next(item for item in _HOST_KEY_TYPES if target.host_key.startswith(item))
+    key_type = prefix[:-1]
+    key_body = target.host_key[len(prefix) :]
+    if target.port == 22:
+        host_marker = target.host
+    else:
+        host_marker = f"[{target.host}]:{target.port}"
+    return f"{host_marker} {key_type} {key_body}\n"
+
+
 def _ssh_config_fragment(target: NativeSshTarget) -> str:
     return (
         "# Native SSH fragment (pending-live). Do not add keys here.\n"
@@ -325,6 +383,8 @@ def _ssh_config_fragment(target: NativeSshTarget) -> str:
         "    ForwardAgent no\n"
         "    ForwardX11 no\n"
         "    StrictHostKeyChecking yes\n"
+        "    UserKnownHostsFile known_hosts.native\n"
+        "    GlobalKnownHostsFile /dev/null\n"
         "    BatchMode yes\n"
     )
 

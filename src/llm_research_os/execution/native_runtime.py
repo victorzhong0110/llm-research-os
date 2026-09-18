@@ -367,7 +367,10 @@ def _run_bounded(
                 continue
     if cancelled:
         return _finish_cancelled(process, pgid, preflight, stdout_thread, stderr_thread)
-    _reap_process_group(process, pgid)
+    grace_seconds = (
+        float(preflight.limits.termination_grace_seconds) if timed_out else 0.0
+    )
+    _reap_process_group(process, pgid, grace_seconds=grace_seconds)
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
     stdout = b"".join(stdout_chunks)
@@ -423,10 +426,11 @@ def _finish_cancelled(
     stdout_thread: threading.Thread,
     stderr_thread: threading.Thread,
 ) -> NativeProcessRuntimeResult:
-    _reap_process_group(process, pgid)
+    _reap_process_group(process, pgid, grace_seconds=0)
     stdout_thread.join(timeout=_REAP_WAIT_SECONDS)
     stderr_thread.join(timeout=_REAP_WAIT_SECONDS)
-    if process.poll() is not None:
+    main_exited = process.poll() is not None
+    if main_exited and _cancel_group_confirmed_dead(pgid):
         return _result(
             preflight,
             disposition=NativeProcessDisposition.FAILED,
@@ -445,6 +449,14 @@ def _finish_cancelled(
         diagnostics=None,
         observation="unknown",
     )
+
+
+def _cancel_group_confirmed_dead(pgid: int | None) -> bool:
+    """True when there is no separate process group left to check, or it is dead."""
+
+    if pgid is None or os.name != "posix":
+        return True
+    return not _process_group_alive(pgid)
 
 
 def _parse_report(
@@ -566,7 +578,30 @@ def _process_group(process: subprocess.Popen[bytes]) -> int | None:
         return process.pid
 
 
-def _reap_process_group(process: subprocess.Popen[bytes], pgid: int | None) -> None:
+def _process_group_alive(pgid: int) -> bool:
+    """Return whether a posix process group appears alive.
+
+    ``PermissionError`` is treated as still alive / unconfirmed so cancel cannot
+    report success when killpg was suppressed.
+    """
+
+    if os.name != "posix":
+        return False
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _reap_process_group(
+    process: subprocess.Popen[bytes],
+    pgid: int | None,
+    *,
+    grace_seconds: float = 0,
+) -> None:
     target = pgid
     if target is None:
         target = _process_group(process)
@@ -576,9 +611,34 @@ def _reap_process_group(process: subprocess.Popen[bytes], pgid: int | None) -> N
             caller_pgid = os.getpgid(0)
     # A child without start_new_session shares the caller's group; killpg
     # would SIGKILL the test runner and leave CI hanging until the cap.
-    if os.name == "posix" and target is not None and target != caller_pgid:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(target, signal.SIGKILL)
+    group_kill_allowed = (
+        os.name == "posix" and target is not None and target != caller_pgid
+    )
+    if group_kill_allowed:
+        assert target is not None
+        main_dead = process.poll() is not None
+        group_dead = not _process_group_alive(target)
+        if main_dead and group_dead:
+            try:
+                process.wait(timeout=_REAP_WAIT_SECONDS)
+            except subprocess.TimeoutExpired:
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
+            return
+        if grace_seconds > 0:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(target, signal.SIGTERM)
+            deadline = time.monotonic() + grace_seconds
+            while time.monotonic() < deadline:
+                if process.poll() is not None and not _process_group_alive(target):
+                    break
+                time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
+            if process.poll() is None or _process_group_alive(target):
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.killpg(target, signal.SIGKILL)
+        else:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(target, signal.SIGKILL)
     elif process.poll() is None:
         process.kill()
     try:

@@ -62,6 +62,11 @@ def test_hostname_and_loopback_targets_are_valid() -> None:
         ("host", "user@host", "ssh-host-invalid"),
         ("host", "224.0.0.1", "ssh-host-invalid"),
         ("host", "-bad", "ssh-host-invalid"),
+        ("host", "fe80::1%eth0\nProxyCommand x", "ssh-host-invalid"),
+        ("host", "192.0.2.10;ProxyCommand=x", "ssh-host-invalid"),
+        ("host", "192.0.2.10|nc", "ssh-host-invalid"),
+        ("host", "host`id`", "ssh-host-invalid"),
+        ("host", 'host$(id)', "ssh-host-invalid"),
         ("host", None, "ssh-host-invalid"),
         ("port", 0, "ssh-port-invalid"),
         ("port", 70000, "ssh-port-invalid"),
@@ -106,11 +111,20 @@ def test_pack_is_pending_live_without_private_key(tmp_path: Path) -> None:
     assert (output / "ssh_config.fragment").is_file()
     assert (output / "authorized_keys.fragment").is_file()
     assert (output / "ENVIRONMENT.json").is_file()
+    assert (output / "known_hosts.native").is_file()
     config = (output / "ssh_config.fragment").read_text(encoding="utf-8")
     assert "PasswordAuthentication no" in config
     assert "ForwardAgent no" in config
     assert "BatchMode yes" in config
+    assert "UserKnownHostsFile known_hosts.native" in config
+    assert "GlobalKnownHostsFile /dev/null" in config
+    assert "StrictHostKeyChecking yes" in config
     assert "PRIVATE" not in config.upper()
+    known = (output / "known_hosts.native").read_text(encoding="utf-8")
+    assert known == f"192.0.2.10 ssh-ed25519 {'A' * 68}\n"
+    onboarding = (output / "ONBOARDING.md").read_text(encoding="utf-8")
+    assert "known_hosts.native" in onboarding
+    assert "hostKey" in onboarding
     authorized = (output / "authorized_keys.fragment").read_text(encoding="utf-8")
     assert "no-agent-forwarding" in authorized
     assert "PRIVATE" not in authorized.upper()
@@ -293,3 +307,38 @@ def test_module_does_not_import_banned_clients() -> None:
     assert "import socket" not in source
     assert "import subprocess" not in source
     assert "paramiko" not in source
+
+def test_host_injection_payloads_rejected() -> None:
+    payloads = (
+        "fe80::1%eth0\nProxyCommand x",
+        "fe80::1%eth0\rProxyCommand x",
+        "192.0.2.10;id",
+        "192.0.2.10|ProxyCommand",
+        "192.0.2.10&sleep",
+        "host$(reboot)",
+        "host`reboot`",
+        'host"evil"',
+        "host'evil'",
+        "bad\\host",
+    )
+    for host in payloads:
+        with pytest.raises(NativeSshError, match="host is invalid") as captured:
+            _target(host=host)
+        assert captured.value.code == "ssh-host-invalid"
+
+
+def test_scoped_ipv6_with_safe_zone_accepted() -> None:
+    target = _target(host="fe80::1%eth0")
+    assert target.host == "fe80::1%eth0"
+
+
+def test_pack_writes_known_hosts_for_non_default_port(tmp_path: Path) -> None:
+    target = _target(port=2222, host="2001:db8::10")
+    output = tmp_path / "pack"
+    write_native_ssh_pack(output, target, project_id=PROJECT, source=SOURCE)
+    known = (output / "known_hosts.native").read_text(encoding="utf-8")
+    assert known == f"[2001:db8::10]:2222 ssh-ed25519 {'A' * 68}\n"
+    config = (output / "ssh_config.fragment").read_text(encoding="utf-8")
+    assert "UserKnownHostsFile known_hosts.native" in config
+    assert "GlobalKnownHostsFile /dev/null" in config
+

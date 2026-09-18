@@ -4,6 +4,7 @@ import builtins
 import importlib
 import json
 import os
+import signal
 import socket
 import subprocess
 from dataclasses import replace
@@ -648,3 +649,121 @@ def test_native_run_cli_missing_citation_is_input_error(
     output = capsys.readouterr()
     assert output.out == ""
     assert "authorization-event-not-found" in output.err
+
+def test_cancel_unobserved_when_process_group_still_alive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry, report, authorization_policy, policy = _case()
+    monkeypatch.setattr(runtime_module, "_HELPER_SCRIPT", "import time\ntime.sleep(30)\n")
+    monkeypatch.setattr(runtime_module, "_process_group_alive", lambda pgid: True)
+
+    def reap_without_confirming(
+        process: subprocess.Popen[bytes],
+        pgid: int | None,
+        *,
+        grace_seconds: float = 0,
+    ) -> None:
+        # Simulate main appearing reaped while the group stays alive.
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+    monkeypatch.setattr(runtime_module, "_reap_process_group", reap_without_confirming)
+    with EventStore(tmp_path / "events.db") as store:
+        stored = _record_native_auth(store, report, authorization_policy)
+        result = execute_native_process(
+            store,
+            report,
+            registry,
+            authorization_policy,
+            policy,
+            authorization_event_id=stored.event.id,
+            authorization_sequence=stored.event.sequence,
+            project_id=PROJECT,
+            should_cancel=lambda: True,
+        )
+    assert result.disposition is NativeProcessDisposition.UNKNOWN
+    assert result.reason_code == "execution-unobserved"
+    assert result.observation == "unknown"
+
+
+def test_wall_timeout_sends_sigterm_before_sigkill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry, report, authorization_policy, policy = _case(
+        limits=NativeProcessLimits(
+            wall_time_seconds=1,
+            stdout_bytes=65_536,
+            stderr_bytes=65_536,
+            termination_grace_seconds=5,
+        )
+    )
+    # Ignore SIGTERM so grace must escalate to SIGKILL.
+    monkeypatch.setattr(
+        runtime_module,
+        "_HELPER_SCRIPT",
+        "import signal, time\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "time.sleep(30)\n",
+    )
+    signals: list[int] = []
+    real_killpg = os.killpg
+
+    def spy_killpg(pgid: int, sig: int) -> None:
+        if sig != 0:
+            signals.append(sig)
+        real_killpg(pgid, sig)
+
+    monkeypatch.setattr(os, "killpg", spy_killpg)
+    with EventStore(tmp_path / "events.db") as store:
+        stored = _record_native_auth(store, report, authorization_policy)
+        result = _run(store, report, registry, authorization_policy, policy, stored)
+    assert result.disposition is NativeProcessDisposition.UNKNOWN
+    assert result.reason_code == "native.process.timeout"
+    assert signals, "expected process-group signals"
+    assert signals[0] == signal.SIGTERM
+    assert signal.SIGKILL in signals
+    assert signals.index(signal.SIGTERM) < signals.index(signal.SIGKILL)
+
+
+def test_reap_process_group_grace_zero_is_immediate_kill(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    signals: list[int] = []
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self._alive = True
+            self.pid = 4242
+
+        def poll(self) -> int | None:
+            return None if self._alive else 0
+
+        def kill(self) -> None:
+            self._alive = False
+
+        def wait(self, timeout: float | None = None) -> int:
+            self._alive = False
+            return 0
+
+    fake = FakeProcess()
+    monkeypatch.setattr(runtime_module, "_process_group", lambda process: 9999)
+    monkeypatch.setattr(runtime_module.os, "getpgid", lambda pid: 1 if pid == 0 else 9999)
+
+    def fake_killpg(pgid: int, sig: int) -> None:
+        if sig == 0:
+            if fake._alive:
+                return
+            raise ProcessLookupError
+        signals.append(sig)
+        if sig == signal.SIGKILL:
+            fake._alive = False
+
+    monkeypatch.setattr(runtime_module.os, "killpg", fake_killpg)
+    monkeypatch.setattr(runtime_module.os, "name", "posix")
+    runtime_module._reap_process_group(fake, 9999, grace_seconds=0)  # type: ignore[arg-type]
+    assert signals == [signal.SIGKILL]
+
