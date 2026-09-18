@@ -9,9 +9,12 @@ import pytest
 from llm_research_os.cli.parser import build_parser
 from llm_research_os.execution import (
     NATIVE_RUNTIME_PROFILE_V1,
+    NATIVE_RUNTIME_PROFILE_V2,
     NATIVE_RUNTIME_PROFILES,
+    NATIVE_SSH_PROFILE,
     NativeSshError,
     NativeSshTarget,
+    authorized_keys_fragment,
     parse_ssh_target,
     write_native_ssh_pack,
     write_onboarding_page,
@@ -113,3 +116,56 @@ def test_cli_profile_choices_match_the_registry() -> None:
         parser.parse_args([*run_base, "--profile", "restricted-v0alpha9"])
     with pytest.raises(SystemExit):
         parser.parse_args([*onboard_base, "--profile", "restricted-v0alpha9"])
+
+
+def _target_for(profile: str) -> NativeSshTarget:
+    return parse_ssh_target(
+        host="192.0.2.10",
+        port=2222,
+        user="researcher",
+        workdir="/home/researcher/native",
+        host_key=HOST_KEY,
+        profile=profile,
+    )
+
+
+def test_pack_default_profile_is_single_sourced() -> None:
+    assert NATIVE_SSH_PROFILE == NATIVE_RUNTIME_PROFILE_V1
+    assert NATIVE_RUNTIME_PROFILES[0] == NATIVE_SSH_PROFILE
+
+
+def test_authorized_keys_fragment_matches_profile() -> None:
+    assert f"--profile {NATIVE_RUNTIME_PROFILE_V1}" in authorized_keys_fragment()
+    assert f"--profile {NATIVE_RUNTIME_PROFILE_V1}" in authorized_keys_fragment(
+        NATIVE_RUNTIME_PROFILE_V1
+    )
+    assert f"--profile {NATIVE_RUNTIME_PROFILE_V2}" in authorized_keys_fragment(
+        NATIVE_RUNTIME_PROFILE_V2
+    )
+    assert NATIVE_RUNTIME_PROFILE_V2 not in authorized_keys_fragment(NATIVE_RUNTIME_PROFILE_V1)
+    with pytest.raises(NativeSshError, match="profile is invalid") as captured:
+        authorized_keys_fragment("restricted-v0alpha9")
+    assert captured.value.code == "ssh-profile-invalid"
+
+
+def test_pack_fragments_record_actual_profile(tmp_path: Path) -> None:
+    for profile in NATIVE_RUNTIME_PROFILES:
+        output = tmp_path / f"pack-{profile}"
+        status = write_native_ssh_pack(
+            output,
+            _target_for(profile),
+            project_id=PROJECT,
+            source=SOURCE,
+            include_web=True,
+        )
+        assert status["profile"] == profile
+        stored = (output / "STATUS.json").read_text(encoding="utf-8")
+        assert f'"profile": "{profile}"' in stored
+        environment = (output / "ENVIRONMENT.json").read_text(encoding="utf-8")
+        assert f'"profile": "{profile}"' in environment
+        onboarding = (output / "ONBOARDING.md").read_text(encoding="utf-8")
+        assert f"Profile is `{profile}`" in onboarding
+        authorized = (output / "authorized_keys.fragment").read_text(encoding="utf-8")
+        assert f"--profile {profile}" in authorized
+        page = (output / "ONBOARDING.html").read_text(encoding="utf-8")
+        assert profile in page

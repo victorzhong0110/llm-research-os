@@ -20,10 +20,13 @@ from typing import Any, Literal
 
 from llm_research_os.execution.errors import NativeSshError
 from llm_research_os.execution.native_identity import (
+    NATIVE_RUNTIME_PROFILE_V1,
     is_native_runtime_profile,
 )
 
-NATIVE_SSH_PROFILE: Literal["restricted-v0alpha1"] = "restricted-v0alpha1"
+# Kept for backward compatibility; single-sourced from the runtime registry
+# so the pack default cannot drift from the CLI default.
+NATIVE_SSH_PROFILE: str = NATIVE_RUNTIME_PROFILE_V1
 NATIVE_SSH_API_VERSION: Literal["researchos.dev/v0alpha1"] = "researchos.dev/v0alpha1"
 NATIVE_SSH_TRANSPORT: Literal["ssh-pending"] = "ssh-pending"
 
@@ -144,7 +147,9 @@ def write_native_ssh_pack(
     config_path = output / "ssh_config.fragment"
     config_path.write_text(_ssh_config_fragment(target), encoding="utf-8")
     os.chmod(config_path, _PRIVATE_FILE_MODE)
-    (output / "authorized_keys.fragment").write_text(_authorized_keys_fragment(), encoding="utf-8")
+    (output / "authorized_keys.fragment").write_text(
+        _authorized_keys_fragment(target.profile), encoding="utf-8"
+    )
     return status
 
 
@@ -156,10 +161,16 @@ def ssh_config_fragment(target: NativeSshTarget) -> str:
     return _ssh_config_fragment(target)
 
 
-def authorized_keys_fragment() -> str:
+def authorized_keys_fragment(profile: object = NATIVE_SSH_PROFILE) -> str:
     """Return the restricted authorized_keys prefix with a key placeholder."""
 
-    return _authorized_keys_fragment()
+    clean_profile = profile if type(profile) is str else ""
+    if not is_native_runtime_profile(clean_profile):
+        raise NativeSshError(
+            "ssh onboarding profile is invalid",
+            code="ssh-profile-invalid",
+        )
+    return _authorized_keys_fragment(clean_profile)
 
 
 def _require_host(host: object) -> str:
@@ -305,7 +316,7 @@ def _onboarding_markdown(target: NativeSshTarget) -> str:
         "This pack does not dial SSH and does not prove a second host. "
         "Live verification stays `pending-live` until a researcher provisions one.\n\n"
         f"Target user and host are recorded in STATUS.json. Workdir is `{target.workdir}`. "
-        "Profile is `restricted-v0alpha1`: no root login, no password, no agent "
+        f"Profile is `{target.profile}`: no root login, no password, no agent "
         "forwarding, one isolated workdir, bounded wall time and output.\n\n"
         "1. Generate a dedicated key on the operator machine:\n\n"
         "   ```bash\n"
@@ -363,11 +374,11 @@ def _ssh_config_fragment(target: NativeSshTarget) -> str:
     )
 
 
-def _authorized_keys_fragment() -> str:
+def _authorized_keys_fragment(profile: str) -> str:
     return (
         "# Restricted prefix for the dedicated public key only. Replace the\n"
         "# placeholder with one `ssh-ed25519 AAAA... comment` line.\n"
-        'command="researchos-native-run --profile restricted-v0alpha1",'
+        f'command="researchos-native-run --profile {profile}",'
         "no-agent-forwarding,no-X11-forwarding,no-pty,no-port-forwarding "
         "ssh-ed25519 REPLACE-WITH-DEDICATED-PUBLIC-KEY\n"
     )

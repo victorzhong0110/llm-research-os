@@ -58,7 +58,7 @@ def _render_page(target: NativeSshTarget, *, project_id: str, source: str) -> st
     origin = html.escape(source, quote=True)
     key_type = html.escape(target.host_key.split(":", 1)[0], quote=True)
     config = html.escape(ssh_config_fragment(target), quote=False)
-    authorized = html.escape(authorized_keys_fragment(), quote=False)
+    authorized = html.escape(authorized_keys_fragment(target.profile), quote=False)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
