@@ -739,10 +739,21 @@ def test_cancel_with_grace_sends_sigterm_before_sigkill(
         )
     )
     # Ignore SIGTERM so grace must escalate to SIGKILL, same as timeout.
+    # Cancel only after the handler is installed; an immediate probe can
+    # SIGTERM the interpreter before signal.signal runs.
+    ready = tmp_path / "native-cancel-ready"
     monkeypatch.setattr(
         runtime_module,
         "_HELPER_SCRIPT",
-        "import signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\ntime.sleep(30)\n",
+        "\n".join(
+            (
+                "import pathlib, signal, time",
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN)",
+                f"pathlib.Path({str(ready)!r}).write_text('ready')",
+                "time.sleep(30)",
+                "",
+            )
+        ),
     )
     signals: list[int] = []
     real_killpg = os.killpg
@@ -764,7 +775,7 @@ def test_cancel_with_grace_sends_sigterm_before_sigkill(
             authorization_event_id=stored.event.id,
             authorization_sequence=stored.event.sequence,
             project_id=PROJECT,
-            should_cancel=lambda: True,
+            should_cancel=ready.is_file,
         )
     assert result.disposition is NativeProcessDisposition.FAILED
     assert result.reason_code == "cancel-observed"
