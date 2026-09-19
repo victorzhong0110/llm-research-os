@@ -30,7 +30,7 @@ durable, auditable facts. The researcher is a teacher, not only an approver
 | Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
 | Paid cloud | Not run; ¥0. No paid-cloud claim |
 | Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
-| NativeProcessRuntime | M3 slice 1 in progress (ADR-0063): local restricted helper + SSH onboard pending-live; SSH execution refused; #53 stays open |
+| NativeProcessRuntime | M3 slice 1 merged (ADR-0063, #81): local restricted noop helper over sealed preflight + SSH onboard pending-live; SSH execution refused; live SSH and real-profile launch remain planned; #53 stays open |
 | Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
@@ -65,6 +65,8 @@ acceptance checklist of that milestone.
 ## Project documents
 
 - [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
+- [M3 development plan (R01–R16)](docs/plans/m3-development-plan.md)
+- [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)
 
 - [Consolidated charter v0.2](docs/charter-v0.2.md)
 - [Project charter and minimal kernel spec v0.1](docs/charter-v0.1.md) (Chinese original)

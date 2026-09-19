@@ -103,6 +103,16 @@ not spend.
 ## What is still not a release
 
 - Paid GPU / cloud provisioner
-- NativeProcessRuntime (preflight still forbids launch)
-- Charter v0.2
-- Editable canvas, plugins, parameter self-evolution
+- NativeProcessRuntime real-profile launch (the merged slice 1 in
+  [`#81`](https://github.com/victorzhong0110/llm-research-os/pull/81)
+  runs the fixed noop helper only; live SSH and reviewed-Python profile
+  remain R03–R08 work in
+  [docs/plans/m3-development-plan.md](../plans/m3-development-plan.md))
+- Web UX, plugins, parameter self-evolution, paid-cloud release
+
+Charter v0.2 is accepted under
+[ADR-0062](../adr/0062-m1-m2-acceptance-and-m3-boundary.md) and is not a
+release blocker. The first slice of the M3 plan is documented in
+[M3 native process runtime](m3-native-process-runtime.md) and
+[M3 native SSH onboarding](m3-native-ssh-onboarding.md); the merged
+scaffold does not dial SSH and does not import the manifest entrypoint.

@@ -4,10 +4,25 @@
 > [engineering standards](docs/engineering-standards.md)（English）。
 
 This repository is a pre-release research control plane. The M0 kernel proof is
-closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)). The current phase
-is the M1 research-assistant loop; slice order, security gates, and the checkpoint
-are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23. Read
-the open issues before starting; every M1 slice has one.
+closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)). The M1 offline
+research-assistant loop and the M2 local/two-host scope are accepted under
+[ADR-0062](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md); the integrated
+main is `7e5fc33` for accepted evidence identity and `e1282c5` after the M3
+slice 1 scaffold (`#81`). M3 work packages are planned in the integrated plan
+[docs/plans/m3-development-plan.md](docs/plans/m3-development-plan.md) and
+tracked in its acceptance matrix. Issue #53 tracks native authorization
+consumption only. Sequence, security gates, and dependencies remain encoded in
+the plan; no code may relabel M1/M2 acceptance.
+
+## Planning and implementation ownership
+
+The maintainer assigns global plans and normative guidance to the planning/review
+assistant (currently ChatGPT/Codex). Assigned implementers own in-scope code,
+tests, package documentation, and candidate evidence. Propose changes to task
+scope, dependencies, authority, or acceptance explicitly; do not silently replace
+the master plan. Routine implementation and fixes remain autonomous. Merges and
+release decisions remain with the maintainer. See [development governance](docs/development-governance.md)
+and [ADR-0064](docs/adr/0064-planning-and-implementation-ownership.md).
 
 ## Development environment
 

@@ -2,7 +2,11 @@
 
 > 本文是 [CONTRIBUTING.md](CONTRIBUTING.md) 的中文版。英文版是权威文本；完整规则见[工程规范](docs/engineering-standards.md)（英文）。
 
-语言、注释、作者身份与覆盖率门槛见 [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md) 与[工程规范](docs/engineering-standards.md)。本项目是预发布的研究控制面。M0 内核证明已收口（[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)），当前阶段是 M1 研究助手闭环，切片顺序、安全门与检查点见 [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) 与宪章 §23。开始之前先看开放的 issue；每个 M1 切片都有对应的 issue。
+语言、注释、作者身份与覆盖率门槛见 [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md) 与[工程规范](docs/engineering-standards.md)。本项目是预发布的研究控制面。M0 内核证明已收口（[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)）。M1 离线研究助手闭环与 M2 本地／两机范围已按 [ADR-0062](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md) 验收，已合并的 main 中证据身份基线为 `7e5fc33`，M3 首片脚手架（`#81`）后为 `e1282c5`。M3 工作包在集成后的计划文档 [docs/plans/m3-development-plan.md](docs/plans/m3-development-plan.md) 中规划，并通过验收矩阵跟踪；`Issue #53` 只跟踪 native 授权消费。顺序、安全门与依赖关系仍以计划文档为准；不得用新代码改写 M1/M2 的验收身份。
+
+## 规划与实施分工
+
+维护者将全局计划和规范性指导交由规划／审查助手（当前为 ChatGPT/Codex）维护。指定执行者负责范围内的代码、测试、包内文档和候选证据。涉及任务范围、依赖、权限或验收条件的变更，应明确提出差异，不得自行替换总计划。常规实现与修复自主完成；合并和发布仍由维护者决定。详见[开发协作规则](docs/development-governance.md)及 [ADR-0064](docs/adr/0064-planning-and-implementation-ownership.md)。
 
 ## 开发环境
 

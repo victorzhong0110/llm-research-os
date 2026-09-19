@@ -17,6 +17,14 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
+- R01 proposes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
+  and [acceptance matrix](docs/evidence/m3/acceptance-matrix.md): real native
+  execution before Web, stable R01–R16 definitions, and checkpoints A/B/C/D.
+  Historical M1/M2 acceptance retains its original platform and evidence SHA.
+  [Development governance](docs/development-governance.md) and ADR-0064 assign
+  global normative guidance to the planning/review assistant and in-scope
+  implementation/evidence to implementers. R01 does not implement R02–R16,
+  close #53, or publish a release.
 
 ### Added
 

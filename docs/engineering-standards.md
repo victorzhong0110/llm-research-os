@@ -75,6 +75,15 @@ squash message.
 Fork pull requests additionally carry a DCO 1.1 `Signed-off-by` on every commit
 (`git commit -s`). CI enforces that only for forks. There is no CLA.
 
+## Planning ownership
+
+Global normative guidance is maintained by the designated planning/review
+assistant under the maintainer's instructions. Implementers maintain in-scope
+code, tests, package documentation, and candidate evidence; changes to global
+scope, authority, dependencies, or acceptance are explicit review proposals.
+Routine technical choices remain autonomous. See [development governance](development-governance.md)
+and [ADR-0064](adr/0064-planning-and-implementation-ownership.md).
+
 ## Slices, ADRs, protocols
 
 One pull request is one slice, with an explicit non-goal list.
@@ -94,7 +103,10 @@ launch credentials or scientific conclusions.
 ## Packaging and typing
 
 - `src/llm_research_os/py.typed` marks the package as typed for downstream mypy.
-- Version stays `0.0.0` until M1 closes; the first tag is then `v0.1.0-m1`.
+- Version stays `0.0.0` until a separately authorized release
+  ([ADR-0062](adr/0062-m1-m2-acceptance-and-m3-boundary.md)). M1/M2
+  acceptance does not publish a tag or package; the first tag, if any,
+  comes from a separate reviewable release decision.
   [CHANGELOG.md](../CHANGELOG.md) records Unreleased work; do not invent a
   version bump in an engineering-standards pull request.
 - Ruff `S` (bandit) runs on `src/`. Tests and `conformance/` ignore it because they
