@@ -10,8 +10,19 @@ research-assistant loop and the M2 local/two-host scope are accepted under
 main is `7e5fc33` for accepted evidence identity and `e1282c5` after the M3
 slice 1 scaffold (`#81`). M3 work packages are planned in the integrated plan
 [docs/plans/m3-development-plan.md](docs/plans/m3-development-plan.md) and
-tracked through `Issue #53`. Sequence, security gates, and dependencies remain
-encoded in the plan; no code may relabel M1/M2 acceptance.
+tracked in its acceptance matrix. Issue #53 tracks native authorization
+consumption only. Sequence, security gates, and dependencies remain encoded in
+the plan; no code may relabel M1/M2 acceptance.
+
+## Planning and implementation ownership
+
+The maintainer assigns global plans and normative guidance to the planning/review
+assistant (currently ChatGPT/Codex). Assigned implementers own in-scope code,
+tests, package documentation, and candidate evidence. Propose changes to task
+scope, dependencies, authority, or acceptance explicitly; do not silently replace
+the master plan. Routine implementation and fixes remain autonomous. Merges and
+release decisions remain with the maintainer. See [development governance](docs/development-governance.md)
+and [ADR-0064](docs/adr/0064-planning-and-implementation-ownership.md).
 
 ## Development environment
 

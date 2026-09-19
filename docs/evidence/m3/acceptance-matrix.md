@@ -1,77 +1,83 @@
-# M3 evidence and acceptance matrix (stub)
+# M3 evidence and acceptance matrix
 
-Status: **Stub** published by R01. Per-package rows are added as each
-R02–R16 package lands. Do not edit prior package rows without an
-explicit acceptance record.
+Status: **R01 under review in PR #84; not merged or accepted by this file.**
+Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
+Ownership and review: [development governance](../../development-governance.md).
 
-This matrix enumerates the R02–R16 packages from
-`docs/plans/m3-development-plan.md`. Its purpose is to give future R14
-external trials and the R16 closure ADR a single reference. The pre-M3
-evidence pointers (`docs/evidence/m1-m2-maintenance/`,
-`docs/evidence/m2-wsl2-cuda-live/`) and the merged slice 1 records
-(`#81`) remain canonical for their packages.
+## Recording rules
 
-## How a row is added
+Implementation, integration, verification, and acceptance are separate columns.
+Implementers append candidate evidence in their package PR. After integration,
+record the actual merge SHA and main CI result; acceptance requires review of the
+specified scope. Do not predict a future merge identity or call CI success live
+acceptance. Record exact commands, platforms, input/build/runtime identities,
+outcomes, limitations, and links. Supersede old records explicitly rather than
+rewriting them. Evidence is collected with every package, not deferred to R16.
 
-A package's row is added in the same PR that ships the package (or in
-the R15 publication PR). A row cites:
+A package may be implemented and merged while a required real-host check remains
+pending-live. That does not complete its live acceptance or checkpoint. A skip,
+Mock, config file, or local test cannot substitute for the missing evidence.
 
-- the merged commit on `main` after the package lands;
-- the test/CLI/entry-point path that proves each acceptance bullet;
-- the related evidence pack under `docs/evidence/m3/`, with a distinct
-  implementation SHA versus accepted-evidence SHA.
+## Work-package ledger
 
-The R01 row is the plan file itself, since R01 is documentation only.
-
-## Stub rows
-
-| Package | Plan entry | Status | Per-package evidence | Notes |
+| Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
-| R01 | Scope freeze + current entrypoints | merged via this PR | `docs/plans/m3-development-plan.md`; `docs/evidence/m3/acceptance-matrix.md`; `docs/status.json` (NativeProcessRuntime row text); `CONTRIBUTING.md`/`.zh-CN.md`; `docs/guides/first-experiment.md`; `README.md`/`.zh-CN.md` (link list); `CHANGELOG.md` (Unreleased) | Documentation only; no runtime code merged |
-| R02 | Application services | planned | (filled by R02 PR) | — |
-| R03 | Web API | planned | (filled by R03 PR) | — |
-| R04 | Read-only UI | planned | (filled by R04 PR) | — |
-| R05 | Native profile contract | planned | (filled by R05 PR) | Builds on the merged slice 1 profile-free execution |
-| R06 | NativeProcessRuntime + `#53` | planned | (filled by R06 PR) | Closes `#53` |
-| R07 | SSH onboarding | planned; pack writer merged via `#81` | (filled by R07 PR) | Flips `STATUS.json` from `pending-live` to `live` |
-| R08 | Two-host faults | planned | (filled by R08 PR) | — |
-| R09 | Research workflow + AI proposal | planned | (filled by R09 PR) | — |
-| R10 | Web execution, cancel, restore | planned | (filled by R10 PR) | — |
-| R11 | Minimal real evaluation | planned | (filled by R11 PR) | Recommended addition accepted in R15 |
-| R12 | Extension boundary | planned | (filled by R12 PR) | — |
-| R13 | Packaging, startup, diagnostics | planned | (filled by R13 PR) | — |
-| R14 | External trials | planned | (filled by R14 PR) | Two audience-matching trials; one with SSH |
-| R15 | Evidence index publication | planned | (filled by R15 PR) | Aggregates this matrix; updates generated status |
-| R16 | Closure ADR + publication gate | planned | (filled by R16 PR) | Decides accept/defer; never publishes by itself |
+| R01 | Scope, capability state, and acceptance baseline | Documentation proposed in #84; unmerged | Candidate checks; maintainer review pending | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); record new head and CI after push |
+| R02 | Shared application services | Planned | Not yet accepted | Add scoped evidence with R02 |
+| R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
+| R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
+| R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
+| R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
+| R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
+| R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
+| R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
+| R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
+| R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
+| R12 | AI proposals, citations, and researcher decisions | Planned | Not yet accepted | Add scoped evidence with R12 |
+| R13 | Real evaluation, comparison, and conclusions | Planned | Not yet accepted | Add scoped evidence with R13 |
+| R14 | Minimal extension mechanism and permission boundary | Planned | Not yet accepted | Add scoped evidence with R14 |
+| R15 | Installation, startup, backup, and recovery | Planned | Not yet accepted | Add scoped evidence with R15 |
+| R16 | Independent trials and phase acceptance | Planned | Not yet accepted | Add scoped evidence with R16 |
 
-## Pre-M3 evidence
+## Checkpoints
 
-| Acceptance | Path | Notes |
+| Checkpoint | Packages | Required evidence |
 | --- | --- | --- |
-| M1 offline checkpoint | `docs/evidence/m1-m2-maintenance/wheel-smoke.json` and `tests/test_m1_checkpoint.py` | ADR-0062 |
-| M2 WSL2 + Docker local/two-host | `docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md` | ADR-0062; cuda.11 only |
-| M2 mac/MPS LoRA | `docs/evidence/m1-m2-maintenance/` and the WSL acceptance matrix | LoRA process-group profile only |
-| M3 slice 1 noop helper | `tests/test_native_process_runtime.py`; ADR-0063; TM-064 | Merged via `#81`; SSH refused; entrypoint not imported |
-| M3 slice 1 SSH onboarding | `tests/test_native_ssh_onboard.py`; ADR-0063; TM-065 | Merged via `#81`; pack only; `STATUS.json` stays `pending-live` |
+| A | R02–R06 | Real local task, authorized launch/denial, artifacts, actual stop, and crash recovery |
+| B | R07–R08 | New authorized two-host native execution, verified transfers, reconnect/cancel/unknown faults |
+| C | R09–R13 | Browser proposal/decision/execution and recomputable real evaluation with human conclusion |
+| D | R14–R16 | Extension boundary, clean install/restore, independent trials, and scoped closure review |
 
-## Constraints carried forward
+## Preserved historical acceptance
 
-The matrix does not relax the following inherited constraints:
+| Capability | Accepted or verified scope | Canonical evidence |
+| --- | --- | --- |
+| M1 offline research loop | Accepted offline behavior; no live-model inference | [ADR-0062](../../adr/0062-m1-m2-acceptance-and-m3-boundary.md), [wheel smoke](../m1-m2-maintenance/wheel-smoke.json) |
+| Local host-Python helper | Verified unit/loopback helper only | Existing `tests/test_worker_protocol.py`; not generic native entrypoint acceptance |
+| CPU OCI | Designated Linux OCI CI and accepted WSL2/Docker path | [ADR-0055](../../adr/0055-live-oci-fault-acceptance.md), [M2 matrix](../m2-wsl2-cuda-live/m2-closure-matrix.md) |
+| WSL2/Docker two-host CPU/CUDA/restore | Accepted live at original recorded identities; cuda.9 partial, cuda.10 failed, cuda.11 full-state restore | [M2 matrix](../m2-wsl2-cuda-live/m2-closure-matrix.md), ADR-0062 |
+| macOS/MPS LoRA | Separate scoped live profile; not generic native execution | [MPS guide](../../guides/m2-mps-acceptance.md), [live receipt](../../../examples/m2-mps-checkpoint/live-evidence.json), ADR-0062 |
+| #81 fixed native noop | Merged, CI-verified helper/refusal; real entrypoint not executed | [ADR-0063](../../adr/0063-m3-native-process-runtime-slice-1.md), `tests/test_native_process_runtime.py` |
+| #81 SSH pack | Merged validator/writer tests; actual SSH onboarding/execution pending-live | ADR-0063, `tests/test_native_ssh_onboard.py` |
 
-- Ed25519 attestations (`#78`) are audit evidence, not launch authority.
-- HMAC Worker grants (M2-0) remain the trusted launch authority under the
-  reviewable expiry / revoke lifecycle.
-- OCI, MPS, GPU, and Darwin kernel-namespace claims require their own
-  package evidence; merging one package never relabels another.
-- Paid cloud spend stays ¥0; first-paid-task criterion from
-  `charter §14.5` is not addressed by local acceptance.
-- Public MVP and multi-tenant claims remain deferred.
+These records remain valid within their original scope and SHA. They are not
+relabelled as unverified because a different platform or a newer runtime has not
+been exercised. They also do not supply the new native two-host proof for R08.
+Keep `docs/status.json` historical baseline/evidence identities distinct from
+per-package implementation and live-runtime identities.
 
-## Pointers for future editors
+## Issue #53 evidence checklist
 
-- Use exact, minimal, scoped diffs. A row cites the PR that delivered it,
-  not the matrix-editing commit.
-- Preserve `docs/status.json` accepted-evidence identity (`57ffdae`) and
-  implementation baseline (`7e5fc33`); matrix SHA is recorded per row.
-- The generated status block in `README.md` and `README.zh-CN.md` is
-  rendered from `docs/status.json`; do not hand-edit it.
+Review closure independently when the relevant R03–R06 evidence is integrated:
+
+- Plan-bound valid authorization consumed before real native user code starts.
+- Denial for wrong/stale/substituted bindings and required expiry/revocation cases.
+- Durable Run/Attempt/audit outcomes for launch, failure, and uncertain execution.
+- Actual cancellation/stop observation and conservative unknown recovery.
+- Explicit supported profile/platform limitations and evidence identities.
+
+Add R08 remote evidence for any remote claim. The maintainer reviews closure;
+R01 closes nothing, a package merge does not auto-close it, and R16 is not an
+additional blanket prerequisite. Ed25519 audit attestations remain distinct from
+Worker launch grants. Publication, paid resources, and public-service acceptance
+are separate decisions.

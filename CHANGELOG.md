@@ -17,17 +17,14 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
-- R01 integrates the M3 development plan with the post-`#81` snapshot
-  ([docs/plans/m3-development-plan.md](docs/plans/m3-development-plan.md)),
-  re-numbers the 14 work packages as R01–R16, classifies each capability
-  (merged-and-verified / merged-but-unverified / implemented-but-pending-live
-  / planned), and publishes the
-  [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)
-  stub. R01 does not implement R02–R16 and does not close `Issue #53`.
-  The plan body organizes R01–R16 as top-level `##` sections in
-  one-for-one correspondence with the work-package sequence, with the
-  original `M3-NN` mapping, capability classification, architecture,
-  validation, risks, and the R02 handoff brief recorded as appendices.
+- R01 proposes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
+  and [acceptance matrix](docs/evidence/m3/acceptance-matrix.md): real native
+  execution before Web, stable R01–R16 definitions, and checkpoints A/B/C/D.
+  Historical M1/M2 acceptance retains its original platform and evidence SHA.
+  [Development governance](docs/development-governance.md) and ADR-0064 assign
+  global normative guidance to the planning/review assistant and in-scope
+  implementation/evidence to implementers. R01 does not implement R02–R16,
+  close #53, or publish a release.
 
 ### Added
 

@@ -75,6 +75,15 @@ squash message.
 Fork pull requests additionally carry a DCO 1.1 `Signed-off-by` on every commit
 (`git commit -s`). CI enforces that only for forks. There is no CLA.
 
+## Planning ownership
+
+Global normative guidance is maintained by the designated planning/review
+assistant under the maintainer's instructions. Implementers maintain in-scope
+code, tests, package documentation, and candidate evidence; changes to global
+scope, authority, dependencies, or acceptance are explicit review proposals.
+Routine technical choices remain autonomous. See [development governance](development-governance.md)
+and [ADR-0064](adr/0064-planning-and-implementation-ownership.md).
+
 ## Slices, ADRs, protocols
 
 One pull request is one slice, with an explicit non-goal list.

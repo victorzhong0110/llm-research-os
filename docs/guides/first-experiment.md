@@ -106,7 +106,7 @@ not spend.
 - NativeProcessRuntime real-profile launch (the merged slice 1 in
   [`#81`](https://github.com/victorzhong0110/llm-research-os/pull/81)
   runs the fixed noop helper only; live SSH and reviewed-Python profile
-  remain R05–R08 work in
+  remain R03–R08 work in
   [docs/plans/m3-development-plan.md](../plans/m3-development-plan.md))
 - Web UX, plugins, parameter self-evolution, paid-cloud release
 
