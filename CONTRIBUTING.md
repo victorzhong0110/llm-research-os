@@ -4,10 +4,14 @@
 > [engineering standards](docs/engineering-standards.md)（English）。
 
 This repository is a pre-release research control plane. The M0 kernel proof is
-closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)). The current phase
-is the M1 research-assistant loop; slice order, security gates, and the checkpoint
-are in [ADR-0038](docs/adr/0038-charter-errata-after-m0.md) and charter §23. Read
-the open issues before starting; every M1 slice has one.
+closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)). The M1 offline
+research-assistant loop and the M2 local/two-host scope are accepted under
+[ADR-0062](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md); the integrated
+main is `7e5fc33` for accepted evidence identity and `e1282c5` after the M3
+slice 1 scaffold (`#81`). M3 work packages are planned in the integrated plan
+[docs/plans/m3-development-plan.md](docs/plans/m3-development-plan.md) and
+tracked through `Issue #53`. Sequence, security gates, and dependencies remain
+encoded in the plan; no code may relabel M1/M2 acceptance.
 
 ## Development environment
 

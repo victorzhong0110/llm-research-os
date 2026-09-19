@@ -21,7 +21,7 @@ LLM Research OS 是一个独立、开源、模型无关、训练后端无关、�
 | Windows / WSL2 + Docker Engine | 两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测 |
 | Paid cloud | 未执行；¥0，不宣称付费云验收 |
 | Unknown execution | 已有单测与回环验证；无专门两机 unknown 实测 |
-| NativeProcessRuntime | M3 首片进行中（ADR-0063）：本地受限 helper＋SSH 接入 pending-live；SSH 执行已拒绝；#53 保持开放 |
+| NativeProcessRuntime | M3 首片已合并（ADR-0063，#81）：本地受限 noop helper（密封预检）+ SSH 接入 pending-live；SSH 执行已拒绝；现场 SSH 与真实受限 profile 仍属计划；#53 保持开放 |
 | Public MVP | 未发布；可用的 SSH 接入与 Web 界面属于 M3 |
 
 [Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
@@ -53,6 +53,8 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 ## 项目文档
 
 - [M1/M2 验收与 M3 边界](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
+- [M3 计划文档（R01–R16）](docs/plans/m3-development-plan.md)
+- [M3 证据与验收矩阵](docs/evidence/m3/acceptance-matrix.md)
 
 - [宪章 v0.2 合并阅读版](docs/charter-v0.2.md)
 
