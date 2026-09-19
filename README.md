@@ -64,6 +64,7 @@ acceptance checklist of that milestone.
 
 ## Project documents
 
+- [M3 development plan](docs/plans/m3-development-plan.md) — sequential work packages, acceptance, and estimates
 - [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
 
 - [Consolidated charter v0.2](docs/charter-v0.2.md)
