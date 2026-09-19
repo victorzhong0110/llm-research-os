@@ -24,6 +24,10 @@ authorized release.
   / planned), and publishes the
   [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)
   stub. R01 does not implement R02–R16 and does not close `Issue #53`.
+  The plan body organizes R01–R16 as top-level `##` sections in
+  one-for-one correspondence with the work-package sequence, with the
+  original `M3-NN` mapping, capability classification, architecture,
+  validation, risks, and the R02 handoff brief recorded as appendices.
 
 ### Added
 
