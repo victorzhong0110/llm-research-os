@@ -14,15 +14,33 @@ authorized release.
 - M1 offline checkpoint and M2 local/two-host scope accepted under ADR-0062.
   #77/#78 integrated; NativeProcessRuntime remains M3 work in #53. No release
   or paid-cloud acceptance is implied.
+- M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
+  restricted helper plus a pending-live SSH onboarding pack. SSH execution,
+  paid cloud, and public MVP remain out of scope.
 
 ### Added
 
+- M3 slice 1 local restricted `NativeProcessRuntime` (`ADR-0063`): sealed
+  preflight recompute plus this-store human `{eventId, sequence}` consume
+  before spawn, fixed noop helper with bounded capture, empty environment
+  allowlist, isolated temporary cwd, and process-group supervision. The
+  manifest entrypoint is never imported and no lifecycle fact is appended.
+  `transport=ssh` is validated past authorization then refused
+  (`ssh-transport-not-implemented`) without opening a socket.
+- M3 slice 1 SSH onboarding scaffold (`ADR-0063`): `researchos native
+  ssh-onboard` validates a restricted target (pinned host key, non-root, no
+  password/agent-forwarding/private-key) and writes a `pending-live` pack
+  with an onboarding checklist, `ssh_config` fragment, and restricted
+  `authorized_keys` prefix. The pack never dials SSH.
 - Detached Ed25519 authorization attestations with explicit keygen/sign/verify
   commands, pinned public-key scope, validity and revocation checks. These prove
   audit facts and never replace a Worker grant (ADR-0061).
 
 ### Fixed
 
+- Native cancel uses the authorized `terminationGraceSeconds` (SIGTERM,
+  wait, then SIGKILL), matching the timeout path. Scoped IPv6 `HostName`
+  values escape `%` as `%%` so OpenSSH can parse the onboarding fragment.
 - Loopback Worker TLS material is minted for 14 days. A 1-day cert
   expired on the live control plane (notAfter 2026-09-10) and made
   `workers run` report `http-disconnect` before claim.

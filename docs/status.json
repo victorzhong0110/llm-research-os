@@ -39,8 +39,8 @@
     ],
     [
       "NativeProcessRuntime",
-      "Not implemented; #53 continues in M3 SSH/non-OCI work",
-      "未实现；#53 随 M3 SSH／非 OCI 工作包继续"
+      "M3 slice 1 in progress (ADR-0063): local restricted helper + SSH onboard pending-live; SSH execution refused; #53 stays open",
+      "M3 首片进行中（ADR-0063）：本地受限 helper＋SSH 接入 pending-live；SSH 执行已拒绝；#53 保持开放"
     ],
     [
       "Public MVP",
