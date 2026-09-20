@@ -6,6 +6,7 @@ import argparse
 from collections.abc import Callable, Sequence
 from typing import NoReturn
 
+from llm_research_os.cli.application_commands import run_app
 from llm_research_os.cli.artifacts_commands import run_artifacts
 from llm_research_os.cli.authz_commands import run_authorizations, run_authorize
 from llm_research_os.cli.blocks_commands import run_blocks
@@ -47,6 +48,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "blocks": run_blocks,
     "events": run_events,
     "runs": run_runs,
+    "app": run_app,
     "artifacts": run_artifacts,
     "models": run_models,
     "budget": run_budget,

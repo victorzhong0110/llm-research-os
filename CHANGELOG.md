@@ -17,6 +17,16 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
+- R02 lands the shared application services: a thin workspace +
+  identity-bound receipt façade in
+  `src/llm_research_os/application/` plus the `researchos app ...` CLI
+  tree. CLI and Python entrypoints share a single receipt digest and
+  reject cross-project references; replay with the same content returns
+  the prior receipt, while different content fails closed; revisions
+  and receipts survive a workspace reload; and the package imports
+  without dragging in optional training extras. Recorded evidence lives
+  in `tests/test_application_service.py` (28 tests) and the
+  `[acceptance matrix](docs/evidence/m3/acceptance-matrix.md)` R02 row.
 - R01 proposes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
   and [acceptance matrix](docs/evidence/m3/acceptance-matrix.md): real native
   execution before Web, stable R01–R16 definitions, and checkpoints A/B/C/D.
