@@ -23,7 +23,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Documentation proposed in #84; unmerged | Candidate checks; maintainer review pending | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); record new head and CI after push |
-| R02 | Shared application services | Planned | Not yet accepted | Add scoped evidence with R02 |
+| R02 | Shared application services | Implementation submitted in `feat/r02-shared-application-services`; not yet merged | Pending | `src/llm_research_os/application/` (workspace, identity, receipts, operations, service); `src/llm_research_os/cli/application_commands.py`; `tests/test_application_service.py` (28 tests); CLI `researchos app ...` tree |
 | R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |

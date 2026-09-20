@@ -857,6 +857,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="empty directory for USAGE.json, isolated Worker, and OCI receipts",
     )
     add_event_format_argument(m2_usage)
+    app = subparsers.add_parser(
+        "app",
+        help="shared application services over a workspace (R02)",
+    )
+    app_commands = app.add_subparsers(dest="app_command", required=True)
+    _add_app_workspace_arguments(app_commands)
+    _add_app_spec_arguments(app_commands)
+    _add_app_plan_arguments(app_commands)
+    _add_app_ledger_arguments(app_commands)
+    _add_app_run_arguments(app_commands)
+    _add_app_receipt_arguments(app_commands)
     training = subparsers.add_parser(
         "training",
         help="parse a pinned training-backend plan; does not launch GPU work",
@@ -938,6 +949,118 @@ def add_event_format_argument(parser: argparse.ArgumentParser) -> None:
         default="text",
         help="human-readable overview or deterministic JSON",
     )
+
+
+def _add_identity_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add identity arguments shared by every app subcommand.
+
+    The CLI hands these through to :meth:`Service.execute_*` so the receipt
+    log records ``command_id``/``submission_id`` exactly the same as the
+    Python entrypoint would.
+    """
+
+    parser.add_argument(
+        "--command-id",
+        help="caller-supplied receipt identity; auto-generated if omitted",
+    )
+    parser.add_argument(
+        "--submission-id",
+        type=int,
+        default=1,
+        help="submission counter paired with --command-id; defaults to 1",
+    )
+
+
+def _add_workspace_root_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--workspace-root",
+        required=True,
+        type=Path,
+        help="bound workspace root containing workspace.json",
+    )
+
+
+def _add_app_workspace_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    workspace_init = app_commands.add_parser(
+        "workspace-init",
+        help="bind a project id, control-db, CAS root, and receipt log",
+    )
+    workspace_init.add_argument("workspace_root", type=Path)
+    workspace_init.add_argument("--project-id", required=True)
+    workspace_init.add_argument("--control-db", type=Path)
+    workspace_init.add_argument("--cas-root", type=Path)
+    workspace_init.add_argument("--worker-root", type=Path)
+    workspace_init.add_argument("--registry", type=Path)
+    workspace_show = app_commands.add_parser(
+        "workspace-show",
+        help="print an existing workspace's layout",
+    )
+    workspace_show.add_argument("workspace_root", type=Path)
+
+
+def _add_app_spec_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    spec_validate = app_commands.add_parser(
+        "spec-validate",
+        help="validate a ResearchSpec and reject cross-project references",
+    )
+    _add_workspace_root_argument(spec_validate)
+    spec_validate.add_argument("spec", type=Path)
+    _add_identity_arguments(spec_validate)
+
+    spec_diff = app_commands.add_parser(
+        "spec-diff",
+        help="semantic diff between two immutable ResearchSpec revisions",
+    )
+    _add_workspace_root_argument(spec_diff)
+    spec_diff.add_argument("old", type=Path)
+    spec_diff.add_argument("new", type=Path)
+    _add_identity_arguments(spec_diff)
+
+
+def _add_app_plan_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    plan_dry_run = app_commands.add_parser(
+        "plan-dry-run",
+        help="planner-only report (no execution)",
+    )
+    _add_workspace_root_argument(plan_dry_run)
+    plan_dry_run.add_argument("spec", type=Path)
+    plan_dry_run.add_argument("--workflow")
+    plan_dry_run.add_argument("--registry", type=Path)
+    _add_identity_arguments(plan_dry_run)
+
+
+def _add_app_ledger_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    ledger_read = app_commands.add_parser(
+        "ledger-read",
+        help="read the workspace's research ledger",
+    )
+    _add_workspace_root_argument(ledger_read)
+    _add_identity_arguments(ledger_read)
+
+
+def _add_app_run_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    run_show = app_commands.add_parser(
+        "run-show",
+        help="show one run's snapshot and report digest",
+    )
+    _add_workspace_root_argument(run_show)
+    run_show.add_argument("run_id")
+    _add_identity_arguments(run_show)
+
+
+def _add_app_receipt_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    receipt_get = app_commands.add_parser(
+        "receipt-get",
+        help="read one operation receipt by command-id and submission-id",
+    )
+    _add_workspace_root_argument(receipt_get)
+    receipt_get.add_argument("--command-id", required=True)
+    receipt_get.add_argument("--submission-id", type=int, default=1)
+    receipt_list = app_commands.add_parser(
+        "receipt-list",
+        help="list every recorded receipt in the workspace",
+    )
+    _add_workspace_root_argument(receipt_list)
 
 
 def add_registry_arguments(parser: argparse.ArgumentParser) -> None:
