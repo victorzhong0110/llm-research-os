@@ -980,7 +980,9 @@ def _add_workspace_root_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_app_workspace_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_workspace_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     workspace_init = app_commands.add_parser(
         "workspace-init",
         help="bind a project id, control-db, CAS root, and receipt log",
@@ -998,7 +1000,9 @@ def _add_app_workspace_arguments(app_commands: argparse._SubParsersAction[argpar
     workspace_show.add_argument("workspace_root", type=Path)
 
 
-def _add_app_spec_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_spec_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     spec_validate = app_commands.add_parser(
         "spec-validate",
         help="validate a ResearchSpec and reject cross-project references",
@@ -1017,7 +1021,9 @@ def _add_app_spec_arguments(app_commands: argparse._SubParsersAction[argparse.Ar
     _add_identity_arguments(spec_diff)
 
 
-def _add_app_plan_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_plan_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     plan_dry_run = app_commands.add_parser(
         "plan-dry-run",
         help="planner-only report (no execution)",
@@ -1029,7 +1035,9 @@ def _add_app_plan_arguments(app_commands: argparse._SubParsersAction[argparse.Ar
     _add_identity_arguments(plan_dry_run)
 
 
-def _add_app_ledger_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_ledger_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     ledger_read = app_commands.add_parser(
         "ledger-read",
         help="read the workspace's research ledger",
@@ -1038,7 +1046,9 @@ def _add_app_ledger_arguments(app_commands: argparse._SubParsersAction[argparse.
     _add_identity_arguments(ledger_read)
 
 
-def _add_app_run_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_run_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     run_show = app_commands.add_parser(
         "run-show",
         help="show one run's snapshot and report digest",
@@ -1048,7 +1058,9 @@ def _add_app_run_arguments(app_commands: argparse._SubParsersAction[argparse.Arg
     _add_identity_arguments(run_show)
 
 
-def _add_app_receipt_arguments(app_commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def _add_app_receipt_arguments(
+    app_commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     receipt_get = app_commands.add_parser(
         "receipt-get",
         help="read one operation receipt by command-id and submission-id",
