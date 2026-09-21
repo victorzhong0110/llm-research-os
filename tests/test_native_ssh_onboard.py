@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import socket
+import stat
 import subprocess
 from pathlib import Path
 from typing import NoReturn
@@ -368,3 +370,38 @@ def test_pack_writes_known_hosts_for_non_default_port(tmp_path: Path) -> None:
     config = (output / "ssh_config.fragment").read_text(encoding="utf-8")
     assert "UserKnownHostsFile known_hosts.native" in config
     assert "GlobalKnownHostsFile /dev/null" in config
+
+
+@pytest.mark.parametrize(
+    ("key_prefix", "key_type"),
+    (
+        ("ssh-ed25519:", "ssh-ed25519"),
+        ("ecdsa-sha2-nistp256:", "ecdsa-sha2-nistp256"),
+        ("ecdsa-sha2-nistp384:", "ecdsa-sha2-nistp384"),
+        ("ssh-rsa:", "ssh-rsa"),
+    ),
+)
+def test_known_hosts_line_maps_every_accepted_key_type(
+    tmp_path: Path, key_prefix: str, key_type: str
+) -> None:
+    target = _target(host_key=key_prefix + "A" * 68)
+    output = tmp_path / "pack"
+    write_native_ssh_pack(output, target, project_id=PROJECT, source=SOURCE)
+    known = (output / "known_hosts.native").read_text(encoding="utf-8")
+    assert known == f"192.0.2.10 {key_type} {'A' * 68}\n"
+
+
+def test_known_hosts_brackets_hostname_on_non_default_port(tmp_path: Path) -> None:
+    target = _target(port=2222, host="worker.example.org")
+    output = tmp_path / "pack"
+    write_native_ssh_pack(output, target, project_id=PROJECT, source=SOURCE)
+    known = (output / "known_hosts.native").read_text(encoding="utf-8")
+    assert known == f"[worker.example.org]:2222 ssh-ed25519 {'A' * 68}\n"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file modes only")
+def test_key_material_pack_files_are_owner_only(tmp_path: Path) -> None:
+    output = tmp_path / "pack"
+    write_native_ssh_pack(output, _target(), project_id=PROJECT, source=SOURCE)
+    assert stat.S_IMODE((output / "known_hosts.native").stat().st_mode) == 0o600
+    assert stat.S_IMODE((output / "ssh_config.fragment").stat().st_mode) == 0o600
