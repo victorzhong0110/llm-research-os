@@ -202,6 +202,9 @@ def test_ssh_transport_is_checked_past_authorization_then_refused(
         raise AssertionError(f"spawn called: {args!r} {kwargs!r}")
 
     monkeypatch.setattr(subprocess, "Popen", tripwire)
+    monkeypatch.setattr(socket, "socket", tripwire)
+    monkeypatch.setattr(socket, "create_connection", tripwire)
+    monkeypatch.setattr(importlib, "import_module", tripwire)
     with EventStore(tmp_path / "events.db") as store:
         stored = _record_native_auth(store, report, authorization_policy)
         with pytest.raises(NativeProcessRuntimeError, match="ssh transport") as captured:
@@ -552,6 +555,33 @@ def test_runtime_never_imports_entrypoint_or_dials_network(
         stored = _record_native_auth(store, report, authorization_policy)
         result = _run(store, report, registry, authorization_policy, policy, stored)
     assert result.disposition is NativeProcessDisposition.SUCCEEDED
+
+
+def test_helper_script_has_no_network_or_execution_surface() -> None:
+    script = runtime_module._HELPER_SCRIPT
+    assert script != ""
+    import_lines = [line for line in script.splitlines() if line.startswith("import ")]
+    assert import_lines == ["import json,sys"]
+    for token in (
+        "socket",
+        "ssl",
+        "urllib",
+        "http",
+        "subprocess",
+        "os.",
+        "open(",
+        "__import__",
+        "importlib",
+        "eval",
+        "exec(",
+        "Popen",
+        "system",
+        "popen",
+        "pty",
+        "signal",
+        "pathlib",
+    ):
+        assert token not in script, token
 
 
 def test_native_run_cli_succeeds_and_ssh_refuses(
