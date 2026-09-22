@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from llm_research_os.application import (
     init_workspace,
     load_application_command,
 )
+from llm_research_os.application import service as application_service
 from llm_research_os.artifacts import LocalArtifactStore
 from llm_research_os.blocks.registry import build_registry
 from llm_research_os.canonical import content_digest
@@ -519,6 +521,295 @@ def test_dry_run_and_diff_reuse_existing_controls(tmp_path: Path) -> None:
     assert described["result"]["supportedEventSchemaVersion"] == SCHEMA_VERSION
     assert described["result"]["controlDb"] == "control/events.sqlite"
     assert "worker" in described["result"]["workerRoot"]
+
+
+def test_duplicate_event_id_recovers_only_an_identical_fact(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    database = root / "control" / "events.sqlite"
+    with EventStore(database) as store:
+        proposal = load_proposal_submit_request(PROPOSAL)
+        ResearchControl(store, project_id=PROJECT).append(proposal.event_draft())
+    before = _event_digests(database)
+    decision_path = tmp_path / "decision.json"
+    stolen = _decision_body(event_id="evt.proposal.1")
+    decision_path.write_text(json.dumps(stolen), encoding="utf-8")
+    service = ApplicationService.open(root)
+    with pytest.raises(ApplicationError, match="already committed") as stolen_info:
+        service.execute(
+            _command(
+                {"kind": "research.decision", "request": str(decision_path)},
+                commandId="cmd.decision.stolen",
+                expectedHead=1,
+                expectedRevision=1,
+            )
+        )
+    assert stolen_info.value.code == "duplicate-event"
+    assert _event_digests(database) == before
+    assert _receipt_count(service) == 0
+    decision_path.write_text(json.dumps(_decision_body()), encoding="utf-8")
+    recorded = service.execute(
+        _command(
+            {"kind": "research.decision", "request": str(decision_path)},
+            commandId="cmd.decision.recorded",
+            expectedHead=1,
+            expectedRevision=1,
+        )
+    )
+    assert recorded["disposition"] == "committed"
+    assert recorded["result"]["type"] == "decision.recorded"
+    assert recorded["result"]["eventId"] == "evt.decision.1"
+    after = _event_digests(database)
+    recovered = service.execute(
+        _command(
+            {"kind": "research.decision", "request": str(decision_path)},
+            commandId="cmd.decision.recover",
+            expectedHead=1,
+            expectedRevision=1,
+        )
+    )
+    assert recovered["disposition"] == "committed"
+    assert recovered["result"]["type"] == "decision.recorded"
+    assert recovered["result"]["eventId"] == "evt.decision.1"
+    assert recovered["factEventIds"] == ["evt.decision.1"]
+    assert _event_digests(database) == after
+    decision_path.write_text(
+        json.dumps(_decision_body(outcome="reject", decision_id="decision.reject-proposal")),
+        encoding="utf-8",
+    )
+    with pytest.raises(ApplicationError, match="already committed") as changed:
+        service.execute(
+            _command(
+                {"kind": "research.decision", "request": str(decision_path)},
+                commandId="cmd.decision.changed",
+                expectedHead=_head(database),
+                expectedRevision=1,
+            )
+        )
+    assert changed.value.code == "duplicate-event"
+    assert _event_digests(database) == after
+    assert _decision_outcome(database, "evt.decision.1") == "accept"
+
+
+def test_expected_head_is_enforced_at_the_append(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root = _workspace(tmp_path)
+    database = root / "control" / "events.sqlite"
+    with EventStore(database) as store:
+        proposal = load_proposal_submit_request(PROPOSAL)
+        ResearchControl(store, project_id=PROJECT).append(proposal.event_draft())
+        assert store.last_sequence() == 1
+    decision_path = tmp_path / "decision.json"
+    decision_path.write_text(json.dumps(_decision_body()), encoding="utf-8")
+    inserted = False
+    original = ApplicationService._require_expected_head
+
+    def inject(self: ApplicationService, command: ApplicationCommand) -> None:
+        nonlocal inserted
+        original(self, command)
+        if inserted or command.operation.kind != "research.decision":
+            return
+        inserted = True
+        draft = load_proposal_submit_request(PROPOSAL).event_draft()
+        draft["id"] = "evt.inserted.after-head-check"
+        draft["data"]["payload"]["proposalId"] = "proposal.inserted"
+        with EventStore(database, require_existing=True) as store:
+            stored = store.append(draft)
+            assert stored.sequence == 2
+
+    monkeypatch.setattr(ApplicationService, "_require_expected_head", inject)
+    service = ApplicationService.open(root)
+    with pytest.raises(ApplicationError, match="expectedHead") as stale:
+        service.execute(
+            _command(
+                {"kind": "research.decision", "request": str(decision_path)},
+                commandId="cmd.decision.stale-head",
+                expectedHead=1,
+                expectedRevision=1,
+            )
+        )
+    assert stale.value.code == "stale-head"
+    assert inserted
+    assert _head(database) == 2
+    assert _receipt_count(service) == 0
+    assert all(event_id != "evt.decision.1" for event_id, _digest in _event_digests(database))
+
+
+def test_receipt_digest_uses_the_frozen_input(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spec_path = tmp_path / "spec.yaml"
+    original_spec = (EXAMPLES / "valid/minimal.yaml").read_bytes()
+    spec_path.write_bytes(original_spec)
+    manifest_path = tmp_path / "manifest.yaml"
+    original_manifest = (EXAMPLES / "native-process-preflight/manifest.yaml").read_bytes()
+    manifest_path.write_bytes(original_manifest)
+    request_path = tmp_path / "simulation.json"
+    original_request = SIMULATION_REQUEST.read_bytes()
+    request_path.write_bytes(original_request)
+    decision_path = tmp_path / "decision.json"
+    original_decision = json.dumps(_decision_body()).encode("utf-8")
+    decision_path.write_bytes(original_decision)
+    replacements = {
+        str(spec_path): original_spec.replace(b"revision: 1\n", b"revision: 2\n", 1),
+        str(manifest_path): original_manifest.replace(b"version: 0.1.0\n", b"version: 0.2.0\n", 1),
+        str(request_path): original_request.replace(
+            b'"runId": "run.simulated"',
+            b'"runId": "run.mutated"',
+            1,
+        ),
+        str(decision_path): json.dumps(_decision_body(outcome="reject")).encode("utf-8"),
+    }
+    reads: dict[str, int] = {}
+    original_read = application_service._read_snapshot
+
+    def freeze_once(path: Path) -> Any:
+        snapshot = original_read(path)
+        key = str(path)
+        reads[key] = reads.get(key, 0) + 1
+        replacement = replacements.get(key)
+        if replacement is not None and reads[key] == 1:
+            path.write_bytes(replacement)
+        return snapshot
+
+    monkeypatch.setattr(application_service, "_read_snapshot", freeze_once)
+    expected_registry = build_registry((manifest_path,)).digest()
+    service = ApplicationService.open(_workspace(tmp_path / "validate"))
+    validate_command = _command(
+        {"kind": "spec.validate", "document": str(spec_path)},
+        commandId="cmd.spec.frozen",
+        expectedRevision=1,
+    )
+    validated = service.execute(validate_command)
+    assert validated["result"]["revision"] == 1
+    assert validated["requestDigest"] == _command_digest(
+        validate_command,
+        {"kind": "spec.validate", "specDigest": _byte_digest(original_spec)},
+    )
+    assert spec_path.read_bytes() == replacements[str(spec_path)]
+    dry_root = _workspace(tmp_path / "dry-run")
+    dry_command = _command(
+        {
+            "kind": "plan.dry-run",
+            "document": str(EXAMPLES / "valid/minimal.yaml"),
+            "workflowId": "workflow.simulation",
+            "registry": [str(manifest_path)],
+        },
+        commandId="cmd.dry-run.frozen",
+        expectedRevision=1,
+    )
+    dry_run = ApplicationService.open(dry_root).execute(dry_command)
+    assert dry_run["result"]["digests"]["registry"] == expected_registry
+    assert dry_run["requestDigest"] == _command_digest(
+        dry_command,
+        {
+            "kind": "plan.dry-run",
+            "registryDigests": [_byte_digest(original_manifest)],
+            "specDigest": _byte_digest((EXAMPLES / "valid/minimal.yaml").read_bytes()),
+            "workflowId": "workflow.simulation",
+        },
+    )
+    assert manifest_path.read_bytes() == replacements[str(manifest_path)]
+    simulate_root = _workspace(tmp_path / "simulate")
+    simulate_db = simulate_root / "control" / "events.sqlite"
+    head = _seed_authorization(simulate_db)
+    simulate_command = _command(
+        {
+            "kind": "run.simulate",
+            "spec": str(EXAMPLES / "valid/minimal.yaml"),
+            "request": str(request_path),
+            "registry": [],
+        },
+        commandId="cmd.simulate.frozen",
+        expectedHead=head,
+        expectedRevision=1,
+    )
+    simulated = ApplicationService.open(simulate_root).execute(simulate_command)
+    assert simulated["result"]["runId"] == "run.simulated"
+    assert simulated["requestDigest"] == _command_digest(
+        simulate_command,
+        {
+            "kind": "run.simulate",
+            "registryDigests": [],
+            "requestDigest": _byte_digest(original_request),
+            "specDigest": _byte_digest((EXAMPLES / "valid/minimal.yaml").read_bytes()),
+        },
+    )
+    assert b'"runId": "run.mutated"' in request_path.read_bytes()
+    assert _run_ids(simulate_db) == {"run.simulated"}
+    decision_root = _workspace(tmp_path / "decision")
+    decision_db = decision_root / "control" / "events.sqlite"
+    with EventStore(decision_db) as store:
+        ResearchControl(store, project_id=PROJECT).append(
+            load_proposal_submit_request(PROPOSAL).event_draft()
+        )
+    decision_command = _command(
+        {"kind": "research.decision", "request": str(decision_path)},
+        commandId="cmd.decision.frozen",
+        expectedHead=1,
+        expectedRevision=1,
+    )
+    decided = ApplicationService.open(decision_root).execute(decision_command)
+    assert decided["requestDigest"] == _command_digest(
+        decision_command,
+        {"kind": "research.decision", "requestDigest": _byte_digest(original_decision)},
+    )
+    assert _decision_outcome(decision_db, "evt.decision.1") == "accept"
+    assert b'"outcome": "reject"' in decision_path.read_bytes()
+    for path in (spec_path, manifest_path, request_path, decision_path):
+        assert reads[str(path)] == 1
+
+
+def _decision_body(
+    *,
+    event_id: str = "evt.decision.1",
+    outcome: str = "accept",
+    decision_id: str = "decision.accept-proposal",
+) -> dict[str, Any]:
+    return {
+        "apiVersion": "researchos.dev/v0alpha1",
+        "kind": "DecisionRecordRequest",
+        "projectId": PROJECT,
+        "experimentRevision": 1,
+        "source": "https://researchos.dev/projects/example-minimal",
+        "subject": "decision.accept-proposal",
+        "streamid": "stream.research",
+        "actor": {"id": ACTOR, "kind": "human"},
+        "event": {"id": event_id, "time": "2026-09-04T12:02:00Z"},
+        "decisionId": decision_id,
+        "targetKind": "proposal",
+        "targetId": "proposal.revise-eval",
+        "outcome": outcome,
+        "rationale": "The proposal is specific enough to try.",
+        "overriddenDissentIds": [],
+        "evidenceRefs": [],
+    }
+
+
+def _byte_digest(payload: bytes) -> str:
+    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
+def _command_digest(command: ApplicationCommand, operation: dict[str, Any]) -> str:
+    return content_digest(
+        {
+            "actorId": command.actor_id,
+            "expectedHead": command.expected_head,
+            "expectedRevision": command.expected_revision,
+            "operation": operation,
+            "submittedAt": command.submitted_at,
+        }
+    )
+
+
+def _decision_outcome(database: Path, event_id: str) -> str:
+    with EventStore(database, require_existing=True) as store:
+        for stored in replay_events(store, after_sequence=0, freeze_high_water=True):
+            if stored.event.id == event_id:
+                outcome = stored.event.data.payload["outcome"]
+                assert isinstance(outcome, str)
+                return outcome
+    raise AssertionError(f"missing event {event_id}")
 
 
 def _receipt_count(service: ApplicationService) -> int:

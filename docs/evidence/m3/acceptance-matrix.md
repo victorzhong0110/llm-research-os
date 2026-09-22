@@ -86,18 +86,22 @@ Commands, run from the repository root on the implementation host:
 Package tests: `tests/test_application_service.py`. They cover CLI/Python
 semantic equality, receipt restart, content conflict, stale head and revision,
 cross-project refusal, overlapping control/Worker roots, duplicate-run
-simulation, decision receipts linked to facts and CAS digests, and import
-without training extras.
+simulation, decision receipts linked to facts and CAS digests, import
+without training extras, duplicate event-id recovery, `expectedHead` at the
+append boundary, and one frozen snapshot for spec, decision, simulation
+request, and registry inputs.
 
-Local candidate result before this pull request's head was published:
+Local candidate result on this pull request's implementation head, after the
+three review fixes:
 `ruff check`, `ruff format --check`, and `mypy src` passed;
-`pytest --cov=llm_research_os --cov-fail-under=85` passed 1455 tests with
-total coverage 20621/24144 = 85.408% (`scripts/check_coverage.py` passed).
+`pytest --cov=llm_research_os --cov-fail-under=85` passed 1458 tests with
+total coverage 20803/24379 = 85.331638% (`scripts/check_coverage.py` passed).
 Ten existing OCI tests were skipped because this host has no OCI runtime.
 That skip is not R02 live evidence and does not replace the designated OCI
-job. `researchos schema --check-all`, `node conformance/digest/verify.mjs`,
-`event_catalog.py --check`, `project_status.py --check`, and `uv build`
-passed. Outcomes belong to the PR head, not to a future merge commit.
+job. `researchos schema --check-all`, `node conformance/digest/verify.mjs`
+(13 vectors), `event_catalog.py --check`, and `project_status.py --check`
+passed. `uv build` was not re-run for this fix; packaging inputs were
+unchanged. Outcomes belong to the PR head, not to a future merge commit.
 
 ## Issue #53 evidence checklist
 

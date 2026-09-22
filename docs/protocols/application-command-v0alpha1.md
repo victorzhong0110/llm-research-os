@@ -33,7 +33,16 @@ The same `commandId` and the same request digest return the stored receipt
 with `disposition=replayed` and do not append another fact. The same
 `commandId` with different content fails `receipt-conflict`. A head or
 revision that does not match fails `stale-head` or `stale-revision` before a
-new fact is written. Cross-project documents fail `project-mismatch`.
+new fact is written. For `research.decision`, `expectedHead` is the EventStore
+CAS token carried into the append. A newer head read while the command is in
+flight is not adopted. Reusing an event id recovers a receipt only when the
+stored fact has the same type and the same semantic content; any other
+occupant of that id fails `duplicate-event` and writes nothing. Cross-project
+documents fail `project-mismatch`.
+
+File inputs are read once. The request digest, validation, and execution of a
+spec, decision request, simulation request, and registry manifest all use that
+frozen snapshot.
 
 Mutating operations reuse `ResearchControl` and `SimulatedRuntime`. Repeated
 simulation of an existing run does not create a second Run. Refused commands

@@ -144,22 +144,13 @@ def _read_regular_text(
         os.close(descriptor)
 
 
-def load_document(
-    path: str | Path,
-    *,
-    max_bytes: int = MAX_DOCUMENT_BYTES,
-    reject_symlinks: bool = False,
-) -> dict[str, Any]:
-    source = Path(path)
+def decode_document_text(text: str, *, suffix: str, source: str = "document") -> dict[str, Any]:
+    """Decode one already-read document. Callers freeze bytes before this."""
+
     try:
-        text = _read_regular_text(
-            source,
-            max_bytes=max_bytes,
-            reject_symlinks=reject_symlinks,
-        )
         data = (
             json.loads(text, object_pairs_hook=_unique_json_object)
-            if source.suffix.lower() == ".json"
+            if suffix == ".json"
             else _load_yaml(text)
         )
         _validate_decoded_limits(data)
@@ -176,6 +167,26 @@ def load_document(
     if not isinstance(data, dict):
         raise SpecLoadError(f"{source} must contain one object at the document root")
     return data
+
+
+def load_document(
+    path: str | Path,
+    *,
+    max_bytes: int = MAX_DOCUMENT_BYTES,
+    reject_symlinks: bool = False,
+) -> dict[str, Any]:
+    source = Path(path)
+    try:
+        text = _read_regular_text(
+            source,
+            max_bytes=max_bytes,
+            reject_symlinks=reject_symlinks,
+        )
+    except SpecLoadError:
+        raise
+    except (OSError, UnicodeError) as exc:
+        raise SpecLoadError(f"could not load {source}: {exc}") from exc
+    return decode_document_text(text, suffix=source.suffix.lower(), source=str(source))
 
 
 def load_spec(path: str | Path) -> ResearchSpec:

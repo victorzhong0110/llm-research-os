@@ -8,6 +8,9 @@ schema v2 rows.
 from __future__ import annotations
 
 import hashlib
+import os
+import stat
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,7 @@ from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.models import (
     APPLICATION_API_VERSION,
     ApplicationCommand,
+    ApplicationOperation,
     ApplicationReceipt,
     PlanDryRunOperation,
     ResearchDecisionOperation,
@@ -29,13 +33,25 @@ from llm_research_os.application.receipts import ReceiptLog
 from llm_research_os.application.workspace import Workspace, load_workspace
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
 from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
+from llm_research_os.blocks.builtins import builtin_manifests
 from llm_research_os.blocks.io import ManifestLoadError
-from llm_research_os.blocks.registry import MANIFEST_SUFFIXES, RegistryError, build_registry
-from llm_research_os.canonical import content_digest
+from llm_research_os.blocks.models import BlockManifest
+from llm_research_os.blocks.registry import (
+    MANIFEST_SUFFIXES,
+    MAX_REGISTRY_BYTES,
+    MAX_REGISTRY_DIRECTORY_ENTRIES,
+    MAX_REGISTRY_MANIFESTS,
+    BlockRegistry,
+    RegistryError,
+)
+from llm_research_os.canonical import canonical_json, content_digest
 from llm_research_os.execution.errors import SimulationError
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.planner import PlanningInputError
-from llm_research_os.execution.request import load_simulation_request
+from llm_research_os.execution.request import (
+    SimulationRequestDocument,
+    validate_simulation_request_document,
+)
 from llm_research_os.execution.simulated import SimulatedRuntime
 from llm_research_os.projections.replay import replay_events
 from llm_research_os.research.control import ResearchControl
@@ -45,18 +61,23 @@ from llm_research_os.research.errors import (
     ResearchRequestError,
 )
 from llm_research_os.research.models import research_ledger_document
-from llm_research_os.research.requests import load_decision_record_request
+from llm_research_os.research.requests import (
+    DecisionRecordRequestDocument,
+    validate_decision_record_request,
+)
 from llm_research_os.runs.control import RunControl
 from llm_research_os.runs.errors import RunControlError
 from llm_research_os.runs.models import run_snapshot_document
 from llm_research_os.spec.diff import semantic_diff
-from llm_research_os.spec.io import SpecLoadError, load_spec
+from llm_research_os.spec.io import SpecLoadError, decode_document_text
+from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.errors import (
     DuplicateEventError,
     EventSequenceConflictError,
     EventStoreError,
 )
+from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.schema import SCHEMA_VERSION
 
 _MAX_DIGEST_BYTES = 1_048_576
@@ -80,7 +101,8 @@ class ApplicationService:
     def execute(self, command: ApplicationCommand) -> dict[str, Any]:
         """Run ``command`` or return the prior receipt for the same content."""
 
-        digest = self._request_digest(command)
+        frozen = _freeze_operation(command.operation)
+        digest = self._request_digest(command, frozen)
         prior = self._receipts.lookup(command.command_id)
         if prior is not None:
             if prior.request_digest != digest:
@@ -89,8 +111,9 @@ class ApplicationService:
                     "command identity was already committed with different content",
                 )
             return _replay_document(prior.document)
-        self._require_expected_head(command)
-        outcome = self._perform(command)
+        if not self._identical_decision_already_committed(command, frozen):
+            self._require_expected_head(command)
+        outcome = self._perform(command, frozen)
         observed = self._head()
         receipt = ApplicationReceipt.model_validate(
             {
@@ -115,7 +138,7 @@ class ApplicationService:
         self._receipts.append(command.command_id, digest, document)
         return document
 
-    def _perform(self, command: ApplicationCommand) -> _Outcome:
+    def _perform(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         kind = command.operation.kind
         if kind == "workspace.show":
             described = self._workspace.describe()
@@ -126,28 +149,28 @@ class ApplicationService:
                 }
             )
         if kind == "spec.validate":
-            return self._validate(command)
+            return self._validate(command, frozen)
         if kind == "spec.diff":
-            return self._diff(command)
+            return self._diff(command, frozen)
         if kind == "plan.dry-run":
-            return self._dry_run(command)
+            return self._dry_run(command, frozen)
         if kind == "revision.list":
             return self._revisions()
         if kind == "research.ledger":
             return self._ledger()
         if kind == "research.decision":
-            return self._decision(command)
+            return self._decision(command, frozen)
         if kind == "run.show":
             return self._run_show(command)
         if kind == "run.simulate":
-            return self._simulate(command)
+            return self._simulate(command, frozen)
         raise ApplicationError("operation-unsupported", "operation is not implemented")
 
-    def _validate(self, command: ApplicationCommand) -> _Outcome:
+    def _validate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
-        if not isinstance(operation, SpecValidateOperation):
+        if not isinstance(operation, SpecValidateOperation) or frozen.spec is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
-        spec = _load_spec(Path(operation.document))
+        spec = _spec_from_snapshot(frozen.spec)
         _require_project(str(spec.metadata.id), self._workspace.project_id)
         _require_revision(spec.metadata.revision, command.expected_revision)
         return _Outcome(
@@ -158,12 +181,16 @@ class ApplicationService:
             }
         )
 
-    def _diff(self, command: ApplicationCommand) -> _Outcome:
+    def _diff(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
-        if not isinstance(operation, SpecDiffOperation):
+        if (
+            not isinstance(operation, SpecDiffOperation)
+            or frozen.old_spec is None
+            or frozen.new_spec is None
+        ):
             raise ApplicationError("operation-unsupported", "operation kind does not match")
-        old = _load_spec(Path(operation.old))
-        new = _load_spec(Path(operation.new))
+        old = _spec_from_snapshot(frozen.old_spec)
+        new = _spec_from_snapshot(frozen.new_spec)
         _require_project(str(old.metadata.id), self._workspace.project_id)
         _require_project(str(new.metadata.id), self._workspace.project_id)
         _require_revision(new.metadata.revision, command.expected_revision)
@@ -180,15 +207,15 @@ class ApplicationService:
             }
         )
 
-    def _dry_run(self, command: ApplicationCommand) -> _Outcome:
+    def _dry_run(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
-        if not isinstance(operation, PlanDryRunOperation):
+        if not isinstance(operation, PlanDryRunOperation) or frozen.spec is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
-        spec = _load_spec(Path(operation.document))
+        spec = _spec_from_snapshot(frozen.spec)
         _require_project(str(spec.metadata.id), self._workspace.project_id)
         _require_revision(spec.metadata.revision, command.expected_revision)
         try:
-            registry = build_registry(tuple(Path(item) for item in operation.registry))
+            registry = _registry_from_snapshots(frozen.registry_manifests)
             report = TrustedKernel(registry).dry_run(spec, workflow_id=operation.workflow_id)
         except (
             ManifestLoadError,
@@ -222,44 +249,48 @@ class ApplicationService:
             raise ApplicationError(exc.code, str(exc)) from exc
         return _Outcome(result=document)
 
-    def _decision(self, command: ApplicationCommand) -> _Outcome:
+    def _decision(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
-        if not isinstance(operation, ResearchDecisionOperation):
+        if not isinstance(operation, ResearchDecisionOperation) or frozen.decision is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
         try:
-            request = load_decision_record_request(Path(operation.request))
+            request = _decision_from_snapshot(frozen.decision)
         except ResearchRequestError as exc:
             raise ApplicationError(exc.code, "decision request failed validation") from exc
+        except SpecLoadError as exc:
+            raise ApplicationError(
+                "research-request", "decision request failed validation"
+            ) from exc
         if request.project_id != self._workspace.project_id:
             raise ApplicationError(
                 "project-mismatch",
                 "decision project does not match the workspace",
             )
         _require_revision(request.experiment_revision, command.expected_revision)
+        expected_head = command.expected_head
+        if expected_head is None:
+            raise ApplicationError(
+                "stale-head",
+                "expectedHead does not match the EventStore head",
+            )
         artifacts = self._bound_artifacts(request.evidence_refs)
+        draft = request.event_draft()
         try:
             with self._open_store(create=True) as store:
                 try:
-                    appended = ResearchControl(
+                    fact_id, sequence, event_type = _append_or_recover_decision(
                         store,
                         project_id=self._workspace.project_id,
-                    ).append(request.event_draft())
-                    fact_id = appended.stored.event.id
-                    sequence = appended.stored.sequence
-                    event_type = appended.stored.event.type
+                        draft=draft,
+                        event_id=request.event.id,
+                        expected_head=expected_head,
+                    )
                 except DuplicateEventError:
-                    existing = store.get_event(request.event.id)
-                    if (
-                        existing is None
-                        or existing.event.data.project_id != self._workspace.project_id
-                    ):
-                        raise ApplicationError(
-                            "duplicate-event",
-                            "event identity is already committed",
-                        ) from None
-                    fact_id = existing.event.id
-                    sequence = existing.sequence
-                    event_type = existing.event.type
+                    fact_id, sequence, event_type = _recover_identical_fact(
+                        store,
+                        draft=draft,
+                        event_id=request.event.id,
+                    )
         except (ResearchControlError, ResearchLedgerError) as exc:
             raise ApplicationError(exc.code, str(exc)) from exc
         except EventSequenceConflictError as exc:
@@ -297,15 +328,19 @@ class ApplicationService:
             raise ApplicationError("run-not-found", "run is not in this project")
         return _Outcome(result=run_snapshot_document(head.snapshot))
 
-    def _simulate(self, command: ApplicationCommand) -> _Outcome:
+    def _simulate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
-        if not isinstance(operation, RunSimulateOperation):
+        if (
+            not isinstance(operation, RunSimulateOperation)
+            or frozen.spec is None
+            or frozen.simulation_request is None
+        ):
             raise ApplicationError("operation-unsupported", "operation kind does not match")
-        spec = _load_spec(Path(operation.spec))
+        spec = _spec_from_snapshot(frozen.spec)
         _require_project(str(spec.metadata.id), self._workspace.project_id)
         _require_revision(spec.metadata.revision, command.expected_revision)
         try:
-            request = load_simulation_request(Path(operation.request))
+            request = _simulation_from_snapshot(frozen.simulation_request)
         except (OSError, ValidationError, ValueError) as exc:
             raise ApplicationError(
                 "simulation-request-invalid",
@@ -315,7 +350,7 @@ class ApplicationService:
             with self._open_store(create=True) as store:
                 runtime = SimulatedRuntime(
                     store,
-                    build_registry(tuple(Path(item) for item in operation.registry)),
+                    _registry_from_snapshots(frozen.registry_manifests),
                     project_id=self._workspace.project_id,
                     run_id=request.run_id,
                 )
@@ -399,12 +434,36 @@ class ApplicationService:
         except EventStoreError as exc:
             raise ApplicationError("event-store", "event store operation failed") from exc
 
-    def _request_digest(self, command: ApplicationCommand) -> str:
+    def _identical_decision_already_committed(
+        self,
+        command: ApplicationCommand,
+        frozen: _FrozenOperation,
+    ) -> bool:
+        """True when this decision fact is already stored, so a stale head can recover it."""
+
+        operation = command.operation
+        if not isinstance(operation, ResearchDecisionOperation) or frozen.decision is None:
+            return False
+        if not self._workspace.control_db.exists():
+            return False
+        try:
+            request = _decision_from_snapshot(frozen.decision)
+        except (ResearchRequestError, SpecLoadError):
+            return False
+        draft = request.event_draft()
+        try:
+            with self._open_store(create=False) as store:
+                existing = store.get_event(request.event.id)
+        except ApplicationError:
+            return False
+        return existing is not None and _same_committed_fact(draft, existing)
+
+    def _request_digest(self, command: ApplicationCommand, frozen: _FrozenOperation) -> str:
         body = {
             "actorId": command.actor_id,
             "expectedHead": command.expected_head,
             "expectedRevision": command.expected_revision,
-            "operation": _operation_content(command),
+            "operation": _operation_content(command, frozen),
             "submittedAt": command.submitted_at,
         }
         return content_digest(body)
@@ -433,76 +492,100 @@ def _replay_document(document: dict[str, object]) -> dict[str, Any]:
     return receipt.document(disposition="replayed")
 
 
-def _operation_content(command: ApplicationCommand) -> dict[str, Any]:
+def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) -> dict[str, Any]:
     operation = command.operation
     kind = operation.kind
     if isinstance(operation, SpecValidateOperation):
-        return {"kind": kind, "specDigest": _file_digest(Path(operation.document))}
+        if frozen.spec is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {"kind": kind, "specDigest": frozen.spec.digest()}
     if isinstance(operation, SpecDiffOperation):
+        if frozen.old_spec is None or frozen.new_spec is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
         return {
             "kind": kind,
-            "newDigest": _file_digest(Path(operation.new)),
-            "oldDigest": _file_digest(Path(operation.old)),
+            "newDigest": frozen.new_spec.digest(),
+            "oldDigest": frozen.old_spec.digest(),
         }
     if isinstance(operation, PlanDryRunOperation):
+        if frozen.spec is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
         return {
             "kind": kind,
-            "registryDigests": _registry_digests(operation.registry),
-            "specDigest": _file_digest(Path(operation.document)),
+            "registryDigests": list(frozen.registry_digests),
+            "specDigest": frozen.spec.digest(),
             "workflowId": operation.workflow_id,
         }
     if isinstance(operation, ResearchDecisionOperation):
-        return {"kind": kind, "requestDigest": _file_digest(Path(operation.request))}
+        if frozen.decision is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {"kind": kind, "requestDigest": frozen.decision.digest()}
     if isinstance(operation, RunShowOperation):
         return {"kind": kind, "runId": operation.run_id}
     if isinstance(operation, RunSimulateOperation):
+        if frozen.spec is None or frozen.simulation_request is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
         return {
             "kind": kind,
-            "registryDigests": _registry_digests(operation.registry),
-            "requestDigest": _file_digest(Path(operation.request)),
-            "specDigest": _file_digest(Path(operation.spec)),
+            "registryDigests": list(frozen.registry_digests),
+            "requestDigest": frozen.simulation_request.digest(),
+            "specDigest": frozen.spec.digest(),
         }
     return {"kind": kind}
 
 
-def _registry_digests(paths: tuple[str, ...]) -> list[str]:
-    digests: list[str] = []
-    for raw in paths:
-        path = Path(raw)
-        _reject_symlink(path)
-        if path.is_dir():
-            children = sorted(
-                child.name
-                for child in path.iterdir()
-                if child.is_file()
-                and not child.is_symlink()
-                and child.suffix.lower() in MANIFEST_SUFFIXES
-            )
-            digests.append(
-                content_digest(
-                    [{"digest": _file_digest(path / name), "name": name} for name in children]
-                )
-            )
-        elif path.is_file():
-            digests.append(_file_digest(path))
-        else:
-            raise ApplicationError("input-missing", "registry path does not exist")
-    return digests
+def _append_or_recover_decision(
+    store: EventStore,
+    *,
+    project_id: str,
+    draft: dict[str, Any],
+    event_id: str,
+    expected_head: int,
+) -> tuple[str, int, str]:
+    existing = store.get_event(event_id)
+    if existing is not None:
+        return _require_identical_fact(draft, existing)
+    appended = ResearchControl(store, project_id=project_id).append(
+        draft,
+        expected_last_sequence=expected_head,
+    )
+    stored = appended.stored
+    return stored.event.id, stored.sequence, stored.event.type
 
 
-def _file_digest(path: Path) -> str:
-    _reject_symlink(path)
-    try:
-        size = path.stat().st_size
-    except OSError as exc:
-        raise ApplicationError("input-missing", "command input could not be read") from exc
-    if size > _MAX_DIGEST_BYTES:
-        raise ApplicationError("input-too-large", "command input exceeds the digest bound")
-    try:
-        payload = path.read_bytes()
-    except OSError as exc:
-        raise ApplicationError("input-missing", "command input could not be read") from exc
-    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+def _recover_identical_fact(
+    store: EventStore,
+    *,
+    draft: dict[str, Any],
+    event_id: str,
+) -> tuple[str, int, str]:
+    existing = store.get_event(event_id)
+    if existing is None:
+        raise ApplicationError(
+            "duplicate-event",
+            "event identity is already committed",
+        )
+    return _require_identical_fact(draft, existing)
+
+
+def _require_identical_fact(draft: dict[str, Any], existing: StoredEvent) -> tuple[str, int, str]:
+    if not _same_committed_fact(draft, existing):
+        raise ApplicationError(
+            "duplicate-event",
+            "event identity is already committed",
+        )
+    return existing.event.id, existing.sequence, existing.event.type
+
+
+def _same_committed_fact(draft: dict[str, Any], existing: StoredEvent) -> bool:
+    """True only when type and caller-supplied event content are the same fact."""
+
+    recorded = existing.event.model_dump(mode="json", by_alias=True, exclude_none=True)
+    for field in ("sequence", "sequencetype", "streamversion"):
+        recorded.pop(field, None)
+    if recorded.get("type") != draft.get("type"):
+        return False
+    return canonical_json(recorded) == canonical_json(draft)
 
 
 def _reject_symlink(path: Path) -> None:
@@ -510,11 +593,182 @@ def _reject_symlink(path: Path) -> None:
         raise ApplicationError("symlink-rejected", "command input must not be a symbolic link")
 
 
-def _load_spec(path: Path) -> Any:
+def _freeze_operation(operation: ApplicationOperation) -> _FrozenOperation:
     try:
-        return load_spec(path)
+        if isinstance(operation, SpecValidateOperation):
+            return _FrozenOperation(spec=_read_snapshot(Path(operation.document)))
+        if isinstance(operation, SpecDiffOperation):
+            return _FrozenOperation(
+                old_spec=_read_snapshot(Path(operation.old)),
+                new_spec=_read_snapshot(Path(operation.new)),
+            )
+        if isinstance(operation, PlanDryRunOperation):
+            digests, manifests = _freeze_registry(operation.registry)
+            return _FrozenOperation(
+                spec=_read_snapshot(Path(operation.document)),
+                registry_digests=digests,
+                registry_manifests=manifests,
+            )
+        if isinstance(operation, ResearchDecisionOperation):
+            return _FrozenOperation(decision=_read_snapshot(Path(operation.request)))
+        if isinstance(operation, RunSimulateOperation):
+            digests, manifests = _freeze_registry(operation.registry)
+            return _FrozenOperation(
+                spec=_read_snapshot(Path(operation.spec)),
+                simulation_request=_read_snapshot(Path(operation.request)),
+                registry_digests=digests,
+                registry_manifests=manifests,
+            )
+    except RegistryError as exc:
+        if isinstance(operation, PlanDryRunOperation):
+            raise ApplicationError("dry-run-refused", "dry-run did not produce a report") from exc
+        raise ApplicationError("simulation-refused", "simulation was refused") from exc
+    return _FrozenOperation()
+
+
+def _freeze_registry(paths: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[_Snapshot, ...]]:
+    digests: list[str] = []
+    manifests: list[_Snapshot] = []
+    total_bytes = 0
+
+    def take(path: Path) -> _Snapshot:
+        nonlocal total_bytes
+        if len(manifests) >= MAX_REGISTRY_MANIFESTS:
+            raise RegistryError(f"registry exceeds the {MAX_REGISTRY_MANIFESTS}-manifest M0 limit")
+        snapshot = _read_snapshot(path)
+        total_bytes += len(snapshot.payload)
+        if total_bytes > MAX_REGISTRY_BYTES:
+            raise RegistryError(f"registry exceeds the {MAX_REGISTRY_BYTES}-byte M0 limit")
+        manifests.append(snapshot)
+        return snapshot
+
+    for raw in paths:
+        path = Path(raw)
+        _reject_symlink(path)
+        if path.is_dir():
+            children: list[Path] = []
+            try:
+                entries = path.iterdir()
+            except OSError as exc:
+                raise ApplicationError("input-missing", "registry path does not exist") from exc
+            for entry_count, child in enumerate(entries, start=1):
+                if entry_count > MAX_REGISTRY_DIRECTORY_ENTRIES:
+                    raise RegistryError(
+                        "registry directory exceeds the "
+                        f"{MAX_REGISTRY_DIRECTORY_ENTRIES}-entry M0 scan limit"
+                    )
+                if child.is_symlink():
+                    raise ApplicationError(
+                        "symlink-rejected",
+                        "command input must not be a symbolic link",
+                    )
+                if child.is_file() and child.suffix.lower() in MANIFEST_SUFFIXES:
+                    children.append(child)
+            digested: list[dict[str, str]] = []
+            for child in sorted(children, key=lambda item: item.name):
+                snapshot = take(child)
+                digested.append({"digest": snapshot.digest(), "name": child.name})
+            digests.append(content_digest(digested))
+        elif path.is_file():
+            if path.suffix.lower() not in MANIFEST_SUFFIXES:
+                raise RegistryError(f"unsupported manifest extension: {path}")
+            digests.append(take(path).digest())
+        else:
+            raise ApplicationError("input-missing", "registry path does not exist")
+    return tuple(digests), tuple(manifests)
+
+
+def _read_snapshot(path: Path) -> _Snapshot:
+    """Read one regular file once. Digest and execution share these bytes."""
+
+    _reject_symlink(path)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise ApplicationError("input-missing", "command input could not be read") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ApplicationError("input-missing", "command input could not be read")
+        if metadata.st_size > _MAX_DIGEST_BYTES:
+            raise ApplicationError("input-too-large", "command input exceeds the digest bound")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(65_536, _MAX_DIGEST_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > _MAX_DIGEST_BYTES:
+                raise ApplicationError(
+                    "input-too-large",
+                    "command input exceeds the digest bound",
+                )
+        payload = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    return _Snapshot(payload=payload, suffix=path.suffix.lower())
+
+
+def _decode_snapshot(snapshot: _Snapshot, *, source: str) -> dict[str, Any]:
+    try:
+        text = snapshot.payload.decode("utf-8")
+    except UnicodeError as exc:
+        raise SpecLoadError(f"could not load {source}: {exc}") from exc
+    return decode_document_text(text, suffix=snapshot.suffix, source=source)
+
+
+def _spec_from_snapshot(snapshot: _Snapshot) -> ResearchSpec:
+    try:
+        return ResearchSpec.model_validate(_decode_snapshot(snapshot, source="spec"))
     except (OSError, SpecLoadError, ValidationError, ValueError) as exc:
         raise ApplicationError("spec-invalid", "spec document failed validation") from exc
+
+
+def _decision_from_snapshot(snapshot: _Snapshot) -> DecisionRecordRequestDocument:
+    return validate_decision_record_request(_decode_snapshot(snapshot, source="decision request"))
+
+
+def _simulation_from_snapshot(snapshot: _Snapshot) -> SimulationRequestDocument:
+    return validate_simulation_request_document(
+        _decode_snapshot(snapshot, source="simulation request")
+    )
+
+
+def _registry_from_snapshots(manifests: tuple[_Snapshot, ...]) -> BlockRegistry:
+    registry = BlockRegistry()
+    for manifest in builtin_manifests():
+        registry.register(manifest, source="builtin")
+    for snapshot in manifests:
+        try:
+            document = _decode_snapshot(snapshot, source="registry manifest")
+        except SpecLoadError as exc:
+            raise ManifestLoadError(str(exc)) from exc
+        registry.register(BlockManifest.model_validate(document), source="explicit")
+    registry.seal()
+    return registry
+
+
+@dataclass(frozen=True, slots=True)
+class _Snapshot:
+    payload: bytes
+    suffix: str
+
+    def digest(self) -> str:
+        return f"sha256:{hashlib.sha256(self.payload).hexdigest()}"
+
+
+@dataclass(frozen=True, slots=True)
+class _FrozenOperation:
+    spec: _Snapshot | None = None
+    old_spec: _Snapshot | None = None
+    new_spec: _Snapshot | None = None
+    decision: _Snapshot | None = None
+    simulation_request: _Snapshot | None = None
+    registry_digests: tuple[str, ...] = ()
+    registry_manifests: tuple[_Snapshot, ...] = ()
 
 
 def _require_project(document_project: str, workspace_project: str) -> None:
