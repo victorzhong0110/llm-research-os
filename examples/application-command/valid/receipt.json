@@ -1,0 +1,21 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationReceipt",
+  "commandId": "cmd.spec.validate.1",
+  "actorId": "researcher.alice",
+  "submittedAt": "2026-09-22T00:00:00Z",
+  "operation": "spec.validate",
+  "requestDigest": "jcs-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expectedHead": null,
+  "expectedRevision": 1,
+  "observedHead": 0,
+  "disposition": "committed",
+  "factEventIds": [],
+  "artifactDigests": [],
+  "resultDigest": "jcs-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "result": {
+    "projectId": "example-minimal",
+    "revision": 1,
+    "valid": true
+  }
+}

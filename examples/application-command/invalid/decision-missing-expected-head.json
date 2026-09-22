@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationCommand",
+  "commandId": "cmd.decision.1",
+  "actorId": "researcher.alice",
+  "submittedAt": "2026-09-22T00:00:00Z",
+  "expectedRevision": 1,
+  "operation": {
+    "kind": "research.decision",
+    "request": "examples/research-decisions/valid/decision-record.json"
+  }
+}

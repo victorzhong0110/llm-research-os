@@ -23,7 +23,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Documentation proposed in #84; unmerged | Candidate checks; maintainer review pending | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); record new head and CI after push |
-| R02 | Shared application services | Planned | Not yet accepted | Add scoped evidence with R02 |
+| R02 | Shared application services | Candidate implementation on this branch; not merged or accepted | Local candidate checks recorded below; not acceptance and not live evidence | [R02 candidate evidence](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
@@ -65,6 +65,39 @@ relabelled as unverified because a different platform or a newer runtime has not
 been exercised. They also do not supply the new native two-host proof for R08.
 Keep `docs/status.json` historical baseline/evidence identities distinct from
 per-package implementation and live-runtime identities.
+
+## R02 candidate evidence
+
+Scope: shared application services only. This row is candidate evidence for
+the open R02 pull request. It is not a merge SHA, not maintainer acceptance,
+and not live-host evidence. No pending-live check is required for this
+package. Schema v2 was not migrated; historical event digests are not rewritten.
+
+Commands, run from the repository root on the implementation host:
+
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src`
+- `uv run pytest --cov=llm_research_os --cov-fail-under=85`
+- `uv run researchos schema --check-all`
+- `node conformance/digest/verify.mjs`
+- `uv build`
+
+Package tests: `tests/test_application_service.py`. They cover CLI/Python
+semantic equality, receipt restart, content conflict, stale head and revision,
+cross-project refusal, overlapping control/Worker roots, duplicate-run
+simulation, decision receipts linked to facts and CAS digests, and import
+without training extras.
+
+Local candidate result before this pull request's head was published:
+`ruff check`, `ruff format --check`, and `mypy src` passed;
+`pytest --cov=llm_research_os --cov-fail-under=85` passed 1455 tests with
+total coverage 20621/24144 = 85.408% (`scripts/check_coverage.py` passed).
+Ten existing OCI tests were skipped because this host has no OCI runtime.
+That skip is not R02 live evidence and does not replace the designated OCI
+job. `researchos schema --check-all`, `node conformance/digest/verify.mjs`,
+`event_catalog.py --check`, `project_status.py --check`, and `uv build`
+passed. Outcomes belong to the PR head, not to a future merge commit.
 
 ## Issue #53 evidence checklist
 

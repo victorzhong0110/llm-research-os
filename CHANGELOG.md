@@ -25,6 +25,10 @@ authorized release.
   global normative guidance to the planning/review assistant and in-scope
   implementation/evidence to implementers. R01 does not implement R02–R16,
   close #53, or publish a release.
+- R02 adds shared application services (`researchos app`,
+  `llm_research_os.application`). Commands are identity-bound and return
+  durable receipts linked to existing facts. This is candidate behavior, not
+  maintainer acceptance, native launch, or Issue #53 closure.
 
 ### Added
 
@@ -43,6 +47,11 @@ authorized release.
 - Detached Ed25519 authorization attestations with explicit keygen/sign/verify
   commands, pinned public-key scope, validity and revocation checks. These prove
   audit facts and never replace a Worker grant (ADR-0061).
+- R02 shared application command and receipt
+  ([protocol](docs/protocols/application-command-v0alpha1.md),
+  [guide](docs/guides/m3-application-services.md)). `researchos app init` binds
+  a project EventStore, CAS root, and Worker root. `researchos app execute`
+  and `ApplicationService.execute` share one result document.
 
 ### Fixed
 
