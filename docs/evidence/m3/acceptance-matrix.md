@@ -88,20 +88,25 @@ semantic equality, receipt restart, content conflict, stale head and revision,
 cross-project refusal, overlapping control/Worker roots, duplicate-run
 simulation, decision receipts linked to facts and CAS digests, import
 without training extras, duplicate event-id recovery, `expectedHead` at the
-append boundary, and one frozen snapshot for spec, decision, simulation
-request, and registry inputs.
+decision append and at the first simulation write, and one frozen snapshot
+for spec, decision, simulation request, and registry inputs.
 
 Local candidate result on this pull request's implementation head, after the
-three review fixes:
+simulation `expectedHead` follow-up:
 `ruff check`, `ruff format --check`, and `mypy src` passed;
-`pytest --cov=llm_research_os --cov-fail-under=85` passed 1458 tests with
-total coverage 20803/24379 = 85.331638% (`scripts/check_coverage.py` passed).
-Ten existing OCI tests were skipped because this host has no OCI runtime.
-That skip is not R02 live evidence and does not replace the designated OCI
-job. `researchos schema --check-all`, `node conformance/digest/verify.mjs`
+`pytest tests/test_application_service.py tests/test_run_control.py tests/test_simulated_runtime.py`
+passed 106 tests. `pytest --cov=llm_research_os --cov-fail-under=85` passed
+1458 tests, failed 1, and skipped 10. The failure is
+`tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short`
+(`append_seconds` 213.72 against a 180 second bound). That test is marked
+`slow` and is outside the CI selector `not oci_live and not slow`. Coverage
+was 20831/24418 = 85.310017% (`scripts/check_coverage.py` passed). Ten
+existing OCI tests were skipped because this host has no OCI runtime. That
+skip is not R02 live evidence and does not replace the designated OCI job.
+`researchos schema --check-all`, `node conformance/digest/verify.mjs`
 (13 vectors), `event_catalog.py --check`, and `project_status.py --check`
-passed. `uv build` was not re-run for this fix; packaging inputs were
-unchanged. Outcomes belong to the PR head, not to a future merge commit.
+passed. `uv build` was not re-run; packaging inputs were unchanged.
+Outcomes belong to the PR head, not to a future merge commit.
 
 ## Issue #53 evidence checklist
 

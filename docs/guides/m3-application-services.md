@@ -35,9 +35,9 @@ load training extras.
 Bind a workspace before the first command. Overlapping control and Worker
 roots are refused. A document whose project id differs from the workspace is
 refused. Pass the head and revision you reviewed; a mismatch fails closed and
-leaves the EventStore unchanged. Decision append uses that head as its CAS
-token. Spec, decision, simulation-request, and registry bytes are snapshotted
-once for the receipt digest and the execution.
+leaves the EventStore unchanged. Decision append, and the first write of a simulation, use that head as the
+CAS token. Spec, decision, simulation-request, and registry bytes are
+snapshotted once for the receipt digest and the execution.
 
 Receipts survive a new process. Replaying the same command id and content
 returns the prior result. EventStore schema v2 is unchanged: no migration is

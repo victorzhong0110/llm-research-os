@@ -346,6 +346,12 @@ class ApplicationService:
                 "simulation-request-invalid",
                 "simulation request failed validation",
             ) from exc
+        expected_head = command.expected_head
+        if expected_head is None:
+            raise ApplicationError(
+                "stale-head",
+                "expectedHead does not match the EventStore head",
+            )
         try:
             with self._open_store(create=True) as store:
                 runtime = SimulatedRuntime(
@@ -354,7 +360,11 @@ class ApplicationService:
                     project_id=self._workspace.project_id,
                     run_id=request.run_id,
                 )
-                result = runtime.run(spec, request.runtime_request())
+                result = runtime.run(
+                    spec,
+                    request.runtime_request(),
+                    expected_last_sequence=expected_head,
+                )
                 appended = tuple(stored.event.id for stored in result.stored)
                 fact_ids = appended or _run_fact_ids(
                     store,
@@ -362,6 +372,11 @@ class ApplicationService:
                     run_id=request.run_id,
                 )
                 snapshot = result.snapshot
+        except EventSequenceConflictError as exc:
+            raise ApplicationError(
+                "stale-head",
+                "expectedHead does not match the EventStore head",
+            ) from exc
         except (
             EventStoreError,
             ManifestLoadError,

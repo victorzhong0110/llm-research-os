@@ -167,8 +167,15 @@ class SimulatedRuntime:
         self,
         spec: ResearchSpec | dict[str, Any],
         request: SimulationRequest,
+        *,
+        expected_last_sequence: int | None = None,
     ) -> SimulationResult:
-        """Dry-run a frozen spec snapshot, then append the remaining lifecycle prefix."""
+        """Dry-run a frozen spec snapshot, then append the remaining lifecycle prefix.
+
+        ``expected_last_sequence`` is the caller's EventStore head for the first
+        write of this call. Later writes in the same call keep their own CAS.
+        Omitting it preserves append at the head read by each writer.
+        """
 
         frozen_spec = _freeze_spec(spec)
         request_fields = _freeze_request(request)
@@ -247,19 +254,26 @@ class SimulatedRuntime:
             )
         stored: list[StoredEvent] = []
         committed = snapshot
+        caller_head = expected_last_sequence
         if emit_metrics and TYPE_ATTEMPT_STARTED not in remaining:
-            stored.extend(
-                _append_request_metrics(
-                    self._store,
-                    request_fields,
-                    project_id=self._project_id,
-                    run_id=self._run_id,
-                    revision=frozen_spec.metadata.revision,
-                )
+            metric_stored = _append_request_metrics(
+                self._store,
+                request_fields,
+                project_id=self._project_id,
+                run_id=self._run_id,
+                revision=frozen_spec.metadata.revision,
+                expected_last_sequence=caller_head,
             )
+            stored.extend(metric_stored)
+            if metric_stored:
+                caller_head = None
             committed = self._control.rebuild().snapshot
         for draft in drafts:
-            result = self._control.append(draft)
+            if caller_head is None:
+                result = self._control.append(draft)
+            else:
+                result = self._control.append(draft, expected_last_sequence=caller_head)
+                caller_head = None
             stored.append(result.stored)
             committed = result.snapshot
             if emit_metrics and result.stored.event.type == TYPE_ATTEMPT_STARTED:
@@ -578,6 +592,7 @@ def _append_request_metrics(
     project_id: str,
     run_id: str,
     revision: int,
+    expected_last_sequence: int | None = None,
 ) -> list[StoredEvent]:
     return append_synthetic_metrics(
         store,
@@ -590,6 +605,7 @@ def _append_request_metrics(
         run_id=run_id,
         revision=revision,
         attempt_id=request.attempt_id,
+        expected_last_sequence=expected_last_sequence,
     )
 
 

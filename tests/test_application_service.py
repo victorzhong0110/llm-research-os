@@ -35,6 +35,7 @@ from llm_research_os.execution import (
 from llm_research_os.projections.replay import replay_events
 from llm_research_os.research.control import ResearchControl
 from llm_research_os.research.requests import load_proposal_submit_request
+from llm_research_os.runs.control import RunControl
 from llm_research_os.spec.io import load_document, load_spec
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.schema import SCHEMA_VERSION
@@ -633,6 +634,58 @@ def test_expected_head_is_enforced_at_the_append(
     assert _head(database) == 2
     assert _receipt_count(service) == 0
     assert all(event_id != "evt.decision.1" for event_id, _digest in _event_digests(database))
+
+
+def test_simulate_expected_head_binds_the_first_append(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root = _workspace(tmp_path)
+    database = root / "control" / "events.sqlite"
+    head = _seed_authorization(database)
+    assert head == 1
+    before = _event_digests(database)
+    inserted = False
+    original = RunControl.append
+
+    def inject(self: RunControl, document: dict[str, Any], **kwargs: Any) -> Any:
+        nonlocal inserted
+        if not inserted:
+            inserted = True
+            draft = load_proposal_submit_request(PROPOSAL).event_draft()
+            draft["id"] = "evt.inserted.before-simulate-write"
+            draft["data"]["payload"]["proposalId"] = "proposal.concurrent"
+            with EventStore(database, require_existing=True) as store:
+                stored = store.append(draft)
+                assert stored.sequence == 2
+        return original(self, document, **kwargs)
+
+    monkeypatch.setattr(RunControl, "append", inject)
+    service = ApplicationService.open(root)
+    with pytest.raises(ApplicationError, match="expectedHead") as stale:
+        service.execute(
+            _command(
+                {
+                    "kind": "run.simulate",
+                    "spec": str(EXAMPLES / "valid/minimal.yaml"),
+                    "request": str(SIMULATION_REQUEST),
+                    "registry": [],
+                },
+                commandId="cmd.simulate.stale-head",
+                expectedHead=1,
+                expectedRevision=1,
+            )
+        )
+    assert stale.value.code == "stale-head"
+    assert inserted
+    assert _head(database) == 2
+    assert _receipt_count(service) == 0
+    after = _event_digests(database)
+    assert after[: len(before)] == before
+    assert [event_id for event_id, _digest in after] == [
+        before[0][0],
+        "evt.inserted.before-simulate-write",
+    ]
+    assert "run.simulated" not in _run_ids(database)
 
 
 def test_receipt_digest_uses_the_frozen_input(

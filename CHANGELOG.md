@@ -59,6 +59,7 @@ authorized release.
   token, recovers a duplicate event id only when the stored fact has the same
   type and semantic content, and digests, validates, and executes spec,
   decision, simulation-request, and registry inputs from one frozen snapshot.
+  `run.simulate` carries that same head into the first simulation write.
 - Native cancel uses the authorized `terminationGraceSeconds` (SIGTERM,
   wait, then SIGKILL), matching the timeout path. Scoped IPv6 `HostName`
   values escape `%` as `%%` so OpenSSH can parse the onboarding fragment.
