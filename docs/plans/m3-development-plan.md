@@ -112,6 +112,11 @@ Expose existing domain operations through a thin shared layer for CLI, Python, a
 **Dependency:** R02 accepted.
 
 Freeze the reviewed native profile and authority boundaries before implementing a real runner.
+The [R03 authority ADR](../adr/0065-reviewed-native-execution-authority.md) and
+[versioned contract requirements](../protocols/native-reviewed-execution-v0alpha1.md)
+set the reviewed-code profile, distinct `execute.native` authority and
+fail-closed isolation reporting for this package. R03 validates documents;
+R04/R05 separately prepare and execute a real task.
 
 **Deliverables**
 
