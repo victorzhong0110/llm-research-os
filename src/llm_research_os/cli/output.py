@@ -12,6 +12,7 @@ from llm_research_os.events.models import ResearchEvent
 from llm_research_os.evidence.errors import EvidenceError, EvidenceRequestError
 from llm_research_os.execution.errors import (
     NativeProcessRuntimeError,
+    NativeReviewedPreparationError,
     NativeSshError,
     SimulationError,
 )
@@ -76,6 +77,7 @@ def problem_report(exc: Exception) -> ProblemReport:
         EvidenceError,
         ModelProviderError,
         NativeProcessRuntimeError,
+        NativeReviewedPreparationError,
         NativeSshError,
         ReportError,
         ResearchDecisionError,

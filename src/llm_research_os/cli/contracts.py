@@ -122,6 +122,29 @@ from llm_research_os.execution.native_preflight_request_schema import (
 from llm_research_os.execution.native_preflight_request_schema import (
     write_schema as write_native_process_preflight_request_schema,
 )
+from llm_research_os.execution.native_reviewed_preparation_schema import (
+    canonical_native_reviewed_code_review_schema,
+    canonical_native_reviewed_dependency_inventory_schema,
+    canonical_native_reviewed_dependency_lock_schema,
+    canonical_native_reviewed_interpreter_identity_schema,
+    canonical_native_reviewed_preparation_diagnosis_schema,
+    canonical_native_reviewed_preparation_receipt_schema,
+    canonical_native_reviewed_python_bundle_schema,
+    native_reviewed_code_review_schema_matches,
+    native_reviewed_dependency_inventory_schema_matches,
+    native_reviewed_dependency_lock_schema_matches,
+    native_reviewed_interpreter_identity_schema_matches,
+    native_reviewed_preparation_diagnosis_schema_matches,
+    native_reviewed_preparation_receipt_schema_matches,
+    native_reviewed_python_bundle_schema_matches,
+    write_native_reviewed_code_review_schema,
+    write_native_reviewed_dependency_inventory_schema,
+    write_native_reviewed_dependency_lock_schema,
+    write_native_reviewed_interpreter_identity_schema,
+    write_native_reviewed_preparation_diagnosis_schema,
+    write_native_reviewed_preparation_receipt_schema,
+    write_native_reviewed_python_bundle_schema,
+)
 from llm_research_os.execution.native_reviewed_schema import (
     canonical_native_reviewed_execution_report_schema,
     canonical_native_reviewed_execution_request_schema,
@@ -356,6 +379,48 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         native_reviewed_execution_report_schema_matches,
         write_native_reviewed_execution_report_schema,
         "schemas/native-reviewed-execution-report/v0alpha1.schema.json",
+    ),
+    "native-reviewed-preparation-receipt": _contract(
+        canonical_native_reviewed_preparation_receipt_schema,
+        native_reviewed_preparation_receipt_schema_matches,
+        write_native_reviewed_preparation_receipt_schema,
+        "schemas/native-reviewed-preparation-receipt/v0alpha1.schema.json",
+    ),
+    "native-reviewed-preparation-diagnosis": _contract(
+        canonical_native_reviewed_preparation_diagnosis_schema,
+        native_reviewed_preparation_diagnosis_schema_matches,
+        write_native_reviewed_preparation_diagnosis_schema,
+        "schemas/native-reviewed-preparation-diagnosis/v0alpha1.schema.json",
+    ),
+    "native-reviewed-python-bundle": _contract(
+        canonical_native_reviewed_python_bundle_schema,
+        native_reviewed_python_bundle_schema_matches,
+        write_native_reviewed_python_bundle_schema,
+        "schemas/native-reviewed-python-bundle/v0alpha1.schema.json",
+    ),
+    "native-reviewed-code-review": _contract(
+        canonical_native_reviewed_code_review_schema,
+        native_reviewed_code_review_schema_matches,
+        write_native_reviewed_code_review_schema,
+        "schemas/native-reviewed-code-review/v0alpha1.schema.json",
+    ),
+    "native-reviewed-interpreter-identity": _contract(
+        canonical_native_reviewed_interpreter_identity_schema,
+        native_reviewed_interpreter_identity_schema_matches,
+        write_native_reviewed_interpreter_identity_schema,
+        "schemas/native-reviewed-interpreter-identity/v0alpha1.schema.json",
+    ),
+    "native-reviewed-dependency-lock": _contract(
+        canonical_native_reviewed_dependency_lock_schema,
+        native_reviewed_dependency_lock_schema_matches,
+        write_native_reviewed_dependency_lock_schema,
+        "schemas/native-reviewed-dependency-lock/v0alpha1.schema.json",
+    ),
+    "native-reviewed-dependency-inventory": _contract(
+        canonical_native_reviewed_dependency_inventory_schema,
+        native_reviewed_dependency_inventory_schema_matches,
+        write_native_reviewed_dependency_inventory_schema,
+        "schemas/native-reviewed-dependency-inventory/v0alpha1.schema.json",
     ),
     "run-state": _contract(
         canonical_run_state_schema,

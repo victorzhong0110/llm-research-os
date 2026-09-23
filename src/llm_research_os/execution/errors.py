@@ -72,6 +72,19 @@ class NativeReviewedExecutionError(ValueError):
         self.code = code
 
 
+class NativeReviewedPreparationError(ValueError):
+    """Refuse reviewed-native preparation before any user code starts.
+
+    Messages MUST NOT include entrypoints, host paths, interpreter contents,
+    grant tokens, or other caller-supplied secrets. ``code`` is a stable
+    diagnostic token. A receipt is not a launch credential.
+    """
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class SimulationError(ValueError):
     """Fail-closed error from the deterministic simulated vertical slice.
 

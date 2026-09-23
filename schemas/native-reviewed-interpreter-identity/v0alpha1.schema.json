@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "DarwinReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "macOS pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "arm64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "darwin",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "DarwinReviewedPlatform",
+      "type": "object"
+    },
+    "LinuxReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "Linux pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "aarch64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "linux",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "LinuxReviewedPlatform",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-reviewed-interpreter-identity/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Byte-identified interpreter. A filesystem path is not this document.",
+  "properties": {
+    "abi": {
+      "enum": [
+        "cp312",
+        "cp313",
+        "cp314"
+      ],
+      "title": "Abi",
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "implementation": {
+      "const": "cpython",
+      "title": "Implementation",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewedInterpreterIdentity",
+      "title": "Kind",
+      "type": "string"
+    },
+    "platform": {
+      "discriminator": {
+        "mapping": {
+          "darwin": "#/$defs/DarwinReviewedPlatform",
+          "linux": "#/$defs/LinuxReviewedPlatform"
+        },
+        "propertyName": "os"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LinuxReviewedPlatform"
+        },
+        {
+          "$ref": "#/$defs/DarwinReviewedPlatform"
+        }
+      ],
+      "title": "Platform"
+    },
+    "pythonVersion": {
+      "pattern": "^3\\.(12|13|14)\\.[0-9]{1,4}$",
+      "title": "Pythonversion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "implementation",
+    "pythonVersion",
+    "abi",
+    "platform"
+  ],
+  "title": "NativeReviewedInterpreterIdentity",
+  "type": "object"
+}

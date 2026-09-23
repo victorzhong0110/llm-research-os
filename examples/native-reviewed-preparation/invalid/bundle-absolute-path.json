@@ -1,0 +1,11 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "entrypoint": "brick.task:main",
+  "files": [
+    {
+      "digest": "sha256:abababababababababababababababababababababababababababababababab",
+      "path": "/tmp/task.py"
+    }
+  ],
+  "kind": "NativeReviewedPythonBundle"
+}

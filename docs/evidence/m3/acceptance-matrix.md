@@ -24,8 +24,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
-| R03 | Real native execution contract | Candidate on this PR; not merged | Not yet accepted | [R03 candidate](#r03-candidate-evidence) |
-| R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
+| R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Integration recorded by R04 from the maintainer-stated merge. Formal acceptance is unchanged by this package | [R03 candidate](#r03-candidate-evidence), [R03 integration note](#r03-integration-note) |
+| R04 | Verifiable code and runtime environment | Candidate on this PR; not merged | Not yet accepted | [R04 candidate](#r04-candidate-evidence) |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
 | R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
 | R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
@@ -166,6 +166,36 @@ on this Linux host is a contract result, not a live macOS run. No pending-live
 host is required for this validation-only package; R05/R06 live execution
 remains absent. Twelve deselected tests are the existing `oci_live` and `slow`
 selectors, not R03 evidence.
+
+## R03 integration note
+
+PR [#109](https://github.com/victorzhong0110/llm-research-os/pull/109) is
+merged at `1a08bfede3970f9300ba53078d19e6f21a7f8d79`. R04 records that SHA as
+its base because the maintainer stated the R03 dependency is satisfied.
+This note does not replace the candidate section above, does not record
+post-merge CI, and does not mark R03 accepted. Formal acceptance remains a
+planning-review decision. Issue #53 stays open.
+
+## R04 candidate evidence
+
+Scope: verifiable code and runtime environment only. Preparation rebuilds the
+authorization fact, HMAC grant, and CAS bytes, then writes or diagnoses a
+private workspace. It does not import an entrypoint, spawn a process, install
+a package, consume a Worker grant, or append a Run/Attempt fact.
+`launchAllowed` is false. This section is candidate evidence for the open PR
+head. It is not a merge SHA, not acceptance, and not live execution. Real
+entrypoint execution remains R05. Issue #53 stays open.
+
+The first fixture is the CPU brick at
+`examples/native-reviewed-preparation/brick/task.py`. Valid and invalid
+documents live beside it. The static Linux receipt uses a synthetic
+interpreter digest and is a document fixture, not a live prepare of that
+host. Package tests build the interpreter document from the process under
+test. No GPU or training extra is required. No pending-live host is required
+for this non-launching package.
+
+Commands and the exact head SHA are recorded in the PR body after the
+candidate check run. Base: `1a08bfede3970f9300ba53078d19e6f21a7f8d79`.
 
 ## Issue #53 evidence checklist
 

@@ -29,7 +29,9 @@ lifecycle append, and SSH transport refused without a socket. Native SSH
 onboarding is a pending-live checklist pack only (TM-065). R03 adds a
 non-launching reviewed-native contract for `execute.native` (ADR-0065, TM-066):
 validation reports keep `launchAllowed` false, and no executor honors that
-capability.
+capability. R04 materializes reviewed bytes into a private workspace and
+diagnoses it (TM-067). Preparation still does not import an entrypoint,
+install a package, consume a grant, or start user code.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -93,6 +95,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | NativeProcessRuntime slice 1 | Local restricted helper over a sealed preflight | Implemented (ADR-0063, TM-064); recomputed preflight plus this-store human `{eventId, sequence}` consume before spawn; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; SSH refused without a socket; no lifecycle/grant/artifact writes |
 | Native SSH onboarding | Pending-live checklist pack | Implemented as validator plus pack writer (TM-065); pinned host key, non-root, no password/agent-forwarding/private-key; STATUS stays `pending-live`; never dials SSH |
 | Reviewed native execution contract | Validation-only `native-reviewed-python/v0alpha1` | Implemented as a non-launching validator (ADR-0065, TM-066). `execute.native` is registered and is not an alias for `execute.local` or `process.native`. No executor honors it. `launchAllowed` is false. Network, filesystem, and memory isolation are not enforced. No grant is consumed and no entrypoint is imported |
+| Reviewed native preparation | Digest-bound workspace for one reviewed Python task | Implemented as prepare/doctor only (ADR-0065, TM-067). Rebuilds the authorization fact, HMAC grant, and CAS bytes. Refuses a mismatched, incomplete, or damaged workspace without repairing it. Does not install packages, import entrypoints, spawn, consume grants, or append lifecycle facts. `launchAllowed` is false |
 | AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + recorded CNY limit; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -216,6 +219,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-064 | A stale or foreign authorization launches a native process, an SSH request spawns locally, or the helper is treated as entrypoint execution with network/OCI isolation | Unreviewed code execution; false isolation claims | Sealed preflight recompute plus this-store human `{eventId, sequence}` consume before spawn; `ssh` validated past authorization then refused without a socket; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; no lifecycle/grant/artifact writes; receipt says `entrypointExecuted: false`, `not-enforced` network (ADR-0063) | `tests/test_native_process_runtime.py` |
 | TM-065 | An SSH pack dials a host, stores a private key or password, allows root, or is treated as a live two-host proof | Credential exposure; false remote proof | Pure validator plus pack writer with no socket/subprocess; pinned host key required, root/password/agent-forwarding/private-key refused; STATUS stays `pending-live` with `ssh-pending` transport; loopback labeled not-cross-machine (ADR-0063) | `tests/test_native_ssh_onboard.py` |
 | TM-066 | An R03 validation report, application receipt, audit signature, `execute.local` or `process.native` grant, or the `restricted-v0alpha1` noop is used to import a reviewed entrypoint | Premature or substituted code execution; false isolation | `execute.native` is a distinct registered capability with no executor; the validator is pure and returns `launchAllowed=false`; required network, filesystem, or memory isolation that this profile cannot enforce is refused; negative tests assert no entrypoint import, subprocess, or lifecycle append (ADR-0065) | `tests/test_native_reviewed_execution.py` |
+| TM-067 | Reviewed code, config, inputs, or interpreter identity are replaced between approval and launch, a path is accepted as the interpreter, or a mismatched workspace is reused | Unreviewed bytes would run if a later package launched; false environment identity | R04 rebuilds the EventStore fact, HMAC grant, and CAS bytes; materializes a private no-follow workspace; rehashes before return; refuses incomplete, damaged, or mismatched trees without overwrite; interpreter identity is a byte document matched to the host ABI and platform; `check_before_user_code` does not import or spawn; `launchAllowed` stays false and no package is installed (ADR-0065) | `tests/test_native_reviewed_preparation.py` |
 
 
 ## 7. M0 security gates

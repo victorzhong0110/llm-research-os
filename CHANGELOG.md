@@ -34,6 +34,11 @@ authorized release.
   does not import an entrypoint or start a process. `launchAllowed` stays
   false. This is candidate behavior, not real execution, and does not close
   Issue #53.
+- R04 adds reviewed-native preparation and doctor diagnostics. They
+  materialize digest-bound code, config, inputs, and interpreter identity
+  into a private workspace and refuse a mismatched tree. They do not import
+  an entrypoint or start user code. `launchAllowed` stays false. This is
+  candidate behavior and does not close Issue #53.
 - Optimize the common ASCII CloudEvents identity check while preserving the
   existing Unicode rejection rules; the 100k M2 append benchmark keeps its
   original threshold.

@@ -123,3 +123,8 @@ and registers them with the existing CLI contract registry. Do not edit
 generated schema files by hand. Record implementation SHA, commands and
 test platform in the M3 acceptance matrix; leave real execution and live
 fault cases for R05/R06.
+
+R04 preparation is specified in
+[Native reviewed preparation v0alpha1](native-reviewed-preparation-v0alpha1.md).
+That adapter rebuilds EventStore, grant, and CAS facts itself. It does not
+change this validation contract and does not start user code.

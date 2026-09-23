@@ -1,0 +1,1 @@
+{"abi":"cp312","apiVersion":"researchos.dev/v0alpha1","implementation":"cpython","kind":"NativeReviewedInterpreterIdentity","platform":{"architecture":"x86_64","os":"linux"},"pythonVersion":"3.12.7"}

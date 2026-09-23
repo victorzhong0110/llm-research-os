@@ -1,0 +1,247 @@
+{
+  "$defs": {
+    "PreparationCheck": {
+      "additionalProperties": false,
+      "description": "One doctor comparison. Status is match, missing, or mismatch.",
+      "properties": {
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "bundle",
+            "code",
+            "input",
+            "config",
+            "interpreter",
+            "dependency-lock",
+            "inventory",
+            "review",
+            "receipt"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "match",
+            "missing",
+            "mismatch"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "status"
+      ],
+      "title": "PreparationCheck",
+      "type": "object"
+    },
+    "PreparationSideEffects": {
+      "additionalProperties": false,
+      "description": "Literal zeros. Preparation does not import, spawn, consume, or install.",
+      "properties": {
+        "entrypointsImported": {
+          "const": 0,
+          "title": "Entrypointsimported",
+          "type": "integer"
+        },
+        "grantsConsumed": {
+          "const": 0,
+          "title": "Grantsconsumed",
+          "type": "integer"
+        },
+        "lifecycleFactsAppended": {
+          "const": 0,
+          "title": "Lifecyclefactsappended",
+          "type": "integer"
+        },
+        "packagesInstalled": {
+          "const": 0,
+          "title": "Packagesinstalled",
+          "type": "integer"
+        },
+        "processesSpawned": {
+          "const": 0,
+          "title": "Processesspawned",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entrypointsImported",
+        "processesSpawned",
+        "lifecycleFactsAppended",
+        "grantsConsumed",
+        "packagesInstalled"
+      ],
+      "title": "PreparationSideEffects",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-reviewed-preparation-diagnosis/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Doctor report. Ready still does not authorize user code.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/PreparationCheck"
+      },
+      "maxItems": 64,
+      "title": "Checks",
+      "type": "array"
+    },
+    "evidenceClass": {
+      "const": "preparation-diagnosis",
+      "title": "Evidenceclass",
+      "type": "string"
+    },
+    "expectedReceiptDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Expectedreceiptdigest",
+      "type": "string"
+    },
+    "grantId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Grantid",
+      "type": "string"
+    },
+    "interpreterIdentity": {
+      "const": "byte-digest",
+      "title": "Interpreteridentity",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewedPreparationDiagnosis",
+      "title": "Kind",
+      "type": "string"
+    },
+    "launchAllowed": {
+      "const": false,
+      "title": "Launchallowed",
+      "type": "boolean"
+    },
+    "outcome": {
+      "enum": [
+        "ready",
+        "incomplete",
+        "damaged",
+        "mismatched",
+        "invalidated",
+        "refused"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "profile": {
+      "const": "native-reviewed-python/v0alpha1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "reasonCode": {
+      "enum": [
+        "launch-not-implemented",
+        "prefix-unverified",
+        "decision-not-authorization",
+        "foreign-project",
+        "stale-revision",
+        "foreign-workflow",
+        "foreign-task",
+        "foreign-run",
+        "foreign-attempt",
+        "foreign-worker",
+        "authorization-event-mismatch",
+        "authorization-sequence-mismatch",
+        "authorization-actor-mismatch",
+        "authorization-actor-not-human",
+        "authorization-not-authorized",
+        "authorization-capability-mismatch",
+        "spec-digest-mismatch",
+        "registry-digest-mismatch",
+        "plan-digest-mismatch",
+        "decision-digest-mismatch",
+        "review-digest-mismatch",
+        "config-digest-mismatch",
+        "code-digest-mismatch",
+        "entrypoint-mismatch",
+        "media-type-mismatch",
+        "input-digest-mismatch",
+        "interpreter-digest-mismatch",
+        "dependency-lock-mismatch",
+        "inventory-digest-mismatch",
+        "environment-identity-mismatch",
+        "missing-resource-ceiling",
+        "required-network-unenforced",
+        "required-filesystem-unenforced",
+        "required-memory-unenforced",
+        "required-process-unenforced",
+        "grant-capability-mismatch",
+        "grant-hmac-invalid",
+        "grant-expired",
+        "grant-revoked",
+        "grant-nonce-replay",
+        "grant-resumed-claim",
+        "grant-already-consumed",
+        "grant-binding-mismatch",
+        "grant-media-mismatch",
+        "prepared",
+        "preparation-ready",
+        "preparation-incomplete",
+        "preparation-damaged",
+        "environment-mismatch",
+        "code-substituted",
+        "config-substituted",
+        "input-substituted",
+        "environment-substituted",
+        "review-substituted",
+        "binding-invalidated",
+        "request-invalid",
+        "artifact-missing",
+        "artifact-integrity",
+        "source-path-rejected"
+      ],
+      "title": "Reasoncode",
+      "type": "string"
+    },
+    "receiptDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Receiptdigest",
+      "type": "string"
+    },
+    "requestDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Requestdigest",
+      "type": "string"
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/PreparationSideEffects"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "profile",
+    "evidenceClass",
+    "outcome",
+    "reasonCode",
+    "launchAllowed",
+    "interpreterIdentity",
+    "checks",
+    "sideEffects"
+  ],
+  "title": "NativeReviewedPreparationDiagnosis",
+  "type": "object"
+}

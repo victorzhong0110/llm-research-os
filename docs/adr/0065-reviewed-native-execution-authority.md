@@ -112,7 +112,9 @@ The R03 request and report contract is specified in
 [Native reviewed execution v0alpha1](../protocols/native-reviewed-execution-v0alpha1.md).
 R03 report outcomes are validation/refusal only; `launchAllowed` is false
 until an R05 runner is implemented and reviewed. A preflight success is not
-a Run start. R04 proves prepared code and environment identity; R05 proves
+a Run start. R04 proves prepared code and environment identity
+([Native reviewed preparation v0alpha1](../protocols/native-reviewed-preparation-v0alpha1.md));
+R05 proves
 real execution, bounded output, verified CAS artifacts and lifecycle facts;
 R06 proves stop and recovery. Claims for SSH or a second host wait for R07/R08.
 
