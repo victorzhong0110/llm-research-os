@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514` and accepted in its scoped application-service contract.**
+Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514`; R03 integrated in #109 at `1a08bfe` and accepted for its validation-only contract.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -24,7 +24,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
-| R03 | Real native execution contract | Candidate on this PR; not merged | Not yet accepted | [R03 candidate](#r03-candidate-evidence) |
+| R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
 | R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
@@ -134,13 +134,13 @@ evaluation, or Issue #53 closure. R03 remains a separate work package.
 
 Scope: reviewed-native request/report contract only. The validator does not
 import an entrypoint, spawn a process, consume a Worker grant, or append a
-Run/Attempt fact. `launchAllowed` is false. This section is candidate evidence
-for the open PR head. It is not a merge SHA, not acceptance, and not live
+Run/Attempt fact. `launchAllowed` is false. This section preserves the original
+candidate evidence before the review fixes. It is not the merge SHA or live
 execution. Issue #108 is a prior CI rerun note and is not R03 execution
 evidence. Real entrypoint execution remains R05. Issue #53 stays open.
 
-Commands below were run on the candidate tree before this PR's head was
-published. The PR body records the exact head SHA. That SHA is not a merge
+Commands below were run on the original candidate tree before #109's head was
+published. The original head `b7b3ab69082d12c8a0bd0bcfabdddf5c91e48b61` is not the merge
 SHA. Host: Linux 6.12.94+ x86_64, CPython 3.12.3. `observe_host_feasibility()`
 on that host reported `linux/x86_64`, with network, filesystem, memory,
 process-group, wall-clock, and output-byte enforcement all false, and
@@ -166,6 +166,36 @@ on this Linux host is a contract result, not a live macOS run. No pending-live
 host is required for this validation-only package; R05/R06 live execution
 remains absent. Twelve deselected tests are the existing `oci_live` and `slow`
 selectors, not R03 evidence.
+
+## R03 integration and scope
+
+PR [#109](https://github.com/victorzhong0110/llm-research-os/pull/109)
+merged at `1a08bfede3970f9300ba53078d19e6f21a7f8d79`; the final PR
+head was `b6c3ad7e66e5c088c8cc60288f4917059b268483`. Review fixes
+accepted an authorization containing `execute.native` plus other capabilities,
+bound the grant contract view to the Run, and rejected duplicate JSON keys,
+invalid UTF-8, excessive JSON nesting, and oversized numeric literals with a
+contract error. Regression coverage is in `tests/test_native_reviewed_execution.py`;
+the grant fixtures include a foreign-Run denial. The final guide explicitly
+labels caller-provided citations as contract fixtures. R04/R05 must rebuild
+real facts and bytes before using a report for preparation or launch.
+
+[Final PR CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35846797682)
+passed Ubuntu Python 3.12/3.13/3.14, macOS Python 3.12/3.13, Linux OCI,
+and human-authorship checks. The [post-merge main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35847460260)
+passed Ubuntu Python 3.12/3.13/3.14, macOS Python 3.12/3.13, and Linux OCI;
+authorship and fork-only DCO jobs were skipped on the main push.
+Local review-host checks passed 68 targeted tests,
+ruff, format, mypy, generated schemas, digest, event catalog, project status,
+and `uv build`. The local full selection had 1523 passed, 2 skipped,
+12 deselected, and 85.357% coverage; one unrelated Unix-socket artifact test
+failed because the review container denied socket creation. GitHub CI ran that
+test successfully on its supported runners.
+
+Acceptance is limited to a non-launching request/report contract and its
+validator. No entrypoint execution, real grant consumption, real host
+enforcement, or live macOS execution was accepted. Issue #53 remains open;
+R04 is the next package.
 
 ## Issue #53 evidence checklist
 
