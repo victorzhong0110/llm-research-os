@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 integrated in #84 at `7d1bcbe`; R02 candidate #105 remains unmerged.**
+Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514` and accepted in its scoped application-service contract.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -23,7 +23,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
-| R02 | Shared application services | Candidate #105; not merged | Code review at `a15b106` passed after P1 fixes; integration and post-merge checks pending | [R02 candidate evidence](#r02-candidate-evidence) |
+| R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
@@ -68,10 +68,11 @@ per-package implementation and live-runtime identities.
 
 ## R02 candidate evidence
 
-Scope: shared application services only. This row is candidate evidence for
-the open R02 pull request. It is not a merge SHA, not maintainer acceptance,
-and not live-host evidence. No pending-live check is required for this
-package. Schema v2 was not migrated; historical event digests are not rewritten.
+Scope: shared application services only. This section preserves evidence
+recorded while R02 #105 was an open candidate; the integration identity and
+scoped acceptance are recorded below. These pre-merge checks do not prove a
+live-host native execution path. No pending-live check is required for R02.
+Schema v2 was not migrated; historical event digests are not rewritten.
 
 Commands, run from the repository root on the implementation host:
 
@@ -106,7 +107,28 @@ skip is not R02 live evidence and does not replace the designated OCI job.
 `researchos schema --check-all`, `node conformance/digest/verify.mjs`
 (13 vectors), `event_catalog.py --check`, and `project_status.py --check`
 passed. `uv build` was not re-run; packaging inputs were unchanged.
-Outcomes belong to the PR head, not to a future merge commit.
+Outcomes belong to the PR head, not to the later merge commit.
+
+## R02 integration and scope
+
+PR [#105](https://github.com/victorzhong0110/llm-research-os/pull/105) was
+squash-merged into `main` at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` after the
+review follow-up head `9e67f86b26b44873bc2f548d739afb09675718fb`.
+The [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) completed successfully on that merge SHA:
+Ubuntu Python 3.12/3.13, macOS Python 3.12/3.13, Linux OCI, and the
+forward-compat Python 3.14 job passed; authorship and fork DCO jobs were
+skipped for the push event. The corrected tree also passed 147 focused local
+tests, `uv build`, lint, type, schema, event catalog, and project-status checks.
+The unchanged 100k slow benchmark passed on the corrective tree; an earlier
+host run failed its 180-second append bound, while a baseline main rerun passed.
+Both outcomes remain historical evidence of host timing variance, without a
+claim that R02 caused the earlier timeout.
+
+The planning review accepts R02 within the shared application-service contract:
+workspace identity binding, common CLI/Python semantics, durable receipts,
+conflict and stale-head refusal, and unchanged EventStore schema v2. It does
+not accept real native execution, SSH live operation, browser controls, real
+evaluation, or Issue #53 closure. R03 remains a separate work package.
 
 ## Issue #53 evidence checklist
 
