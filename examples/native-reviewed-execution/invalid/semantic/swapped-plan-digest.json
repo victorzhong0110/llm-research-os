@@ -1,0 +1,76 @@
+{
+  "actorId": "researcher.local",
+  "apiVersion": "researchos.dev/v0alpha1",
+  "attemptId": "attempt.1",
+  "authorizationEventId": "evt.auth.1",
+  "authorizationSequence": "1",
+  "code": {
+    "bundleDigest": "sha256:1e6ed65d77d6364eeaed5a745ba5c4985ae2b700dd85d7cf7f027bdf294a33fc",
+    "entrypoint": "reviewed.task:main",
+    "mediaType": "researchos.native-reviewed-python-bundle/v0alpha1",
+    "review": {
+      "bundleDigest": "sha256:1e6ed65d77d6364eeaed5a745ba5c4985ae2b700dd85d7cf7f027bdf294a33fc",
+      "citationDigest": "jcs-sha256:1e1fd4ab5dd265b8a53543f879db54f5ab8b2e12ad63ffee80b7c44759be77cb"
+    }
+  },
+  "configDigest": "jcs-sha256:156cccc4160dcdb6933c6fedc2024bcf246196900cf72658068fcf4cb56ed07a",
+  "decisionDigest": "jcs-sha256:1836f665d8700f314c3b7da9f8913e8a23d1980a164b2572b6e03ec4ca71b4e0",
+  "environment": {
+    "abi": "cp312",
+    "dependencyLockDigest": "sha256:0c030586945fe504b604ecc2e875c38ede400cd5cd73da9730302162e6b02c6f",
+    "interpreterDigest": "sha256:11a4a60b518bf24989d481468076e5d5982884626aed9faeb35b8576fcd223e1",
+    "inventoryDigest": "sha256:b11a85b296a90afc460430434a504e7acb04b064575b7277724688af0e59d189",
+    "platform": {
+      "architecture": "x86_64",
+      "os": "linux"
+    },
+    "pythonVersion": "3.12.7"
+  },
+  "inputs": [
+    {
+      "digest": "sha256:6b17b8fcc411a533c822a5117e33cf73fa6766739d7d36ac86dc4bea883af4fe",
+      "name": "corpus",
+      "purpose": "dataset",
+      "sizeBytes": 128
+    }
+  ],
+  "kind": "NativeReviewedExecutionRequest",
+  "limits": {
+    "artifactBytes": 1048576,
+    "memoryBytes": {
+      "ceiling": 268435456,
+      "required": false
+    },
+    "stderrBytes": 4096,
+    "stdoutBytes": 4096,
+    "wallTimeSeconds": 60
+  },
+  "planDigest": "jcs-sha256:8136e5660d45b585e50cb8e6d277b4ccd7c56ce7d09938dc0038254bc932e5a0",
+  "platform": {
+    "architecture": "x86_64",
+    "os": "linux"
+  },
+  "profile": "native-reviewed-python/v0alpha1",
+  "projectId": "project.reviewed",
+  "registryDigest": "jcs-sha256:caa56c755b3d037f7b9b29e5baa09a59c3bdfee4d23a332ef69ceff2ea1ec927",
+  "restrictions": {
+    "filesystem": {
+      "requested": "confined",
+      "required": false
+    },
+    "memory": {
+      "requested": "bounded",
+      "required": false
+    },
+    "network": {
+      "requested": "denied",
+      "required": false
+    }
+  },
+  "revisionId": "rev-1",
+  "runId": "run.1",
+  "specDigest": "jcs-sha256:569afab8828f40b2e43f5592b9efc4417386227d1aea14048bcc5d01d4061461",
+  "taskId": "task.train",
+  "workerId": "worker.1",
+  "workflowId": "workflow.reviewed"
+}

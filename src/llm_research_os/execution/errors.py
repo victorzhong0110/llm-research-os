@@ -59,6 +59,19 @@ class NativeSshError(ValueError):
         self.code = code
 
 
+class NativeReviewedExecutionError(ValueError):
+    """Reject an invalid reviewed-native request before any user code exists.
+
+    Messages MUST NOT include entrypoints, host paths, interpreter contents,
+    grant tokens, or other caller-supplied secrets. ``code`` is a stable
+    diagnostic token. A refusal is not a Worker grant and cannot launch.
+    """
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class SimulationError(ValueError):
     """Fail-closed error from the deterministic simulated vertical slice.
 

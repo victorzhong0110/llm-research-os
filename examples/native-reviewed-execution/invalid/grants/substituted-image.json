@@ -1,0 +1,15 @@
+{
+  "attemptId": "attempt.1",
+  "capability": "execute.native",
+  "claimState": "unclaimed",
+  "configDigest": "jcs-sha256:156cccc4160dcdb6933c6fedc2024bcf246196900cf72658068fcf4cb56ed07a",
+  "expired": false,
+  "hmacValid": true,
+  "imageDigest": "sha256:f41408bf6c34db52ab1cbcc6c22f7b1eaae411f854541400fb0aa6833d20507e",
+  "imageMediaType": "researchos.native-reviewed-python-bundle/v0alpha1",
+  "nonceConsumed": false,
+  "projectId": "project.reviewed",
+  "revoked": false,
+  "taskId": "task.train",
+  "workerId": "worker.1"
+}

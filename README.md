@@ -95,6 +95,7 @@ acceptance checklist of that milestone.
 - [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)
+- [Native reviewed execution v0alpha1](docs/protocols/native-reviewed-execution-v0alpha1.md)
 - [Static planning kernel guide](docs/guides/m0-static-planning.md)
 - [M0 SQLite event store](docs/guides/m0-event-store.md)
 - [M0 local artifact store](docs/guides/m0-artifact-store.md)
@@ -106,6 +107,7 @@ acceptance checklist of that milestone.
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M3 native process runtime](docs/guides/m3-native-process-runtime.md)
 - [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)
+- [M3 reviewed native execution contract](docs/guides/m3-native-reviewed-execution.md)
 - [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -160,6 +162,8 @@ schemas/plan-authorization-request/v0alpha1.schema.json
 schemas/plan-authorization-report/v0alpha1.schema.json
 schemas/native-process-preflight-request/v0alpha1.schema.json
 schemas/native-process-preflight-report/v0alpha1.schema.json
+schemas/native-reviewed-execution-request/v0alpha1.schema.json
+schemas/native-reviewed-execution-report/v0alpha1.schema.json
 ```
 
 Do not edit these files by hand. `researchos schema --check-all` checks every
@@ -492,6 +496,10 @@ an existing event store, but the actor is still unauthenticated, the event is
 audit-only, and no runtime may launch from it.
 `native preflight` only freezes the fixed process-review shape of a single task,
 explicitly forbids launch, and does not enforce the declared isolation.
+The R03 reviewed-native validator checks `native-reviewed-python/v0alpha1`
+documents and returns `launchAllowed=false`. It does not import an entrypoint,
+spawn a process, or honor `execute.native`. Network, filesystem, and memory
+limits on that profile are not enforced.
 `native run` (M3 slice 1) recomputes that sealed preflight, consumes one local
 human authorization citation on the existing store before spawn, and then runs
 only a fixed noop helper with bounded capture, an empty environment allowlist,

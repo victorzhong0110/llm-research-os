@@ -82,6 +82,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)（英文）
+- [已审查原生执行 v0alpha1](docs/protocols/native-reviewed-execution-v0alpha1.md)（英文）
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
@@ -93,6 +94,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M3 本地受限执行](docs/guides/m3-native-process-runtime.md)（英文）
 - [M3 SSH 接入](docs/guides/m3-native-ssh-onboarding.md)（英文）
+- [M3 已审查原生执行契约](docs/guides/m3-native-reviewed-execution.md)（英文）
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -148,6 +150,8 @@ schemas/plan-authorization-request/v0alpha1.schema.json
 schemas/plan-authorization-report/v0alpha1.schema.json
 schemas/native-process-preflight-request/v0alpha1.schema.json
 schemas/native-process-preflight-report/v0alpha1.schema.json
+schemas/native-reviewed-execution-request/v0alpha1.schema.json
+schemas/native-reviewed-execution-report/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。`researchos schema --check-all` 按 CLI 契约注册表校验全部已提交
@@ -429,6 +433,9 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 `authorizations record` 可向既有事件库追加精确四摘要绑定的求值事实，但 actor 仍未认证，事件
 只具有审计意义，任何 runtime 都不能据此启动。
 `native preflight` 只冻结单 task 的固定进程审查形状，明确禁止启动且不实施所声明的隔离。
+R03 已审查原生执行验证器只检查 `native-reviewed-python/v0alpha1` 文档，并返回
+`launchAllowed=false`。它不导入入口点、不启动子进程，也不兑现 `execute.native`。
+该画像上的网络、文件系统和内存限制均未实施。
 `native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
 固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
 导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开
