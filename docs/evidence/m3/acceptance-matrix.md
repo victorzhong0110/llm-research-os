@@ -194,8 +194,29 @@ host. Package tests build the interpreter document from the process under
 test. No GPU or training extra is required. No pending-live host is required
 for this non-launching package.
 
-Commands and the exact head SHA are recorded in the PR body after the
-candidate check run. Base: `1a08bfede3970f9300ba53078d19e6f21a7f8d79`.
+Commands, run from the repository root on the candidate head
+`c27495e67bef7d1095d3a86d63a113991252db34`. Host: Linux 6.12.94+ x86_64,
+CPython 3.12.3. Base: `1a08bfede3970f9300ba53078d19e6f21a7f8d79`.
+
+- `uv run ruff check .` passed
+- `uv run ruff format --check .` passed
+- `uv run mypy src` passed
+- `uv run pytest -m "not oci_live and not slow" --cov=llm_research_os --cov-fail-under=85` passed: 1543 passed, 12 deselected, pytest-cov total 85.249%
+- `uv run coverage json -o coverage.json` from that `.coverage` file, then `uv run python scripts/check_coverage.py coverage.json` passed: 22377/26249 = 85.248962%. The first invocation without a JSON report failed only because the file was absent (`Errno 2`); it was not a coverage-floor miss
+- `uv run researchos schema --check-all` passed
+- `node conformance/digest/verify.mjs` passed (13 vectors)
+- `uv run python scripts/event_catalog.py --check` passed
+- `uv run python scripts/project_status.py --check` passed
+- `uv build` passed
+
+Package tests: `tests/test_native_reviewed_preparation.py` (17 passed inside
+the suite above). They cover a fresh workspace, repeat prepare, substitution
+of code, config, inputs, and environment identity before user code,
+mismatched and incomplete or damaged trees, expired, forged, revoked, and
+consumed grants, `execute.local`, symlink rejection, CLI prepare/doctor, and
+the absence of entrypoint import or subprocess. Twelve deselected tests are
+the existing `oci_live` and `slow` selectors, not R04 evidence. No
+pending-live host is required for this non-launching package.
 
 ## Issue #53 evidence checklist
 
