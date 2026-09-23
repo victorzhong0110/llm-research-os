@@ -1,0 +1,13 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationCommand",
+  "commandId": "cmd.spec.validate.1",
+  "actorId": "researcher.alice",
+  "submittedAt": "2026-09-22T00:00:00Z",
+  "expectedHead": null,
+  "expectedRevision": 1,
+  "operation": {
+    "kind": "spec.validate",
+    "document": "examples/valid/minimal.yaml"
+  }
+}

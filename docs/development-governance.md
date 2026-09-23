@@ -1,6 +1,6 @@
 # Development governance
 
-Status: Maintainer-directed ownership, recorded for integration in R01 (#84).
+Status: Maintainer-directed ownership, integrated in R01 (#84, `7d1bcbe`).
 Constraint record: [ADR-0064](adr/0064-planning-and-implementation-ownership.md).
 The maintainer's explicit instructions take precedence over this workflow.
 This document assigns review responsibilities; it does not change GitHub access

@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationCommand",
+  "commandId": "cmd.workspace.show.1",
+  "actorId": "researcher.alice",
+  "submittedAt": "2026-09-22T00:00:00Z",
+  "expectedHead": null,
+  "expectedRevision": null,
+  "operation": {
+    "kind": "workspace.show"
+  }
+}

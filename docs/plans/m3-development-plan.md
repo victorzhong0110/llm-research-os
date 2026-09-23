@@ -1,9 +1,11 @@
 # M3 development plan
 
-Status: **R01 proposed; PR #84 is under review and unmerged.** This is the
+Status: **R01 integrated by PR #84 at `7d1bcbe`; R02 is under review in #105.** This is the
 single maintained M3 task plan. Recording a task does not complete it.
 Planning baseline: `main@e1282c5601e08a0bb46ebe10f8d2eca470b4a015`, after #81.
-Start implementation from the latest verified main after R01 integration.
+R01 integration: `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47`.
+Start implementation from the latest verified main after predecessor acceptance.
+Work-package navigation: [GitHub index #104](https://github.com/victorzhong0110/llm-research-os/issues/104).
 
 This revision supersedes the proposed ordering in PR #80 and the earlier
 `fabd73d` / `1729cb2` drafts of #84. Those drafts put Web before native
@@ -78,7 +80,7 @@ Establish one consistent task baseline without extending runtime behavior.
 
 **Acceptance**
 
-- README/status/plan/matrix agree; R01 remains under review until actual integration is recorded.
+- README/status/plan/matrix agree; the integrated R01 SHA and post-merge CI are recorded without claiming R02–R16 acceptance.
 - No claim that #81 completes real native execution, SSH live acceptance, or Issue #53.
 
 **Out of scope:** Runtime code, new execution authority, issue closure, release, or tags.
@@ -457,7 +459,7 @@ once R03–R06 provide real-profile plan-bound launch, denial, expiry/revocation
 cancellation/unknown, and durable audit evidence. R08 supplies additional remote
 proof where relevant to a claim. Closure requires maintainer review of that
 checklist; it does not wait automatically for R16 or close automatically at a
-package merge. The issue remains open in R01.
+package merge. The issue remains open pending the scoped R03–R06 evidence.
 
 Checkpoints A/B/C/D and milestone acceptance do not publish a version or authorize
 paid resources. M2 evidence stays accepted in its original scope. M3 two-host

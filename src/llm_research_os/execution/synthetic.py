@@ -21,6 +21,7 @@ from llm_research_os.events.models import (
     validate_event_document,
 )
 from llm_research_os.execution.errors import SimulationError
+from llm_research_os.storage.errors import EventSequenceConflictError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 
@@ -231,10 +232,16 @@ def append_synthetic_metrics(
     run_id: str,
     revision: int,
     attempt_id: str,
+    expected_last_sequence: int | None = None,
 ) -> list[StoredEvent]:
-    """Append missing synthetic metric facts. Existing facts must match the draft."""
+    """Append missing synthetic metric facts. Existing facts must match the draft.
+
+    ``expected_last_sequence`` binds only the first new metric of this call.
+    Later metrics keep the head read immediately before each append.
+    """
 
     stored: list[StoredEvent] = []
+    caller_head = expected_last_sequence
     for event_type in metric_types_in_request(events):
         event_id, _time = events[event_type]
         draft = metric_event_draft(
@@ -253,7 +260,14 @@ def append_synthetic_metrics(
         if existing is not None:
             _require_resumable_metric(existing, draft)
             continue
-        head = store.freeze_high_water()
+        if caller_head is None:
+            head = store.freeze_high_water()
+        else:
+            head = caller_head
+            observed = store.freeze_high_water()
+            if observed != caller_head:
+                raise EventSequenceConflictError(caller_head, observed)
+            caller_head = None
         stored.append(store.append(draft, expected_last_sequence=head))
     return stored
 

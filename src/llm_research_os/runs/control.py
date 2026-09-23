@@ -24,7 +24,7 @@ from llm_research_os.projections.replay import replay_events
 from llm_research_os.runs.errors import RunControlError
 from llm_research_os.runs.models import LIFECYCLE_TYPES, RunSnapshot, run_snapshot_document
 from llm_research_os.runs.reducer import RunStateProjection
-from llm_research_os.storage.errors import EventStoreError
+from llm_research_os.storage.errors import EventSequenceConflictError, EventStoreError
 from llm_research_os.storage.models import RunProjectionRecord, StoredEvent
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 
@@ -91,11 +91,29 @@ class RunControl:
         self._persist_projection(high_water, snapshot)
         return RunControlHead(last_sequence=high_water, snapshot=snapshot)
 
-    def append(self, document: dict[str, Any]) -> RunControlResult:
-        """Preflight one lifecycle draft, then append it at the frozen head."""
+    def append(
+        self,
+        document: dict[str, Any],
+        *,
+        expected_last_sequence: int | None = None,
+    ) -> RunControlResult:
+        """Preflight one lifecycle draft, then CAS-append it.
+
+        ``expected_last_sequence`` is the caller's EventStore head. When it is
+        set, a rebuilt head that differs is refused and that caller token is
+        the append precondition. The rebuilt head is not substituted for it.
+        Omitting it keeps append preconditioned on the head read during this
+        rebuild.
+        """
 
         head = self.rebuild()
-        frozen_head = head.last_sequence
+        observed_head = head.last_sequence
+        if expected_last_sequence is None:
+            cas_head = observed_head
+        else:
+            cas_head = expected_last_sequence
+            if observed_head != expected_last_sequence:
+                raise EventSequenceConflictError(expected_last_sequence, observed_head)
         snapshot = head.snapshot
         try:
             draft = snapshot_json_document(document)
@@ -106,12 +124,12 @@ class RunControl:
             raise RunControlError(
                 f"RunControl does not accept store-assigned fields; caller supplied: {supplied}"
             )
-        if frozen_head >= CLOUD_EVENTS_INTEGER_MAX:
+        if cas_head >= CLOUD_EVENTS_INTEGER_MAX:
             raise RunControlError("global event sequence is exhausted")
         preflight_document = dict(draft)
         preflight_document.update(
             {
-                "sequence": str(frozen_head + 1),
+                "sequence": str(cas_head + 1),
                 "sequencetype": "Integer",
                 "streamversion": 0,
             }
@@ -123,7 +141,7 @@ class RunControl:
         preflight_snapshot = self._projection.apply(snapshot, preflight_event)
         if preflight_snapshot is None:
             raise RunControlError("lifecycle preflight produced no snapshot")
-        stored = self._store.append(draft, expected_last_sequence=frozen_head)
+        stored = self._store.append(draft, expected_last_sequence=cas_head)
         committed_snapshot = self._projection.apply(snapshot, stored.event)
         if committed_snapshot is None:
             raise RunControlError("committed lifecycle event produced no snapshot")

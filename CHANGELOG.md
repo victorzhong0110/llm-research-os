@@ -17,7 +17,7 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
-- R01 proposes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
+- R01 integrated by PR #84 establishes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
   and [acceptance matrix](docs/evidence/m3/acceptance-matrix.md): real native
   execution before Web, stable R01–R16 definitions, and checkpoints A/B/C/D.
   Historical M1/M2 acceptance retains its original platform and evidence SHA.
@@ -25,6 +25,13 @@ authorized release.
   global normative guidance to the planning/review assistant and in-scope
   implementation/evidence to implementers. R01 does not implement R02–R16,
   close #53, or publish a release.
+- R02 adds shared application services (`researchos app`,
+  `llm_research_os.application`). Commands are identity-bound and return
+  durable receipts linked to existing facts. This is candidate behavior, not
+  maintainer acceptance, native launch, or Issue #53 closure.
+- Optimize the common ASCII CloudEvents identity check while preserving the
+  existing Unicode rejection rules; the 100k M2 append benchmark keeps its
+  original threshold.
 
 ### Added
 
@@ -43,9 +50,19 @@ authorized release.
 - Detached Ed25519 authorization attestations with explicit keygen/sign/verify
   commands, pinned public-key scope, validity and revocation checks. These prove
   audit facts and never replace a Worker grant (ADR-0061).
+- R02 shared application command and receipt
+  ([protocol](docs/protocols/application-command-v0alpha1.md),
+  [guide](docs/guides/m3-application-services.md)). `researchos app init` binds
+  a project EventStore, CAS root, and Worker root. `researchos app execute`
+  and `ApplicationService.execute` share one result document.
 
 ### Fixed
 
+- R02 decision append uses the caller's `expectedHead` as the EventStore CAS
+  token, recovers a duplicate event id only when the stored fact has the same
+  type and semantic content, and digests, validates, and executes spec,
+  decision, simulation-request, and registry inputs from one frozen snapshot.
+  `run.simulate` carries that same head into the first simulation write.
 - Native cancel uses the authorized `terminationGraceSeconds` (SIGTERM,
   wait, then SIGKILL), matching the timeout path. Scoped IPv6 `HostName`
   values escape `%` as `%%` so OpenSSH can parse the onboarding fragment.

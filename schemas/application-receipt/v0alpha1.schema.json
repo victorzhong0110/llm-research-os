@@ -1,0 +1,145 @@
+{
+  "$id": "https://researchos.dev/schemas/application-receipt/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Durable result of one command, linked to facts and artifact digests.",
+  "properties": {
+    "actorId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Actorid",
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/application/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "artifactDigests": {
+      "items": {
+        "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Artifactdigests",
+      "type": "array"
+    },
+    "commandId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Commandid",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "committed",
+        "replayed"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "expectedHead": {
+      "anyOf": [
+        {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Expectedhead"
+    },
+    "expectedRevision": {
+      "anyOf": [
+        {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Expectedrevision"
+    },
+    "factEventIds": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Facteventids",
+      "type": "array"
+    },
+    "kind": {
+      "const": "ApplicationReceipt",
+      "title": "Kind",
+      "type": "string"
+    },
+    "observedHead": {
+      "maximum": 2147483647,
+      "minimum": 0,
+      "title": "Observedhead",
+      "type": "integer"
+    },
+    "operation": {
+      "enum": [
+        "spec.validate",
+        "spec.diff",
+        "plan.dry-run",
+        "research.ledger",
+        "research.decision",
+        "revision.list",
+        "run.show",
+        "run.simulate",
+        "workspace.show"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "requestDigest": {
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+      "title": "Requestdigest",
+      "type": "string"
+    },
+    "result": {
+      "additionalProperties": true,
+      "title": "Result",
+      "type": "object"
+    },
+    "resultDigest": {
+      "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+      "title": "Resultdigest",
+      "type": "string"
+    },
+    "submittedAt": {
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+      "title": "Submittedat",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "commandId",
+    "actorId",
+    "submittedAt",
+    "operation",
+    "requestDigest",
+    "expectedHead",
+    "expectedRevision",
+    "observedHead",
+    "disposition",
+    "factEventIds",
+    "artifactDigests",
+    "resultDigest",
+    "result"
+  ],
+  "title": "ApplicationReceipt",
+  "type": "object"
+}

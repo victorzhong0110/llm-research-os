@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 under review in PR #84; not merged or accepted by this file.**
+Status: **R01 integrated in #84 at `7d1bcbe`; R02 candidate #105 remains unmerged.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -22,8 +22,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 
 | Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
-| R01 | Scope, capability state, and acceptance baseline | Documentation proposed in #84; unmerged | Candidate checks; maintainer review pending | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); record new head and CI after push |
-| R02 | Shared application services | Planned | Not yet accepted | Add scoped evidence with R02 |
+| R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
+| R02 | Shared application services | Candidate #105; not merged | Code review at `a15b106` passed after P1 fixes; integration and post-merge checks pending | [R02 candidate evidence](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
@@ -65,6 +65,48 @@ relabelled as unverified because a different platform or a newer runtime has not
 been exercised. They also do not supply the new native two-host proof for R08.
 Keep `docs/status.json` historical baseline/evidence identities distinct from
 per-package implementation and live-runtime identities.
+
+## R02 candidate evidence
+
+Scope: shared application services only. This row is candidate evidence for
+the open R02 pull request. It is not a merge SHA, not maintainer acceptance,
+and not live-host evidence. No pending-live check is required for this
+package. Schema v2 was not migrated; historical event digests are not rewritten.
+
+Commands, run from the repository root on the implementation host:
+
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src`
+- `uv run pytest --cov=llm_research_os --cov-fail-under=85`
+- `uv run researchos schema --check-all`
+- `node conformance/digest/verify.mjs`
+- `uv build`
+
+Package tests: `tests/test_application_service.py`. They cover CLI/Python
+semantic equality, receipt restart, content conflict, stale head and revision,
+cross-project refusal, overlapping control/Worker roots, duplicate-run
+simulation, decision receipts linked to facts and CAS digests, import
+without training extras, duplicate event-id recovery, `expectedHead` at the
+decision append and at the first simulation write, and one frozen snapshot
+for spec, decision, simulation request, and registry inputs.
+
+Historical implementer report at `a15b106d4fd211f4c6aaa16d92ae859f0b5de390`, after the
+simulation `expectedHead` follow-up:
+`ruff check`, `ruff format --check`, and `mypy src` passed;
+`pytest tests/test_application_service.py tests/test_run_control.py tests/test_simulated_runtime.py`
+passed 106 tests. `pytest --cov=llm_research_os --cov-fail-under=85` passed
+1458 tests, failed 1, and skipped 10. The failure is
+`tests/test_m2_perf.py::test_perf_baseline_100k_keeps_report_lineage_short`
+(`append_seconds` 213.72 against a 180 second bound). That test is marked
+`slow` and is outside the CI selector `not oci_live and not slow`. Coverage
+was 20831/24418 = 85.310017% (`scripts/check_coverage.py` passed). Ten
+existing OCI tests were skipped because this host has no OCI runtime. That
+skip is not R02 live evidence and does not replace the designated OCI job.
+`researchos schema --check-all`, `node conformance/digest/verify.mjs`
+(13 vectors), `event_catalog.py --check`, and `project_status.py --check`
+passed. `uv build` was not re-run; packaging inputs were unchanged.
+Outcomes belong to the PR head, not to a future merge commit.
 
 ## Issue #53 evidence checklist
 

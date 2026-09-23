@@ -11,6 +11,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from llm_research_os.application.schema import (
+    application_command_schema_matches,
+    application_receipt_schema_matches,
+    canonical_application_command_schema,
+    canonical_application_receipt_schema,
+    write_application_command_schema,
+    write_application_receipt_schema,
+)
 from llm_research_os.artifacts.schema import (
     canonical_schema as canonical_artifact_object_report_schema,
 )
@@ -233,6 +241,18 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "application-command": _contract(
+        canonical_application_command_schema,
+        application_command_schema_matches,
+        write_application_command_schema,
+        "schemas/application-command/v0alpha1.schema.json",
+    ),
+    "application-receipt": _contract(
+        canonical_application_receipt_schema,
+        application_receipt_schema_matches,
+        write_application_receipt_schema,
+        "schemas/application-receipt/v0alpha1.schema.json",
+    ),
     "research-spec": _contract(
         canonical_research_schema,
         research_schema_matches,
