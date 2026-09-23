@@ -100,6 +100,7 @@ GRANT_REASONS = {
     "consumed-claim": "grant-already-consumed",
     "python-brick-media": "grant-media-mismatch",
     "substituted-image": "grant-binding-mismatch",
+    "foreign-run": "grant-binding-mismatch",
 }
 
 
@@ -179,6 +180,7 @@ def _grant(path: Path) -> GrantContractCheck:
         image_media_type=str(document["imageMediaType"]),
         config_digest=str(document["configDigest"]),
         project_id=str(document["projectId"]),
+        run_id=str(document["runId"]),
         task_id=str(document["taskId"]),
         worker_id=str(document["workerId"]),
         attempt_id=str(document["attemptId"]),
@@ -322,19 +324,16 @@ def test_prefix_actor_and_decision_failures() -> None:
         )
         == "authorization-capability-mismatch"
     )
-    assert (
-        _refuse(
-            request,
-            replace(
-                context,
-                citation=replace(
-                    context.citation,
-                    capabilities=frozenset({"execute.native", "process.native"}),
-                ),
-            ),
-        )
-        == "authorization-capability-mismatch"
+    mixed = replace(
+        context,
+        citation=replace(
+            context.citation,
+            capabilities=frozenset({"execute.native", "read.local_evidence"}),
+        ),
     )
+    report = validate_native_reviewed_execution(request, mixed)
+    assert report.accepted_for_preparation is True
+    assert report.launch_allowed is False
 
 
 def test_prepared_substitution_refuses_before_launch() -> None:
@@ -404,6 +403,22 @@ def test_parser_bounds_and_shapes() -> None:
     with pytest.raises(NativeReviewedExecutionError, match="not a valid") as rejected:
         parse_native_reviewed_request(b'{"apiVersion":"nope"}')
     assert rejected.value.code == "request-invalid"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"\xff",
+        b"[" * 16000 + b"]" * 16000,
+        b'{"apiVersion":"one","apiVersion":"two"}',
+        b'{"nested":{"field":1,"field":2}}',
+        b'{"number":' + b"9" * 5000 + b"}",
+    ],
+)
+def test_parser_rejects_malformed_documents_with_contract_error(payload: bytes) -> None:
+    with pytest.raises(NativeReviewedExecutionError) as error:
+        parse_native_reviewed_request(payload)
+    assert error.value.code == "request-invalid"
 
 
 def test_report_cannot_claim_launch_or_side_effects() -> None:

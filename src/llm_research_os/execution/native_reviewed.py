@@ -108,6 +108,7 @@ class GrantContractCheck:
     image_media_type: str
     config_digest: str
     project_id: str
+    run_id: str
     task_id: str
     worker_id: str
     attempt_id: str
@@ -255,9 +256,18 @@ def parse_native_reviewed_request(payload: bytes | str) -> NativeReviewedExecuti
             "request exceeds the byte limit",
             code="request-too-large",
         )
+
+    def unique_fields(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        fields: dict[str, object] = {}
+        for key, value in pairs:
+            if key in fields:
+                raise ValueError(f"duplicate JSON field: {key}")
+            fields[key] = value
+        return fields
+
     try:
-        document = json.loads(raw)
-    except json.JSONDecodeError as exc:
+        document = json.loads(raw, object_pairs_hook=unique_fields)
+    except (json.JSONDecodeError, UnicodeDecodeError, RecursionError, ValueError) as exc:
         raise NativeReviewedExecutionError(
             "request is not JSON",
             code="request-invalid",
@@ -347,7 +357,7 @@ def _identity_reason(
         return "authorization-actor-not-human"
     if citation.authorized is not True:
         return "authorization-not-authorized"
-    if citation.capabilities != frozenset({EXECUTE_NATIVE_CAPABILITY}):
+    if EXECUTE_NATIVE_CAPABILITY not in citation.capabilities:
         return "authorization-capability-mismatch"
     digest_checks: tuple[tuple[str, str, ReviewedReasonCode], ...] = (
         (request.spec_digest, citation.spec_digest, "spec-digest-mismatch"),
@@ -489,6 +499,7 @@ def _grant_reason(
         grant.image_digest != request.code.bundle_digest
         or grant.config_digest != request.config_digest
         or grant.project_id != request.project_id
+        or grant.run_id != request.run_id
         or grant.task_id != request.task_id
         or grant.worker_id != request.worker_id
         or grant.attempt_id != request.attempt_id

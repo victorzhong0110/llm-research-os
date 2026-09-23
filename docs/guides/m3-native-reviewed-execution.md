@@ -33,8 +33,9 @@ contract view:
    and output ceilings are recorded as requested and `not-enforced`; R03 has
    no runner that implements them.
 5. Grant expiry, revocation, HMAC failure, nonce replay, and a consumed or
-   resumed claim are contract checks only. The validator does not consume a
-   nonce or spawn a second process.
+   resumed claim are contract checks only. The grant also binds the same
+   project, Run, task, Attempt, Worker, bundle, and config as the request.
+   The validator does not consume a nonce or spawn a second process.
 
 The canonical `configDigest` is the JCS digest of the execution object
 (`profile`, platform, code, inputs, environment, limits, restrictions). Grant
