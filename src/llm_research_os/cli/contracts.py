@@ -122,6 +122,14 @@ from llm_research_os.execution.native_preflight_request_schema import (
 from llm_research_os.execution.native_preflight_request_schema import (
     write_schema as write_native_process_preflight_request_schema,
 )
+from llm_research_os.execution.native_reviewed_schema import (
+    canonical_native_reviewed_execution_report_schema,
+    canonical_native_reviewed_execution_request_schema,
+    native_reviewed_execution_report_schema_matches,
+    native_reviewed_execution_request_schema_matches,
+    write_native_reviewed_execution_report_schema,
+    write_native_reviewed_execution_request_schema,
+)
 from llm_research_os.execution.request_schema import (
     canonical_schema as canonical_simulation_request_schema,
 )
@@ -336,6 +344,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         native_process_preflight_report_schema_matches,
         write_native_process_preflight_report_schema,
         "schemas/native-process-preflight-report/v0alpha1.schema.json",
+    ),
+    "native-reviewed-execution-request": _contract(
+        canonical_native_reviewed_execution_request_schema,
+        native_reviewed_execution_request_schema_matches,
+        write_native_reviewed_execution_request_schema,
+        "schemas/native-reviewed-execution-request/v0alpha1.schema.json",
+    ),
+    "native-reviewed-execution-report": _contract(
+        canonical_native_reviewed_execution_report_schema,
+        native_reviewed_execution_report_schema_matches,
+        write_native_reviewed_execution_report_schema,
+        "schemas/native-reviewed-execution-report/v0alpha1.schema.json",
     ),
     "run-state": _contract(
         canonical_run_state_schema,

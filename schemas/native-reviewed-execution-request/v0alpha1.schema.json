@@ -1,0 +1,568 @@
+{
+  "$defs": {
+    "DarwinReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "macOS pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "arm64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "darwin",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "DarwinReviewedPlatform",
+      "type": "object"
+    },
+    "FilesystemRestriction": {
+      "additionalProperties": false,
+      "properties": {
+        "requested": {
+          "enum": [
+            "host",
+            "confined"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requested",
+        "required"
+      ],
+      "title": "FilesystemRestriction",
+      "type": "object"
+    },
+    "LinuxReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "Linux pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "aarch64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "linux",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "LinuxReviewedPlatform",
+      "type": "object"
+    },
+    "MemoryRestriction": {
+      "additionalProperties": false,
+      "properties": {
+        "requested": {
+          "enum": [
+            "unbounded",
+            "bounded"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requested",
+        "required"
+      ],
+      "title": "MemoryRestriction",
+      "type": "object"
+    },
+    "NetworkRestriction": {
+      "additionalProperties": false,
+      "properties": {
+        "requested": {
+          "enum": [
+            "none",
+            "denied",
+            "allowlist"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requested",
+        "required"
+      ],
+      "title": "NetworkRestriction",
+      "type": "object"
+    },
+    "ReviewedCode": {
+      "additionalProperties": false,
+      "properties": {
+        "bundleDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Bundledigest",
+          "type": "string"
+        },
+        "entrypoint": {
+          "maxLength": 256,
+          "minLength": 3,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+          "title": "Entrypoint",
+          "type": "string"
+        },
+        "mediaType": {
+          "const": "researchos.native-reviewed-python-bundle/v0alpha1",
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewedCodeReview"
+        }
+      },
+      "required": [
+        "bundleDigest",
+        "mediaType",
+        "entrypoint",
+        "review"
+      ],
+      "title": "ReviewedCode",
+      "type": "object"
+    },
+    "ReviewedCodeReview": {
+      "additionalProperties": false,
+      "properties": {
+        "bundleDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Bundledigest",
+          "type": "string"
+        },
+        "citationDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Citationdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "citationDigest",
+        "bundleDigest"
+      ],
+      "title": "ReviewedCodeReview",
+      "type": "object"
+    },
+    "ReviewedEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "abi": {
+          "enum": [
+            "cp312",
+            "cp313",
+            "cp314"
+          ],
+          "title": "Abi",
+          "type": "string"
+        },
+        "dependencyLockDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Dependencylockdigest",
+          "type": "string"
+        },
+        "interpreterDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Interpreterdigest",
+          "type": "string"
+        },
+        "inventoryDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Inventorydigest",
+          "type": "string"
+        },
+        "platform": {
+          "discriminator": {
+            "mapping": {
+              "darwin": "#/$defs/DarwinReviewedPlatform",
+              "linux": "#/$defs/LinuxReviewedPlatform"
+            },
+            "propertyName": "os"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LinuxReviewedPlatform"
+            },
+            {
+              "$ref": "#/$defs/DarwinReviewedPlatform"
+            }
+          ],
+          "title": "Platform"
+        },
+        "pythonVersion": {
+          "pattern": "^3\\.(12|13|14)\\.[0-9]{1,4}$",
+          "title": "Pythonversion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "interpreterDigest",
+        "pythonVersion",
+        "abi",
+        "dependencyLockDigest",
+        "inventoryDigest",
+        "platform"
+      ],
+      "title": "ReviewedEnvironment",
+      "type": "object"
+    },
+    "ReviewedInput": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "dataset",
+            "checkpoint",
+            "config",
+            "input"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "maximum": 1073741824,
+          "minimum": 0,
+          "title": "Sizebytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "digest",
+        "purpose",
+        "sizeBytes"
+      ],
+      "title": "ReviewedInput",
+      "type": "object"
+    },
+    "ReviewedLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactBytes": {
+          "maximum": 1073741824,
+          "minimum": 0,
+          "title": "Artifactbytes",
+          "type": "integer"
+        },
+        "memoryBytes": {
+          "$ref": "#/$defs/ReviewedMemoryCeiling"
+        },
+        "processCount": {
+          "$ref": "#/$defs/ReviewedProcessCeiling"
+        },
+        "stderrBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stderrbytes",
+          "type": "integer"
+        },
+        "stdoutBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "title": "Stdoutbytes",
+          "type": "integer"
+        },
+        "wallTimeSeconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Walltimeseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wallTimeSeconds",
+        "stdoutBytes",
+        "stderrBytes",
+        "artifactBytes"
+      ],
+      "title": "ReviewedLimits",
+      "type": "object"
+    },
+    "ReviewedMemoryCeiling": {
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": {
+          "maximum": 17179869184,
+          "minimum": 1,
+          "title": "Ceiling",
+          "type": "integer"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ceiling",
+        "required"
+      ],
+      "title": "ReviewedMemoryCeiling",
+      "type": "object"
+    },
+    "ReviewedProcessCeiling": {
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": {
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Ceiling",
+          "type": "integer"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ceiling",
+        "required"
+      ],
+      "title": "ReviewedProcessCeiling",
+      "type": "object"
+    },
+    "ReviewedRestrictions": {
+      "additionalProperties": false,
+      "properties": {
+        "filesystem": {
+          "$ref": "#/$defs/FilesystemRestriction"
+        },
+        "memory": {
+          "$ref": "#/$defs/MemoryRestriction"
+        },
+        "network": {
+          "$ref": "#/$defs/NetworkRestriction"
+        }
+      },
+      "required": [
+        "network",
+        "filesystem",
+        "memory"
+      ],
+      "title": "ReviewedRestrictions",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-reviewed-execution-request/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Closed request for one reviewed Python task. Not a launch credential.",
+  "properties": {
+    "actorId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Actorid",
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "attemptId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Attemptid",
+      "type": "string"
+    },
+    "authorizationEventId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Authorizationeventid",
+      "type": "string"
+    },
+    "authorizationSequence": {
+      "pattern": "^[1-9][0-9]{0,17}$",
+      "title": "Authorizationsequence",
+      "type": "string"
+    },
+    "code": {
+      "$ref": "#/$defs/ReviewedCode"
+    },
+    "configDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Configdigest",
+      "type": "string"
+    },
+    "decisionDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Decisiondigest",
+      "type": "string"
+    },
+    "environment": {
+      "$ref": "#/$defs/ReviewedEnvironment"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/ReviewedInput"
+      },
+      "maxItems": 32,
+      "title": "Inputs",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "kind": {
+      "const": "NativeReviewedExecutionRequest",
+      "title": "Kind",
+      "type": "string"
+    },
+    "limits": {
+      "$ref": "#/$defs/ReviewedLimits"
+    },
+    "planDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Plandigest",
+      "type": "string"
+    },
+    "platform": {
+      "discriminator": {
+        "mapping": {
+          "darwin": "#/$defs/DarwinReviewedPlatform",
+          "linux": "#/$defs/LinuxReviewedPlatform"
+        },
+        "propertyName": "os"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LinuxReviewedPlatform"
+        },
+        {
+          "$ref": "#/$defs/DarwinReviewedPlatform"
+        }
+      ],
+      "title": "Platform"
+    },
+    "profile": {
+      "const": "native-reviewed-python/v0alpha1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "registryDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Registrydigest",
+      "type": "string"
+    },
+    "restrictions": {
+      "$ref": "#/$defs/ReviewedRestrictions"
+    },
+    "revisionId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Revisionid",
+      "type": "string"
+    },
+    "runId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "specDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Specdigest",
+      "type": "string"
+    },
+    "taskId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Taskid",
+      "type": "string"
+    },
+    "workerId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workerid",
+      "type": "string"
+    },
+    "workflowId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workflowid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "profile",
+    "platform",
+    "projectId",
+    "revisionId",
+    "workflowId",
+    "taskId",
+    "runId",
+    "attemptId",
+    "workerId",
+    "actorId",
+    "authorizationEventId",
+    "authorizationSequence",
+    "specDigest",
+    "registryDigest",
+    "planDigest",
+    "decisionDigest",
+    "code",
+    "inputs",
+    "configDigest",
+    "environment",
+    "limits",
+    "restrictions"
+  ],
+  "title": "NativeReviewedExecutionRequest",
+  "type": "object"
+}

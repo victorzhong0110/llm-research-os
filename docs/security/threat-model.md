@@ -2,7 +2,7 @@
 
 > Status: Active M0 baseline; kernel-proof closed 2026-09-03 ([ADR-0037](../adr/0037-m0-kernel-proof-closure.md))
 >
-> Last reviewed: 2026-09-17
+> Last reviewed: 2026-09-23
 >
 > Scope: protocol validation, deterministic planning and plan authorization, audit-only authorization events, read-only authorization lineage reconstruction, in-process RunSnapshot decisionDigest, SimulatedRuntime consume of one local `{eventId, sequence}` citation of `plan.authorization.evaluated` (not a signed launch JWT), non-executing native-process preflight, local event persistence, local artifact objects and their explicit CLI, Run/Attempt projection, RunControl, deterministic SimulatedRuntime, its strict local CLI, explicit Run/Attempt cancellation requests, research decision objects and ledger including `question.asked` / `question.answered`, the in-process deterministic ModelProvider mock with digest-only `ai.call.*` facts, local Markdown/PDF evidence import, the in-process OpenAI-compatible HTTP adapter, runtime CNY budget facts, seeded synthetic `training.step` / `evaluation.metric` facts, and static HTML/Markdown Run reports. M2-0 adds a loopback Worker long-poll
 binding, HMAC grants bound to an authorized `execute.local` execution object, and a
@@ -26,7 +26,10 @@ slice 1 adds a local restricted native helper over a sealed preflight with
 this-store authorization consume (ADR-0063, TM-064): fixed noop argv only,
 process-group supervision, bounded capture, no entrypoint import, no
 lifecycle append, and SSH transport refused without a socket. Native SSH
-onboarding is a pending-live checklist pack only (TM-065).
+onboarding is a pending-live checklist pack only (TM-065). R03 adds a
+non-launching reviewed-native contract for `execute.native` (ADR-0065, TM-066):
+validation reports keep `launchAllowed` false, and no executor honors that
+capability.
 
 This document is intentionally updated as executable capability is added. A mitigation marked “planned” is not a security property of the current code.
 
@@ -89,6 +92,7 @@ generate is ¥0; remote spend is capped by `budget.*` facts.
 | Native process preflight | Pure reviewer for one exact authorized Python task | Implemented; fixed non-shell/no-network profile, but no interpreter identity, enforced isolation, process launch or durable receipt |
 | NativeProcessRuntime slice 1 | Local restricted helper over a sealed preflight | Implemented (ADR-0063, TM-064); recomputed preflight plus this-store human `{eventId, sequence}` consume before spawn; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; SSH refused without a socket; no lifecycle/grant/artifact writes |
 | Native SSH onboarding | Pending-live checklist pack | Implemented as validator plus pack writer (TM-065); pinned host key, non-root, no password/agent-forwarding/private-key; STATUS stays `pending-live`; never dials SSH |
+| Reviewed native execution contract | Validation-only `native-reviewed-python/v0alpha1` | Implemented as a non-launching validator (ADR-0065, TM-066). `execute.native` is registered and is not an alias for `execute.local` or `process.native`. No executor honors it. `launchAllowed` is false. Network, filesystem, and memory isolation are not enforced. No grant is consumed and no entrypoint is imported |
 | AI/model providers | Untrusted proposals and content | Deterministic mock and in-process OpenAI-compatible HTTP; loopback default; remote requires SecretRef + https + `read.external_api` + recorded CNY limit; DNS pin before socket (TM-042) |
 | Evidence connectors | Untrusted content and metadata | Local Markdown/PDF import only; no network connectors |
 | Plugins/custom code | Arbitrary-code risk | Not executed in M0 |
@@ -211,6 +215,7 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-062 | A rounded coverage total passes the floor, or an unknown capability acquires launch authority | Undetected untested paths or capability drift | Integer-count coverage gate; central known capability set; payload catalog drift check | `tests/test_coverage_gate.py`, `tests/test_plan_authorization.py`, `tests/test_event_catalog.py` |
 | TM-064 | A stale or foreign authorization launches a native process, an SSH request spawns locally, or the helper is treated as entrypoint execution with network/OCI isolation | Unreviewed code execution; false isolation claims | Sealed preflight recompute plus this-store human `{eventId, sequence}` consume before spawn; `ssh` validated past authorization then refused without a socket; fixed noop argv, empty env allowlist, isolated temp cwd, bounded capture, process-group reap; entrypoint never imported; no lifecycle/grant/artifact writes; receipt says `entrypointExecuted: false`, `not-enforced` network (ADR-0063) | `tests/test_native_process_runtime.py` |
 | TM-065 | An SSH pack dials a host, stores a private key or password, allows root, or is treated as a live two-host proof | Credential exposure; false remote proof | Pure validator plus pack writer with no socket/subprocess; pinned host key required, root/password/agent-forwarding/private-key refused; STATUS stays `pending-live` with `ssh-pending` transport; loopback labeled not-cross-machine (ADR-0063) | `tests/test_native_ssh_onboard.py` |
+| TM-066 | An R03 validation report, application receipt, audit signature, `execute.local` or `process.native` grant, or the `restricted-v0alpha1` noop is used to import a reviewed entrypoint | Premature or substituted code execution; false isolation | `execute.native` is a distinct registered capability with no executor; the validator is pure and returns `launchAllowed=false`; required network, filesystem, or memory isolation that this profile cannot enforce is refused; negative tests assert no entrypoint import, subprocess, or lifecycle append (ADR-0065) | `tests/test_native_reviewed_execution.py` |
 
 
 ## 7. M0 security gates

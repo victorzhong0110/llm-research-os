@@ -29,6 +29,11 @@ authorized release.
   `llm_research_os.application`). Commands are identity-bound and return
   durable receipts linked to existing facts. This is candidate behavior, not
   maintainer acceptance, native launch, or Issue #53 closure.
+- R03 adds the reviewed-native request/report contract
+  (`native-reviewed-python/v0alpha1`, `execute.native`) and a validator that
+  does not import an entrypoint or start a process. `launchAllowed` stays
+  false. This is candidate behavior, not real execution, and does not close
+  Issue #53.
 - Optimize the common ASCII CloudEvents identity check while preserving the
   existing Unicode rejection rules; the 100k M2 append benchmark keeps its
   original threshold.

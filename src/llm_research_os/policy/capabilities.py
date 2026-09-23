@@ -39,6 +39,9 @@ class ExecutionCapability(StrEnum):
     OCI = "execute.oci"
     GPU = "execute.gpu"
     MPS = "execute.mps"
+    # Registered for the reviewed-native contract only. No executor may honor it
+    # until a later package satisfies ADR-0065 preparation and consumption.
+    NATIVE = "execute.native"
 
 
 # train.simulated is the inert bounded-loop corpus capability, not GPU authority.

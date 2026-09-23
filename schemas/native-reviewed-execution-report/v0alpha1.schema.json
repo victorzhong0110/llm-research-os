@@ -1,0 +1,509 @@
+{
+  "$defs": {
+    "DarwinReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "macOS pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "arm64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "darwin",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "DarwinReviewedPlatform",
+      "type": "object"
+    },
+    "FilesystemEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "enforced": {
+          "const": "not-enforced",
+          "title": "Enforced",
+          "type": "string"
+        },
+        "requested": {
+          "enum": [
+            "host",
+            "confined"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "unsupported": {
+          "enum": [
+            "none",
+            "filesystem-confinement"
+          ],
+          "title": "Unsupported",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requested",
+        "enforced",
+        "unsupported"
+      ],
+      "title": "FilesystemEvidence",
+      "type": "object"
+    },
+    "LimitEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "enforced": {
+          "const": "not-enforced",
+          "title": "Enforced",
+          "type": "string"
+        },
+        "evidence": {
+          "enum": [
+            "declared",
+            "missing"
+          ],
+          "title": "Evidence",
+          "type": "string"
+        },
+        "requested": {
+          "minimum": 0,
+          "title": "Requested",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "enforced",
+        "evidence"
+      ],
+      "title": "LimitEvidence",
+      "type": "object"
+    },
+    "LimitEvidenceSet": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactBytes": {
+          "$ref": "#/$defs/LimitEvidence"
+        },
+        "memoryBytes": {
+          "$ref": "#/$defs/LimitEvidence"
+        },
+        "processCount": {
+          "$ref": "#/$defs/LimitEvidence"
+        },
+        "stderrBytes": {
+          "$ref": "#/$defs/LimitEvidence"
+        },
+        "stdoutBytes": {
+          "$ref": "#/$defs/LimitEvidence"
+        },
+        "wallTimeSeconds": {
+          "$ref": "#/$defs/LimitEvidence"
+        }
+      },
+      "required": [
+        "wallTimeSeconds",
+        "stdoutBytes",
+        "stderrBytes",
+        "artifactBytes",
+        "processCount",
+        "memoryBytes"
+      ],
+      "title": "LimitEvidenceSet",
+      "type": "object"
+    },
+    "LinuxReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "Linux pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "aarch64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "linux",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "LinuxReviewedPlatform",
+      "type": "object"
+    },
+    "MemoryEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "enforced": {
+          "const": "not-enforced",
+          "title": "Enforced",
+          "type": "string"
+        },
+        "requested": {
+          "enum": [
+            "unbounded",
+            "bounded"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "unsupported": {
+          "enum": [
+            "none",
+            "memory-limit"
+          ],
+          "title": "Unsupported",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requested",
+        "enforced",
+        "unsupported"
+      ],
+      "title": "MemoryEvidence",
+      "type": "object"
+    },
+    "NetworkEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "enforced": {
+          "const": "not-enforced",
+          "title": "Enforced",
+          "type": "string"
+        },
+        "requested": {
+          "enum": [
+            "none",
+            "denied",
+            "allowlist"
+          ],
+          "title": "Requested",
+          "type": "string"
+        },
+        "unsupported": {
+          "enum": [
+            "none",
+            "network-isolation"
+          ],
+          "title": "Unsupported",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requested",
+        "enforced",
+        "unsupported"
+      ],
+      "title": "NetworkEvidence",
+      "type": "object"
+    },
+    "RestrictionEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "filesystem": {
+          "$ref": "#/$defs/FilesystemEvidence"
+        },
+        "memory": {
+          "$ref": "#/$defs/MemoryEvidence"
+        },
+        "network": {
+          "$ref": "#/$defs/NetworkEvidence"
+        }
+      },
+      "required": [
+        "network",
+        "filesystem",
+        "memory"
+      ],
+      "title": "RestrictionEvidence",
+      "type": "object"
+    },
+    "ReviewedInputDigest": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "digest"
+      ],
+      "title": "ReviewedInputDigest",
+      "type": "object"
+    },
+    "ReviewedSideEffects": {
+      "additionalProperties": false,
+      "description": "Literal zeros. The validator has no import, spawn, or append path.",
+      "properties": {
+        "entrypointsImported": {
+          "const": 0,
+          "title": "Entrypointsimported",
+          "type": "integer"
+        },
+        "lifecycleFactsAppended": {
+          "const": 0,
+          "title": "Lifecyclefactsappended",
+          "type": "integer"
+        },
+        "processesSpawned": {
+          "const": 0,
+          "title": "Processesspawned",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entrypointsImported",
+        "processesSpawned",
+        "lifecycleFactsAppended"
+      ],
+      "title": "ReviewedSideEffects",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-reviewed-execution-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Validation report. ``launchAllowed`` cannot be true in this schema.",
+  "properties": {
+    "acceptedForPreparation": {
+      "title": "Acceptedforpreparation",
+      "type": "boolean"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "attemptId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Attemptid",
+      "type": "string"
+    },
+    "authorizationEventId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Authorizationeventid",
+      "type": "string"
+    },
+    "authorizationSequence": {
+      "pattern": "^[1-9][0-9]{0,17}$",
+      "title": "Authorizationsequence",
+      "type": "string"
+    },
+    "codeDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Codedigest",
+      "type": "string"
+    },
+    "dependencyLockDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Dependencylockdigest",
+      "type": "string"
+    },
+    "evidenceClass": {
+      "const": "contract-check",
+      "title": "Evidenceclass",
+      "type": "string"
+    },
+    "inputDigests": {
+      "items": {
+        "$ref": "#/$defs/ReviewedInputDigest"
+      },
+      "maxItems": 32,
+      "title": "Inputdigests",
+      "type": "array"
+    },
+    "interpreterDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Interpreterdigest",
+      "type": "string"
+    },
+    "inventoryDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Inventorydigest",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewedExecutionReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "launchAllowed": {
+      "const": false,
+      "title": "Launchallowed",
+      "type": "boolean"
+    },
+    "limits": {
+      "$ref": "#/$defs/LimitEvidenceSet"
+    },
+    "outcome": {
+      "enum": [
+        "accepted-for-preparation",
+        "refused"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "platform": {
+      "discriminator": {
+        "mapping": {
+          "darwin": "#/$defs/DarwinReviewedPlatform",
+          "linux": "#/$defs/LinuxReviewedPlatform"
+        },
+        "propertyName": "os"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LinuxReviewedPlatform"
+        },
+        {
+          "$ref": "#/$defs/DarwinReviewedPlatform"
+        }
+      ],
+      "title": "Platform"
+    },
+    "profile": {
+      "const": "native-reviewed-python/v0alpha1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "reasonCode": {
+      "enum": [
+        "launch-not-implemented",
+        "prefix-unverified",
+        "decision-not-authorization",
+        "foreign-project",
+        "stale-revision",
+        "foreign-workflow",
+        "foreign-task",
+        "foreign-run",
+        "foreign-attempt",
+        "foreign-worker",
+        "authorization-event-mismatch",
+        "authorization-sequence-mismatch",
+        "authorization-actor-mismatch",
+        "authorization-actor-not-human",
+        "authorization-not-authorized",
+        "authorization-capability-mismatch",
+        "spec-digest-mismatch",
+        "registry-digest-mismatch",
+        "plan-digest-mismatch",
+        "decision-digest-mismatch",
+        "review-digest-mismatch",
+        "config-digest-mismatch",
+        "code-digest-mismatch",
+        "entrypoint-mismatch",
+        "media-type-mismatch",
+        "input-digest-mismatch",
+        "interpreter-digest-mismatch",
+        "dependency-lock-mismatch",
+        "inventory-digest-mismatch",
+        "environment-identity-mismatch",
+        "missing-resource-ceiling",
+        "required-network-unenforced",
+        "required-filesystem-unenforced",
+        "required-memory-unenforced",
+        "required-process-unenforced",
+        "grant-capability-mismatch",
+        "grant-hmac-invalid",
+        "grant-expired",
+        "grant-revoked",
+        "grant-nonce-replay",
+        "grant-resumed-claim",
+        "grant-already-consumed",
+        "grant-binding-mismatch",
+        "grant-media-mismatch"
+      ],
+      "title": "Reasoncode",
+      "type": "string"
+    },
+    "requestDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Requestdigest",
+      "type": "string"
+    },
+    "restrictions": {
+      "$ref": "#/$defs/RestrictionEvidence"
+    },
+    "runId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/ReviewedSideEffects"
+    },
+    "taskId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Taskid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "profile",
+    "evidenceClass",
+    "requestDigest",
+    "projectId",
+    "runId",
+    "attemptId",
+    "taskId",
+    "authorizationEventId",
+    "authorizationSequence",
+    "platform",
+    "acceptedForPreparation",
+    "launchAllowed",
+    "outcome",
+    "reasonCode",
+    "restrictions",
+    "limits",
+    "codeDigest",
+    "inputDigests",
+    "interpreterDigest",
+    "dependencyLockDigest",
+    "inventoryDigest",
+    "sideEffects"
+  ],
+  "title": "NativeReviewedExecutionReport",
+  "type": "object"
+}

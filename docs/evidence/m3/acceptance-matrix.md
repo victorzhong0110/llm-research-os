@@ -24,7 +24,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | --- | --- | --- | --- | --- |
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
-| R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
+| R03 | Real native execution contract | Candidate on this PR; not merged | Not yet accepted | [R03 candidate](#r03-candidate-evidence) |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
 | R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
@@ -129,6 +129,43 @@ workspace identity binding, common CLI/Python semantics, durable receipts,
 conflict and stale-head refusal, and unchanged EventStore schema v2. It does
 not accept real native execution, SSH live operation, browser controls, real
 evaluation, or Issue #53 closure. R03 remains a separate work package.
+
+## R03 candidate evidence
+
+Scope: reviewed-native request/report contract only. The validator does not
+import an entrypoint, spawn a process, consume a Worker grant, or append a
+Run/Attempt fact. `launchAllowed` is false. This section is candidate evidence
+for the open PR head. It is not a merge SHA, not acceptance, and not live
+execution. Issue #108 is a prior CI rerun note and is not R03 execution
+evidence. Real entrypoint execution remains R05. Issue #53 stays open.
+
+Commands below were run on the candidate tree before this PR's head was
+published. The PR body records the exact head SHA. That SHA is not a merge
+SHA. Host: Linux 6.12.94+ x86_64, CPython 3.12.3. `observe_host_feasibility()`
+on that host reported `linux/x86_64`, with network, filesystem, memory,
+process-group, wall-clock, and output-byte enforcement all false, and
+`launch_implemented` false.
+
+- `uv run ruff check .` passed
+- `uv run ruff format --check .` passed
+- `uv run mypy src` passed
+- `uv run pytest -m "not oci_live and not slow" --cov=llm_research_os --cov-fail-under=85` passed: 1520 passed, 12 deselected, coverage 21434/25113 = 85.350217%
+- `uv run python scripts/check_coverage.py coverage.json` passed
+- `uv run researchos schema --check-all` passed
+- `node conformance/digest/verify.mjs` passed (13 vectors)
+- `uv run python scripts/event_catalog.py --check` passed
+- `uv run python scripts/project_status.py --check` passed
+- `uv build` passed
+
+Package tests: `tests/test_native_reviewed_execution.py` (62 passed inside
+the suite above). They cover the generated schemas, valid Linux and macOS
+documents, stale or substituted bindings, expiry, revocation, replay, resumed
+claim, unsupported profile and platform, required but unenforced isolation,
+and the absence of entrypoint import or subprocess. A darwin document checked
+on this Linux host is a contract result, not a live macOS run. No pending-live
+host is required for this validation-only package; R05/R06 live execution
+remains absent. Twelve deselected tests are the existing `oci_live` and `slow`
+selectors, not R03 evidence.
 
 ## Issue #53 evidence checklist
 
