@@ -16,7 +16,11 @@ false in the generated report schema.
 
 `llm_research_os.execution.native_reviewed` parses a bounded JSON request and
 compares it with a caller-supplied verified-prefix citation and optional grant
-contract view:
+contract view. Caller-supplied prefix citations, prepared citations, and grant
+booleans are contract fixtures only in R03. Before using a report for any
+preparation or launch decision, an R04 or R05 adapter must independently
+rebuild and verify the real facts and bytes. This package does not implement
+those adapters.
 
 1. Unknown fields, noncanonical digests, duplicate input names, path-shaped
    entrypoints or interpreters, and unsupported OS / architecture / ABI fail
