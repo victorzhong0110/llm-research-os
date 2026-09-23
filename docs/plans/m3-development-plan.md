@@ -1,9 +1,10 @@
 # M3 development plan
 
-Status: **R01 integrated by PR #84 at `7d1bcbe`; R02 is under review in #105.** This is the
+Status: **R01 integrated by PR #84 at `7d1bcbe`; R02 integrated and scoped-accepted via PR #105 at `9fb8f514`.** This is the
 single maintained M3 task plan. Recording a task does not complete it.
 Planning baseline: `main@e1282c5601e08a0bb46ebe10f8d2eca470b4a015`, after #81.
 R01 integration: `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47`.
+R02 integration: `9fb8f5142bb18adffa1423e96ecf2ca43f650432`; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed.
 Start implementation from the latest verified main after predecessor acceptance.
 Work-package navigation: [GitHub index #104](https://github.com/victorzhong0110/llm-research-os/issues/104).
 
@@ -55,7 +56,8 @@ runnable demonstration, validation results, and remaining gaps for review.
 | Detached Ed25519 attestations | Merged; verified offline audit contract | ADR-0061; `launchAllowed=false`, not launch authority |
 | #81 restricted native noop | Merged; CI-verified fixed helper and cancellation behavior | ADR-0063; entrypoint not imported; no real task lifecycle or artifact claim |
 | #81 SSH pack writer and SSH refusal | Merged; validator/writer/refusal tested | Actual onboarding and execution remain pending-live; a pack is not a two-host proof |
-| R02–R16 capabilities | Planned | Per-package evidence must be supplied; no new capability is accepted by this plan |
+| R02 shared application services | Merged in #105; accepted for the scoped application command and receipt contract | [R02 evidence](../evidence/m3/acceptance-matrix.md); no native launch or live evaluation claim |
+| R03–R16 capabilities | Planned | Per-package evidence must be supplied; no new capability is accepted by this plan |
 | Paid cloud, hosted multi-tenancy, marketplace | Deferred | No new spend or publication authorized by the plan |
 
 Verification always records its scope and implementation/evidence identity.
