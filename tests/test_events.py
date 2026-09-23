@@ -319,3 +319,30 @@ def test_optional_run_fields_round_trip_with_external_names() -> None:
     assert dumped["data"]["blockId"] == "simulate"
     assert "correlation_id" not in dumped
     assert "run_id" not in dumped["data"]
+
+
+def test_cloudevents_string_fast_path_preserves_code_point_boundaries() -> None:
+    from llm_research_os.events.models import _require_cloudevents_string
+
+    # Every ASCII value plus the Unicode forbidden ranges and their neighbors.
+    codes = set(range(128))
+    for low, high in ((0x7F, 0x9F), (0xD800, 0xDFFF), (0xFDD0, 0xFDEF)):
+        codes.update(range(low - 1, high + 2))
+    for plane in range(17):
+        codes.update((plane * 0x10000 + 0xFFFD, plane * 0x10000 + 0xFFFE, plane * 0x10000 + 0xFFFF))
+    codes.update((0x4E2D, 0x1F600))
+    for code in sorted(codes):
+        forbidden = (
+            code <= 0x1F
+            or 0x7F <= code <= 0x9F
+            or 0xD800 <= code <= 0xDFFF
+            or 0xFDD0 <= code <= 0xFDEF
+            or (code & 0xFFFF) in (0xFFFE, 0xFFFF)
+        )
+        for prefix in ("identity.", "研究."):
+            value = prefix + chr(code) + ".end"
+            if forbidden:
+                with pytest.raises(ValueError, match="CloudEvents strings"):
+                    _require_cloudevents_string(value)
+            else:
+                assert _require_cloudevents_string(value) == value

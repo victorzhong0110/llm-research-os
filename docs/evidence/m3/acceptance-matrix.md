@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 under review in PR #84; not merged or accepted by this file.**
+Status: **R01 integrated in #84 at `7d1bcbe`; R02 candidate #105 remains unmerged.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -22,8 +22,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 
 | Package | Scope | Implementation / integration | Verification / acceptance | Evidence |
 | --- | --- | --- | --- | --- |
-| R01 | Scope, capability state, and acceptance baseline | Documentation proposed in #84; unmerged | Candidate checks; maintainer review pending | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); record new head and CI after push |
-| R02 | Shared application services | Candidate implementation on this branch; not merged or accepted | Local candidate checks recorded below; not acceptance and not live evidence | [R02 candidate evidence](#r02-candidate-evidence) |
+| R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
+| R02 | Shared application services | Candidate #105; not merged | Code review at `a15b106` passed after P1 fixes; integration and post-merge checks pending | [R02 candidate evidence](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Planned | Not yet accepted | Add scoped evidence with R03 |
 | R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
@@ -91,7 +91,7 @@ without training extras, duplicate event-id recovery, `expectedHead` at the
 decision append and at the first simulation write, and one frozen snapshot
 for spec, decision, simulation request, and registry inputs.
 
-Local candidate result on this pull request's implementation head, after the
+Historical implementer report at `a15b106d4fd211f4c6aaa16d92ae859f0b5de390`, after the
 simulation `expectedHead` follow-up:
 `ruff check`, `ruff format --check`, and `mypy src` passed;
 `pytest tests/test_application_service.py tests/test_run_control.py tests/test_simulated_runtime.py`

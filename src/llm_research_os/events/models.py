@@ -100,6 +100,7 @@ def _rfc3986_uri_reference_pattern() -> str:
 URI_REFERENCE_PATTERN = _rfc3986_uri_reference_pattern()
 _RFC3339_AWARE = re.compile(RFC3339_AWARE_PATTERN)
 _URI_REFERENCE = re.compile(URI_REFERENCE_PATTERN)
+_ASCII_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 
 
 def _is_cloudevents_forbidden_code_point(code: int) -> bool:
@@ -113,7 +114,14 @@ def _is_cloudevents_forbidden_code_point(code: int) -> bool:
 
 
 def _require_cloudevents_string(value: str) -> str:
-    if any(_is_cloudevents_forbidden_code_point(ord(char)) for char in value):
+    # Event identities are usually ASCII. Scan them in C without changing the
+    # full Unicode rejection rules used for non-ASCII strings.
+    forbidden = (
+        _ASCII_CONTROL.search(value) is not None
+        if value.isascii()
+        else any(_is_cloudevents_forbidden_code_point(ord(char)) for char in value)
+    )
+    if forbidden:
         raise ValueError(
             "CloudEvents strings must not contain control, noncharacter or surrogate code points"
         )

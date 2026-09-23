@@ -1,6 +1,6 @@
 # ADR-0064: Separate global planning ownership from implementation
 
-Status: Proposed for repository integration in PR #84; records the maintainer's
+Status: Integrated by maintainer-authorized PR #84 (`7d1bcbe`); records the maintainer's
 explicit instruction assigning global normative guidance to the planning/review
 assistant. Merge and milestone acceptance remain with the maintainer.
 

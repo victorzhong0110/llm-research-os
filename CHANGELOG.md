@@ -17,7 +17,7 @@ authorized release.
 - M3 SSH/non-OCI work has started as slice 1 (ADR-0063, Issue #53): a local
   restricted helper plus a pending-live SSH onboarding pack. SSH execution,
   paid cloud, and public MVP remain out of scope.
-- R01 proposes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
+- R01 integrated by PR #84 establishes the post-`#81` [M3 task baseline](docs/plans/m3-development-plan.md)
   and [acceptance matrix](docs/evidence/m3/acceptance-matrix.md): real native
   execution before Web, stable R01–R16 definitions, and checkpoints A/B/C/D.
   Historical M1/M2 acceptance retains its original platform and evidence SHA.
@@ -29,6 +29,9 @@ authorized release.
   `llm_research_os.application`). Commands are identity-bound and return
   durable receipts linked to existing facts. This is candidate behavior, not
   maintainer acceptance, native launch, or Issue #53 closure.
+- Optimize the common ASCII CloudEvents identity check while preserving the
+  existing Unicode rejection rules; the 100k M2 append benchmark keeps its
+  original threshold.
 
 ### Added
 
