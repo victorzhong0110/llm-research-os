@@ -288,12 +288,15 @@ duplicate refusal, prepared-code substitution, pre-gate revocation and
 expiry, substitution after child creation but before import, failed task
 facts, identity-persistence failure after child creation, and CLI parity.
 Focused command on the candidate tree:
-`uv run --no-sync pytest -q tests/test_native_reviewed_runtime.py
+`uv run --no-sync pytest -q tests/test_native_reviewed_child.py
+tests/test_native_reviewed_runtime.py
 tests/test_native_reviewed_preparation.py tests/test_native_reviewed_execution.py
-tests/test_worker_protocol.py tests/test_event_catalog.py` — **119 passed**
+tests/test_worker_protocol.py tests/test_event_catalog.py` — **127 passed**
 after adding intent replay, post-preflight receipt/code substitution, stdout
 bound, symlinked state directory, and a failed `attempt.started` persistence
-case after grant consumption.
+case after grant consumption. The runner unit tests cover malformed/oversized
+frames, path traversal, symlinks, byte substitution, structured success, and
+task exceptions; the separate integration tests still execute an actual child.
 The interpreter's actual executable image is hashed through Linux procfs
 when accessible; hosts hiding process entries and macOS rehash the reviewed
 interpreter path while the child remains behind the barrier. This fallback
@@ -320,6 +323,12 @@ failed: 84.984% on Ubuntu, 84.939% on macOS 3.12, and 84.988% on macOS
 3.14 job also completed 1553 tests and failed only its 84.988% coverage
 gate. The six added negative tests above are the follow-up for this real
 coverage shortfall; a new CI run is required before review readiness.
+
+Second CI run `36458092929` at head `64193e4b` passed Ubuntu 3.12 and 3.13,
+including 1559 tests each and unrounded coverage 85.016092% and 85.004865%.
+Linux OCI and human authorship passed. The optional Ubuntu 3.14 job completed
+1559 tests but was still 84.997% covered. Runner branch tests were added
+after this run; final CI is required for macOS and the forward-compat job.
 
 ## Issue #53 evidence checklist
 
