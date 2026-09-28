@@ -205,6 +205,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="restricted process profile; the only executable profile",
     )
     add_registry_arguments(native_run)
+    native_prepare = native_commands.add_parser(
+        "prepare",
+        help="materialize reviewed code and environment; does not start user code",
+    )
+    _add_native_preparation_arguments(native_prepare)
+    native_doctor = native_commands.add_parser(
+        "doctor",
+        help="diagnose a reviewed environment; does not repair it or start user code",
+    )
+    _add_native_preparation_arguments(native_doctor)
     native_onboard = native_commands.add_parser(
         "ssh-onboard",
         help="write a pending-live SSH onboarding pack without dialing",
@@ -931,6 +941,20 @@ def build_parser() -> argparse.ArgumentParser:
     add_event_format_argument(training_collect)
     add_app_parser(subparsers)
     return parser
+
+
+def _add_native_preparation_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("request", type=Path, help="NativeReviewedExecutionRequest JSON file")
+    parser.add_argument(
+        "database",
+        type=Path,
+        help="existing SQLite event store; missing paths are not created",
+    )
+    parser.add_argument("artifacts", type=Path, help="existing content-addressed artifact root")
+    parser.add_argument("workspace", type=Path, help="preparation workspace directory")
+    parser.add_argument("--grant-token-file", type=Path, required=True)
+    parser.add_argument("--hmac-key-file", type=Path, required=True)
+    add_event_format_argument(parser)
 
 
 def add_event_format_argument(parser: argparse.ArgumentParser) -> None:

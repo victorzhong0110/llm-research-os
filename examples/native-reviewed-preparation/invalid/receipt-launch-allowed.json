@@ -1,0 +1,91 @@
+{
+  "abi": "cp312",
+  "apiVersion": "researchos.dev/v0alpha1",
+  "attemptId": "attempt.1",
+  "authorizationEventId": "evt.auth.1",
+  "authorizationSequence": "1",
+  "bundleDigest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+  "configDigest": "jcs-sha256:9090909090909090909090909090909090909090909090909090909090909090",
+  "decisionDigest": "jcs-sha256:d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
+  "dependencyLockDigest": "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+  "entrypoint": "brick.task:main",
+  "evidenceClass": "preparation",
+  "files": [
+    {
+      "digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "relativePath": "material/bundle",
+      "role": "bundle"
+    },
+    {
+      "digest": "sha256:abababababababababababababababababababababababababababababababab",
+      "relativePath": "material/code/brick/task.py",
+      "role": "code"
+    },
+    {
+      "digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "name": "corpus",
+      "relativePath": "material/inputs/corpus",
+      "role": "input"
+    },
+    {
+      "digest": "jcs-sha256:9090909090909090909090909090909090909090909090909090909090909090",
+      "relativePath": "material/config.json",
+      "role": "config"
+    },
+    {
+      "digest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+      "relativePath": "material/environment/interpreter",
+      "role": "interpreter"
+    },
+    {
+      "digest": "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+      "relativePath": "material/environment/dependency-lock",
+      "role": "dependency-lock"
+    },
+    {
+      "digest": "sha256:5656565656565656565656565656565656565656565656565656565656565656",
+      "relativePath": "material/environment/inventory",
+      "role": "inventory"
+    },
+    {
+      "digest": "jcs-sha256:7878787878787878787878787878787878787878787878787878787878787878",
+      "relativePath": "material/environment/review",
+      "role": "review"
+    }
+  ],
+  "grantId": "grant.1",
+  "inputDigests": [
+    {
+      "digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "name": "corpus"
+    }
+  ],
+  "interpreterDigest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+  "interpreterIdentity": "byte-digest",
+  "inventoryDigest": "sha256:5656565656565656565656565656565656565656565656565656565656565656",
+  "kind": "NativeReviewedPreparationReceipt",
+  "launchAllowed": true,
+  "mediaType": "researchos.native-reviewed-python-bundle/v0alpha1",
+  "outcome": "prepared",
+  "planDigest": "jcs-sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+  "platform": {
+    "architecture": "x86_64",
+    "os": "linux"
+  },
+  "profile": "native-reviewed-python/v0alpha1",
+  "projectId": "project.reviewed",
+  "pythonVersion": "3.12.7",
+  "reasonCode": "prepared",
+  "requestDigest": "jcs-sha256:e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5",
+  "revisionId": "1",
+  "runId": "run.1",
+  "sideEffects": {
+    "entrypointsImported": 0,
+    "grantsConsumed": 0,
+    "lifecycleFactsAppended": 0,
+    "packagesInstalled": 0,
+    "processesSpawned": 0
+  },
+  "taskId": "task.brick",
+  "workerId": "worker.1"
+}

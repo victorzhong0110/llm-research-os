@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import ValidationError
 
+from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.blocks.io import ManifestLoadError
 from llm_research_os.blocks.registry import RegistryError, build_registry
 from llm_research_os.cli.output import dumps_json, print_error, safe_text
@@ -25,6 +27,20 @@ from llm_research_os.execution import (
     parse_ssh_target,
     preflight_native_process,
     write_native_ssh_pack,
+)
+from llm_research_os.execution.errors import (
+    NativeReviewedExecutionError,
+    NativeReviewedPreparationError,
+)
+from llm_research_os.execution.native_reviewed import parse_native_reviewed_request
+from llm_research_os.execution.native_reviewed_documents import (
+    MAX_REVIEWED_REQUEST_BYTES,
+    NativeReviewedExecutionRequest,
+)
+from llm_research_os.execution.native_reviewed_preparation import (
+    diagnose_reviewed_environment,
+    load_bounded_file,
+    prepare_reviewed_environment,
 )
 from llm_research_os.spec.io import SpecLoadError, load_document
 from llm_research_os.spec.models import ResearchSpec
@@ -55,6 +71,10 @@ def run_native(args: argparse.Namespace) -> int:
             args.profile,
             args.format,
         )
+    if args.native_command == "prepare":
+        return _native_prepare(args)
+    if args.native_command == "doctor":
+        return _native_doctor(args)
     if args.native_command == "ssh-onboard":
         return _native_ssh_onboard(
             args.output,
@@ -242,3 +262,101 @@ def _print_native_run(
         print(f"diagnostics: {safe_text(diagnostics[:200])}")
     print("authorization: consumed local citation before spawn")
     print("paid cloud: not run")
+
+
+def _native_prepare(args: argparse.Namespace) -> int:
+    try:
+        loaded = _load_preparation(args)
+        receipt = prepare_reviewed_environment(
+            request=loaded.request,
+            store=loaded.store,
+            artifacts=loaded.artifacts,
+            workspace=loaded.workspace,
+            grant_token=loaded.grant_token,
+            hmac_key=loaded.hmac_key,
+        )
+    except (
+        NativeReviewedPreparationError,
+        NativeReviewedExecutionError,
+        ValidationError,
+        EventStoreError,
+        OSError,
+    ) as exc:
+        print_error(exc, args.format)
+        return 1
+    payload = receipt.model_dump(mode="json", by_alias=True, exclude_none=True)
+    if args.format == "json":
+        print(dumps_json(payload))
+        return 0
+    print(f"outcome: {safe_text(payload['outcome'])}")
+    print("launchAllowed: false")
+    print(f"reasonCode: {safe_text(payload['reasonCode'])}")
+    print("user code started: false")
+    return 0
+
+
+def _native_doctor(args: argparse.Namespace) -> int:
+    try:
+        loaded = _load_preparation(args)
+        diagnosis = diagnose_reviewed_environment(
+            request=loaded.request,
+            store=loaded.store,
+            artifacts=loaded.artifacts,
+            workspace=loaded.workspace,
+            grant_token=loaded.grant_token,
+            hmac_key=loaded.hmac_key,
+        )
+    except (
+        NativeReviewedPreparationError,
+        NativeReviewedExecutionError,
+        ValidationError,
+        EventStoreError,
+        OSError,
+    ) as exc:
+        print_error(exc, args.format)
+        return 1
+    payload = diagnosis.model_dump(mode="json", by_alias=True, exclude_none=True)
+    if args.format == "json":
+        print(dumps_json(payload))
+    else:
+        print(f"outcome: {safe_text(payload['outcome'])}")
+        print("launchAllowed: false")
+        print(f"reasonCode: {safe_text(payload['reasonCode'])}")
+        print("user code started: false")
+    return 0 if diagnosis.outcome == "ready" else 1
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadedPreparation:
+    request: NativeReviewedExecutionRequest
+    store: EventStore
+    artifacts: LocalArtifactStore
+    workspace: Path
+    grant_token: str
+    hmac_key: bytes
+
+
+def _load_preparation(args: argparse.Namespace) -> _LoadedPreparation:
+    request_bytes = load_bounded_file(args.request, limit=MAX_REVIEWED_REQUEST_BYTES)
+    try:
+        token = load_bounded_file(args.grant_token_file, limit=4096).decode("ascii")
+    except UnicodeDecodeError:
+        raise NativeReviewedPreparationError(
+            "grant token was refused",
+            code="grant-hmac-invalid",
+        ) from None
+    if token.endswith("\n"):
+        token = token[:-1]
+    if token.endswith("\r"):
+        token = token[:-1]
+    key = load_bounded_file(args.hmac_key_file, limit=32)
+    if len(key) != 32:
+        raise NativeReviewedPreparationError("grant token was refused", code="grant-hmac-invalid")
+    return _LoadedPreparation(
+        request=parse_native_reviewed_request(request_bytes),
+        store=EventStore(args.database, create=False),
+        artifacts=LocalArtifactStore(args.artifacts),
+        workspace=args.workspace,
+        grant_token=token,
+        hmac_key=key,
+    )

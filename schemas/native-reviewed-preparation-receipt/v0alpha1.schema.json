@@ -1,0 +1,410 @@
+{
+  "$defs": {
+    "DarwinReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "macOS pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "arm64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "darwin",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "DarwinReviewedPlatform",
+      "type": "object"
+    },
+    "LinuxReviewedPlatform": {
+      "additionalProperties": false,
+      "description": "Linux pairs named the way ``uname`` reports them.",
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "aarch64"
+          ],
+          "title": "Architecture",
+          "type": "string"
+        },
+        "os": {
+          "const": "linux",
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "title": "LinuxReviewedPlatform",
+      "type": "object"
+    },
+    "PreparationSideEffects": {
+      "additionalProperties": false,
+      "description": "Literal zeros. Preparation does not import, spawn, consume, or install.",
+      "properties": {
+        "entrypointsImported": {
+          "const": 0,
+          "title": "Entrypointsimported",
+          "type": "integer"
+        },
+        "grantsConsumed": {
+          "const": 0,
+          "title": "Grantsconsumed",
+          "type": "integer"
+        },
+        "lifecycleFactsAppended": {
+          "const": 0,
+          "title": "Lifecyclefactsappended",
+          "type": "integer"
+        },
+        "packagesInstalled": {
+          "const": 0,
+          "title": "Packagesinstalled",
+          "type": "integer"
+        },
+        "processesSpawned": {
+          "const": 0,
+          "title": "Processesspawned",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entrypointsImported",
+        "processesSpawned",
+        "lifecycleFactsAppended",
+        "grantsConsumed",
+        "packagesInstalled"
+      ],
+      "title": "PreparationSideEffects",
+      "type": "object"
+    },
+    "PreparedFileRecord": {
+      "additionalProperties": false,
+      "description": "One materialized object addressed by a workspace-relative path.",
+      "properties": {
+        "digest": {
+          "pattern": "^(?:sha256|jcs-sha256):[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "relativePath": {
+          "maxLength": 300,
+          "minLength": 8,
+          "title": "Relativepath",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "bundle",
+            "code",
+            "input",
+            "config",
+            "interpreter",
+            "dependency-lock",
+            "inventory",
+            "review"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "relativePath",
+        "digest"
+      ],
+      "title": "PreparedFileRecord",
+      "type": "object"
+    },
+    "ReviewedInputDigest": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "digest"
+      ],
+      "title": "ReviewedInputDigest",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/native-reviewed-preparation-receipt/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Digest binding of prepared bytes to one grant and plan. Not launch authority.",
+  "properties": {
+    "abi": {
+      "enum": [
+        "cp312",
+        "cp313",
+        "cp314"
+      ],
+      "title": "Abi",
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "attemptId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Attemptid",
+      "type": "string"
+    },
+    "authorizationEventId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Authorizationeventid",
+      "type": "string"
+    },
+    "authorizationSequence": {
+      "pattern": "^[1-9][0-9]{0,17}$",
+      "title": "Authorizationsequence",
+      "type": "string"
+    },
+    "bundleDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Bundledigest",
+      "type": "string"
+    },
+    "configDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Configdigest",
+      "type": "string"
+    },
+    "decisionDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Decisiondigest",
+      "type": "string"
+    },
+    "dependencyLockDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Dependencylockdigest",
+      "type": "string"
+    },
+    "entrypoint": {
+      "maxLength": 256,
+      "minLength": 3,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "title": "Entrypoint",
+      "type": "string"
+    },
+    "evidenceClass": {
+      "const": "preparation",
+      "title": "Evidenceclass",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/PreparedFileRecord"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "grantId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Grantid",
+      "type": "string"
+    },
+    "inputDigests": {
+      "items": {
+        "$ref": "#/$defs/ReviewedInputDigest"
+      },
+      "maxItems": 32,
+      "title": "Inputdigests",
+      "type": "array"
+    },
+    "interpreterDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Interpreterdigest",
+      "type": "string"
+    },
+    "interpreterIdentity": {
+      "const": "byte-digest",
+      "title": "Interpreteridentity",
+      "type": "string"
+    },
+    "inventoryDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Inventorydigest",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewedPreparationReceipt",
+      "title": "Kind",
+      "type": "string"
+    },
+    "launchAllowed": {
+      "const": false,
+      "title": "Launchallowed",
+      "type": "boolean"
+    },
+    "mediaType": {
+      "const": "researchos.native-reviewed-python-bundle/v0alpha1",
+      "title": "Mediatype",
+      "type": "string"
+    },
+    "outcome": {
+      "const": "prepared",
+      "title": "Outcome",
+      "type": "string"
+    },
+    "planDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Plandigest",
+      "type": "string"
+    },
+    "platform": {
+      "discriminator": {
+        "mapping": {
+          "darwin": "#/$defs/DarwinReviewedPlatform",
+          "linux": "#/$defs/LinuxReviewedPlatform"
+        },
+        "propertyName": "os"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LinuxReviewedPlatform"
+        },
+        {
+          "$ref": "#/$defs/DarwinReviewedPlatform"
+        }
+      ],
+      "title": "Platform"
+    },
+    "profile": {
+      "const": "native-reviewed-python/v0alpha1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "pythonVersion": {
+      "pattern": "^3\\.(12|13|14)\\.[0-9]{1,4}$",
+      "title": "Pythonversion",
+      "type": "string"
+    },
+    "reasonCode": {
+      "const": "prepared",
+      "title": "Reasoncode",
+      "type": "string"
+    },
+    "requestDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Requestdigest",
+      "type": "string"
+    },
+    "revisionId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Revisionid",
+      "type": "string"
+    },
+    "runId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "sideEffects": {
+      "$ref": "#/$defs/PreparationSideEffects"
+    },
+    "taskId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Taskid",
+      "type": "string"
+    },
+    "workerId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Workerid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "profile",
+    "evidenceClass",
+    "requestDigest",
+    "planDigest",
+    "decisionDigest",
+    "configDigest",
+    "grantId",
+    "projectId",
+    "revisionId",
+    "runId",
+    "attemptId",
+    "taskId",
+    "workerId",
+    "authorizationEventId",
+    "authorizationSequence",
+    "platform",
+    "bundleDigest",
+    "mediaType",
+    "entrypoint",
+    "inputDigests",
+    "interpreterDigest",
+    "pythonVersion",
+    "abi",
+    "dependencyLockDigest",
+    "inventoryDigest",
+    "interpreterIdentity",
+    "files",
+    "outcome",
+    "reasonCode",
+    "launchAllowed",
+    "sideEffects"
+  ],
+  "title": "NativeReviewedPreparationReceipt",
+  "type": "object"
+}

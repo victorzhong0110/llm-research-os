@@ -1,0 +1,44 @@
+{
+  "$id": "https://researchos.dev/schemas/native-reviewed-code-review/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Review citation bound to one bundle digest. Not a launch credential.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "bundleDigest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Bundledigest",
+      "type": "string"
+    },
+    "entrypoint": {
+      "maxLength": 256,
+      "minLength": 3,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "title": "Entrypoint",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewedCodeReview",
+      "title": "Kind",
+      "type": "string"
+    },
+    "mediaType": {
+      "const": "researchos.native-reviewed-python-bundle/v0alpha1",
+      "title": "Mediatype",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "bundleDigest",
+    "mediaType",
+    "entrypoint"
+  ],
+  "title": "NativeReviewedCodeReview",
+  "type": "object"
+}

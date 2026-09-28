@@ -25,7 +25,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
-| R04 | Verifiable code and runtime environment | Planned | Not yet accepted | Add scoped evidence with R04 |
+| R04 | Verifiable code and runtime environment | Candidate in PR #111; not merged | Pending review and post-merge checks | [R04 candidate](#r04-candidate-evidence) |
 | R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
 | R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
 | R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
@@ -196,6 +196,70 @@ Acceptance is limited to a non-launching request/report contract and its
 validator. No entrypoint execution, real grant consumption, real host
 enforcement, or live macOS execution was accepted. Issue #53 remains open;
 R04 is the next package.
+
+## R04 candidate evidence
+
+Scope: verifiable code and runtime environment only. Preparation rebuilds the
+authorization fact, HMAC grant, and CAS bytes, then writes or diagnoses a
+private workspace. It does not import an entrypoint, spawn a process, install
+a package, consume a Worker grant, or append a Run/Attempt fact.
+`launchAllowed` is false. This section is candidate evidence for the open PR
+head. It is not a merge SHA, not acceptance, and not live execution. Real
+entrypoint execution remains R05. Issue #53 stays open.
+
+The first fixture is the CPU brick at
+`examples/native-reviewed-preparation/brick/task.py`. Valid and invalid
+documents live beside it. The static Linux receipt uses a synthetic
+interpreter digest and is a document fixture, not a live prepare of that
+host. Package tests build the interpreter document from the process under
+test. No GPU or training extra is required. No pending-live host is required
+for this non-launching package.
+
+Commands, run from the repository root on the candidate head
+`c27495e67bef7d1095d3a86d63a113991252db34`. Host: Linux 6.12.94+ x86_64,
+CPython 3.12.3. Base: `1a08bfede3970f9300ba53078d19e6f21a7f8d79`.
+
+- `uv run ruff check .` passed
+- `uv run ruff format --check .` passed
+- `uv run mypy src` passed
+- `uv run pytest -m "not oci_live and not slow" --cov=llm_research_os --cov-fail-under=85` passed: 1543 passed, 12 deselected, pytest-cov total 85.249%
+- `uv run coverage json -o coverage.json` from that `.coverage` file, then `uv run python scripts/check_coverage.py coverage.json` passed: 22377/26249 = 85.248962%. The first invocation without a JSON report failed only because the file was absent (`Errno 2`); it was not a coverage-floor miss
+- `uv run researchos schema --check-all` passed
+- `node conformance/digest/verify.mjs` passed (13 vectors)
+- `uv run python scripts/event_catalog.py --check` passed
+- `uv run python scripts/project_status.py --check` passed
+- `uv build` passed
+
+Package tests: `tests/test_native_reviewed_preparation.py` (17 passed inside
+the suite above). They cover a fresh workspace, repeat prepare, substitution
+of code, config, inputs, and environment identity before user code,
+mismatched and incomplete or damaged trees, expired, forged, revoked, and
+consumed grants, `execute.local`, symlink rejection, CLI prepare/doctor, and
+the absence of entrypoint import or subprocess. Twelve deselected tests are
+the existing `oci_live` and `slow` selectors, not R04 evidence. No
+pending-live host is required for this non-launching package.
+
+Review follow-up on PR #111: the original candidate compared the dependency
+lock and inventory to each other without checking installed packages, and its
+interpreter document only named a CPython version, ABI, and platform. A
+missing pinned dependency still produced `prepared` and `ready` on that head.
+The corrected candidate hashes the host interpreter executable and every
+listed installed distribution file, checks those bytes at prepare and doctor,
+and refuses missing or altered dependencies. Regression tests cover a missing
+package, valid installed package, wrong package digest, changed installed file,
+wrong interpreter digest, and an executable path changed after preparation.
+The generated interpreter schema, example, protocol, and guide changed with
+the model. The R03 acceptance row from main #110 is preserved; the stale R03
+integration note originally on this R04 branch was superseded.
+
+On the review Linux container (CPython 3.12.14), the focused R04 suite had
+19 passes. Ruff, formatting, mypy, and generated schema checks passed on the
+corrected tree. The full `not oci_live and not slow` run had 1530 passes,
+12 failures, 3 skips, and 12 deselections; one failure came from denied Unix
+socket creation, and the others from host process observation/cancellation
+restrictions. Coverage on that interrupted run was 84.207%, below the 85%
+gate; this is **not** a passing full-suite result. Required GitHub CI must
+validate the corrected head on supported runners before integration.
 
 ## Issue #53 evidence checklist
 

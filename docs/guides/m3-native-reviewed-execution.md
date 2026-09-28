@@ -20,7 +20,9 @@ contract view. Caller-supplied prefix citations, prepared citations, and grant
 booleans are contract fixtures only in R03. Before using a report for any
 preparation or launch decision, an R04 or R05 adapter must independently
 rebuild and verify the real facts and bytes. This package does not implement
-those adapters.
+those adapters. The R04 adapter is
+[M3 reviewed native preparation](m3-native-reviewed-preparation.md). It still
+does not start user code.
 
 1. Unknown fields, noncanonical digests, duplicate input names, path-shaped
    entrypoints or interpreters, and unsupported OS / architecture / ABI fail

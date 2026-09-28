@@ -83,6 +83,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
 - [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)（英文）
 - [已审查原生执行 v0alpha1](docs/protocols/native-reviewed-execution-v0alpha1.md)（英文）
+- [已审查原生准备 v0alpha1](docs/protocols/native-reviewed-preparation-v0alpha1.md)（英文）
 - [静态规划内核导读](docs/guides/m0-static-planning.md)
 - [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
 - [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
@@ -95,6 +96,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [M3 本地受限执行](docs/guides/m3-native-process-runtime.md)（英文）
 - [M3 SSH 接入](docs/guides/m3-native-ssh-onboarding.md)（英文）
 - [M3 已审查原生执行契约](docs/guides/m3-native-reviewed-execution.md)（英文）
+- [M3 已审查原生准备](docs/guides/m3-native-reviewed-preparation.md)（英文）
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
 - [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
 - [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
@@ -152,6 +154,13 @@ schemas/native-process-preflight-request/v0alpha1.schema.json
 schemas/native-process-preflight-report/v0alpha1.schema.json
 schemas/native-reviewed-execution-request/v0alpha1.schema.json
 schemas/native-reviewed-execution-report/v0alpha1.schema.json
+schemas/native-reviewed-preparation-receipt/v0alpha1.schema.json
+schemas/native-reviewed-preparation-diagnosis/v0alpha1.schema.json
+schemas/native-reviewed-python-bundle/v0alpha1.schema.json
+schemas/native-reviewed-code-review/v0alpha1.schema.json
+schemas/native-reviewed-interpreter-identity/v0alpha1.schema.json
+schemas/native-reviewed-dependency-lock/v0alpha1.schema.json
+schemas/native-reviewed-dependency-inventory/v0alpha1.schema.json
 ```
 
 不要手工编辑这些文件。`researchos schema --check-all` 按 CLI 契约注册表校验全部已提交
@@ -436,6 +445,9 @@ capability、permission 或 approval；可向本地 SQLite 追加、查询和回
 R03 已审查原生执行验证器只检查 `native-reviewed-python/v0alpha1` 文档，并返回
 `launchAllowed=false`。它不导入入口点、不启动子进程，也不兑现 `execute.native`。
 该画像上的网络、文件系统和内存限制均未实施。
+`native prepare` 与 `native doctor`（R04）会重建授权事实、HMAC grant 和 CAS 字节，
+再物化或诊断私有工作区。它们不安装依赖、不导入入口点、不启动用户代码。
+已存在且不匹配的工作区会被拒绝并保持原样。`launchAllowed` 仍为 false。
 `native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
 固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
 导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开
