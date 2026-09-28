@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import platform
 import subprocess
@@ -34,6 +35,8 @@ from llm_research_os.execution.native_reviewed_material import (
     NativeReviewedPythonBundle,
 )
 from llm_research_os.execution.native_reviewed_preparation import (
+    _installed_distribution_digest,
+    _runtime_file_digest,
     check_before_user_code,
     diagnose_reviewed_environment,
     load_bounded_file,
@@ -251,9 +254,15 @@ def _request_for(
     return draft.model_copy(update={"config_digest": content_digest(execution_object(draft))})
 
 
-def _build(tmp_path: Path, *, capability: str = "execute.native") -> World:
+def _build(
+    tmp_path: Path,
+    *,
+    capability: str = "execute.native",
+    package_pin: dict[str, str] | None = None,
+    executable_digest: str | None = None,
+) -> World:
     code_path = tmp_path / "source" / "task.py"
-    code_path.parent.mkdir()
+    code_path.parent.mkdir(parents=True)
     code_path.write_bytes(BRICK)
     code = code_path.read_bytes()
     code_path.write_bytes(b"changed-after-approval\n")
@@ -264,6 +273,7 @@ def _build(tmp_path: Path, *, capability: str = "execute.native") -> World:
             "apiVersion": "researchos.dev/v0alpha1",
             "implementation": "cpython",
             "kind": "NativeReviewedInterpreterIdentity",
+            "executableDigest": executable_digest or _runtime_file_digest(Path(sys.executable)),
             "platform": {
                 "architecture": platform.machine(),
                 "os": platform.system().lower(),
@@ -275,14 +285,14 @@ def _build(tmp_path: Path, *, capability: str = "execute.native") -> World:
         {
             "apiVersion": "researchos.dev/v0alpha1",
             "kind": "NativeReviewedDependencyLock",
-            "packages": [],
+            "packages": [package_pin] if package_pin else [],
         }
     ).encode("utf-8")
     inventory = canonical_json(
         {
             "apiVersion": "researchos.dev/v0alpha1",
             "kind": "NativeReviewedDependencyInventory",
-            "packages": [],
+            "packages": [package_pin] if package_pin else [],
         }
     ).encode("utf-8")
     bundle = canonical_json(
@@ -442,6 +452,75 @@ def test_fresh_workspace_prepares_and_repeat_is_stable(
     assert before.outcome == "ready"
     assert before.launch_allowed is False
     _assert_not_started(world, monkeypatch)
+
+
+def test_missing_or_substituted_host_environment_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = {
+        "name": "r04-nonexistent-dependency",
+        "version": "99.0",
+        "digest": "sha256:" + "ab" * 32,
+    }
+    world = _build(tmp_path / "missing", package_pin=missing)
+    assert world.diagnose().reason_code == "environment-identity-mismatch"
+    with pytest.raises(NativeReviewedPreparationError, match="installed dependency"):
+        world.prepare()
+
+    pin = {
+        "name": "iniconfig",
+        "version": importlib.metadata.version("iniconfig"),
+        "digest": _installed_distribution_digest(
+            "iniconfig", importlib.metadata.version("iniconfig")
+        ),
+    }
+    matching = _build(tmp_path / "matching", package_pin=pin)
+    assert matching.prepare().outcome == "prepared"
+    assert matching.before_start().outcome == "ready"
+    forged = dict(pin, digest="sha256:" + "cd" * 32)
+    substituted = _build(tmp_path / "substituted", package_pin=forged)
+    assert substituted.diagnose().reason_code == "environment-identity-mismatch"
+
+    other_binary = _build(tmp_path / "other-binary", executable_digest="sha256:" + "ef" * 32)
+    assert other_binary.diagnose().reason_code == "environment-identity-mismatch"
+
+    changed_host = _build(tmp_path / "changed-host")
+    assert changed_host.prepare().outcome == "prepared"
+    alternative = tmp_path / "alternative-python"
+    alternative.write_bytes(b"different interpreter bytes")
+    monkeypatch.setattr(sys, "executable", str(alternative))
+    assert changed_host.before_start().reason_code == "environment-identity-mismatch"
+
+
+def test_installed_distribution_change_invalidates_preparation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package_file = tmp_path / "installed" / "module.py"
+    package_file.parent.mkdir()
+    package_file.write_bytes(b"approved = True\n")
+
+    class ManifestPath(str):
+        hash = "sha256=present"
+
+    class InstalledDistribution:
+        version = "1.0"
+
+        def __init__(self) -> None:
+            self.files = [ManifestPath("module.py")]
+
+        def locate_file(self, _item: object) -> Path:
+            return package_file
+
+    monkeypatch.setattr(importlib.metadata, "distribution", lambda _name: InstalledDistribution())
+    pin = {
+        "name": "fixture-package",
+        "version": "1.0",
+        "digest": _installed_distribution_digest("fixture-package", "1.0"),
+    }
+    world = _build(tmp_path / "workspace-case", package_pin=pin)
+    assert world.prepare().outcome == "prepared"
+    package_file.write_bytes(b"approved = False\n")
+    assert world.before_start().reason_code == "environment-identity-mismatch"
 
 
 @pytest.mark.parametrize(

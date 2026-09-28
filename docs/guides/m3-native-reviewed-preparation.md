@@ -24,11 +24,13 @@ Before it writes or accepts a workspace it rebuilds:
 3. The CAS bytes for the bundle, code, inputs, interpreter document,
    dependency lock, inventory, and canonical review.
 
-The interpreter identity is that JSON document's byte digest. A mutable
-executable path is rejected. The host platform, machine, CPython version, and
-implementation must match the document or preparation refuses
+The interpreter document contains a digest of the resolved interpreter
+executable bytes, checked against the current host on every prepare and doctor
+call. It does not store a mutable path. Host platform, machine, CPython version,
+implementation, and executable bytes must match or preparation refuses
 `environment-identity-mismatch`. The lock and inventory pin lists must match
-and are not installed.
+each other and the installed distributions' file bytes. Preparation does not
+install packages. R05 must check the executable it actually launches.
 
 ## Workspace behavior
 
@@ -65,8 +67,9 @@ do not import it.
 
 The Linux receipt and diagnosis under `valid/` are internally consistent
 document fixtures. Their interpreter digest is not a live host measurement.
-Live preparation builds the interpreter document from the process that runs
-the check, then hashes those bytes.
+Live preparation builds the interpreter document with the current executable
+digest, then hashes that document. The static example is a schema fixture,
+not a measurement of its named Linux host.
 
 Schemas are generated from the Pydantic models and registered as
 `native-reviewed-preparation-receipt`,

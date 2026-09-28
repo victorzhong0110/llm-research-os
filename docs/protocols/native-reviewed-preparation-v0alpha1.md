@@ -46,15 +46,27 @@ are registered with `researchos schema`. Do not edit the schema files by hand.
 | --- | --- |
 | `NativeReviewedPythonBundle` | Digest index of bundle-relative `.py` files. The entrypoint `package.module:function` maps to `package/module.py` by string only. No import. |
 | `NativeReviewedCodeReview` | Review citation stored as canonical JSON. CAS lookup is `sha256:` of the `jcs-sha256:` hex. |
-| `NativeReviewedInterpreterIdentity` | CPython version, ABI (`cp312`, `cp313`, or `cp314`), and platform. A filesystem path is rejected. |
-| `NativeReviewedDependencyLock` / `NativeReviewedDependencyInventory` | Closed pin lists (`name`, `version`, `digest`), unique and sorted. The two lists must match. Pins are not installed or imported. |
+| `NativeReviewedInterpreterIdentity` | CPython version, ABI (`cp312`, `cp313`, or `cp314`), platform, and `executableDigest` of the resolved interpreter executable bytes. A filesystem path is rejected in the document. |
+| `NativeReviewedDependencyLock` / `NativeReviewedDependencyInventory` | Closed pin lists (`name`, `version`, `digest`), unique and sorted. The two lists and the bytes of each installed distribution must match. Pins are not installed or imported. |
 | `NativeReviewedPreparationReceipt` | Binding of those digests to the grant id. `interpreterIdentity` is the constant `byte-digest`. |
 | `NativeReviewedPreparationDiagnosis` | Doctor outcome. `ready` still has `launchAllowed=false`. |
 
 The host `platform.system()`, `platform.machine()`, `python_version()`, and
-`python_implementation()` must match the interpreter document. A mismatch
-refuses with `environment-identity-mismatch`. `sys.executable` is never an
-identity and is not recorded.
+`python_implementation()` must match the interpreter document. Preparation and
+doctor also resolve and hash the executable currently named by `sys.executable`;
+the actual bytes must equal `executableDigest`. A mismatch or an unreadable file
+refuses with `environment-identity-mismatch`. The path itself is not an identity
+and is not recorded. The binary digest does not identify the entire system
+standard library or dynamic library closure; R05 must verify the interpreter
+it will actually launch, without trusting a newly mutable path.
+
+A package pin's `digest` is SHA-256 of a canonical JSON object with `name`,
+`version`, and `files`: the sorted pairs of installed distribution-relative
+paths and SHA-256 digests of their actual file bytes. The installed version,
+file manifest, and all listed bytes are checked on every prepare and doctor
+call; missing packages or unverified distribution paths fail closed. No
+dependency is installed by these commands. The matching lock and inventory
+are declarations; they are not evidence of installation on their own.
 
 Receipt side effects are literal zeros: `entrypointsImported`,
 `processesSpawned`, `lifecycleFactsAppended`, `grantsConsumed`, and

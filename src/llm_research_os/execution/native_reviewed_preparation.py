@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -85,6 +86,9 @@ _NOFOLLOW = os.O_NOFOLLOW | os.O_CLOEXEC
 _DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | _NOFOLLOW
 _READ_FLAGS = os.O_RDONLY | _NOFOLLOW
 _WRITE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW
+_MAX_RUNTIME_FILE_BYTES = 128 * 1024 * 1024
+_MAX_DISTRIBUTION_BYTES = 128 * 1024 * 1024
+_MAX_DISTRIBUTION_FILES = 4096
 _SUBSTITUTION = {
     "bundle": "code-substituted",
     "code": "code-substituted",
@@ -281,6 +285,7 @@ def _parsed_material(
             "dependency inventory does not match the lock",
             code="environment-identity-mismatch",
         )
+    _require_installed_dependencies(lock)
     review_bytes = by_path["material/environment/review"]
     review = _parse_model(review_bytes, NativeReviewedCodeReview, "review-digest-mismatch")
     review_digest = content_digest(review.model_dump(mode="json", by_alias=True, exclude_none=True))
@@ -339,6 +344,98 @@ def _require_host(identity: NativeReviewedInterpreterIdentity) -> None:
             "host interpreter identity does not match the reviewed bytes",
             code="environment-identity-mismatch",
         )
+    if _runtime_file_digest(Path(sys.executable)) != identity.executable_digest:
+        raise NativeReviewedPreparationError(
+            "host interpreter bytes do not match the reviewed digest",
+            code="environment-identity-mismatch",
+        )
+
+
+def _runtime_file_digest(path: Path) -> str:
+    """Hash the opened file; a missing, changing, or oversized file fails closed."""
+
+    try:
+        resolved = path.resolve(strict=True)
+        with resolved.open("rb") as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or before.st_size > _MAX_RUNTIME_FILE_BYTES:
+                raise OSError("runtime file is not a bounded regular file")
+            digest = hashlib.sha256()
+            count = 0
+            while chunk := stream.read(1024 * 1024):
+                count += len(chunk)
+                if count > _MAX_RUNTIME_FILE_BYTES:
+                    raise OSError("runtime file exceeds the byte limit")
+                digest.update(chunk)
+            after = os.fstat(stream.fileno())
+            if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+            ) or count != before.st_size:
+                raise OSError("runtime file changed while hashing")
+    except (OSError, RuntimeError):
+        raise NativeReviewedPreparationError(
+            "host runtime bytes could not be verified", code="environment-identity-mismatch"
+        ) from None
+    return "sha256:" + digest.hexdigest()
+
+
+def _installed_distribution_digest(name: str, version: str) -> str:
+    """Digest installed distribution bytes, not a caller-supplied inventory."""
+
+    try:
+        distribution = importlib.metadata.distribution(name)
+        files = distribution.files
+        if (
+            distribution.version != version
+            or files is None
+            or not files
+            or len(files) > _MAX_DISTRIBUTION_FILES
+        ):
+            raise ValueError("distribution version or file manifest is invalid")
+        entries: list[tuple[str, str]] = []
+        total_bytes = 0
+        for item in files:
+            relative = Path(str(item))
+            # RECORD itself commonly has no wheel hash. Hash its actual bytes below.
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or (not item.hash and relative.name != "RECORD")
+            ):
+                raise ValueError("distribution contains an unverified path")
+            target = Path(str(distribution.locate_file(item)))
+            total_bytes += target.stat().st_size
+            if total_bytes > _MAX_DISTRIBUTION_BYTES:
+                raise ValueError("installed distribution exceeds the byte limit")
+            entries.append((relative.as_posix(), _runtime_file_digest(target)))
+        if len(entries) != len({path for path, _digest in entries}):
+            raise ValueError("distribution contains duplicate paths")
+    except (
+        importlib.metadata.PackageNotFoundError,
+        ValueError,
+        NativeReviewedPreparationError,
+        OSError,
+    ):
+        raise NativeReviewedPreparationError(
+            "installed dependency does not match the reviewed inventory",
+            code="environment-identity-mismatch",
+        ) from None
+    payload = canonical_json(
+        {"name": name, "version": version, "files": [list(item) for item in sorted(entries)]}
+    )
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _require_installed_dependencies(lock: NativeReviewedDependencyLock) -> None:
+    for pin in lock.packages:
+        if _installed_distribution_digest(pin.name, pin.version) != pin.digest:
+            raise NativeReviewedPreparationError(
+                "installed dependency bytes do not match the reviewed pin",
+                code="environment-identity-mismatch",
+            )
 
 
 def _authorization(

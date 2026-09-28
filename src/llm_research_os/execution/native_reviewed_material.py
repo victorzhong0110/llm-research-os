@@ -89,6 +89,7 @@ class NativeReviewedInterpreterIdentity(NativeReviewedDocumentModel):
     python_version: ReviewedPythonVersion = Field(alias="pythonVersion")
     abi: Literal["cp312", "cp313", "cp314"]
     platform: ReviewedPlatform
+    executable_digest: ByteDigest = Field(alias="executableDigest")
 
 
 class NativeReviewedPackagePin(NativeReviewedDocumentModel):
