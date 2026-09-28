@@ -355,3 +355,159 @@ def test_cli_executes_prepared_reviewed_task(
     response = json.loads(capsys.readouterr().out)
     assert response["output"]["rows"] == 1
     assert response["artifactDigest"].startswith("sha256:")
+
+
+def test_existing_launch_intent_refuses_unclaimed_attempt(tmp_path: Path) -> None:
+    import llm_research_os.execution.native_reviewed_runtime as runtime
+
+    world, plane, spec, registry = _world(tmp_path)
+    world.prepare()
+    state = tmp_path / "launch"
+    runtime._write_intent(state, world.request)
+    with pytest.raises(NativeLaunchError, match="intent already exists"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=state,
+            grant_token=world.token,
+        )
+    assert plane.rebuild().grant("grant.native").consumed_lease_id is None
+
+
+def test_receipt_changed_after_preflight_refuses_before_claim(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import llm_research_os.execution.native_reviewed_runtime as runtime
+
+    world, plane, spec, registry = _world(tmp_path)
+    world.prepare()
+    original = runtime.check_before_user_code
+
+    def change_receipt(**kwargs: object):  # type: ignore[no-untyped-def]
+        diagnosis = original(**kwargs)  # type: ignore[arg-type]
+        receipt = world.workspace / "receipt.json"
+        document = json.loads(receipt.read_text())
+        document["files"][0]["digest"] = "sha256:" + "0" * 64
+        receipt.write_text(json.dumps(document))
+        return diagnosis
+
+    monkeypatch.setattr(runtime, "check_before_user_code", change_receipt)
+    with pytest.raises(NativeLaunchError, match="receipt changed"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=tmp_path / "launch",
+            grant_token=world.token,
+        )
+    assert plane.rebuild().grant("grant.native").consumed_lease_id is None
+
+
+def test_bounded_stdout_marks_unknown_without_redispatch(tmp_path: Path) -> None:
+    task = b"def main():\n print('x' * 5000)\n return 1\n"
+    world, plane, spec, registry = _world(tmp_path, task_source=task)
+    world.prepare()
+    kwargs = dict(
+        request=world.request,
+        spec=spec,
+        registry=registry,
+        plane=plane,
+        workspace=world.workspace,
+        state_dir=tmp_path / "launch",
+        grant_token=world.token,
+    )
+    with pytest.raises(NativeLaunchError, match="bound exceeded"):
+        execute_reviewed_native(**kwargs)
+    snapshot = RunControl(plane.store, project_id=PROJECT, run_id="run.1").rebuild().snapshot
+    assert snapshot is not None and snapshot.status.value == "unknown"
+    with pytest.raises(NativeLaunchError, match="not ready"):
+        execute_reviewed_native(**kwargs)
+
+
+def test_intent_state_symlink_refused(tmp_path: Path) -> None:
+    world, plane, spec, registry = _world(tmp_path)
+    world.prepare()
+    target = tmp_path / "real-state"
+    target.mkdir()
+    alias = tmp_path / "launch"
+    alias.symlink_to(target, target_is_directory=True)
+    with pytest.raises(NativeLaunchError, match="symlink"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=alias,
+            grant_token=world.token,
+        )
+    assert plane.rebuild().grant("grant.native").consumed_lease_id is None
+
+
+def test_started_fact_fault_after_consumption_becomes_unknown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import llm_research_os.execution.native_reviewed_runtime as runtime
+
+    world, plane, spec, registry = _world(tmp_path)
+    world.prepare()
+    original = runtime._lifecycle
+    failures = 0
+
+    def fail_once(*args: object, **kwargs: object) -> None:
+        nonlocal failures
+        if len(args) >= 3 and args[2] == "attempt.started" and failures == 0:
+            failures += 1
+            raise OSError("start fact unavailable")
+        original(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(runtime, "_lifecycle", fail_once)
+    with pytest.raises(OSError, match="start fact unavailable"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=tmp_path / "launch",
+            grant_token=world.token,
+        )
+    snapshot = RunControl(plane.store, project_id=PROJECT, run_id="run.1").rebuild().snapshot
+    assert snapshot is not None and snapshot.status.value == "unknown"
+    assert plane.rebuild().grant("grant.native").consumed_lease_id is not None
+
+
+def test_code_substitution_between_preflight_and_manifest_refused(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import llm_research_os.execution.native_reviewed_runtime as runtime
+
+    world, plane, spec, registry = _world(tmp_path)
+    world.prepare()
+    original = runtime.check_before_user_code
+
+    def substitute(**kwargs: object):  # type: ignore[no-untyped-def]
+        diagnosis = original(**kwargs)  # type: ignore[arg-type]
+        (world.workspace / "material/code/brick/task.py").write_text("raise ValueError()")
+        return diagnosis
+
+    monkeypatch.setattr(runtime, "check_before_user_code", substitute)
+    with pytest.raises(NativeLaunchError, match="prepared file changed"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=tmp_path / "launch",
+            grant_token=world.token,
+        )
+    assert plane.rebuild().grant("grant.native").consumed_lease_id is None

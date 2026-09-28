@@ -17,6 +17,8 @@ from io import BufferedReader
 from pathlib import Path
 from typing import Any, cast
 
+from pydantic import ValidationError
+
 from llm_research_os.blocks.registry import BlockRegistry
 from llm_research_os.canonical import canonical_json, content_digest
 from llm_research_os.events.models import RESEARCH_EVENT_SCHEMA_ID
@@ -337,9 +339,12 @@ def _write_intent(state_dir: Path, request: NativeReviewedExecutionRequest) -> P
 
 def _manifest(workspace: Path, receipt_digest: str | None) -> dict[str, str]:
     """Pin every prepared file before grant consumption and child creation."""
-    receipt = NativeReviewedPreparationReceipt.model_validate_json(
-        (workspace / "receipt.json").read_bytes()
-    )
+    try:
+        receipt = NativeReviewedPreparationReceipt.model_validate_json(
+            (workspace / "receipt.json").read_bytes()
+        )
+    except (OSError, ValidationError):
+        raise NativeLaunchError("prepared receipt changed before launch") from None
     document = receipt.model_dump(mode="json", by_alias=True, exclude_none=True)
     if content_digest(document) != receipt_digest:
         raise NativeLaunchError("prepared receipt changed before launch")

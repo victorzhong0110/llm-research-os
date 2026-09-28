@@ -290,7 +290,10 @@ facts, identity-persistence failure after child creation, and CLI parity.
 Focused command on the candidate tree:
 `uv run --no-sync pytest -q tests/test_native_reviewed_runtime.py
 tests/test_native_reviewed_preparation.py tests/test_native_reviewed_execution.py
-tests/test_worker_protocol.py tests/test_event_catalog.py` — **113 passed**.
+tests/test_worker_protocol.py tests/test_event_catalog.py` — **119 passed**
+after adding intent replay, post-preflight receipt/code substitution, stdout
+bound, symlinked state directory, and a failed `attempt.started` persistence
+case after grant consumption.
 The interpreter's actual executable image is hashed through Linux procfs
 when accessible; hosts hiding process entries and macOS rehash the reviewed
 interpreter path while the child remains behind the barrier. This fallback
@@ -308,6 +311,15 @@ observation and socket tests. The complete local run on this branch reported
 it is **not** passing CI evidence. The R05 tests themselves and targeted
 contract/Worker regressions run separately below; supported GitHub runners
 must decide the full required matrix before merge.
+
+The first PR #114 CI run `36457193021` passed Linux OCI and the authorship
+gate. Its Python tests passed (Ubuntu 3.12/3.13: 1553 passed, 12 deselected;
+macOS 3.12/3.13: 1552 passed, 1 skipped, 12 deselected), but the coverage gate
+failed: 84.984% on Ubuntu, 84.939% on macOS 3.12, and 84.988% on macOS
+3.13. The optional Ubuntu
+3.14 job also completed 1553 tests and failed only its 84.988% coverage
+gate. The six added negative tests above are the follow-up for this real
+coverage shortfall; a new CI run is required before review readiness.
 
 ## Issue #53 evidence checklist
 
