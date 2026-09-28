@@ -260,10 +260,11 @@ def _build(
     capability: str = "execute.native",
     package_pin: dict[str, str] | None = None,
     executable_digest: str | None = None,
+    brick: bytes = BRICK,
 ) -> World:
     code_path = tmp_path / "source" / "task.py"
     code_path.parent.mkdir(parents=True)
-    code_path.write_bytes(BRICK)
+    code_path.write_bytes(brick)
     code = code_path.read_bytes()
     code_path.write_bytes(b"changed-after-approval\n")
     corpus = b'{"rows":1}\n'

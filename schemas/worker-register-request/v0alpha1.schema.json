@@ -97,7 +97,8 @@
         "python-sandbox",
         "oci-container",
         "gpu-oci-container",
-        "macos-mps-process"
+        "macos-mps-process",
+        "native-reviewed-process"
       ],
       "title": "Runtime",
       "type": "string"

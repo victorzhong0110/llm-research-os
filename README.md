@@ -514,6 +514,17 @@ HMAC grant, and CAS bytes, then materialize or diagnose a private workspace.
 They do not install packages, import an entrypoint, or start user code.
 A mismatched existing workspace is refused and left in place.
 `launchAllowed` stays false.
+`native execute-reviewed` (R05) is a separate path for one
+prepared `native-reviewed-python/v0alpha1` Attempt. It rebuilds the cited
+plan and Worker binding, consumes a live `execute.native` grant, records
+Run/Attempt and Worker facts, and stores a bounded structured task result
+in CAS. It needs `--spec`, `--registry`, and a private `--state-dir` in
+addition to the `native prepare` arguments. Repeating an Attempt is refused.
+The child waits for durable process identity before importing reviewed code;
+unknown outcomes require observation and never trigger an automatic rerun.
+The requested network, filesystem, and memory isolation remains advisory
+unless a selected profile enforces it; this profile rejects restrictions
+marked `required` when the host cannot enforce them.
 `native run` (M3 slice 1) recomputes that sealed preflight, consumes one local
 human authorization citation on the existing store before spawn, and then runs
 only a fixed noop helper with bounded capture, an empty environment allowlist,

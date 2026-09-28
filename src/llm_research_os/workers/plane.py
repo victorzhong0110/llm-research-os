@@ -41,6 +41,7 @@ from llm_research_os.workers.models import (
     IMAGE_MEDIA_PYTHON_BRICK,
     WORKER_RUNTIME_GPU_OCI,
     WORKER_RUNTIME_MACOS_MPS,
+    WORKER_RUNTIME_NATIVE_REVIEWED,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -827,7 +828,10 @@ class WorkerPlane:
 
 
 def _cas_fetch_digest(image_digest: str, queued: QueuedWork | None) -> str:
-    if queued is None or queued.runtime == WORKER_RUNTIME_PYTHON_SANDBOX:
+    if queued is None or queued.runtime in {
+        WORKER_RUNTIME_PYTHON_SANDBOX,
+        WORKER_RUNTIME_NATIVE_REVIEWED,
+    }:
         return image_digest
     if queued.runtime == WORKER_RUNTIME_OCI_CONTAINER:
         brick = queued.inputs.get("brickDigest")

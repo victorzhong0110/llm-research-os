@@ -25,10 +25,12 @@ from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.errors import WorkerCallError
 from llm_research_os.workers.models import (
     IMAGE_MEDIA_MPS_ENV,
+    IMAGE_MEDIA_NATIVE_REVIEWED,
     IMAGE_MEDIA_OCI_IMAGE,
     IMAGE_MEDIA_PYTHON_BRICK,
     WORKER_RUNTIME_GPU_OCI,
     WORKER_RUNTIME_MACOS_MPS,
+    WORKER_RUNTIME_NATIVE_REVIEWED,
     WORKER_RUNTIME_OCI_CONTAINER,
     WORKER_RUNTIME_PYTHON_SANDBOX,
 )
@@ -37,12 +39,14 @@ PYTHON_BRICK_CAPABILITY = ExecutionCapability.LOCAL.value
 OCI_BRICK_CAPABILITY = ExecutionCapability.OCI.value
 GPU_TRAINING_CAPABILITY = ExecutionCapability.GPU.value
 MPS_TRAINING_CAPABILITY = ExecutionCapability.MPS.value
+NATIVE_REVIEWED_CAPABILITY = "execute.native"
 EXECUTION_CAPABILITIES = frozenset(
     {
         PYTHON_BRICK_CAPABILITY,
         OCI_BRICK_CAPABILITY,
         GPU_TRAINING_CAPABILITY,
         MPS_TRAINING_CAPABILITY,
+        NATIVE_REVIEWED_CAPABILITY,
     }
 )
 MAX_BRICK_REQUEST_JSON_BYTES = 16_384
@@ -51,6 +55,7 @@ _RUNTIME_MEDIA = {
     (WORKER_RUNTIME_OCI_CONTAINER, IMAGE_MEDIA_OCI_IMAGE): OCI_BRICK_CAPABILITY,
     (WORKER_RUNTIME_GPU_OCI, IMAGE_MEDIA_OCI_IMAGE): GPU_TRAINING_CAPABILITY,
     (WORKER_RUNTIME_MACOS_MPS, IMAGE_MEDIA_MPS_ENV): MPS_TRAINING_CAPABILITY,
+    (WORKER_RUNTIME_NATIVE_REVIEWED, IMAGE_MEDIA_NATIVE_REVIEWED): NATIVE_REVIEWED_CAPABILITY,
 }
 
 
@@ -84,6 +89,16 @@ def brick_execution_digest(
     image_media_type: str = IMAGE_MEDIA_PYTHON_BRICK,
     runtime: str = WORKER_RUNTIME_PYTHON_SANDBOX,
 ) -> str:
+    if (runtime, image_media_type) == (WORKER_RUNTIME_NATIVE_REVIEWED, IMAGE_MEDIA_NATIVE_REVIEWED):
+        # R03 defines configDigest over the planned native execution object.
+        # Its code digest is also checked against the Worker image binding.
+        code = config.get("code") if config is not None else None
+        if inputs or type(code) is not dict or code.get("bundleDigest") != image_digest:
+            raise WorkerCallError(
+                "native execution object is not bound to the bundle",
+                code="execution-binding-mismatch",
+            )
+        return content_digest(config)
     return content_digest(
         brick_execution_document(
             image_digest=image_digest,
@@ -284,8 +299,10 @@ def require_authorized_execution_binding(
             "authorization event does not grant the planned execution capability",
             code="authorization-capability-mismatch",
         )
+    native = capability == NATIVE_REVIEWED_CAPABILITY
+    planned_config_digest = content_digest(spec_task.config) if native else planned_digest
     if (
-        planned.config_digest != planned_digest
+        planned.config_digest != planned_config_digest
         or planned_image != image_digest
         or planned_digest != config_digest
     ):

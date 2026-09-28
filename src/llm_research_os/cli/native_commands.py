@@ -42,9 +42,15 @@ from llm_research_os.execution.native_reviewed_preparation import (
     load_bounded_file,
     prepare_reviewed_environment,
 )
+from llm_research_os.execution.native_reviewed_runtime import (
+    NativeLaunchError,
+    execute_reviewed_native,
+)
 from llm_research_os.spec.io import SpecLoadError, load_document
 from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage import EventStore, EventStoreError
+from llm_research_os.workers.errors import WorkerError
+from llm_research_os.workers.plane import WorkerPlane
 
 
 def run_native(args: argparse.Namespace) -> int:
@@ -75,6 +81,8 @@ def run_native(args: argparse.Namespace) -> int:
         return _native_prepare(args)
     if args.native_command == "doctor":
         return _native_doctor(args)
+    if args.native_command == "execute-reviewed":
+        return _native_execute_reviewed(args)
     if args.native_command == "ssh-onboard":
         return _native_ssh_onboard(
             args.output,
@@ -324,6 +332,58 @@ def _native_doctor(args: argparse.Namespace) -> int:
         print(f"reasonCode: {safe_text(payload['reasonCode'])}")
         print("user code started: false")
     return 0 if diagnosis.outcome == "ready" else 1
+
+
+def _native_execute_reviewed(args: argparse.Namespace) -> int:
+    try:
+        loaded = _load_preparation(args)
+        loaded.store.close()
+        spec = ResearchSpec.model_validate(load_document(args.spec, reject_symlinks=True))
+        registry = build_registry(args.registry)
+        with EventStore(args.database, require_existing=True) as store:
+            result = execute_reviewed_native(
+                request=loaded.request,
+                spec=spec,
+                registry=registry,
+                plane=WorkerPlane(
+                    store=store,
+                    artifacts=loaded.artifacts,
+                    hmac_key=loaded.hmac_key,
+                    project_id=loaded.request.project_id,
+                    source=f"https://researchos.dev/projects/{loaded.request.project_id}",
+                    experiment_revision=int(loaded.request.revision_id),
+                ),
+                workspace=loaded.workspace,
+                state_dir=args.state_dir,
+                grant_token=loaded.grant_token,
+            )
+    except (
+        NativeLaunchError,
+        NativeReviewedPreparationError,
+        NativeReviewedExecutionError,
+        WorkerError,
+        ManifestLoadError,
+        RegistryError,
+        SpecLoadError,
+        ValidationError,
+        EventStoreError,
+        OSError,
+        ValueError,
+    ) as exc:
+        print_error(exc, args.format)
+        return 1
+    payload = {
+        "leaseId": result.lease_id,
+        "artifactDigest": result.artifact_digest,
+        "resultDigest": result.result_digest,
+        "output": result.output,
+    }
+    if args.format == "json":
+        print(dumps_json(payload))
+    else:
+        print(f"native reviewed task completed: {safe_text(result.lease_id)}")
+        print(f"artifact digest: {safe_text(result.artifact_digest)}")
+    return 0
 
 
 @dataclass(frozen=True, slots=True)
