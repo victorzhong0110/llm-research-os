@@ -96,6 +96,8 @@ def verify_native_restore(
             raise NativeRestoreError("checkpoint size differs")
         with plane.artifacts.open(claim.artifact_digest) as stream:
             document = json.load(stream)
+    except NativeRestoreError:
+        raise
     except (ArtifactStoreError, OSError, ValueError) as exc:
         raise NativeRestoreError("checkpoint CAS object is missing or invalid") from exc
     if not isinstance(document, dict) or (

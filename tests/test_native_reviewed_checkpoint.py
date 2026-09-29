@@ -79,6 +79,29 @@ def test_full_state_checkpoint_requires_completed_source_and_new_lineage(tmp_pat
         }
     )
     verify_native_restore(claim=claim, source=world.request, target=target, plane=plane)
+    with pytest.raises(NativeRestoreError, match="completed outcome"):
+        verify_native_restore(
+            claim=claim.model_copy(update={"source_run_id": "run.missing"}),
+            source=world.request.model_copy(update={"run_id": "run.missing"}),
+            target=target,
+            plane=plane,
+        )
+    with pytest.raises(NativeRestoreError, match="code or environment"):
+        verify_native_restore(
+            claim=claim,
+            source=world.request,
+            target=target.model_copy(
+                update={"environment": target.environment.model_copy(update={"abi": "cp314"})}
+            ),
+            plane=plane,
+        )
+    wrong_size = target.model_copy(
+        update={
+            "inputs": (target.inputs[0].model_copy(update={"size_bytes": artifact.size_bytes + 1}),)
+        }
+    )
+    with pytest.raises(NativeRestoreError, match="size differs"):
+        verify_native_restore(claim=claim, source=world.request, target=wrong_size, plane=plane)
     with pytest.raises(NativeRestoreError, match="mode differs"):
         verify_native_restore(
             claim=claim.model_copy(update={"mode": "adapter-only"}),
@@ -98,3 +121,64 @@ def test_full_state_checkpoint_requires_completed_source_and_new_lineage(tmp_pat
     )
     with pytest.raises(NativeRestoreError, match="digest differs"):
         verify_native_restore(claim=claim, source=world.request, target=bad, plane=plane)
+
+
+@pytest.mark.parametrize(
+    ("mode", "state", "expected"),
+    [
+        ("adapter-only", "{'adapter': {'weights': [1]}}", None),
+        ("adapter-only", "{'model': 1}", "required state components"),
+        ("full-state", "{'model': 1, 'optimizer': 2, 'scheduler': 3}", "required state components"),
+    ],
+)
+def test_restore_mode_requires_the_task_exported_state(
+    tmp_path: Path, mode: str, state: str, expected: str | None
+) -> None:
+    task = f"def main():\n return {{'restoreMode': '{mode}', 'state': {state}}}\n".encode()
+    world, plane, spec, registry = _world(tmp_path, task_source=task)
+    world.prepare()
+    result = execute_reviewed_native(
+        request=world.request,
+        spec=spec,
+        registry=registry,
+        plane=plane,
+        workspace=world.workspace,
+        state_dir=tmp_path / "source",
+        grant_token=world.token,
+    )
+    artifact = plane.artifacts.verify(result.artifact_digest)
+    target = world.request.model_copy(
+        update={
+            "run_id": "run.2",
+            "attempt_id": "attempt.2",
+            "inputs": (
+                world.request.inputs[0].model_copy(
+                    update={
+                        "name": "prior",
+                        "purpose": "checkpoint",
+                        "digest": result.artifact_digest,
+                        "size_bytes": artifact.size_bytes,
+                    }
+                ),
+            ),
+        }
+    )
+    target = target.model_copy(update={"config_digest": content_digest(execution_object(target))})
+    claim = NativeRestoreClaim.model_validate(
+        {
+            "apiVersion": "researchos.dev/v0alpha1",
+            "kind": "NativeRestoreClaim",
+            "mode": mode,
+            "sourceRunId": world.request.run_id,
+            "sourceAttemptId": world.request.attempt_id,
+            "targetRunId": target.run_id,
+            "targetAttemptId": target.attempt_id,
+            "checkpointInput": "prior",
+            "artifactDigest": result.artifact_digest,
+        }
+    )
+    if expected is None:
+        verify_native_restore(claim=claim, source=world.request, target=target, plane=plane)
+    else:
+        with pytest.raises(NativeRestoreError, match=expected):
+            verify_native_restore(claim=claim, source=world.request, target=target, plane=plane)

@@ -10,6 +10,7 @@ from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStor
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.blocks.registry import BlockRegistry
 from llm_research_os.spec.models import ResearchSpec
+from llm_research_os.storage.errors import DuplicateEventError, EventSequenceConflictError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.binding import (
@@ -504,20 +505,33 @@ class WorkerPlane:
                 return existing
         if lease.status not in {"leased", "claimed"}:
             raise WorkerCallError("lease is already terminal", code="lease-terminal")
-        return self._control.append(
-            work_failed_draft(
-                project_id=self.project_id,
-                lease_id=lease_id,
-                worker_id=worker_id,
-                reason_code="cancel-observed",
-                run_id=lease.run_id,
-                attempt_id=lease.attempt_id,
-                event_id=event_id,
-                time=self._stamp(None),
-                source=self.source,
-                experiment_revision=self.experiment_revision,
-            )
-        )
+        for _ in range(3):
+            try:
+                return self._control.append(
+                    work_failed_draft(
+                        project_id=self.project_id,
+                        lease_id=lease_id,
+                        worker_id=worker_id,
+                        reason_code="cancel-observed",
+                        run_id=lease.run_id,
+                        attempt_id=lease.attempt_id,
+                        event_id=event_id,
+                        time=self._stamp(None),
+                        source=self.source,
+                        experiment_revision=self.experiment_revision,
+                    )
+                )
+            except (DuplicateEventError, EventSequenceConflictError):
+                current = self.rebuild().lease(lease_id)
+                if current is not None and current.status == "failed":
+                    if current.reason_code == "cancel-observed":
+                        existing = self.store.get_event(event_id)
+                        if existing is not None:
+                            return existing
+                    raise WorkerCallError(
+                        "lease settled with a different outcome", code="fail-mismatch"
+                    ) from None
+        raise WorkerCallError("concurrent cancellation did not settle", code="cancel-conflict")
 
     def _open_lease(
         self,
