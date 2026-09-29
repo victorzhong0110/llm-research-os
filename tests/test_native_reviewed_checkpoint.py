@@ -91,7 +91,11 @@ def test_full_state_checkpoint_requires_completed_source_and_new_lineage(tmp_pat
             claim=claim,
             source=world.request,
             target=target.model_copy(
-                update={"environment": target.environment.model_copy(update={"abi": "cp314"})}
+                update={
+                    "environment": target.environment.model_copy(
+                        update={"abi": target.environment.abi + "-other"}
+                    )
+                }
             ),
             plane=plane,
         )

@@ -187,7 +187,6 @@ def test_reused_process_identity_never_signals(
     )
     assert plane.poll(worker_id=world.request.worker_id, grant_token=world.token) is not None
     _lifecycle(run, world.request, "attempt.started", {}, attempt=True)
-    _lifecycle(run, world.request, "run.cancel.requested", {"reasonCode": "user-requested"})
     identity = ExecutionIdentity(
         lease_id="lease.grant.native",
         kind="posix-pg",
@@ -198,17 +197,44 @@ def test_reused_process_identity_never_signals(
         docker_executable=None,
     )
     monkeypatch.setattr(recovery, "load_execution_identity", lambda *_: identity)
-    monkeypatch.setattr(recovery, "posix_start_token", lambda *_: "reused")
+    monkeypatch.setattr(recovery, "posix_start_token", lambda *_: "original")
     monkeypatch.setattr(recovery, "observe_process_group", lambda *_: "running")
     monkeypatch.setattr(recovery, "observe_process", lambda *_: "running")
     monkeypatch.setattr(
         recovery, "observe_and_stop", lambda *_: pytest.fail("must not signal reused PID")
     )
+    assert (
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        ).disposition
+        == "running"
+    )
+    _lifecycle(run, world.request, "run.cancel.requested", {"reasonCode": "user-requested"})
+    monkeypatch.setattr(recovery, "posix_start_token", lambda *_: "reused")
     result = reconcile_reviewed_native(
         request=world.request, plane=plane, state_dir=state, grant_token=world.token
     )
     assert result.disposition == "unknown"
     assert plane.store.get_event("evt.work.failed.lease.grant.native") is None
+
+
+def test_restart_requires_untampered_durable_intent(tmp_path: Path) -> None:
+    from llm_research_os.execution.native_reviewed_runtime import _write_intent
+
+    world, plane, _spec, _registry = _world(tmp_path)
+    state = tmp_path / "launch"
+    with pytest.raises(NativeLaunchError, match="durable launch intent"):
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        )
+    _write_intent(state, world.request)
+    intent = next(state.glob("*.intent"))
+    intent.unlink()
+    intent.symlink_to(tmp_path / "outside")
+    with pytest.raises(NativeLaunchError, match="symlink"):
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        )
 
 
 def test_reconcile_cli_reports_uncertain_intent(
@@ -305,6 +331,7 @@ def test_post_claim_revocation_and_expiry_settle_only_after_observation(
 
     import llm_research_os.execution.native_reviewed_recovery as recovery
     from llm_research_os.execution.native_reviewed_runtime import _write_intent
+    from llm_research_os.storage.errors import DuplicateEventError
     from llm_research_os.workers.supervise import ExecutionIdentity
 
     world, plane, _spec, _registry = _world(tmp_path)
@@ -360,9 +387,28 @@ def test_post_claim_revocation_and_expiry_settle_only_after_observation(
     monkeypatch.setattr(recovery, "load_execution_identity", lambda *_: identity)
     monkeypatch.setattr(recovery, "posix_start_token", lambda *_: None)
     monkeypatch.setattr(recovery, "observe_process_group", lambda *_: "exited")
+    original_append = plane._control.append
+    raced = False
+
+    def append_after_competing_reconciler(draft):  # type: ignore[no-untyped-def]
+        nonlocal raced
+        if draft["type"] == "work.failed" and not raced:
+            raced = True
+            original_append(draft)
+            raise DuplicateEventError("another reconciler recorded the observed stop")
+        return original_append(draft)
+
+    monkeypatch.setattr(plane._control, "append", append_after_competing_reconciler)
     observed = reconcile_reviewed_native(
         request=world.request, plane=plane, state_dir=state, grant_token=world.token
     )
     assert observed.disposition == "cancelled"
+    assert raced
     assert plane.rebuild().lease(observed.lease_id or "").reason_code == "cancel-observed"
     assert run.rebuild().snapshot.status.value == "cancelled"
+    assert (
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        ).disposition
+        == "cancelled"
+    )
