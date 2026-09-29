@@ -27,7 +27,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
 | R04 | Verifiable code and runtime environment | Merged in #111 at `55b72268fcabe02ba0af0e5f1a6f038a515435e4` | Corrected PR CI passed; post-merge main CI not yet cited here | [R04 candidate](#r04-candidate-evidence) |
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
-| R06 | Cancellation, observation, and crash recovery | Candidate on `r06-cancel-recovery` | Live cancellation/restart evidence under review; not accepted | [R06 candidate](#r06-candidate-evidence) |
+| R06 | Cancellation, observation, and crash recovery | Candidate in #115 at `21792828c42ef2725ae049f52f689d5744b7ab42` | Linux/macOS PR CI passed; maintainer acceptance pending | [R06 candidate](#r06-candidate-evidence) |
 | R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
 | R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
@@ -391,7 +391,19 @@ Its macOS 3.13 run exposed a second concurrent Run preflight race: the same
 `attempt.cancelled` event had already made the Attempt terminal. The final
 candidate handles that state only when the exact event is persisted, and its
 real stop test now includes a descendant that must not survive cancellation.
-Checkpoint A remains under review until final CI and identities are recorded.
+
+Final code candidate `21792828c42ef2725ae049f52f689d5744b7ab42`:
+[PR CI #251](https://github.com/victorzhong0110/llm-research-os/actions/runs/36554473144)
+passed Ubuntu Python 3.12/3.13/3.14, macOS Python 3.12/3.13, Linux OCI, and
+authorship. Each Python job passed 1,583 tests (12 OCI-only tests deselected).
+The unrounded coverage range was 85.023693%–85.089814%, above the 85% gate.
+The live test starts a reviewed task and a descendant, records a Run
+cancellation, reconstructs a new Worker/EventStore, observes group exit,
+verifies `cancel-observed` and `run.cancelled`, and checks that the descendant
+does not run after stop. Synthetic fault tests separately cover an expired,
+revoked consumed grant, PID reuse, unavailable identity, and two competing
+reconcilers. This is PR verification, not post-merge CI or maintainer
+acceptance; Checkpoint A remains under review until integration review.
 
 ## Issue #53 evidence checklist
 
