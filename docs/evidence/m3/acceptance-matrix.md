@@ -277,8 +277,11 @@ binds the planned task's R03 `configDigest` to its CAS bundle and
 isolated-mode child. The parent checks R04 material, writes an fsynced launch
 intent, consumes Worker authority, records Run/Attempt facts, starts the child
 behind a pipe barrier, fsyncs process identity, and releases the barrier.
-The child rechecks each prepared file against a pre-gate manifest before
-import. Success stores a task-identified canonical JSON artifact in CAS,
+The child rechecks each prepared file against a pre-gate manifest, freezes
+reviewed source in memory, and imports only those verified module bytes.
+It accepts the contracted dotted callable names. Before success, the parent
+requires process-group exit observation; exceptional cleanup signals the group
+even when its leader has exited. Success stores a task-identified canonical JSON artifact in CAS,
 then records `work.completed`, `attempt.succeeded`, and `run.completed`.
 Observed task exceptions record Worker and Run failure facts. After uncertain
 persistence, the consumed grant and launch intent block automatic redispatch.
@@ -328,7 +331,18 @@ Second CI run `36458092929` at head `64193e4b` passed Ubuntu 3.12 and 3.13,
 including 1559 tests each and unrounded coverage 85.016092% and 85.004865%.
 Linux OCI and human authorship passed. The optional Ubuntu 3.14 job completed
 1559 tests but was still 84.997% covered. Runner branch tests were added
-after this run; final CI is required for macOS and the forward-compat job.
+after this run.
+
+Verified implementation head `79701ba4e0952eb6cb9db108ab225ba25f1f6c8f`:
+[CI run 36524778920](https://github.com/victorzhong0110/llm-research-os/actions/runs/36524778920)
+passed Ubuntu Python 3.12/3.13/3.14 (1571 passed, 12 deselected in each),
+macOS Python 3.12/3.13 (1570 passed, 1 skipped, 12 deselected in each),
+Linux OCI integration, and human authorship. The unrounded coverage range was
+85.148293%–85.219176%, above the 85% gate. Regression tests cover an unlisted
+unchecked `.pyc` alongside unchanged reviewed source, a dotted callable, a
+surviving descendant after leader exit, and a descendant retaining pipes past
+the wall-clock limit. The standalone runner reproduction and CI establish these
+specific repairs; cancellation and restart reconciliation remain R06.
 
 ## Issue #53 evidence checklist
 
