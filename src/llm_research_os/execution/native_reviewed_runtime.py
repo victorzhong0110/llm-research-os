@@ -43,8 +43,8 @@ from llm_research_os.workers.models import (
 )
 from llm_research_os.workers.plane import WorkerPlane
 from llm_research_os.workers.supervise import (
-    ExecutionIdentity,
     OBSERVATION_EXITED,
+    ExecutionIdentity,
     observe_process_group,
     posix_start_token,
     save_execution_identity,

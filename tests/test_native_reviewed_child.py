@@ -124,7 +124,7 @@ def test_unlisted_bytecode_cannot_replace_reviewed_source(tmp_path: Path) -> Non
     source.write_text("def main(): return {'reviewed': True}\n")
     cache = Path(importlib.util.cache_from_source(str(source)))
     cache.parent.mkdir()
-    import importlib._bootstrap_external as bootstrap  # noqa: PLC0415
+    import importlib._bootstrap_external as bootstrap
 
     replacement = compile("def main(): return {'unreviewed': True}\n", str(source), "exec")
     cache.write_bytes(bootstrap._code_to_hash_pyc(replacement, b"12345678", checked=False))
@@ -133,7 +133,7 @@ def test_unlisted_bytecode_cannot_replace_reviewed_source(tmp_path: Path) -> Non
         {"material/code/childunit.py": "sha256:" + hashlib.sha256(source.read_bytes()).hexdigest()},
     )
     runner = Path(child.__file__)
-    completed = subprocess.run(  # noqa: S603 - fixed trusted runner
+    completed = subprocess.run(
         [sys.executable, "-I", "-B", str(runner)],
         input=frame,
         capture_output=True,
@@ -153,7 +153,7 @@ def test_dotted_reviewed_entrypoint(tmp_path: Path) -> None:
         {"material/code/childunit.py": "sha256:" + hashlib.sha256(source.read_bytes()).hexdigest()},
         entrypoint="childunit:Task.main",
     )
-    completed = subprocess.run(  # noqa: S603 - fixed trusted runner
+    completed = subprocess.run(
         [sys.executable, "-I", "-B", str(Path(child.__file__))],
         input=frame,
         capture_output=True,

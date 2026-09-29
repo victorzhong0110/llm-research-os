@@ -13,9 +13,10 @@ import importlib.machinery
 import json
 import os
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Sequence
+from typing import Any
 
 
 class _FrozenSourceFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
