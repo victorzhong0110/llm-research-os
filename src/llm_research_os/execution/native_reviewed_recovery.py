@@ -16,7 +16,7 @@ from llm_research_os.execution.native_reviewed import request_digest
 from llm_research_os.execution.native_reviewed_documents import NativeReviewedExecutionRequest
 from llm_research_os.execution.native_reviewed_runtime import NativeLaunchError, _lifecycle
 from llm_research_os.runs.control import RunControl
-from llm_research_os.runs.errors import RunControlError
+from llm_research_os.runs.errors import RunControlError, RunTransitionError
 from llm_research_os.runs.models import AttemptStatus, RunStatus
 from llm_research_os.storage.errors import DuplicateEventError, EventSequenceConflictError
 from llm_research_os.workers.plane import WorkerPlane
@@ -210,9 +210,14 @@ def _append_once(
         try:
             _lifecycle(run, request, event_type, payload, attempt=attempt)
             return
-        except (DuplicateEventError, EventSequenceConflictError, RunControlError) as exc:
+        except (
+            DuplicateEventError,
+            EventSequenceConflictError,
+            RunControlError,
+            RunTransitionError,
+        ) as exc:
             if run._store.get_event(event_id) is not None:
                 return
-            if isinstance(exc, RunControlError):
+            if isinstance(exc, (RunControlError, RunTransitionError)):
                 raise
     raise NativeLaunchError("concurrent lifecycle reconciliation did not settle")

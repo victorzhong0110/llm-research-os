@@ -370,13 +370,28 @@ claim/source request arguments on `native execute-reviewed`.
 
 Candidate tests: `tests/test_native_reviewed_recovery.py` exercises a real
 sleeping task, cancellation using a newly constructed Worker/EventStore,
-idempotent reconciliation, missing identity, and PID reuse refusal.
+idempotent reconciliation, missing identity, PID reuse refusal, a still-running
+Attempt without redispatch, concurrent Worker and Run cancellation fact appends,
+and a
+revoked/expired consumed grant that remains unknown until observed exit.
 `tests/test_native_reviewed_checkpoint.py` checks a real completed source
-artifact and rejects incompatible mode, lineage, and digest. This scratch host
-can hide other process start identities, so its live cancellation case skips
-when the identity probe is unavailable; supported Linux/macOS CI must supply
-the actual stop/recovery result. Checkpoint A remains under review until those
-checks and inspectable identities are recorded.
+artifact, accepts an adapter-only envelope, and rejects missing state,
+incompatible mode, lineage, environment, artifact size, and digest. The
+pre-claim gate rejects checkpoint input without its source and restore claim.
+This scratch host cannot consistently observe process groups, even when its
+start-token probe succeeds; supported Linux/macOS CI supplies the live stop
+and restart result. The first [R06 CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36533850590)
+found a concurrent event-ID race. Its [corrected successor](https://github.com/victorzhong0110/llm-research-os/actions/runs/36552639786)
+at `bbf158f` passed the Linux 3.12/3.13 and OCI jobs, while macOS lacked
+0.013 percentage points of coverage and the optional 3.14 job exposed a test
+using its own ABI as an incompatibility fixture. The next
+[CI run](https://github.com/victorzhong0110/llm-research-os/actions/runs/36553519194)
+at `0dfc8a5` passed Linux 3.12/3.13/3.14, macOS 3.12, OCI, and authorship.
+Its macOS 3.13 run exposed a second concurrent Run preflight race: the same
+`attempt.cancelled` event had already made the Attempt terminal. The final
+candidate handles that state only when the exact event is persisted, and its
+real stop test now includes a descendant that must not survive cancellation.
+Checkpoint A remains under review until final CI and identities are recorded.
 
 ## Issue #53 evidence checklist
 

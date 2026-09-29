@@ -19,7 +19,9 @@ from llm_research_os.execution.native_reviewed_runtime import (
     execute_reviewed_native,
 )
 from llm_research_os.runs.control import RunControl
+from llm_research_os.runs.errors import RunTransitionError
 from llm_research_os.storage import EventStore
+from llm_research_os.workers.errors import WorkerCallError
 from llm_research_os.workers.plane import WorkerPlane
 from llm_research_os.workers.supervise import (
     OBSERVATION_EXITED,
@@ -44,10 +46,17 @@ def _execute(world, plane, spec, registry, state):  # type: ignore[no-untyped-de
 def test_cancel_and_reconcile_after_controller_restart(tmp_path: Path) -> None:
     if posix_start_token(os.getpid()) is None:
         pytest.skip("host hides process start identity; CI runners exercise the live stop")
+    marker = tmp_path / "descendant-survived"
     task = (
-        b"from pathlib import Path\nimport time\ndef main():\n"
-        b" Path('started').write_text('yes')\n time.sleep(30)\n return {'done': True}\n"
-    )
+        "import os, time\nfrom pathlib import Path\ndef main():\n"
+        " pid = os.fork()\n"
+        " if pid == 0:\n"
+        "  time.sleep(4)\n"
+        f"  Path({str(marker)!r}).write_text('survived')\n"
+        "  os._exit(0)\n"
+        " Path('started').write_text(str(pid))\n"
+        " time.sleep(30)\n return {'done': True}\n"
+    ).encode()
     world, plane, spec, registry = _world(tmp_path, task_source=task)
     world.prepare()
     state = tmp_path / "launch"
@@ -106,6 +115,8 @@ def test_cancel_and_reconcile_after_controller_restart(tmp_path: Path) -> None:
         worker.join(timeout=10)
     assert not worker.is_alive()
     assert len(outcome) == 1 and isinstance(outcome[0], NativeLaunchError)
+    time.sleep(4.1)
+    assert not marker.exists()
 
 
 def test_missing_identity_after_consumption_stays_unknown(tmp_path: Path) -> None:
@@ -139,7 +150,19 @@ def test_missing_identity_after_consumption_stays_unknown(tmp_path: Path) -> Non
         {"ordinal": 1, "retryOf": None, "retryDecisionId": None},
         attempt=True,
     )
+    assert (
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        ).disposition
+        == "unclaimed"
+    )
     assert plane.poll(worker_id=world.request.worker_id, grant_token=world.token) is not None
+    with pytest.raises(WorkerCallError, match="cancellation is not requested"):
+        plane.fail_observed_cancellation(
+            worker_id=world.request.worker_id,
+            grant_token=world.token,
+            lease_id="lease.grant.native",
+        )
     observed = reconcile_reviewed_native(
         request=world.request, plane=plane, state_dir=state, grant_token=world.token
     )
@@ -228,6 +251,19 @@ def test_restart_requires_untampered_durable_intent(tmp_path: Path) -> None:
             request=world.request, plane=plane, state_dir=state, grant_token=world.token
         )
     _write_intent(state, world.request)
+    assert (
+        reconcile_reviewed_native(
+            request=world.request, plane=plane, state_dir=state, grant_token=world.token
+        ).disposition
+        == "unknown"
+    )
+    with pytest.raises(NativeLaunchError, match="project or revision"):
+        reconcile_reviewed_native(
+            request=world.request.model_copy(update={"project_id": "other"}),
+            plane=plane,
+            state_dir=state,
+            grant_token=world.token,
+        )
     intent = next(state.glob("*.intent"))
     intent.unlink()
     intent.symlink_to(tmp_path / "outside")
@@ -399,11 +435,24 @@ def test_post_claim_revocation_and_expiry_settle_only_after_observation(
         return original_append(draft)
 
     monkeypatch.setattr(plane._control, "append", append_after_competing_reconciler)
+    original_lifecycle = recovery._lifecycle
+    lifecycle_raced = False
+
+    def append_after_competing_run_reconciler(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal lifecycle_raced
+        if args[2] == "attempt.cancelled" and not lifecycle_raced:
+            lifecycle_raced = True
+            original_lifecycle(*args, **kwargs)
+            raise RunTransitionError("another reconciler recorded attempt cancellation")
+        return original_lifecycle(*args, **kwargs)
+
+    monkeypatch.setattr(recovery, "_lifecycle", append_after_competing_run_reconciler)
     observed = reconcile_reviewed_native(
         request=world.request, plane=plane, state_dir=state, grant_token=world.token
     )
     assert observed.disposition == "cancelled"
     assert raced
+    assert lifecycle_raced
     assert plane.rebuild().lease(observed.lease_id or "").reason_code == "cancel-observed"
     assert run.rebuild().snapshot.status.value == "cancelled"
     assert (
