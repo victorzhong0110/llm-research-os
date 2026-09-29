@@ -448,6 +448,13 @@ R03 已审查原生执行验证器只检查 `native-reviewed-python/v0alpha1` �
 `native prepare` 与 `native doctor`（R04）会重建授权事实、HMAC grant 和 CAS 字节，
 再物化或诊断私有工作区。它们不安装依赖、不导入入口点、不启动用户代码。
 已存在且不匹配的工作区会被拒绝并保持原样。`launchAllowed` 仍为 false。
+`native execute-reviewed`（R05）是独立路径，只运行一个已准备的
+`native-reviewed-python/v0alpha1` Attempt。它重新构建被引用的计划与 Worker 绑定，
+消费有效的 `execute.native` grant，记录 Run/Attempt 和 Worker 事实，并将有界、结构化的任务
+结果存入 CAS。除 `native prepare` 的参数外，还需要 `--spec`、`--registry` 和私有的
+`--state-dir`；重复运行同一 Attempt 会被拒绝。子进程在执行身份持久化前不会导入审查过的代码；
+结果不确定时必须先观察，不能自动重跑。该画像中请求的网络、文件系统和内存隔离仍属声明性
+约束；宿主无法实施却标记为 `required` 的限制会被拒绝。
 `native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
 固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
 导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开

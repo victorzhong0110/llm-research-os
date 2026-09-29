@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514`; R03 integrated in #109 at `1a08bfe` and accepted for its validation-only contract.**
+Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514`; R03 integrated in #109 at `1a08bfe`; R04 merged in #111 at `55b72268`. R05 is a candidate.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -25,8 +25,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R01 | Scope, capability state, and acceptance baseline | Merged in #84 at `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47` | Maintainer-directed integration; post-merge CI passed | [Plan](../../plans/m3-development-plan.md), [governance](../../development-governance.md), [ADR-0064](../../adr/0064-planning-and-implementation-ownership.md); [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35452438029) |
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
-| R04 | Verifiable code and runtime environment | Candidate in PR #111; not merged | Pending review and post-merge checks | [R04 candidate](#r04-candidate-evidence) |
-| R05 | Real native execution through the Worker lifecycle | Planned | Not yet accepted | Add scoped evidence with R05 |
+| R04 | Verifiable code and runtime environment | Merged in #111 at `55b72268fcabe02ba0af0e5f1a6f038a515435e4` | Corrected PR CI passed; post-merge main CI not yet cited here | [R04 candidate](#r04-candidate-evidence) |
+| R05 | Real native execution through the Worker lifecycle | Candidate implementation on branch `r05-real-native` | Linux CPU integration under review; no maintainer acceptance yet | [R05 candidate](#r05-candidate-evidence) |
 | R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
 | R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
 | R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
@@ -260,6 +260,89 @@ socket creation, and the others from host process observation/cancellation
 restrictions. Coverage on that interrupted run was 84.207%, below the 85%
 gate; this is **not** a passing full-suite result. Required GitHub CI must
 validate the corrected head on supported runners before integration.
+
+PR #111 was subsequently merged as `55b72268fcabe02ba0af0e5f1a6f038a515435e4`.
+The corrected PR head `7b33809ab4f0774ecc3c145864bb7f3b89bbf9b4`
+passed [CI run 36421032133](https://github.com/victorzhong0110/llm-research-os/actions/runs/36421032133)
+on Ubuntu 3.12/3.13/3.14, macOS 3.12/3.13, and Linux OCI. Ubuntu 3.13
+recorded 1545 passed, 12 deselected, 22441/26328 = 85.236250% coverage.
+The earlier failing local container run above remains a separate record.
+
+## R05 candidate evidence
+
+Scope: `execute_reviewed_native` and `researchos native execute-reviewed` run
+one prepared reviewed Python Attempt. The dedicated Worker runtime/media pair
+binds the planned task's R03 `configDigest` to its CAS bundle and
+`execute.native` capability. The entrypoint is imported only by a fixed
+isolated-mode child. The parent checks R04 material, writes an fsynced launch
+intent, consumes Worker authority, records Run/Attempt facts, starts the child
+behind a pipe barrier, fsyncs process identity, and releases the barrier.
+The child rechecks each prepared file against a pre-gate manifest, freezes
+reviewed source in memory, and imports only those verified module bytes.
+It accepts the contracted dotted callable names. Before success, the parent
+requires process-group exit observation; exceptional cleanup signals the group
+even when its leader has exited. Success stores a task-identified canonical JSON artifact in CAS,
+then records `work.completed`, `attempt.succeeded`, and `run.completed`.
+Observed task exceptions record Worker and Run failure facts. After uncertain
+persistence, the consumed grant and launch intent block automatic redispatch.
+
+Local Linux CPU tests cover deterministic output and CAS verification,
+duplicate refusal, prepared-code substitution, pre-gate revocation and
+expiry, substitution after child creation but before import, failed task
+facts, identity-persistence failure after child creation, and CLI parity.
+Focused command on the candidate tree:
+`uv run --no-sync pytest -q tests/test_native_reviewed_child.py
+tests/test_native_reviewed_runtime.py
+tests/test_native_reviewed_preparation.py tests/test_native_reviewed_execution.py
+tests/test_worker_protocol.py tests/test_event_catalog.py` — **127 passed**
+after adding intent replay, post-preflight receipt/code substitution, stdout
+bound, symlinked state directory, and a failed `attempt.started` persistence
+case after grant consumption. The runner unit tests cover malformed/oversized
+frames, path traversal, symlinks, byte substitution, structured success, and
+task exceptions; the separate integration tests still execute an actual child.
+The interpreter's actual executable image is hashed through Linux procfs
+when accessible; hosts hiding process entries and macOS rehash the reviewed
+interpreter path while the child remains behind the barrier. This fallback
+does not prove the kernel's loaded inode identity. Network, filesystem,
+memory, and process-count isolation is not claimed; R04 rejects any
+unenforceable restriction marked required. R06 still owns cross-restart
+observation, cancellation, and checkpoint recovery. No paid cloud or SSH
+host was used. This is candidate implementation evidence, not maintainer
+acceptance or a claim that a result is scientifically valid.
+
+The local scratch container denies Unix socket creation and hides other
+processes' `/proc` entries. Those restrictions break pre-existing Worker
+observation and socket tests. The complete local run on this branch reported
+15 failures, 1532 passed, 3 skipped, 12 deselected, and 84.291% coverage;
+it is **not** passing CI evidence. The R05 tests themselves and targeted
+contract/Worker regressions run separately below; supported GitHub runners
+must decide the full required matrix before merge.
+
+The first PR #114 CI run `36457193021` passed Linux OCI and the authorship
+gate. Its Python tests passed (Ubuntu 3.12/3.13: 1553 passed, 12 deselected;
+macOS 3.12/3.13: 1552 passed, 1 skipped, 12 deselected), but the coverage gate
+failed: 84.984% on Ubuntu, 84.939% on macOS 3.12, and 84.988% on macOS
+3.13. The optional Ubuntu
+3.14 job also completed 1553 tests and failed only its 84.988% coverage
+gate. The six added negative tests above are the follow-up for this real
+coverage shortfall; a new CI run is required before review readiness.
+
+Second CI run `36458092929` at head `64193e4b` passed Ubuntu 3.12 and 3.13,
+including 1559 tests each and unrounded coverage 85.016092% and 85.004865%.
+Linux OCI and human authorship passed. The optional Ubuntu 3.14 job completed
+1559 tests but was still 84.997% covered. Runner branch tests were added
+after this run.
+
+Verified implementation head `79701ba4e0952eb6cb9db108ab225ba25f1f6c8f`:
+[CI run 36524778920](https://github.com/victorzhong0110/llm-research-os/actions/runs/36524778920)
+passed Ubuntu Python 3.12/3.13/3.14 (1571 passed, 12 deselected in each),
+macOS Python 3.12/3.13 (1570 passed, 1 skipped, 12 deselected in each),
+Linux OCI integration, and human authorship. The unrounded coverage range was
+85.148293%–85.219176%, above the 85% gate. Regression tests cover an unlisted
+unchecked `.pyc` alongside unchanged reviewed source, a dotted callable, a
+surviving descendant after leader exit, and a descendant retaining pipes past
+the wall-clock limit. The standalone runner reproduction and CI establish these
+specific repairs; cancellation and restart reconciliation remain R06.
 
 ## Issue #53 evidence checklist
 

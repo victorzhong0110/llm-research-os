@@ -460,10 +460,10 @@ def test_validator_source_has_no_launch_path(monkeypatch: pytest.MonkeyPatch) ->
     assert set(sys.modules) == before
 
 
-def test_execute_native_is_registered_and_not_honored() -> None:
+def test_execute_native_is_registered_and_rejects_old_runtime_pair() -> None:
     assert ExecutionCapability.NATIVE.value == "execute.native"
     assert "execute.native" in KNOWN_PLAN_CAPABILITIES
-    assert "execute.native" not in EXECUTION_CAPABILITIES
+    assert "execute.native" in EXECUTION_CAPABILITIES
     assert "execute.local" in EXECUTION_CAPABILITIES
     with pytest.raises(WorkerCallError, match="runtime does not match"):
         brick_execution_document(

@@ -55,8 +55,13 @@ WORKER_RUNTIME_PYTHON_SANDBOX: Literal["python-sandbox"] = "python-sandbox"
 WORKER_RUNTIME_OCI_CONTAINER: Literal["oci-container"] = "oci-container"
 WORKER_RUNTIME_GPU_OCI: Literal["gpu-oci-container"] = "gpu-oci-container"
 WORKER_RUNTIME_MACOS_MPS: Literal["macos-mps-process"] = "macos-mps-process"
+WORKER_RUNTIME_NATIVE_REVIEWED: Literal["native-reviewed-process"] = "native-reviewed-process"
 WORKER_RUNTIME_NAME = Literal[
-    "python-sandbox", "oci-container", "gpu-oci-container", "macos-mps-process"
+    "python-sandbox",
+    "oci-container",
+    "gpu-oci-container",
+    "macos-mps-process",
+    "native-reviewed-process",
 ]
 WORKER_PROTOCOL_LONGPOLL: Literal["researchos.worker-longpoll/v0alpha1"] = (
     "researchos.worker-longpoll/v0alpha1"
@@ -68,10 +73,14 @@ IMAGE_MEDIA_OCI_IMAGE: Literal["researchos.oci-image/v0alpha1"] = "researchos.oc
 IMAGE_MEDIA_MPS_ENV: Literal["researchos.mps-swift-env/v0alpha1"] = (
     "researchos.mps-swift-env/v0alpha1"
 )
+IMAGE_MEDIA_NATIVE_REVIEWED: Literal["researchos.native-reviewed-python-bundle/v0alpha1"] = (
+    "researchos.native-reviewed-python-bundle/v0alpha1"
+)
 IMAGE_MEDIA_TYPE = Literal[
     "researchos.python-brick/v0alpha1",
     "researchos.oci-image/v0alpha1",
     "researchos.mps-swift-env/v0alpha1",
+    "researchos.native-reviewed-python-bundle/v0alpha1",
 ]
 DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
 MAX_ACCELERATORS = 8
@@ -189,7 +198,11 @@ class WorkQueuedPayload(WorkerDocumentModel):
             self.runtime == WORKER_RUNTIME_MACOS_MPS
             and self.image_media_type == IMAGE_MEDIA_MPS_ENV
         )
-        if python_pair or oci_pair or gpu_pair or mps_pair:
+        native_pair = (
+            self.runtime == WORKER_RUNTIME_NATIVE_REVIEWED
+            and self.image_media_type == IMAGE_MEDIA_NATIVE_REVIEWED
+        )
+        if python_pair or oci_pair or gpu_pair or mps_pair or native_pair:
             return self
         raise ValueError("runtime does not match imageMediaType")
 

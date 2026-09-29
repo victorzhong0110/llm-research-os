@@ -1878,7 +1878,8 @@
           "enum": [
             "researchos.python-brick/v0alpha1",
             "researchos.oci-image/v0alpha1",
-            "researchos.mps-swift-env/v0alpha1"
+            "researchos.mps-swift-env/v0alpha1",
+            "researchos.native-reviewed-python-bundle/v0alpha1"
           ],
           "title": "Imagemediatype",
           "type": "string"
@@ -1905,7 +1906,8 @@
             "python-sandbox",
             "oci-container",
             "gpu-oci-container",
-            "macos-mps-process"
+            "macos-mps-process",
+            "native-reviewed-process"
           ],
           "title": "Runtime",
           "type": "string"
@@ -1953,7 +1955,8 @@
             "python-sandbox",
             "oci-container",
             "gpu-oci-container",
-            "macos-mps-process"
+            "macos-mps-process",
+            "native-reviewed-process"
           ],
           "title": "Runtime",
           "type": "string"

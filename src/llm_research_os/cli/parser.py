@@ -215,6 +215,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="diagnose a reviewed environment; does not repair it or start user code",
     )
     _add_native_preparation_arguments(native_doctor)
+    native_execute_reviewed = native_commands.add_parser(
+        "execute-reviewed",
+        help="execute one prepared reviewed Attempt through Worker and Run controls",
+    )
+    _add_native_preparation_arguments(native_execute_reviewed)
+    native_execute_reviewed.add_argument("--spec", type=Path, required=True)
+    native_execute_reviewed.add_argument("--state-dir", type=Path, required=True)
+    native_execute_reviewed.add_argument(
+        "--registry",
+        type=Path,
+        action="append",
+        default=[],
+        required=True,
+        metavar="PATH",
+        help="reviewed block manifest; repeat to add more",
+    )
     native_onboard = native_commands.add_parser(
         "ssh-onboard",
         help="write a pending-live SSH onboarding pack without dialing",
