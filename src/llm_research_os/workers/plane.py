@@ -472,6 +472,53 @@ class WorkerPlane:
             )
         )
 
+    def fail_observed_cancellation(
+        self, *, worker_id: str, grant_token: str, lease_id: str
+    ) -> StoredEvent:
+        """Settle an already consumed lease after observed cancellation.
+
+        Expiry or revocation after consumption cannot prevent recording a
+        stopped process. This path never opens or extends launch authority.
+        """
+
+        claims = verify_grant_token(
+            self.hmac_key, grant_token, now=self.clock().astimezone(UTC), require_live=False
+        )
+        fold = self.rebuild()
+        lease, grant = self._bind_result_authorization(
+            fold, worker_id=worker_id, lease_id=lease_id, claims=claims
+        )
+        if grant.consumed_lease_id != lease_id or not lease.claimed:
+            raise WorkerCallError("grant was not consumed by this lease", code="grant-not-consumed")
+        if not run_cancel_requested(
+            self.store,
+            project_id=self.project_id,
+            run_id=lease.run_id,
+            attempt_id=lease.attempt_id,
+        ):
+            raise WorkerCallError("cancellation is not requested", code="cancel-not-requested")
+        event_id = f"evt.work.failed.{lease_id}"
+        if lease.status == "failed" and lease.reason_code == "cancel-observed":
+            existing = self.store.get_event(event_id)
+            if existing is not None:
+                return existing
+        if lease.status not in {"leased", "claimed"}:
+            raise WorkerCallError("lease is already terminal", code="lease-terminal")
+        return self._control.append(
+            work_failed_draft(
+                project_id=self.project_id,
+                lease_id=lease_id,
+                worker_id=worker_id,
+                reason_code="cancel-observed",
+                run_id=lease.run_id,
+                attempt_id=lease.attempt_id,
+                event_id=event_id,
+                time=self._stamp(None),
+                source=self.source,
+                experiment_revision=self.experiment_revision,
+            )
+        )
+
     def _open_lease(
         self,
         fold: WorkerFold,

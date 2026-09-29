@@ -522,6 +522,17 @@ in CAS. It needs `--spec`, `--registry`, and a private `--state-dir` in
 addition to the `native prepare` arguments. Repeating an Attempt is refused.
 The child waits for durable process identity before importing reviewed code;
 unknown outcomes require observation and never trigger an automatic rerun.
+`native reconcile-reviewed` (R06) uses the same request, database, artifact
+root, workspace, grant credentials, and `--state-dir` to observe that Attempt
+after restart. An existing cancellation request (or `--cancel-request` for a
+new request) stops the recorded process group with TERM, a three-second grace,
+then KILL if required. Only observed exit is recorded as cancelled; missing or
+unverifiable identity stays unknown. A checkpoint input requires a separately
+authorized new Run/Attempt plus `--source-request` and `--restore-claim` on
+`native execute-reviewed`. The claim binds a completed source result in CAS,
+the new input, code/environment compatibility, and `full-state` versus
+`adapter-only` state fields. The reviewed task implements the actual state
+load; the runner does not infer optimizer restoration from file presence.
 The requested network, filesystem, and memory isolation remains advisory
 unless a selected profile enforces it; this profile rejects restrictions
 marked `required` when the host cannot enforce them.
