@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -114,3 +116,49 @@ def test_entrypoint_error_fails_without_a_result(
     output = capsys.readouterr()
     assert output.out == ""
     assert "ValueError" in output.err
+
+
+def test_unlisted_bytecode_cannot_replace_reviewed_source(tmp_path: Path) -> None:
+    source = tmp_path / "material/code/childunit.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("def main(): return {'reviewed': True}\n")
+    cache = Path(importlib.util.cache_from_source(str(source)))
+    cache.parent.mkdir()
+    import importlib._bootstrap_external as bootstrap  # noqa: PLC0415
+
+    replacement = compile("def main(): return {'unreviewed': True}\n", str(source), "exec")
+    cache.write_bytes(bootstrap._code_to_hash_pyc(replacement, b"12345678", checked=False))
+    frame = _frame(
+        tmp_path,
+        {"material/code/childunit.py": "sha256:" + hashlib.sha256(source.read_bytes()).hexdigest()},
+    )
+    runner = Path(child.__file__)
+    completed = subprocess.run(  # noqa: S603 - fixed trusted runner
+        [sys.executable, "-I", "-B", str(runner)],
+        input=frame,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout) == {"reviewed": True}
+
+
+def test_dotted_reviewed_entrypoint(tmp_path: Path) -> None:
+    source = tmp_path / "material/code/childunit.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("class Task:\n    @staticmethod\n    def main(): return 42\n")
+    frame = _frame(
+        tmp_path,
+        {"material/code/childunit.py": "sha256:" + hashlib.sha256(source.read_bytes()).hexdigest()},
+        entrypoint="childunit:Task.main",
+    )
+    completed = subprocess.run(  # noqa: S603 - fixed trusted runner
+        [sys.executable, "-I", "-B", str(Path(child.__file__))],
+        input=frame,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout) == 42

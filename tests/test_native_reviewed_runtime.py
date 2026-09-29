@@ -259,6 +259,81 @@ def test_substitution_at_child_barrier_never_imports_task(
     assert snapshot is not None and snapshot.status.value == "failed"
 
 
+def test_descendant_cannot_outlive_recorded_success(tmp_path: Path) -> None:
+    marker = tmp_path / "descendant-ran"
+    task = (
+        "import os, time\nfrom pathlib import Path\n"
+        "def main():\n"
+        "    pid = os.fork()\n"
+        "    if pid == 0:\n"
+        "        os.close(0); os.close(1); os.close(2)\n"
+        "        time.sleep(0.8)\n"
+        f"        Path({str(marker)!r}).write_text('ran')\n"
+        "        os._exit(0)\n"
+        "    return {'child': pid}\n"
+    ).encode()
+    world, plane, spec, registry = _world(tmp_path, task_source=task)
+    world.prepare()
+    with pytest.raises(NativeLaunchError, match="process group"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=tmp_path / "launch",
+            grant_token=world.token,
+        )
+    import time
+
+    time.sleep(1)
+    assert not marker.exists()
+    snapshot = RunControl(plane.store, project_id=PROJECT, run_id="run.1").rebuild().snapshot
+    assert snapshot is not None and snapshot.status.value == "unknown"
+
+
+def test_timeout_kills_descendant_after_leader_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+    from types import SimpleNamespace
+
+    import llm_research_os.execution.native_reviewed_runtime as runtime
+
+    marker = tmp_path / "survived-timeout"
+    task = (
+        "import os, time\nfrom pathlib import Path\n"
+        "def main():\n"
+        "    pid = os.fork()\n"
+        "    if pid == 0:\n"
+        "        time.sleep(0.8)\n"
+        f"        Path({str(marker)!r}).write_text('ran')\n"
+        "        os._exit(0)\n"
+        "    return {'child': pid}\n"
+    ).encode()
+    world, plane, spec, registry = _world(tmp_path, task_source=task)
+    world.prepare()
+    original = runtime._collect
+
+    def short_collect(process: object, request: object) -> object:
+        limits = world.request.limits.model_copy(update={"wall_time_seconds": 0.2})
+        return original(process, SimpleNamespace(limits=limits))  # type: ignore[arg-type]
+
+    monkeypatch.setattr(runtime, "_collect", short_collect)
+    with pytest.raises(NativeLaunchError, match="wall-clock limit"):
+        execute_reviewed_native(
+            request=world.request,
+            spec=spec,
+            registry=registry,
+            plane=plane,
+            workspace=world.workspace,
+            state_dir=tmp_path / "launch",
+            grant_token=world.token,
+        )
+    time.sleep(1)
+    assert not marker.exists()
+
+
 def test_child_waits_for_durable_identity(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

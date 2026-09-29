@@ -44,6 +44,8 @@ from llm_research_os.workers.models import (
 from llm_research_os.workers.plane import WorkerPlane
 from llm_research_os.workers.supervise import (
     ExecutionIdentity,
+    OBSERVATION_EXITED,
+    observe_process_group,
     posix_start_token,
     save_execution_identity,
 )
@@ -223,6 +225,8 @@ def execute_reviewed_native(
         child.stdin.write(frame)
         child.stdin.close()
         output, diagnostic, code = _collect(child, request)
+        if observe_process_group(child.pid, child.pid) != OBSERVATION_EXITED:
+            raise NativeLaunchError("reviewed process group has not been observed stopped")
         if code != 0:
             plane.fail(
                 worker_id=request.worker_id,
@@ -270,10 +274,11 @@ def execute_reviewed_native(
         _lifecycle(run, request, "run.completed", {})
         return NativeTaskResult(claim.lease_id, artifact.digest, result_digest, result)
     except Exception:
-        if child is not None and child.poll() is None:
+        if child is not None:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(child.pid, signal.SIGKILL)
-            child.wait()
+            if child.poll() is None:
+                child.wait()
         consumed = claimed
         if not consumed:
             recorded = plane.rebuild().grant(grant.grant_id)
