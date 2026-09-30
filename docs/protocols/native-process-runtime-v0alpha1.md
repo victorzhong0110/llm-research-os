@@ -95,7 +95,8 @@ interpreter paths. `resultDigest` is the content digest of the helper report.
 ## SSH onboarding shape
 
 `researchos native ssh-onboard` validates a restricted target and writes a
-`pending-live` pack. It never dials SSH:
+`pending-live` pack. The pack writer never dials SSH; R07's separate
+`native ssh-doctor` command does so only when explicitly invoked:
 
 - host: IP or hostname; `0.0.0.0`/`::`/`*` refused; loopback labeled
   `loopback-not-cross-machine`.
@@ -111,8 +112,18 @@ The pack contains `STATUS.json` (`crossMachine: pending-live`,
 `transport: ssh-pending`), `ONBOARDING.md`, `ACCEPTANCE.md`,
 `ENVIRONMENT.json`, an `ssh_config.fragment` (no passwords, no agent
 forwarding, batch mode, strict host-key checking), and an
-`authorized_keys.fragment` with a restricted `command=` prefix and a public-key
-placeholder. No private key is written.
+`authorized_keys.fragment` with restricted forwarding/PTY options and a public-key
+placeholder. No private key is written. Older packs had a forced `command=`
+example that cannot execute the doctor; see the [R07 guide](../guides/m3-native-ssh-onboarding.md).
+
+The doctor revalidates the pinned pack and private key, uses a fixed remote
+Python command with bounded stdin, and returns `ready` or `blocked` with repair
+advice. Offline install verifies a wheelhouse manifest and writes only a
+digest-named runtime under the dedicated workdir. Worker verification calls an
+authenticated, read-only identity endpoint over verified HTTPS. It does not
+claim two-host acceptance or change native task transport semantics. An explicit
+reviewed reverse tunnel can forward one remote loopback port to the local
+Worker TLS origin; the default generated key refuses forwarding.
 
 ## CLI behavior
 

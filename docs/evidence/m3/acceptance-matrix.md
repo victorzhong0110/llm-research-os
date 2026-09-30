@@ -28,7 +28,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R04 | Verifiable code and runtime environment | Merged in #111 at `55b72268fcabe02ba0af0e5f1a6f038a515435e4` | Corrected PR CI passed; post-merge main CI not yet cited here | [R04 candidate](#r04-candidate-evidence) |
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
 | R06 | Cancellation, observation, and crash recovery | Candidate in #115 at `21792828c42ef2725ae049f52f689d5744b7ab42` | Linux/macOS PR CI passed; maintainer acceptance pending | [R06 candidate](#r06-candidate-evidence) |
-| R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
+| R07 | SSH onboarding and doctor | Candidate stacked on R06 #115 | Local fake-transport verification; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence) |
 | R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
 | R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
@@ -405,6 +405,43 @@ revoked consumed grant, PID reuse, unavailable identity, and two competing
 reconcilers. This is PR verification, not post-merge CI or maintainer
 acceptance; Checkpoint A remains under review until integration review.
 
+## R07 candidate evidence
+
+R07 is stacked on the R06 candidate branch at
+`194802d9180365a9bc8a0a45b7fde99104e1662b`; R06 acceptance and merge are
+still prerequisites for an integrated R07. The doctor adds explicit pinned
+OpenSSH probe, deterministic offline wheelhouse installation in a private
+user-owned runtime, and authenticated TLS Worker identity verification on the
+existing Worker plane. The SSH pack's `pending-live` marker is not promoted by
+these actions; native `--transport ssh` remains unavailable for tasks.
+
+Local verification uses a fake SSH transport that executes the same fixed
+remote program and stdin locally. It covers host-key mismatch, private-key
+permissions, absent workdir, port conflict, offline wheel install/repeat/failure
+cleanup, Worker registration and CA mismatch, and disconnect. The Worker
+identity check appends no facts. The local transport and loopback Worker are
+not an authorized second machine, so clean-host onboarding, actual host-key
+rotation, network faults, and cross-machine Worker reachability remain
+`pending-live`. No control SQLite, CAS, or TLS private key was sent in these
+tests. The candidate does not enable an SSH task executor. Explicit, reviewed reverse
+loopback tunneling is available for Worker verification; actual tunnel evidence
+on an authorized second host remains pending-live.
+
+Repository verification in this execution environment also exposed a
+pre-existing R06 process-group observation ambiguity: the signal namespace
+reported a present group while `/proc` exposed members under different PID
+identities. The candidate now reports `unknown` when the two views disagree;
+the focused descendant and synthetic regression tests pass. The Unix socket
+artifact-store test cannot run here because socket creation returns `EPERM`;
+that environmental exclusion is reported separately from the CI matrix.
+
+Candidate checks on the Linux Python 3.12 implementation container:
+
+- `pytest -q tests/test_native_ssh_live.py tests/test_native_ssh_onboard.py tests/test_worker_supervise.py::test_procfs_observation_and_group_listing tests/test_native_reviewed_runtime.py::test_descendant_cannot_outlive_recorded_success`: 62 passed, 2 skipped (no usable IPv6 link-local interface).
+- `ruff check .`, `ruff format --check .`, `mypy src`, `researchos schema --check-all`, JCS conformance (13 vectors), and `git diff --check`: passed.
+- Broader `pytest -q -m 'not oci_live and not slow' -k 'not test_source_symlink_directory_and_special_files_are_rejected' --cov=llm_research_os --cov-fail-under=85` before the final focused coverage additions: 1,575 passed, 11 failed, 4 skipped, 13 deselected; 83.661% coverage. Eleven existing live process-observation tests cannot resolve PIDs across this container's mixed signal/procfs views. The excluded Unix socket test raises `EPERM` here. This is **not** a passing full gate; standard CI must establish coverage and platform behavior for the final candidate.
+
+
 ## Issue #53 evidence checklist
 
 Review closure independently when the relevant R03–R06 evidence is integrated:
@@ -420,3 +457,32 @@ R01 closes nothing, a package merge does not auto-close it, and R16 is not an
 additional blanket prerequisite. Ed25519 audit attestations remain distinct from
 Worker launch grants. Publication, paid resources, and public-service acceptance
 are separate decisions.
+
+
+R07 follow-up: PR #116 at `087da05` passed all 1,594 selected tests on Ubuntu
+3.13, but failed the 85% coverage gate at 84.804%. The follow-up adds remote
+entrypoint/input refusal and bounded SSH response tests plus a loopback-only
+reviewed tunnel. This newer container denies even TCP socket creation (`EPERM`);
+focused checks here returned 73 passed, 2 failed (socket permission), 2 skipped.
+Standard CI must verify the follow-up at its actual published commit.
+
+After local loopback permission was granted, the restored focused suite passed
+77 tests. Additional prerequisite/timeout cases are included in the final
+candidate. Ruff, format and mypy checks passed. Full standard CI remains the
+authoritative cross-platform and coverage gate for this follow-up.
+
+At `4ff19dffae6e7d072a5d3775b2bc4c1129be48c8`, CI run
+[255](https://github.com/victorzhong0110/llm-research-os/actions/runs/36671646529)
+passed Ubuntu Python 3.12/3.13/3.14 and Linux OCI. macOS 3.13 passed all
+1,609 selected tests but coverage was 84.984%, below the gate. The local
+complete suite also passed 1,609 tests with 84.991% coverage. The next
+follow-up adds prerequisite, credential privacy, bounded pack and failed-install
+cleanup tests; its 37 SSH tests, ruff, format and mypy checks passed locally.
+
+At `f0b8914fe6b6f9368c5ad8eef9727600d7828d98`, CI run
+[256](https://github.com/victorzhong0110/llm-research-os/actions/runs/36672183995)
+passed all Ubuntu/OCI checks. macOS coverage reached 85.106%, but the output
+limit fixture's shell pipeline encountered a denied group cleanup signal,
+masking its original bound error. The follow-up preserves that error, falls
+back to killing its own SSH child, and uses a single-process output fixture.
+The 38 SSH tests and static checks passed locally before publication.

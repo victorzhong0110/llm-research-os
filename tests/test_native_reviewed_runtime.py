@@ -267,7 +267,7 @@ def test_descendant_cannot_outlive_recorded_success(tmp_path: Path) -> None:
         "    pid = os.fork()\n"
         "    if pid == 0:\n"
         "        os.close(0); os.close(1); os.close(2)\n"
-        "        time.sleep(0.8)\n"
+        "        time.sleep(5)\n"
         f"        Path({str(marker)!r}).write_text('ran')\n"
         "        os._exit(0)\n"
         "    return {'child': pid}\n"

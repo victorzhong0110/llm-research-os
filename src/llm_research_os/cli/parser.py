@@ -274,6 +274,22 @@ def build_parser() -> argparse.ArgumentParser:
         default="restricted-v0alpha1",
         help="restricted process profile recorded in the pack",
     )
+    native_ssh_doctor = native_commands.add_parser(
+        "ssh-doctor", help="probe or install on a pinned user-owned SSH host"
+    )
+    native_ssh_doctor.add_argument("pack", type=Path, help="existing ssh-onboard pack")
+    native_ssh_doctor.add_argument("--identity-file", type=Path, required=True)
+    native_ssh_doctor.add_argument(
+        "--operation", choices=("probe", "install", "verify-worker"), default="probe"
+    )
+    native_ssh_doctor.add_argument("--wheel-dir", type=Path)
+    native_ssh_doctor.add_argument("--worker-credential", type=Path)
+    native_ssh_doctor.add_argument("--ca", type=Path)
+    native_ssh_doctor.add_argument("--port", type=int, help="check a remote loopback port")
+    native_ssh_doctor.add_argument(
+        "--tunnel-port", type=int, help="remote loopback port for reviewed Worker TLS verification"
+    )
+    add_event_format_argument(native_ssh_doctor)
     native_onboard.add_argument("--project", required=True, metavar="ID")
     native_onboard.add_argument("--source", required=True, metavar="URI")
     add_event_format_argument(native_onboard)

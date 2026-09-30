@@ -329,9 +329,10 @@ def _onboarding_markdown(target: NativeSshTarget) -> str:
         "in STATUS.json. Abort on mismatch.\n\n"
         "3. Provision the isolated workdir on the target host and append\n"
         "   `authorized_keys.fragment` for the dedicated public key only. Keep the\n"
-        "   `command=` prefix, `no-agent-forwarding`, `no-X11-forwarding`, `no-pty`,\n"
+        "   `no-agent-forwarding`, `no-X11-forwarding`, `no-pty`,\n"
         "   and `no-port-forwarding` options.\n\n"
-        "4. Copy `ssh_config.fragment` and connect once with batch mode:\n\n"
+        "4. Run `researchos native ssh-doctor PACK --identity-file KEY` to\n"
+        "   check the actual host with the pinned host key.\n\n"
         "   ```bash\n"
         "   ssh -F ssh_config.fragment researchos-native true\n"
         "   ```\n\n"
@@ -348,7 +349,7 @@ def _acceptance_markdown() -> str:
         "Pending live steps after a researcher names a second host:\n\n"
         "1. Connect in batch mode with the pinned host key.\n"
         "2. Show the isolated workdir exists and is not `/` or `/tmp`.\n"
-        "3. Run only the restricted command prefix from `authorized_keys.fragment`.\n"
+        "3. Run the pinned SSH doctor and inspect its repair outcome.\n"
         "4. Cancel then observe stop; unknown stays unknown.\n\n"
         "Loopback targets are `loopback-not-cross-machine`. Paid cloud, public\n"
         "service, and plugin isolation remain out of scope for this slice.\n"
@@ -394,9 +395,8 @@ def _ssh_config_fragment(target: NativeSshTarget) -> str:
 
 def _authorized_keys_fragment() -> str:
     return (
-        "# Restricted prefix for the dedicated public key only. Replace the\n"
+        "# Dedicated public key for the user-owned onboarding account. Replace the\n"
         "# placeholder with one `ssh-ed25519 AAAA... comment` line.\n"
-        'command="researchos-native-run --profile restricted-v0alpha1",'
         "no-agent-forwarding,no-X11-forwarding,no-pty,no-port-forwarding "
         "ssh-ed25519 REPLACE-WITH-DEDICATED-PUBLIC-KEY\n"
     )

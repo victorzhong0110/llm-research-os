@@ -192,6 +192,10 @@ def observe_process_group(pgid: int | None, leader_pid: int | None) -> ProcessOb
                 return OBSERVATION_RUNNING
             return OBSERVATION_UNKNOWN
         if not members:
+            if present is True:
+                # A live group with no visible /proc members can occur when
+                # procfs and signal namespaces differ. It is not proof of exit.
+                return OBSERVATION_UNKNOWN
             if leader_pid is None:
                 return OBSERVATION_EXITED
             return observe_process(leader_pid)
@@ -199,6 +203,14 @@ def observe_process_group(pgid: int | None, leader_pid: int | None) -> ProcessOb
         if any(state == OBSERVATION_RUNNING for state in states):
             return OBSERVATION_RUNNING
         if any(state == OBSERVATION_UNKNOWN for state in states):
+            return OBSERVATION_UNKNOWN
+        if present is True and any(
+            (fields := _proc_stat_fields(member)) is not None
+            and _state_observation(fields[0]) == OBSERVATION_RUNNING
+            for member in members
+        ):
+            # Signal and procfs views disagree (for example, mixed PID
+            # namespaces). Exited observations cannot prove an empty group.
             return OBSERVATION_UNKNOWN
         return OBSERVATION_EXITED
     if leader_pid is None:
