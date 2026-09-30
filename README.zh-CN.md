@@ -265,6 +265,10 @@ M3 首片在该密封预检之上增加本地受限执行与 pending-live SSH �
 [M3 native process runtime](docs/guides/m3-native-process-runtime.md) 与
 [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)。
 
+R07 候选的 `native ssh-doctor` 可探测固定主机密钥的 SSH 主机，在专用目录离线安装
+已校验的 wheel 包，并通过 HTTPS 验证 Worker 注册。跨主机验收仍待获授权主机；
+`native run --transport ssh` 仍拒绝执行。
+
 ## 事件查询与回放
 
 只读命令打开既有 SQLite 数据库，不会在路径缺失时创建文件，也不会追加事件：

@@ -850,6 +850,14 @@ def test_procfs_observation_and_group_listing(
     monkeypatch.setattr("llm_research_os.workers.supervise.os.killpg", lambda _pgid, _sig: None)
     assert observe_process_group(4242, 4242) == OBSERVATION_RUNNING
 
+    # A visible procfs member may carry a host PID that is not addressable
+    # through this process's PID namespace. That disagreement cannot prove exit.
+    monkeypatch.setattr(
+        "llm_research_os.workers.supervise.os.kill",
+        lambda _pid, _sig: (_ for _ in ()).throw(ProcessLookupError()),
+    )
+    assert observe_process_group(4242, 4242) == OBSERVATION_UNKNOWN
+
 
 def test_pgrep_group_probe_errors_are_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
     from llm_research_os.workers.supervise import _pgrep_group_members

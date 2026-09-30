@@ -51,6 +51,7 @@ from llm_research_os.execution.native_reviewed_runtime import (
     NativeLaunchError,
     execute_reviewed_native,
 )
+from llm_research_os.execution.native_ssh_live import probe_ssh_pack
 from llm_research_os.runs.cancellation import (
     load_run_cancellation_request,
     request_cancellation,
@@ -107,6 +108,28 @@ def run_native(args: argparse.Namespace) -> int:
             args.source,
             args.format,
         )
+    if args.native_command == "ssh-doctor":
+        try:
+            result = probe_ssh_pack(
+                args.pack,
+                identity_file=args.identity_file,
+                operation=args.operation,
+                wheel_dir=args.wheel_dir,
+                worker_credential=args.worker_credential,
+                ca_path=args.ca,
+                port=args.port,
+                tunnel_port=args.tunnel_port,
+            )
+        except (NativeSshError, OSError, ValueError) as exc:
+            print_error(exc, args.format)
+            return 2
+        if args.format == "json":
+            print(dumps_json(result))
+        else:
+            print(f"SSH {safe_text(args.operation)}: {safe_text(str(result['outcome']))}")
+            if result["outcome"] == "blocked":
+                print(f"repair: {safe_text(str(result.get('repair', 'inspect remote host')))}")
+        return 0 if result["outcome"] == "ready" else 1
     raise AssertionError(f"unhandled native command: {args.native_command}")
 
 

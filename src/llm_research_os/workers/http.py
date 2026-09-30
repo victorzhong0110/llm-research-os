@@ -161,6 +161,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/work/poll":
                     self._poll()
                     return
+                if path == "/v0alpha1/work/identity":
+                    self._identity()
+                    return
                 if path == "/v0alpha1/work/heartbeat":
                     self._heartbeat()
                     return
@@ -224,6 +227,16 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     "cancelRequested": claimed.cancel_requested,
                 },
             )
+
+        def _identity(self) -> None:
+            body = self._json_body()
+            worker_id = _require_str(body, "workerId")
+            _require_session(server, worker_id, self.headers.get("Authorization"))
+            with EventStore(server._database, require_existing=True) as store:
+                worker = server._plane(store).rebuild().worker(worker_id)
+            if worker is None:
+                raise WorkerGrantError("Worker is not registered", code="unknown-worker")
+            self._write(200, {"workerId": worker_id, "registered": True, "runtime": worker.runtime})
 
         def _heartbeat(self) -> None:
             body = self._json_body()

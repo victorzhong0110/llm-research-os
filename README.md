@@ -296,6 +296,11 @@ writes a `pending-live` checklist without dialing. See
 [M3 native process runtime](docs/guides/m3-native-process-runtime.md) and
 [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md).
 
+R07's `native ssh-doctor` candidate now probes a pinned SSH host, installs a
+verified offline wheelhouse into its dedicated workdir, and verifies the
+registered Worker over HTTPS. Cross-host acceptance remains pending an
+authorized host; `native run --transport ssh` is still refused.
+
 ## Event query and replay
 
 Read-only commands open an existing SQLite database. They do not create a missing
