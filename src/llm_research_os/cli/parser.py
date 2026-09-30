@@ -222,6 +222,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_native_preparation_arguments(native_execute_reviewed)
     native_execute_reviewed.add_argument("--spec", type=Path, required=True)
     native_execute_reviewed.add_argument("--state-dir", type=Path, required=True)
+    native_execute_reviewed.add_argument("--source-request", type=Path)
+    native_execute_reviewed.add_argument("--restore-claim", type=Path)
     native_execute_reviewed.add_argument(
         "--registry",
         type=Path,
@@ -231,6 +233,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="reviewed block manifest; repeat to add more",
     )
+    native_reconcile_reviewed = native_commands.add_parser(
+        "reconcile-reviewed",
+        help="observe an existing reviewed Attempt; never redispatch unknown work",
+    )
+    _add_native_preparation_arguments(native_reconcile_reviewed)
+    native_reconcile_reviewed.add_argument("--state-dir", type=Path, required=True)
+    native_reconcile_reviewed.add_argument("--cancel-request", type=Path)
     native_onboard = native_commands.add_parser(
         "ssh-onboard",
         help="write a pending-live SSH onboarding pack without dialing",

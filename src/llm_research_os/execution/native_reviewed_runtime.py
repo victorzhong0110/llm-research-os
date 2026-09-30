@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BufferedReader
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import ValidationError
 
@@ -42,6 +42,7 @@ from llm_research_os.workers.models import (
     WORKER_RUNTIME_NATIVE_REVIEWED,
 )
 from llm_research_os.workers.plane import WorkerPlane
+from llm_research_os.workers.recovery import run_cancel_requested
 from llm_research_os.workers.supervise import (
     OBSERVATION_EXITED,
     ExecutionIdentity,
@@ -49,6 +50,9 @@ from llm_research_os.workers.supervise import (
     posix_start_token,
     save_execution_identity,
 )
+
+if TYPE_CHECKING:
+    from llm_research_os.execution.native_reviewed_checkpoint import NativeRestoreClaim
 
 
 class NativeLaunchError(ValueError):
@@ -72,6 +76,8 @@ def execute_reviewed_native(
     workspace: Path,
     state_dir: Path,
     grant_token: str,
+    restore_claim: NativeRestoreClaim | None = None,
+    source_request: NativeReviewedExecutionRequest | None = None,
 ) -> NativeTaskResult:
     """Execute exactly one prepared Attempt. A consumed grant is never relaunched.
 
@@ -88,6 +94,15 @@ def execute_reviewed_native(
         raise NativeLaunchError("request project or revision does not match Worker")
     if content_digest(execution_object(request)) != request.config_digest:
         raise NativeLaunchError("request execution object digest differs")
+    checkpoint_inputs = [item for item in request.inputs if item.purpose == "checkpoint"]
+    if checkpoint_inputs or restore_claim is not None or source_request is not None:
+        if not checkpoint_inputs or restore_claim is None or source_request is None:
+            raise NativeLaunchError("checkpoint restore requires source and bound claim")
+        from llm_research_os.execution.native_reviewed_checkpoint import verify_native_restore
+
+        verify_native_restore(
+            claim=restore_claim, source=source_request, target=request, plane=plane
+        )
     require_authorized_execution_binding(
         plane.store,
         spec,
@@ -148,7 +163,7 @@ def execute_reviewed_native(
     run = RunControl(plane.store, project_id=request.project_id, run_id=request.run_id)
     if run.rebuild().snapshot is not None:
         raise NativeLaunchError("Run already exists; an Attempt cannot be redispatched")
-    intent = _write_intent(state_dir, request)
+    intent = _write_intent(state_dir, request, restore_claim=restore_claim)
     claimed = False
     started = False
     child: subprocess.Popen[bytes] | None = None
@@ -227,6 +242,22 @@ def execute_reviewed_native(
         output, diagnostic, code = _collect(child, request)
         if observe_process_group(child.pid, child.pid) != OBSERVATION_EXITED:
             raise NativeLaunchError("reviewed process group has not been observed stopped")
+        if run_cancel_requested(
+            plane.store,
+            project_id=request.project_id,
+            run_id=request.run_id,
+            attempt_id=request.attempt_id,
+        ):
+            from llm_research_os.execution.native_reviewed_recovery import (
+                reconcile_reviewed_native,
+            )
+
+            cancellation = reconcile_reviewed_native(
+                request=request, plane=plane, state_dir=state_dir, grant_token=grant_token
+            )
+            if cancellation.disposition == "cancelled":
+                raise NativeLaunchError("reviewed cancellation was observed")
+            raise NativeLaunchError("reviewed cancellation outcome is uncertain")
         if code != 0:
             plane.fail(
                 worker_id=request.worker_id,
@@ -309,7 +340,12 @@ def execute_reviewed_native(
         _ = intent
 
 
-def _write_intent(state_dir: Path, request: NativeReviewedExecutionRequest) -> Path:
+def _write_intent(
+    state_dir: Path,
+    request: NativeReviewedExecutionRequest,
+    *,
+    restore_claim: NativeRestoreClaim | None = None,
+) -> Path:
     if state_dir.is_symlink():
         raise NativeLaunchError("launch state directory cannot be a symlink")
     state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -317,13 +353,14 @@ def _write_intent(state_dir: Path, request: NativeReviewedExecutionRequest) -> P
     identity = f"{request.project_id}:{request.run_id}:{request.attempt_id}"
     name = hashlib.sha256(identity.encode()).hexdigest()
     path = state_dir / f"{name}.intent"
-    payload = canonical_json(
-        {
-            "requestDigest": request_digest(request),
-            "runId": request.run_id,
-            "attemptId": request.attempt_id,
-        }
-    ).encode()
+    document: dict[str, object] = {
+        "requestDigest": request_digest(request),
+        "runId": request.run_id,
+        "attemptId": request.attempt_id,
+    }
+    if restore_claim is not None:
+        document["restore"] = restore_claim.model_dump(mode="json", by_alias=True)
+    payload = canonical_json(document).encode()
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     except FileExistsError:

@@ -12,6 +12,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from contextlib import suppress
 from dataclasses import dataclass
@@ -91,6 +92,8 @@ def load_execution_identity(identity_dir: Path, lease_id: str) -> ExecutionIdent
         return None
     if type(document) is not dict:
         return None
+    if document.get("leaseId") != lease_id:
+        return None
     kind = document.get("kind")
     if kind not in {KIND_POSIX, KIND_OCI}:
         return None
@@ -106,12 +109,27 @@ def load_execution_identity(identity_dir: Path, lease_id: str) -> ExecutionIdent
 
 
 def posix_start_token(pid: int) -> str | None:
-    """Linux starttime from /proc. None on Darwin — PID-only is weaker."""
+    """Read a start identity on supported POSIX hosts; never guess on probe failure."""
 
     fields = _proc_stat_fields(pid)
-    if fields is None or len(fields) < 20:
+    if fields is not None and len(fields) >= 20:
+        return fields[19]
+    if sys.platform != "darwin":
         return None
-    return fields[19]
+    executable = shutil.which("ps")
+    if executable is None:
+        return None
+    try:
+        result = subprocess.run(  # noqa: S603 - fixed process identity probe
+            [executable, "-p", str(pid), "-o", "lstart="],
+            check=False,
+            capture_output=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    value = result.stdout.decode("ascii", errors="replace").strip()
+    return f"darwin-lstart:{value}" if result.returncode == 0 and value else None
 
 
 def observe_process(pid: int) -> ProcessObservation:
@@ -258,6 +276,8 @@ def load_pending_complete(identity_dir: Path, lease_id: str) -> PendingComplete 
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None
     if type(document) is not dict:
+        return None
+    if document.get("leaseId") != lease_id:
         return None
     result_digest = document.get("resultDigest")
     artifact_digest = document.get("artifactDigest")

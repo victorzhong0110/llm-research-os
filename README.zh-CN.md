@@ -455,6 +455,13 @@ R03 已审查原生执行验证器只检查 `native-reviewed-python/v0alpha1` �
 `--state-dir`；重复运行同一 Attempt 会被拒绝。子进程在执行身份持久化前不会导入审查过的代码；
 结果不确定时必须先观察，不能自动重跑。该画像中请求的网络、文件系统和内存隔离仍属声明性
 约束；宿主无法实施却标记为 `required` 的限制会被拒绝。
+`native reconcile-reviewed`（R06）复用同一请求、数据库、CAS、工作区、grant 凭据与
+`--state-dir`，在重启后观察该 Attempt。已有取消请求或新传入的 `--cancel-request` 会对
+已记录的进程组先发 TERM，等待三秒后在必要时发 KILL。只有观察到退出才记录 cancelled；
+身份缺失或无法核实则保持 unknown。含 checkpoint 的新 Attempt 必须单独获授权，并向
+`native execute-reviewed` 提供 `--source-request` 和 `--restore-claim`。检查会核对源 Run
+完成事实、CAS 结果、新输入及代码/环境兼容性，区分 `full-state` 与 `adapter-only` 字段。
+实际状态加载由审查过的任务实现；运行器不因文件存在就推断优化器状态已恢复。
 `native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
 固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
 导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开

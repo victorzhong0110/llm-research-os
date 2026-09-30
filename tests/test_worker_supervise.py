@@ -337,7 +337,7 @@ def test_corrupt_identity_is_missing(tmp_path: Path) -> None:
     drop_execution_identity(identity_dir, "lease.missing")
     assert load_execution_identity(identity_dir, "lease.missing") is None
     identity_path(identity_dir, "lease.empty.fields").write_text(
-        '{"kind":"posix-pg","pid":0,"pgid":true,"startToken":"","containerId":"","dockerExecutable":""}',
+        '{"leaseId":"lease.empty.fields","kind":"posix-pg","pid":0,"pgid":true,"startToken":"","containerId":"","dockerExecutable":""}',
         encoding="utf-8",
     )
     empty = load_execution_identity(identity_dir, "lease.empty.fields")
@@ -347,6 +347,11 @@ def test_corrupt_identity_is_missing(tmp_path: Path) -> None:
     assert empty.start_token is None
     assert empty.container_id is None
     assert empty.docker_executable is None
+    identity_path(identity_dir, "lease.empty.fields").write_text(
+        '{"leaseId":"lease.different","kind":"posix-pg","pid":1,"pgid":1}',
+        encoding="utf-8",
+    )
+    assert load_execution_identity(identity_dir, "lease.empty.fields") is None
 
 
 def test_posix_identity_without_pids_is_unobserved() -> None:

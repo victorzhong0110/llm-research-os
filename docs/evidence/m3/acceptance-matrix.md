@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01 integrated in #84 at `7d1bcbe`; R02 integrated in #105 at `9fb8f514`; R03 integrated in #109 at `1a08bfe`; R04 merged in #111 at `55b72268`. R05 is a candidate.**
+Status: **R01–R05 integrated; R05 merged in #114 at `7abe55c`. R06 is a candidate.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -26,8 +26,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R02 | Shared application services | Merged in #105 at `9fb8f5142bb18adffa1423e96ecf2ca43f650432` | Scoped review accepted after P1 fixes; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed | [R02 integration](#r02-integration-and-scope), [candidate history](#r02-candidate-evidence) |
 | R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
 | R04 | Verifiable code and runtime environment | Merged in #111 at `55b72268fcabe02ba0af0e5f1a6f038a515435e4` | Corrected PR CI passed; post-merge main CI not yet cited here | [R04 candidate](#r04-candidate-evidence) |
-| R05 | Real native execution through the Worker lifecycle | Candidate implementation on branch `r05-real-native` | Linux CPU integration under review; no maintainer acceptance yet | [R05 candidate](#r05-candidate-evidence) |
-| R06 | Cancellation, observation, and crash recovery | Planned | Not yet accepted | Add scoped evidence with R06 |
+| R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
+| R06 | Cancellation, observation, and crash recovery | Candidate in #115 at `21792828c42ef2725ae049f52f689d5744b7ab42` | Linux/macOS PR CI passed; maintainer acceptance pending | [R06 candidate](#r06-candidate-evidence) |
 | R07 | SSH onboarding and doctor | Planned | Not yet accepted | Add scoped evidence with R07 |
 | R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
@@ -343,6 +343,67 @@ unchecked `.pyc` alongside unchanged reviewed source, a dotted callable, a
 surviving descendant after leader exit, and a descendant retaining pipes past
 the wall-clock limit. The standalone runner reproduction and CI establish these
 specific repairs; cancellation and restart reconciliation remain R06.
+
+## R06 candidate evidence
+
+R06 starts at main `7abe55c1a8e770a6b0e5a058ea69563edeb7071c`.
+`reconcile_reviewed_native` reads the fsynced R05 launch intent, rebuilt
+Worker grant/lease and Run facts, and saved process identity. A new Worker
+instance can request observed stop for an already consumed lease. The fixed
+profile sends TERM, waits three seconds for process-group exit, then KILL if
+needed. A Linux start token or a Darwin process start observation must match;
+missing identity, PID reuse, failed probes, and ambiguous outcomes remain
+unknown. Post-consumption grant revocation becomes a Run cancellation request.
+Cancelled is appended only after the group observer reports exited. A consumed
+lease may record observed cancellation after grant expiry/revocation without
+minting new launch authority. Reconciliation never redispatches an Attempt.
+
+The companion `NativeRestoreClaim` requires a completed source Run and Worker
+artifact, verified CAS bytes, distinct target Run/Attempt, matching reviewed
+code/environment, an exact checkpoint input, and mode-specific state fields.
+It does not assert that generic user code actually loaded state; the reviewed
+task owns that behavior. `full-state` requires model, optimizer, scheduler,
+and RNG fields; `adapter-only` requires adapter data and does not claim
+optimizer restoration. The source/target lineage claim is saved with the new
+launch intent. CLI exposes `native reconcile-reviewed` and optional restore
+claim/source request arguments on `native execute-reviewed`.
+
+Candidate tests: `tests/test_native_reviewed_recovery.py` exercises a real
+sleeping task, cancellation using a newly constructed Worker/EventStore,
+idempotent reconciliation, missing identity, PID reuse refusal, a still-running
+Attempt without redispatch, concurrent Worker and Run cancellation fact appends,
+and a
+revoked/expired consumed grant that remains unknown until observed exit.
+`tests/test_native_reviewed_checkpoint.py` checks a real completed source
+artifact, accepts an adapter-only envelope, and rejects missing state,
+incompatible mode, lineage, environment, artifact size, and digest. The
+pre-claim gate rejects checkpoint input without its source and restore claim.
+This scratch host cannot consistently observe process groups, even when its
+start-token probe succeeds; supported Linux/macOS CI supplies the live stop
+and restart result. The first [R06 CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36533850590)
+found a concurrent event-ID race. Its [corrected successor](https://github.com/victorzhong0110/llm-research-os/actions/runs/36552639786)
+at `bbf158f` passed the Linux 3.12/3.13 and OCI jobs, while macOS lacked
+0.013 percentage points of coverage and the optional 3.14 job exposed a test
+using its own ABI as an incompatibility fixture. The next
+[CI run](https://github.com/victorzhong0110/llm-research-os/actions/runs/36553519194)
+at `0dfc8a5` passed Linux 3.12/3.13/3.14, macOS 3.12, OCI, and authorship.
+Its macOS 3.13 run exposed a second concurrent Run preflight race: the same
+`attempt.cancelled` event had already made the Attempt terminal. The final
+candidate handles that state only when the exact event is persisted, and its
+real stop test now includes a descendant that must not survive cancellation.
+
+Final code candidate `21792828c42ef2725ae049f52f689d5744b7ab42`:
+[PR CI #251](https://github.com/victorzhong0110/llm-research-os/actions/runs/36554473144)
+passed Ubuntu Python 3.12/3.13/3.14, macOS Python 3.12/3.13, Linux OCI, and
+authorship. Each Python job passed 1,583 tests (12 OCI-only tests deselected).
+The unrounded coverage range was 85.023693%–85.089814%, above the 85% gate.
+The live test starts a reviewed task and a descendant, records a Run
+cancellation, reconstructs a new Worker/EventStore, observes group exit,
+verifies `cancel-observed` and `run.cancelled`, and checks that the descendant
+does not run after stop. Synthetic fault tests separately cover an expired,
+revoked consumed grant, PID reuse, unavailable identity, and two competing
+reconcilers. This is PR verification, not post-merge CI or maintainer
+acceptance; Checkpoint A remains under review until integration review.
 
 ## Issue #53 evidence checklist
 

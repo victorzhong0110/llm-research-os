@@ -33,6 +33,10 @@ from llm_research_os.execution.errors import (
     NativeReviewedPreparationError,
 )
 from llm_research_os.execution.native_reviewed import parse_native_reviewed_request
+from llm_research_os.execution.native_reviewed_checkpoint import (
+    NativeRestoreClaim,
+    NativeRestoreError,
+)
 from llm_research_os.execution.native_reviewed_documents import (
     MAX_REVIEWED_REQUEST_BYTES,
     NativeReviewedExecutionRequest,
@@ -42,9 +46,14 @@ from llm_research_os.execution.native_reviewed_preparation import (
     load_bounded_file,
     prepare_reviewed_environment,
 )
+from llm_research_os.execution.native_reviewed_recovery import reconcile_reviewed_native
 from llm_research_os.execution.native_reviewed_runtime import (
     NativeLaunchError,
     execute_reviewed_native,
+)
+from llm_research_os.runs.cancellation import (
+    load_run_cancellation_request,
+    request_cancellation,
 )
 from llm_research_os.spec.io import SpecLoadError, load_document
 from llm_research_os.spec.models import ResearchSpec
@@ -83,6 +92,8 @@ def run_native(args: argparse.Namespace) -> int:
         return _native_doctor(args)
     if args.native_command == "execute-reviewed":
         return _native_execute_reviewed(args)
+    if args.native_command == "reconcile-reviewed":
+        return _native_reconcile_reviewed(args)
     if args.native_command == "ssh-onboard":
         return _native_ssh_onboard(
             args.output,
@@ -340,6 +351,20 @@ def _native_execute_reviewed(args: argparse.Namespace) -> int:
         loaded.store.close()
         spec = ResearchSpec.model_validate(load_document(args.spec, reject_symlinks=True))
         registry = build_registry(args.registry)
+        restore_claim = (
+            NativeRestoreClaim.model_validate(
+                load_document(args.restore_claim, reject_symlinks=True)
+            )
+            if args.restore_claim is not None
+            else None
+        )
+        source_request = (
+            parse_native_reviewed_request(
+                load_bounded_file(args.source_request, limit=MAX_REVIEWED_REQUEST_BYTES)
+            )
+            if args.source_request is not None
+            else None
+        )
         with EventStore(args.database, require_existing=True) as store:
             result = execute_reviewed_native(
                 request=loaded.request,
@@ -356,9 +381,12 @@ def _native_execute_reviewed(args: argparse.Namespace) -> int:
                 workspace=loaded.workspace,
                 state_dir=args.state_dir,
                 grant_token=loaded.grant_token,
+                restore_claim=restore_claim,
+                source_request=source_request,
             )
     except (
         NativeLaunchError,
+        NativeRestoreError,
         NativeReviewedPreparationError,
         NativeReviewedExecutionError,
         WorkerError,
@@ -384,6 +412,55 @@ def _native_execute_reviewed(args: argparse.Namespace) -> int:
         print(f"native reviewed task completed: {safe_text(result.lease_id)}")
         print(f"artifact digest: {safe_text(result.artifact_digest)}")
     return 0
+
+
+def _native_reconcile_reviewed(args: argparse.Namespace) -> int:
+    try:
+        loaded = _load_preparation(args)
+        loaded.store.close()
+        with EventStore(args.database, require_existing=True) as store:
+            if args.cancel_request is not None:
+                cancel = load_run_cancellation_request(args.cancel_request)
+                if (
+                    cancel.project_id != loaded.request.project_id
+                    or cancel.run_id != loaded.request.run_id
+                ):
+                    raise NativeLaunchError("cancellation request targets another Run")
+                target_attempt = getattr(cancel.target, "attempt_id", loaded.request.attempt_id)
+                if target_attempt != loaded.request.attempt_id:
+                    raise NativeLaunchError("cancellation request targets another Attempt")
+                request_cancellation(store, cancel)
+            plane = WorkerPlane(
+                store=store,
+                artifacts=loaded.artifacts,
+                hmac_key=loaded.hmac_key,
+                project_id=loaded.request.project_id,
+                source=f"https://researchos.dev/projects/{loaded.request.project_id}",
+                experiment_revision=int(loaded.request.revision_id),
+            )
+            result = reconcile_reviewed_native(
+                request=loaded.request,
+                plane=plane,
+                state_dir=args.state_dir,
+                grant_token=loaded.grant_token,
+            )
+    except (
+        NativeLaunchError,
+        NativeReviewedPreparationError,
+        WorkerError,
+        EventStoreError,
+        ValidationError,
+        OSError,
+        ValueError,
+    ) as exc:
+        print_error(exc, args.format)
+        return 1
+    payload = {"disposition": result.disposition, "leaseId": result.lease_id}
+    if args.format == "json":
+        print(dumps_json(payload))
+    else:
+        print(f"reviewed Attempt: {safe_text(result.disposition)}")
+    return 0 if result.disposition in {"completed", "cancelled", "failed"} else 1
 
 
 @dataclass(frozen=True, slots=True)
