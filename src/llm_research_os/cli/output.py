@@ -14,6 +14,7 @@ from llm_research_os.execution.errors import (
     NativeProcessRuntimeError,
     NativeReviewedPreparationError,
     NativeSshError,
+    NativeTransferError,
     SimulationError,
 )
 from llm_research_os.execution.planner import PlanningInputError
@@ -79,6 +80,7 @@ def problem_report(exc: Exception) -> ProblemReport:
         NativeProcessRuntimeError,
         NativeReviewedPreparationError,
         NativeSshError,
+        NativeTransferError,
         ReportError,
         ResearchDecisionError,
         SimulationError,

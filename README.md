@@ -108,6 +108,7 @@ acceptance checklist of that milestone.
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M3 native process runtime](docs/guides/m3-native-process-runtime.md)
 - [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)
+- [M3 scoped native transfer](docs/guides/m3-native-transfer.md)
 - [M3 reviewed native execution contract](docs/guides/m3-native-reviewed-execution.md)
 - [M3 reviewed native preparation](docs/guides/m3-native-reviewed-preparation.md)
 - [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md)

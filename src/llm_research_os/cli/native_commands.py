@@ -31,6 +31,7 @@ from llm_research_os.execution import (
 from llm_research_os.execution.errors import (
     NativeReviewedExecutionError,
     NativeReviewedPreparationError,
+    NativeTransferError,
 )
 from llm_research_os.execution.native_reviewed import parse_native_reviewed_request
 from llm_research_os.execution.native_reviewed_checkpoint import (
@@ -52,6 +53,12 @@ from llm_research_os.execution.native_reviewed_runtime import (
     execute_reviewed_native,
 )
 from llm_research_os.execution.native_ssh_live import probe_ssh_pack
+from llm_research_os.execution.native_transfer import (
+    classify_two_host_fault,
+    export_scoped_outputs,
+    load_manifest,
+    stage_scoped_inputs,
+)
 from llm_research_os.runs.cancellation import (
     load_run_cancellation_request,
     request_cancellation,
@@ -130,7 +137,49 @@ def run_native(args: argparse.Namespace) -> int:
             if result["outcome"] == "blocked":
                 print(f"repair: {safe_text(str(result.get('repair', 'inspect remote host')))}")
         return 0 if result["outcome"] == "ready" else 1
+    if args.native_command == "transfer":
+        return _native_transfer(args)
     raise AssertionError(f"unhandled native command: {args.native_command}")
+
+
+def _native_transfer(args: argparse.Namespace) -> int:
+    try:
+        if args.transfer_command == "classify":
+            payload = classify_two_host_fault(args.fault).as_json()
+            exit_code = 0
+        else:
+            manifest = load_manifest(args.manifest)
+            if args.transfer_command == "stage":
+                receipt = stage_scoped_inputs(
+                    manifest=manifest,
+                    source=LocalArtifactStore(args.cas),
+                    destination=args.destination,
+                    journal_path=args.journal,
+                    lease_id=args.lease_id,
+                )
+            elif args.transfer_command == "export":
+                receipt = export_scoped_outputs(
+                    manifest=manifest,
+                    source_dir=args.source,
+                    destination=LocalArtifactStore(args.cas),
+                    journal_path=args.journal,
+                    lease_id=args.lease_id,
+                )
+            else:
+                raise AssertionError(f"unhandled transfer command: {args.transfer_command}")
+            payload = receipt.as_json()
+            exit_code = 0 if receipt.status == "complete" else 1
+    except (NativeTransferError, OSError, ValueError) as exc:
+        print_error(exc, args.format)
+        return 2
+    if args.format == "json":
+        print(dumps_json(payload))
+    else:
+        print(
+            f"transfer {safe_text(str(payload.get('observation', payload.get('kind'))))}: "
+            f"{safe_text(str(payload.get('status', 'classified')))}"
+        )
+    return exit_code
 
 
 def _native_preflight(

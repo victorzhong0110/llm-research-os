@@ -95,6 +95,7 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 - [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
 - [M3 本地受限执行](docs/guides/m3-native-process-runtime.md)（英文）
 - [M3 SSH 接入](docs/guides/m3-native-ssh-onboarding.md)（英文）
+- [M3 授权范围传输](docs/guides/m3-native-transfer.md)（英文）
 - [M3 已审查原生执行契约](docs/guides/m3-native-reviewed-execution.md)（英文）
 - [M3 已审查原生准备](docs/guides/m3-native-reviewed-preparation.md)（英文）
 - [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)

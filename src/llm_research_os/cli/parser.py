@@ -293,6 +293,50 @@ def build_parser() -> argparse.ArgumentParser:
     native_onboard.add_argument("--project", required=True, metavar="ID")
     native_onboard.add_argument("--source", required=True, metavar="URI")
     add_event_format_argument(native_onboard)
+    native_transfer = native_commands.add_parser(
+        "transfer",
+        help="copy grant-scoped files without exposing a CAS or starting a second task",
+    )
+    transfer_commands = native_transfer.add_subparsers(dest="transfer_command", required=True)
+    transfer_stage = transfer_commands.add_parser(
+        "stage",
+        help="stage manifest digests from a CAS into a private directory",
+    )
+    transfer_export = transfer_commands.add_parser(
+        "export",
+        help="export manifest files from a directory into a CAS",
+    )
+    for transfer_parser in (transfer_stage, transfer_export):
+        transfer_parser.add_argument("manifest", type=Path, help="scoped transfer manifest JSON")
+        transfer_parser.add_argument("--journal", type=Path, required=True)
+        transfer_parser.add_argument("--lease-id", required=True)
+        add_event_format_argument(transfer_parser)
+    transfer_stage.add_argument("cas", type=Path, help="source content-addressed artifact root")
+    transfer_stage.add_argument("destination", type=Path, help="private staging directory")
+    transfer_export.add_argument("source", type=Path, help="task output directory")
+    transfer_export.add_argument(
+        "cas",
+        type=Path,
+        help="destination content-addressed artifact root",
+    )
+    transfer_classify = transfer_commands.add_parser(
+        "classify",
+        help="classify a two-host fault without claiming live acceptance",
+    )
+    transfer_classify.add_argument(
+        "fault",
+        choices=(
+            "disconnect-before-claim",
+            "tunnel-loss",
+            "controller-restart",
+            "worker-restart",
+            "interrupted-upload",
+            "lost-completion",
+            "disconnected-cancel",
+            "observation-unavailable",
+        ),
+    )
+    add_event_format_argument(transfer_classify)
 
     blocks = subparsers.add_parser("blocks", help="inspect inert BlockManifest registrations")
     block_commands = blocks.add_subparsers(dest="blocks_command", required=True)

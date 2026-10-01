@@ -29,7 +29,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
 | R06 | Cancellation, observation, and crash recovery | Candidate in #115 at `21792828c42ef2725ae049f52f689d5744b7ab42` | Linux/macOS PR CI passed; maintainer acceptance pending | [R06 candidate](#r06-candidate-evidence) |
 | R07 | SSH onboarding and doctor | Candidate stacked on R06 #115 | Local fake-transport verification; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence) |
-| R08 | Two-host artifact transfer and fault acceptance | Planned | Not yet accepted | Add scoped evidence with R08 |
+| R08 | Two-host artifact transfer and fault acceptance | Candidate; not merged | Local scoped transfer, fault classification, and one CPU checkpoint copy. Two-host and GPU acceptance are pending-live | [R08 candidate](#r08-candidate-evidence) |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
 | R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
 | R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
@@ -441,6 +441,28 @@ Candidate checks on the Linux Python 3.12 implementation container:
 - `ruff check .`, `ruff format --check .`, `mypy src`, `researchos schema --check-all`, JCS conformance (13 vectors), and `git diff --check`: passed.
 - Broader `pytest -q -m 'not oci_live and not slow' -k 'not test_source_symlink_directory_and_special_files_are_rejected' --cov=llm_research_os --cov-fail-under=85` before the final focused coverage additions: 1,575 passed, 11 failed, 4 skipped, 13 deselected; 83.661% coverage. Eleven existing live process-observation tests cannot resolve PIDs across this container's mixed signal/procfs views. The excluded Unix socket test raises `EPERM` here. This is **not** a passing full gate; standard CI must establish coverage and platform behavior for the final candidate.
 
+
+## R08 candidate evidence
+
+Scope: grant- and task-scoped file transfer only. `researchos native transfer`
+copies manifest digests between one CAS and one directory. It does not list a
+CAS, follow symlinks, or start a second lease when a journal already names one.
+Fault classification keeps `unknown` and `cancel-requested` distinct from
+`success`, `failure`, and `stopped`. A verified checkpoint can be copied into
+the designated new Attempt; an unsupported restore is refused.
+
+This section is candidate evidence for the open PR. It is not a merge SHA, not
+maintainer acceptance, and not two-host proof. No second machine was
+authorized. `gpu-oci` and `macos-mps` stay `pending-live`. Historical
+cuda.1–11 and M2 OCI records are not reused. Issue #53 stays open.
+
+The local CPU check runs one reviewed native task on the implementation host,
+then copies only that task's result artifact. The receipt records
+`native-scoped-transfer/v0alpha1`, the host `runtime` string, the manifest
+digest, and the process identity saved by that task. That host is not a second
+machine.
+
+Package tests: `tests/test_native_transfer.py`.
 
 ## Issue #53 evidence checklist
 
