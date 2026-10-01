@@ -46,6 +46,19 @@ class NativeProcessRuntimeError(ValueError):
         self.code = code
 
 
+class NativeTransferError(ValueError):
+    """Reject a grant-scoped transfer that leaves its task bounds.
+
+    Messages MUST NOT include host paths, grant tokens, or object bytes.
+    ``code`` is a stable diagnostic token. A refusal does not start a task
+    and is not a two-host success, failure, or stop.
+    """
+
+    def __init__(self, message: str, *, code: str = "native-transfer") -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class NativeSshError(ValueError):
     """Reject an unsafe or incomplete SSH onboarding target or pack.
 

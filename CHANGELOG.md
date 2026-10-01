@@ -39,6 +39,13 @@ authorized release.
   into a private workspace and refuse a mismatched tree. They do not import
   an entrypoint or start user code. `launchAllowed` stays false. This is
   candidate behavior and does not close Issue #53.
+- R08 adds local manifest-scoped input and output transfer
+  (`researchos native transfer`, `native-scoped-transfer/v0alpha1`). Copies
+  are limited to named paths and digests, with atomic file publication,
+  serialized durable journals and no-follow directory descriptors. Local
+  fault classification retains `unknown` and `cancel-requested`. Remote
+  transport and grant enforcement remain unimplemented; two-host and GPU
+  evidence remain pending-live. This slice does not close Issue #53.
 - Optimize the common ASCII CloudEvents identity check while preserving the
   existing Unicode rejection rules; the 100k M2 append benchmark keeps its
   original threshold.
