@@ -222,6 +222,25 @@ persistent projection and real-runtime invariants remain requirements for subseq
 | TM-067 | Reviewed code, config, inputs, or interpreter identity are replaced between approval and launch, a path is accepted as the interpreter, or a mismatched workspace is reused | Unreviewed bytes would run if a later package launched; false environment identity | R04 rebuilds the EventStore fact, HMAC grant, and CAS bytes; materializes a private no-follow workspace; rehashes before return; refuses incomplete, damaged, or mismatched trees without overwrite; interpreter identity is a byte document matched to the host ABI and platform; `check_before_user_code` does not import or spawn; `launchAllowed` stays false and no package is installed (ADR-0065) | `tests/test_native_reviewed_preparation.py` |
 
 
+### TM-068: Local scoped transfer publication
+
+The R08 local helper must not follow a replaced directory or temporary-file
+symlink, publish a short write as complete, or let concurrent journal claims
+replace the winning lease. Held no-follow directory descriptors, private
+exclusive temporary files, complete-write loops, no-overwrite atomic file
+publication, locked journal transactions and file/directory fsync enforce
+these boundaries. Bounded regular-file reads refuse FIFOs and oversized
+manifests/journals. Regression evidence is in
+`tests/test_native_transfer_security.py`.
+
+This helper does not authenticate grants or contact another host. Manifest
+grant/task identifiers are trusted local correlation data. Its fault classifier
+does not exercise real network/process faults. Journal parents and their stable
+lock files are controller-owned; no untrusted actor may delete them. Private
+staging crash leftovers require owner cleanup. Remote transport, grant-bound
+endpoint enforcement and two-host fault evidence remain R08 implementation
+and acceptance gaps, not current security properties.
+
 ## 7. M0 security gates
 
 Before merging executable capability, the following gates apply:

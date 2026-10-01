@@ -1,13 +1,20 @@
 # M3 scoped native transfer (R08 candidate)
 
-`researchos native transfer` copies files named by a grant-scoped manifest.
+`researchos native transfer` copies files named by a local manifest.
 The manifest is the allow-list: path, digest, and size. The command never
 lists a CAS and never follows a symlink. A completed journal for the same
 lease is a replay of that transfer, not a second task start.
 
 This does not accept a two-host run. No second machine is contacted.
 `gpu-oci` and `macos-mps` remain `pending-live`. A local copy is not remote
-evidence.
+evidence. Remote transport and Worker grant enforcement are not implemented
+by this helper; they are remaining R08 implementation work, distinct from
+missing real-host acceptance. `grantId` is a correlation reference supplied
+by the trusted local caller, not a checked launch credential. Do not expose
+this command or its CAS path to a remote Worker or browser.
+
+See [the local transfer protocol](../protocols/m3-native-transfer.md) and
+TM-068 in the [threat model](../security/threat-model.md).
 
 ## Manifest
 
@@ -44,6 +51,12 @@ digest mismatch, exhausted retries, or an unsupported checkpoint restore.
 
 An interrupted copy resumes the remaining files under the same lease. Three
 attempts is the bound. A changed file after a recorded digest is rejected.
+Files publish atomically after all bytes and their digest are verified. Journal
+updates are serialized, private, bounded, and synchronized to disk. A path
+replacement cannot redirect the held directory descriptors. An input crash
+before publication can leave a private `.transfer-*` file in the local
+staging tree; it is not a completed artifact. Cleanup belongs to the owner of
+that private staging tree, never to a remote caller.
 `researchos native transfer classify disconnected-cancel` prints
 `cancel-requested` and does not start work. The other classified faults
 print `unknown`. None of them is success, failure, or stopped.

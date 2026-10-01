@@ -7,14 +7,18 @@ A reconnect continues the same lease. It does not start another task.
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import stat
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, suppress
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
@@ -60,6 +64,9 @@ _FAULTS: dict[str, TransferObservation] = {
 }
 _GPU_PROFILES = frozenset({"gpu-oci", "macos-mps"})
 INTERRUPTED = "transfer-interrupted"
+_JOURNAL_PARENT: ContextVar[tuple[Path, int] | None] = ContextVar(
+    "native_transfer_journal_parent", default=None
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +184,7 @@ def manifest_from_document(document: object) -> TransferManifest:
         raise NativeTransferError("transfer manifest is invalid", code="transfer-manifest-invalid")
     body = cast(dict[str, object], document)
     direction = body.get("direction")
-    if direction not in {"input", "output"}:
+    if type(direction) is not str or direction not in {"input", "output"}:
         raise NativeTransferError("transfer manifest is invalid", code="transfer-manifest-invalid")
     files_value = body.get("files")
     if type(files_value) is not list or not files_value or len(files_value) > MAX_TRANSFER_FILES:
@@ -215,7 +222,7 @@ def load_manifest(path: Path) -> TransferManifest:
     if path.is_symlink():
         raise NativeTransferError("transfer manifest is invalid", code="transfer-manifest-invalid")
     try:
-        descriptor = os.open(path, _READ_FLAGS)
+        descriptor = os.open(path, _READ_FLAGS | os.O_NONBLOCK)
     except OSError:
         raise NativeTransferError(
             "transfer manifest is invalid",
@@ -228,7 +235,11 @@ def load_manifest(path: Path) -> TransferManifest:
                 "transfer manifest is invalid",
                 code="transfer-manifest-invalid",
             )
-        raw = os.read(descriptor, info.st_size)
+        raw = _read_bounded(descriptor, MAX_TRANSFER_MANIFEST_BYTES)
+        if len(raw) > MAX_TRANSFER_MANIFEST_BYTES:
+            raise NativeTransferError(
+                "transfer manifest is invalid", code="transfer-manifest-invalid"
+            )
     finally:
         os.close(descriptor)
     try:
@@ -268,6 +279,16 @@ def claim_for_transfer(
     *,
     lease_id: str,
 ) -> TransferReceipt:
+    with _journal_lock(journal_path):
+        return _claim_for_transfer_locked(journal_path, manifest, lease_id=lease_id)
+
+
+def _claim_for_transfer_locked(
+    journal_path: Path,
+    manifest: TransferManifest,
+    *,
+    lease_id: str,
+) -> TransferReceipt:
     """Record the single task start for this lease. A repeat is the same start."""
 
     _identifier(lease_id)
@@ -291,6 +312,15 @@ def claim_for_transfer(
 
 
 def record_fault(
+    journal_path: Path,
+    manifest: TransferManifest,
+    kind: str,
+) -> TransferReceipt:
+    with _journal_lock(journal_path):
+        return _record_fault_locked(journal_path, manifest, kind)
+
+
+def _record_fault_locked(
     journal_path: Path,
     manifest: TransferManifest,
     kind: str,
@@ -392,24 +422,29 @@ def stage_scoped_inputs(
             "transfer direction does not match the operation",
             code="transfer-direction-mismatch",
         )
-    _prepare_directory(destination)
-    _require_disk(destination, _remaining_bytes(manifest, ()))
+    with _directory(destination, create=True) as root_fd:
+        needed = sum(
+            item.size_bytes
+            for item in manifest.files
+            if _existing_file_digest(root_fd, item) is None
+        )
+        _require_disk(destination, needed)
 
-    def read_file(item: TransferFile) -> bytes:
-        return _read_store(source, item)
+        def read_file(item: TransferFile) -> bytes:
+            return _read_store(source, item)
 
-    def write_file(item: TransferFile, payload: bytes) -> None:
-        _place_file(destination, item.relative_path, payload)
+        def write_file(item: TransferFile, payload: bytes) -> None:
+            _place_file(root_fd, item.relative_path, payload)
 
-    return _transfer(
-        manifest=manifest,
-        journal_path=journal_path,
-        lease_id=lease_id,
-        hooks=hooks or TransferHooks(),
-        read_file=read_file,
-        write_file=write_file,
-        already=lambda item: _existing_file_digest(destination, item),
-    )
+        return _transfer(
+            manifest=manifest,
+            journal_path=journal_path,
+            lease_id=lease_id,
+            hooks=hooks or TransferHooks(),
+            read_file=read_file,
+            write_file=write_file,
+            already=lambda item: _existing_file_digest(root_fd, item),
+        )
 
 
 def export_scoped_outputs(
@@ -426,28 +461,29 @@ def export_scoped_outputs(
             "transfer direction does not match the operation",
             code="transfer-direction-mismatch",
         )
-    _reject_unexpected(source_dir, manifest)
+    with _directory(source_dir, create=False) as root_fd:
+        _reject_unexpected(root_fd, manifest)
 
-    def read_file(item: TransferFile) -> bytes:
-        return _read_tree(source_dir, item)
+        def read_file(item: TransferFile) -> bytes:
+            return _read_tree(root_fd, item)
 
-    def write_file(item: TransferFile, payload: bytes) -> None:
-        record = destination.put_bytes(payload, limit=MAX_TRANSFER_FILE_BYTES)
-        if record.digest != item.digest or record.size_bytes != item.size_bytes:
-            raise NativeTransferError(
-                "transferred bytes do not match the manifest",
-                code="transfer-integrity-mismatch",
-            )
+        def write_file(item: TransferFile, payload: bytes) -> None:
+            record = destination.put_bytes(payload, limit=MAX_TRANSFER_FILE_BYTES)
+            if record.digest != item.digest or record.size_bytes != item.size_bytes:
+                raise NativeTransferError(
+                    "transferred bytes do not match the manifest",
+                    code="transfer-integrity-mismatch",
+                )
 
-    return _transfer(
-        manifest=manifest,
-        journal_path=journal_path,
-        lease_id=lease_id,
-        hooks=hooks or TransferHooks(),
-        read_file=read_file,
-        write_file=write_file,
-        already=lambda item: _existing_store_digest(destination, item),
-    )
+        return _transfer(
+            manifest=manifest,
+            journal_path=journal_path,
+            lease_id=lease_id,
+            hooks=hooks or TransferHooks(),
+            read_file=read_file,
+            write_file=write_file,
+            already=lambda item: _existing_store_digest(destination, item),
+        )
 
 
 def deliver_verified_checkpoint(
@@ -514,6 +550,28 @@ def _transfer(
     write_file: Callable[[TransferFile, bytes], None],
     already: Callable[[TransferFile], str | None],
 ) -> TransferReceipt:
+    with _journal_lock(journal_path):
+        return _transfer_locked(
+            manifest=manifest,
+            journal_path=journal_path,
+            lease_id=lease_id,
+            hooks=hooks,
+            read_file=read_file,
+            write_file=write_file,
+            already=already,
+        )
+
+
+def _transfer_locked(
+    *,
+    manifest: TransferManifest,
+    journal_path: Path,
+    lease_id: str | None,
+    hooks: TransferHooks,
+    read_file: Callable[[TransferFile], bytes],
+    write_file: Callable[[TransferFile, bytes], None],
+    already: Callable[[TransferFile], str | None],
+) -> TransferReceipt:
     journal = _load_or_create(journal_path, manifest)
     _require_same_manifest(journal, manifest)
     if lease_id is not None:
@@ -552,7 +610,8 @@ def _transfer(
             payload = read_file(item)
             _require_payload(item, payload)
             write_file(item, payload)
-            journal.completed.append(item.relative_path)
+            if item.relative_path not in journal.completed:
+                journal.completed.append(item.relative_path)
         journal.status = "complete"
     except NativeTransferError as exc:
         if exc.code != INTERRUPTED:
@@ -628,42 +687,37 @@ def _read_store(source: LocalArtifactStore, item: TransferFile) -> bytes:
     return payload
 
 
-def _read_tree(root: Path, item: TransferFile) -> bytes:
-    path = _contained(root, item.relative_path)
-    if path is None or not path.is_file() or path.is_symlink():
-        raise NativeTransferError(
-            "authorized object is not available",
-            code="transfer-object-missing",
-        )
-    try:
-        descriptor = os.open(path, _READ_FLAGS)
-    except OSError as exc:
-        raise NativeTransferError(
-            "authorized object is not available",
-            code="transfer-object-missing",
-        ) from exc
-    try:
-        info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode) or info.st_size != item.size_bytes:
+def _read_tree(root: int, item: TransferFile) -> bytes:
+    with _parent(root, item.relative_path, create=False) as (parent_fd, name):
+        try:
+            descriptor = os.open(name, _READ_FLAGS | os.O_NONBLOCK, dir_fd=parent_fd)
+        except FileNotFoundError as exc:
             raise NativeTransferError(
-                "transferred bytes do not match the manifest",
-                code="transfer-integrity-mismatch",
-            )
-        if info.st_size > MAX_TRANSFER_FILE_BYTES:
+                "authorized object is not available", code="transfer-object-missing"
+            ) from exc
+        except OSError as exc:
             raise NativeTransferError(
-                "transfer file size is outside its bound",
-                code="transfer-bound",
-            )
-        return os.read(descriptor, info.st_size)
-    finally:
-        os.close(descriptor)
+                "transfer path is a symlink or is not authorized", code="transfer-symlink-forbidden"
+            ) from exc
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_size != item.size_bytes:
+                raise NativeTransferError(
+                    "transferred bytes do not match the manifest",
+                    code="transfer-integrity-mismatch",
+                )
+            return _read_bounded(descriptor, item.size_bytes)
+        finally:
+            os.close(descriptor)
 
 
-def _existing_file_digest(root: Path, item: TransferFile) -> str | None:
-    path = _contained(root, item.relative_path)
-    if path is None or not path.exists():
-        return None
-    return _digest(_read_tree(root, item))
+def _existing_file_digest(root: int, item: TransferFile) -> str | None:
+    try:
+        return _digest(_read_tree(root, item))
+    except NativeTransferError as exc:
+        if exc.code == "transfer-object-missing":
+            return None
+        raise
 
 
 def _existing_store_digest(store: LocalArtifactStore, item: TransferFile) -> str | None:
@@ -679,125 +733,156 @@ def _existing_store_digest(store: LocalArtifactStore, item: TransferFile) -> str
     return item.digest
 
 
-def _place_file(root: Path, relative: str, payload: bytes) -> None:
-    _require_disk(root, len(payload))
-    path = _contained(root, relative)
-    if path is None:
-        raise NativeTransferError(
-            "transfer path is not authorized",
-            code="transfer-path-unauthorized",
-        )
-    if path.is_symlink():
-        raise NativeTransferError("transfer path is a symlink", code="transfer-symlink-forbidden")
-    parent = path.parent
-    if parent.is_symlink() or not parent.is_dir():
-        raise NativeTransferError(
-            "transfer path is not authorized",
-            code="transfer-path-unauthorized",
-        )
-    parent.mkdir(mode=0o700, exist_ok=True)
-    if path.exists():
-        raise NativeTransferError(
-            "transferred bytes do not match the manifest",
-            code="transfer-integrity-mismatch",
-        )
+def _write_all(descriptor: int, payload: bytes) -> None:
+    view = memoryview(payload)
+    while view:
+        written = os.write(descriptor, view)
+        if written <= 0:
+            raise OSError("transfer write made no progress")
+        view = view[written:]
+
+
+def _read_bounded(descriptor: int, limit: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = limit + 1
+    while remaining:
+        chunk = os.read(descriptor, min(remaining, 65536))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+@contextmanager
+def _directory(path: Path, *, create: bool) -> Iterator[int]:
+    # Walk from the filesystem anchor, never reopening a checked string path.
+    absolute = path.absolute()
+    descriptor = os.open(absolute.anchor, os.O_RDONLY | os.O_DIRECTORY)
     try:
-        descriptor = os.open(path, _WRITE_FLAGS, 0o600)
-    except OSError as exc:
-        raise NativeTransferError(
-            "transfer path is not authorized",
-            code="transfer-path-unauthorized",
-        ) from exc
-    try:
-        os.write(descriptor, payload)
-        os.fsync(descriptor)
+        for part in absolute.parts[1:]:
+            if part in {".", ".."}:
+                raise NativeTransferError(
+                    "transfer path is not authorized", code="transfer-path-unauthorized"
+                )
+            if create:
+                with suppress(FileExistsError):
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
+            try:
+                child = os.open(
+                    part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor
+                )
+            except OSError as exc:
+                raise NativeTransferError(
+                    "transfer path is a symlink or is not authorized",
+                    code="transfer-symlink-forbidden",
+                ) from exc
+            os.close(descriptor)
+            descriptor = child
+        yield descriptor
     finally:
         os.close(descriptor)
 
 
-def _prepare_directory(root: Path) -> None:
-    if root.is_symlink():
-        raise NativeTransferError("transfer path is a symlink", code="transfer-symlink-forbidden")
+@contextmanager
+def _parent(root: int, relative: str, *, create: bool) -> Iterator[tuple[int, str]]:
+    descriptor = os.dup(root)
     try:
-        root.mkdir(mode=0o700, exist_ok=True)
-    except OSError as exc:
-        raise NativeTransferError(
-            "transfer path is not authorized",
-            code="transfer-path-unauthorized",
-        ) from exc
-    if root.is_symlink() or not root.is_dir():
-        raise NativeTransferError(
-            "transfer path is not authorized",
-            code="transfer-path-unauthorized",
-        )
+        for part in relative.split("/")[:-1]:
+            if create:
+                try:
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
+                    os.fsync(descriptor)
+                except FileExistsError:
+                    pass
+            try:
+                child = os.open(
+                    part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor
+                )
+            except FileNotFoundError as exc:
+                raise NativeTransferError(
+                    "authorized object is not available", code="transfer-object-missing"
+                ) from exc
+            except OSError as exc:
+                raise NativeTransferError(
+                    "transfer path is a symlink or is not authorized",
+                    code="transfer-symlink-forbidden",
+                ) from exc
+            os.close(descriptor)
+            descriptor = child
+        yield descriptor, relative.split("/")[-1]
+    finally:
+        os.close(descriptor)
 
 
-def _contained(root: Path, relative: str) -> Path | None:
-    if _PATH.fullmatch(relative) is None:
-        return None
-    current = root
-    if current.is_symlink():
-        raise NativeTransferError("transfer path is a symlink", code="transfer-symlink-forbidden")
-    parts = relative.split("/")
-    for part in parts[:-1]:
-        current = current / part
-        if current.is_symlink():
+def _place_file(root: int, relative: str, payload: bytes) -> None:
+    _require_disk(root, len(payload))
+    with _parent(root, relative, create=True) as (parent_fd, name):
+        temporary = ".transfer-" + secrets.token_hex(16)
+        descriptor = os.open(temporary, _WRITE_FLAGS, 0o600, dir_fd=parent_fd)
+        try:
+            try:
+                _write_all(descriptor, payload)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            try:
+                os.link(
+                    temporary,
+                    name,
+                    src_dir_fd=parent_fd,
+                    dst_dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError as exc:
+                raise NativeTransferError(
+                    "transferred bytes do not match the manifest",
+                    code="transfer-integrity-mismatch",
+                ) from exc
+            os.fsync(parent_fd)
+        except OSError as exc:
             raise NativeTransferError(
-                "transfer path is a symlink",
-                code="transfer-symlink-forbidden",
-            )
-        if current.exists() and not current.is_dir():
-            raise NativeTransferError(
-                "transfer path is not authorized",
-                code="transfer-path-unauthorized",
-            )
-        current.mkdir(mode=0o700, exist_ok=True)
-    return current / parts[-1]
+                "transfer interrupted before durable publication", code=INTERRUPTED
+            ) from exc
+        finally:
+            os.unlink(temporary, dir_fd=parent_fd)
+            os.fsync(parent_fd)
 
 
-def _reject_unexpected(root: Path, manifest: TransferManifest) -> None:
-    _prepare_directory(root)
+def _reject_unexpected(root: int, manifest: TransferManifest) -> None:
     allowed = {item.relative_path for item in manifest.files}
-    found: list[str] = []
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        kept: list[str] = []
-        for name in dirnames:
-            child = Path(dirpath) / name
-            if child.is_symlink():
+    for visited, (dirpath, dirnames, filenames, dirfd) in enumerate(
+        os.fwalk(".", dir_fd=root, follow_symlinks=False), start=1
+    ):
+        if visited > MAX_TRANSFER_FILES * 8:
+            raise NativeTransferError(
+                "transfer directory count is outside its bound", code="transfer-bound"
+            )
+        for name in dirnames + filenames:
+            info = os.stat(name, dir_fd=dirfd, follow_symlinks=False)
+            if stat.S_ISLNK(info.st_mode):
                 raise NativeTransferError(
-                    "transfer path is a symlink",
-                    code="transfer-symlink-forbidden",
+                    "transfer path is a symlink", code="transfer-symlink-forbidden"
                 )
-            kept.append(name)
-        dirnames[:] = kept
-        for name in filenames:
-            child = Path(dirpath) / name
-            if child.is_symlink():
-                raise NativeTransferError(
-                    "transfer path is a symlink",
-                    code="transfer-symlink-forbidden",
-                )
-            if not child.is_file():
-                raise NativeTransferError(
-                    "transfer path is not authorized",
-                    code="transfer-path-unauthorized",
-                )
-            relative = child.relative_to(root).as_posix()
-            if relative not in allowed:
-                raise NativeTransferError(
-                    "transfer path is not authorized",
-                    code="transfer-path-unauthorized",
-                )
-            found.append(relative)
-    if len(found) > MAX_TRANSFER_FILES:
-        raise NativeTransferError("transfer file count is outside its bound", code="transfer-bound")
+            if name in filenames:
+                relative = (Path(dirpath) / name).as_posix().removeprefix("./")
+                if relative not in allowed or not stat.S_ISREG(info.st_mode):
+                    raise NativeTransferError(
+                        "transfer path is not authorized", code="transfer-path-unauthorized"
+                    )
 
 
-def _require_disk(root: Path, needed: int) -> None:
+def _require_disk(root: Path | int, needed: int) -> None:
     if needed < 0:
         raise NativeTransferError("transfer byte total is outside its bound", code="transfer-bound")
-    target = root if root.exists() else root.parent
-    free = shutil.disk_usage(target).free
+    if needed == 0:
+        return
+    if isinstance(root, int):
+        usage = os.fstatvfs(root)
+        free = usage.f_bavail * usage.f_frsize
+    else:
+        target = root if root.exists() else root.parent
+        free = shutil.disk_usage(target).free
     if free < needed + 4096:
         raise NativeTransferError(
             "temporary disk is below the transfer bound",
@@ -829,7 +914,8 @@ class _Journal:
 
 
 def _load_or_create(path: Path, manifest: TransferManifest) -> _Journal:
-    if not path.exists():
+    raw = _read_journal(path)
+    if raw is None:
         return _Journal(
             manifest_digest=manifest_digest(manifest),
             grant_id=manifest.grant_id,
@@ -846,14 +932,11 @@ def _load_or_create(path: Path, manifest: TransferManifest) -> _Journal:
             process_observation="unavailable",
             process_pid=None,
         )
-    if path.is_symlink():
-        raise NativeTransferError("transfer journal is invalid", code="transfer-journal-invalid")
     try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
         raise NativeTransferError(
-            "transfer journal is invalid",
-            code="transfer-journal-invalid",
+            "transfer journal is invalid", code="transfer-journal-invalid"
         ) from exc
     if type(document) is not dict:
         raise NativeTransferError("transfer journal is invalid", code="transfer-journal-invalid")
@@ -888,6 +971,8 @@ def _journal_from(body: dict[str, object]) -> _Journal:
         raise ValueError(completed)
     if type(attempts) is not int or type(starts) is not int or isinstance(attempts, bool):
         raise ValueError(attempts)
+    if attempts < 0 or starts < 0:
+        raise ValueError("negative counters")
     lease = body["leaseId"]
     pid = body["processPid"]
     if lease is not None and type(lease) is not str:
@@ -913,7 +998,11 @@ def _journal_from(body: dict[str, object]) -> _Journal:
 
 
 def _identifier_digest(value: object) -> str:
-    if type(value) is not str or not value.startswith("jcs-sha256:") or len(value) != 75:
+    if (
+        type(value) is not str
+        or not value.startswith("jcs-sha256:")
+        or re.fullmatch(r"jcs-sha256:[0-9a-f]{64}", value) is None
+    ):
         raise NativeTransferError("transfer journal is invalid", code="transfer-journal-invalid")
     return value
 
@@ -933,16 +1022,93 @@ def _require_same_manifest(journal: _Journal, manifest: TransferManifest) -> Non
         )
 
 
+@contextmanager
+def _journal_lock(path: Path) -> Iterator[None]:
+    with _directory(path.parent, create=True) as parent_fd:
+        try:
+            descriptor = os.open(
+                path.name + ".lock",
+                os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
+                0o600,
+                dir_fd=parent_fd,
+            )
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid():
+                os.close(descriptor)
+                raise NativeTransferError(
+                    "transfer journal is invalid", code="transfer-journal-invalid"
+                )
+        except OSError as exc:
+            raise NativeTransferError(
+                "transfer journal is invalid", code="transfer-journal-invalid"
+            ) from exc
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            token = _JOURNAL_PARENT.set((path.absolute(), parent_fd))
+            try:
+                yield
+            finally:
+                _JOURNAL_PARENT.reset(token)
+        finally:
+            os.close(descriptor)
+
+
+@contextmanager
+def _journal_parent(path: Path) -> Iterator[int]:
+    held = _JOURNAL_PARENT.get()
+    if held is not None and held[0] == path.absolute():
+        yield held[1]
+    else:
+        with _directory(path.parent, create=True) as parent_fd:
+            yield parent_fd
+
+
+def _read_journal(path: Path) -> bytes | None:
+    with _journal_parent(path) as parent_fd:
+        try:
+            descriptor = os.open(path.name, _READ_FLAGS | os.O_NONBLOCK, dir_fd=parent_fd)
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise NativeTransferError(
+                "transfer journal is invalid", code="transfer-journal-invalid"
+            ) from exc
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_TRANSFER_MANIFEST_BYTES:
+                raise NativeTransferError(
+                    "transfer journal is invalid", code="transfer-journal-invalid"
+                )
+            raw = _read_bounded(descriptor, MAX_TRANSFER_MANIFEST_BYTES)
+            if len(raw) > MAX_TRANSFER_MANIFEST_BYTES:
+                raise NativeTransferError(
+                    "transfer journal is invalid", code="transfer-journal-invalid"
+                )
+            return raw
+        finally:
+            os.close(descriptor)
+
+
 def _save(path: Path, journal: _Journal) -> None:
-    if path.is_symlink():
-        raise NativeTransferError("transfer journal is invalid", code="transfer-journal-invalid")
-    path.parent.mkdir(mode=0o700, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(
-        json.dumps(_journal_document(journal), ensure_ascii=True, sort_keys=True),
-        encoding="utf-8",
-    )
-    os.replace(temporary, path)
+    with _journal_parent(path) as parent_fd:
+        temporary = ".journal-" + secrets.token_hex(16)
+        descriptor = os.open(temporary, _WRITE_FLAGS, 0o600, dir_fd=parent_fd)
+        try:
+            try:
+                _write_all(
+                    descriptor,
+                    json.dumps(
+                        _journal_document(journal), ensure_ascii=True, sort_keys=True
+                    ).encode(),
+                )
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            os.replace(temporary, path.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            os.fsync(parent_fd)
+        finally:
+            with suppress(FileNotFoundError):
+                os.unlink(temporary, dir_fd=parent_fd)
 
 
 def _journal_document(journal: _Journal) -> dict[str, object]:

@@ -798,8 +798,13 @@ def test_checkpoint_delivery_copies_one_verified_object(tmp_path: Path) -> None:
     assert names == ["prior"]
     assert identity is not None and identity.pid is not None
     observed = attach_process_observation(delivered, identity)
-    assert observed.process_observation == "present"
-    assert observed.process_pid == identity.pid
+    if identity.start_token:
+        assert observed.process_observation == "present"
+        assert observed.process_pid == identity.pid
+    else:
+        assert observed.process_observation == "unavailable"
+        assert observed.observation == "unknown"
+        assert observed.process_pid is None
     wrong = claim.model_copy(update={"artifact_digest": "sha256:" + "0" * 64})
     with pytest.raises(NativeTransferError, match="unsupported"):
         deliver_verified_checkpoint(

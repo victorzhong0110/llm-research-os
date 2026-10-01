@@ -166,7 +166,7 @@ def _native_transfer(args: argparse.Namespace) -> int:
                     lease_id=args.lease_id,
                 )
             else:
-                raise AssertionError(f"unhandled transfer command: {args.transfer_command}")
+                raise ValueError(f"unhandled transfer command: {args.transfer_command}")
             payload = receipt.as_json()
             exit_code = 0 if receipt.status == "complete" else 1
     except (NativeTransferError, OSError, ValueError) as exc:

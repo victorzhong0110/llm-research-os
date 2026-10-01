@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01–R05 integrated; R05 merged in #114 at `7abe55c`. R06 is a candidate.**
+Status: **R01–R07 integrated; R08 local transfer slice is a candidate. Checkpoint B is not accepted.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -27,9 +27,9 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R03 | Real native execution contract | Merged in #109 at `1a08bfede3970f9300ba53078d19e6f21a7f8d79` | Reviewed validation-only contract accepted; no live launch | [R03 integration](#r03-integration-and-scope), [candidate history](#r03-candidate-evidence) |
 | R04 | Verifiable code and runtime environment | Merged in #111 at `55b72268fcabe02ba0af0e5f1a6f038a515435e4` | Corrected PR CI passed; post-merge main CI not yet cited here | [R04 candidate](#r04-candidate-evidence) |
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
-| R06 | Cancellation, observation, and crash recovery | Candidate in #115 at `21792828c42ef2725ae049f52f689d5744b7ab42` | Linux/macOS PR CI passed; maintainer acceptance pending | [R06 candidate](#r06-candidate-evidence) |
-| R07 | SSH onboarding and doctor | Candidate stacked on R06 #115 | Local fake-transport verification; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence) |
-| R08 | Two-host artifact transfer and fault acceptance | Candidate; not merged | Local scoped transfer, fault classification, and one CPU checkpoint copy. Two-host and GPU acceptance are pending-live | [R08 candidate](#r08-candidate-evidence) |
+| R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
+| R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
+| R08 | Two-host artifact transfer and fault acceptance | Local helper candidate in #117; not merged | Remote transport/grant enforcement remain unimplemented; two-host and GPU evidence pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections) |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
 | R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
 | R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
@@ -463,6 +463,37 @@ digest, and the process identity saved by that task. That host is not a second
 machine.
 
 Package tests: `tests/test_native_transfer.py`.
+
+## R08 review corrections
+
+The original candidate `6382b0d4211766188daad61fb550eb9caf6f6d03` passed
+[PR CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36838992563).
+Review found temporary-journal symlink writes, path check/open races, short
+write publication, interrupted-file retry and concurrent journal claim issues.
+The follow-up pins directory descriptors, writes private exclusive temporary
+files completely, publishes files without overwrite only after fsync, and
+holds a journal lock across bounded read/modify/atomic publication. FIFO and
+oversized journal reads are refused. Targeted transfer/security tests passed
+25 cases locally; the original R07 SSH suite also passed 38 cases on this host.
+Static, schema, digest and generated-state checks passed. Final candidate CI
+must verify the published follow-up at its actual SHA.
+
+The broader local run returned 1,624 passed, 12 failed, 4 skipped and 12
+deselected, with 84.731% coverage. One unchanged artifact test cannot create
+an AF_UNIX socket (`EPERM`); eleven unchanged Worker fault/MPS/supervision
+tests cannot observe process identities in this container's mixed signal/procfs
+views. This is not a passing full gate. Standard Linux/macOS CI must establish
+the supported-platform results and the unrounded coverage floor. New regression
+tests added after collection are included in the final candidate's CI run.
+
+This explicitly supersedes any interpretation of the original candidate as
+implemented authenticated two-host transfer. The helper trusts local manifest
+correlation IDs; it does not consume a launch grant, contact another host or
+exercise real disconnect/restart faults. Those remain R08 implementation work,
+separate from missing authorized-host evidence. Local identity metadata is not
+a new live process observation. Checkpoint B, R08 full acceptance and Issue #53
+closure are not claimed. R06/R07 integration rows above supersede their old
+candidate-only ledger entries; their historical candidate evidence is preserved.
 
 ## Issue #53 evidence checklist
 
