@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import stat
+import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
 from contextvars import ContextVar
@@ -67,6 +68,7 @@ INTERRUPTED = "transfer-interrupted"
 _JOURNAL_PARENT: ContextVar[tuple[Path, int] | None] = ContextVar(
     "native_transfer_journal_parent", default=None
 )
+_JOURNAL_THREAD_LOCK = threading.RLock()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1028,14 +1030,22 @@ def _require_same_manifest(journal: _Journal, manifest: TransferManifest) -> Non
 
 @contextmanager
 def _journal_lock(path: Path) -> Iterator[None]:
-    with _directory(path.parent, create=True) as parent_fd:
+    # flock alone does not provide portable same-process thread exclusion.
+    # The fixed mutex also avoids an unbounded per-journal lock registry.
+    with _JOURNAL_THREAD_LOCK, _directory(path.parent, create=True) as parent_fd:
         try:
-            descriptor = os.open(
-                path.name + ".lock",
-                os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
-                0o600,
-                dir_fd=parent_fd,
-            )
+            name = path.name + ".lock"
+            try:
+                descriptor = os.open(
+                    name,
+                    os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600,
+                    dir_fd=parent_fd,
+                )
+            except FileExistsError:
+                descriptor = os.open(
+                    name, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent_fd
+                )
             info = os.fstat(descriptor)
             if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid():
                 os.close(descriptor)

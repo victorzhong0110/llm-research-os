@@ -474,7 +474,7 @@ The follow-up pins directory descriptors, writes private exclusive temporary
 files completely, publishes files without overwrite only after fsync, and
 holds a journal lock across bounded read/modify/atomic publication. FIFO and
 oversized journal reads are refused. Targeted transfer/security tests passed
-28 cases locally; the original R07 SSH suite also passed 38 cases on this host.
+29 cases locally; the original R07 SSH suite also passed 38 cases on this host.
 Static, schema, digest and generated-state checks passed. Final candidate CI
 must verify the published follow-up at its actual SHA.
 
@@ -494,6 +494,14 @@ separate from missing authorized-host evidence. Local identity metadata is not
 a new live process observation. Checkpoint B, R08 full acceptance and Issue #53
 closure are not claimed. R06/R07 integration rows above supersede their old
 candidate-only ledger entries; their historical candidate evidence is preserved.
+
+Follow-up `a4e7fa89454aef18ec205aa424500cc1b780d17b` passed all Linux jobs,
+OCI and macOS Python 3.13 in [CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36848733227).
+macOS Python 3.12 reached 85.369% coverage but failed the competing-thread
+claim regression (one claimant returned `transfer-journal-invalid`). The next
+fix pairs an in-process mutex with the inter-process flock and creates the
+stable lock inode exclusively before reopening it. A separate-process claim
+regression complements the thread test. No failed CI is recorded as passing.
 
 ## Issue #53 evidence checklist
 

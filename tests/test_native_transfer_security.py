@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -214,3 +217,43 @@ def test_completed_replay_needs_no_additional_disk(
     monkeypatch.setattr(transfer.shutil, "disk_usage", lambda _: type("Usage", (), {"free": 0})())
     receipt = transfer.stage_scoped_inputs(**args)
     assert receipt.status == "complete" and receipt.attempts == 1
+
+
+def test_parallel_process_claims_keep_one_lease(tmp_path: Path) -> None:
+    journal = tmp_path / "journal.json"
+    script = """
+import sys
+from pathlib import Path
+from llm_research_os.execution.native_transfer import claim_for_transfer, manifest_from_document
+from llm_research_os.execution.errors import NativeTransferError
+manifest = manifest_from_document({
+    "grantId": "grant.1", "taskId": "task.1", "runId": "run.1", "attemptId": "attempt.1",
+    "direction": "input",
+    "files": [{"path": "blob", "digest": "sha256:" + "0" * 64, "sizeBytes": 1}]
+})
+try:
+    print(claim_for_transfer(Path(sys.argv[1]), manifest, lease_id=sys.argv[2]).lease_id)
+except NativeTransferError as exc:
+    print(exc.code)
+"""
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", script, str(journal), lease],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for lease in ("lease.1", "lease.2")
+    ]
+    try:
+        outputs = [process.communicate(timeout=15) for process in processes]
+        assert all(process.returncode == 0 for process in processes), outputs
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+    result = [stdout.strip() for stdout, _stderr in outputs]
+    assert result.count("transfer-duplicate-start") == 1
+    stored = json.loads(journal.read_text())
+    assert stored["starts"] == 1 and stored["leaseId"] in result
