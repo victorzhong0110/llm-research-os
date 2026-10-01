@@ -422,6 +422,7 @@ def stage_scoped_inputs(
             "transfer direction does not match the operation",
             code="transfer-direction-mismatch",
         )
+    _require_journal_outside(journal_path, destination, source.root)
     with _directory(destination, create=True) as root_fd:
         needed = sum(
             item.size_bytes
@@ -461,6 +462,7 @@ def export_scoped_outputs(
             "transfer direction does not match the operation",
             code="transfer-direction-mismatch",
         )
+    _require_journal_outside(journal_path, source_dir, destination.root)
     with _directory(source_dir, create=False) as root_fd:
         _reject_unexpected(root_fd, manifest)
 
@@ -890,9 +892,11 @@ def _require_disk(root: Path | int, needed: int) -> None:
         )
 
 
-def _remaining_bytes(manifest: TransferManifest, completed: tuple[str, ...] | list[str]) -> int:
-    done = set(completed)
-    return sum(item.size_bytes for item in manifest.files if item.relative_path not in done)
+def _require_journal_outside(journal: Path, *roots: Path) -> None:
+    if any(journal.absolute().is_relative_to(root.absolute()) for root in roots):
+        raise NativeTransferError(
+            "transfer journal must be outside artifact trees", code="transfer-journal-invalid"
+        )
 
 
 @dataclass

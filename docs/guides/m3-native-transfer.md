@@ -51,6 +51,8 @@ digest mismatch, exhausted retries, or an unsupported checkpoint restore.
 
 An interrupted copy resumes the remaining files under the same lease. Three
 attempts is the bound. A changed file after a recorded digest is rejected.
+Keep the journal outside both artifact trees; it must never overwrite an input
+or CAS object. A verified completed replay requires no additional artifact disk.
 Files publish atomically after all bytes and their digest are verified. Journal
 updates are serialized, private, bounded, and synchronized to disk. A path
 replacement cannot redirect the held directory descriptors. An input crash

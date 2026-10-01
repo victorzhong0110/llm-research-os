@@ -474,7 +474,7 @@ The follow-up pins directory descriptors, writes private exclusive temporary
 files completely, publishes files without overwrite only after fsync, and
 holds a journal lock across bounded read/modify/atomic publication. FIFO and
 oversized journal reads are refused. Targeted transfer/security tests passed
-25 cases locally; the original R07 SSH suite also passed 38 cases on this host.
+28 cases locally; the original R07 SSH suite also passed 38 cases on this host.
 Static, schema, digest and generated-state checks passed. Final candidate CI
 must verify the published follow-up at its actual SHA.
 

@@ -183,3 +183,34 @@ def test_oversized_journal_is_refused(tmp_path: Path) -> None:
 def test_manifest_direction_must_be_a_string() -> None:
     with pytest.raises(NativeTransferError, match="invalid"):
         transfer.manifest_from_document({"direction": []})
+
+
+@pytest.mark.parametrize("root", ["cas", "stage"])
+def test_journal_cannot_overwrite_an_artifact_tree(tmp_path: Path, root: str) -> None:
+    source = _store(tmp_path / "cas")
+    source.put_bytes(b"a")
+    with pytest.raises(NativeTransferError, match="outside artifact"):
+        transfer.stage_scoped_inputs(
+            manifest=_manifest([_file("journal.json", b"a")]),
+            source=source,
+            destination=tmp_path / "stage",
+            journal_path=tmp_path / root / "journal.json",
+        )
+    assert not (tmp_path / "stage").exists()
+
+
+def test_completed_replay_needs_no_additional_disk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _store(tmp_path / "cas")
+    source.put_bytes(b"a")
+    args = dict(
+        manifest=_manifest([_file("blob", b"a")]),
+        source=source,
+        destination=tmp_path / "stage",
+        journal_path=tmp_path / "journal.json",
+    )
+    assert transfer.stage_scoped_inputs(**args).status == "complete"
+    monkeypatch.setattr(transfer.shutil, "disk_usage", lambda _: type("Usage", (), {"free": 0})())
+    receipt = transfer.stage_scoped_inputs(**args)
+    assert receipt.status == "complete" and receipt.attempts == 1
