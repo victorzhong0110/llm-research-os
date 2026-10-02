@@ -1,6 +1,6 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01–R07 integrated; R08 local transfer foundation integrated and HTTPS input slice is a candidate. Checkpoint B is not accepted.**
+Status: **R01–R07 integrated; R08 local transfer foundation and HTTPS input slice integrated. Checkpoint B is not accepted; freeze after its acceptance and do not start R09.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
@@ -29,7 +29,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
 | R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
 | R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
-| R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input candidate follows | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation. Remote outputs/executor/recovery remain incomplete; two-host and GPU evidence pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
+| R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. Remote outputs/executor/recovery remain incomplete; two-host and GPU evidence pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
 | R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
 | R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
@@ -40,6 +40,20 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R16 | Independent trials and phase acceptance | Planned | Not yet accepted | Add scoped evidence with R16 |
 
 ## R08 HTTPS input candidate
+
+### Integration update (2026-10-02)
+
+PR #118 merged at `65304b0659168d9661dde010ae751c35dedc81b5`.
+[PR CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36983679149)
+and [main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531)
+passed. The Linux Python 3.12 PR job recorded 1,661 passed, 12 OCI-only deselected,
+zero failures/skips, and unrounded statement-plus-branch coverage 85.381944%.
+The local fresh locked environment recorded 1,645 passed, 12 namespace/process
+observation failures, four skips, 12 deselected and 84.902777% coverage; it did not
+pass the CI coverage gate. No skip or threshold was added to hide those failures.
+Remote outputs, durable remote staging/execution/recovery, and authorized two-host
+and GPU evidence remain incomplete. Checkpoint B is not accepted; R09 is not started.
+
 
 Base: verified main `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`, whose
 [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460)

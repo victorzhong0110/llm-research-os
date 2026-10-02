@@ -1,0 +1,50 @@
+{
+  "sourceRevision": "65304b0659168d9661dde010ae751c35dedc81b5",
+  "provider": "DeterministicMockProvider",
+  "runtime": "SimulatedRuntime",
+  "gpuUsed": false,
+  "durationSeconds": 80,
+  "presentation": "Actual terminal snapshots with reading pauses",
+  "commands": [
+    {
+      "command": "researchos validate examples/valid/minimal.yaml",
+      "stdout": "{\"valid\": true, \"projectId\": \"example-minimal\", \"revision\": 1}\n",
+      "stderr": "",
+      "exitCode": 0,
+      "executionSeconds": 3.972223735000057,
+      "displaySeconds": 8
+    },
+    {
+      "command": "researchos dry-run examples/valid/minimal.yaml --format text",
+      "stdout": "dry-run ready: example-minimal@revision-1\nworkflow: workflow.simulation\nplan: jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b\nplanned nodes: 1 task(s), 0 approval(s), 0 loop(s)\nside effects: 0 blocks, 0 network requests, 0 writes, 0 paid actions\nresources:\n  (none)\npolicy requirements:\n  (none)\ngraph:\n  stage 0:\n    - task /workflow/workflow.simulation/simulate: simulated.experiment@0.1.0; dependsOn=none; resources=none; authorization=not-evaluated; execution=not-executed; capabilities=simulate; permissions=none; manifest=jcs-sha256:6edd4922cd9dd0e574d35040d4a9a7cdd71c196b961a16557dcb14bf668c1fc4; config=jcs-sha256:38a7ac78fd477e7da51ad9100a7b405d9913b1bc3c855a218d7b63538862a05d\n",
+      "stderr": "",
+      "exitCode": 0,
+      "executionSeconds": 1.2570054690000916,
+      "displaySeconds": 13
+    },
+    {
+      "command": "researchos m1 prove examples/m1-checkpoint reject.db --decision reject",
+      "stdout": "m1 checkpoint: recorded\ndecision: reject\nproject: example-minimal\nqueued: false\nevents: 7\ndecisions: 1\nanswered questions: 1\nrationale characters: 43\n",
+      "stderr": "",
+      "exitCode": 0,
+      "executionSeconds": 0.9821582340000532,
+      "displaySeconds": 14
+    },
+    {
+      "command": "researchos m1 prove examples/m1-checkpoint accept.db",
+      "stdout": "m1 checkpoint: recorded\ndecision: accept\nproject: example-minimal\nqueued: true\nevents: 14\ndecisions: 1\nanswered questions: 1\nrationale characters: 36\n\n# Run `run.simulated`\n\nProject `example-minimal`. Store head sequence 14.\nThis document is a projection. EventStore remains the fact source.\n\n## Research\n- Proposal `proposal.revise-eval` <a href=\"#evt.proposal.1\"><code>evt.proposal.1</code></a> state `accepted`.\n- Dissent `dissent.eval-leakage` <a href=\"#evt.dissent.1\"><code>evt.dissent.1</code></a> targets `proposal.revise-eval`.\n- Decision `decision.accept-revise-eval` <a href=\"#evt.decision.1\"><code>evt.decision.1</code></a> outcome `accept`.\n- Question `question.eval-split` <a href=\"#evt.question.answer.1\"><code>evt.question.answer.1</code></a> status `answered`.\n\n## Training\nNo `training.step` facts for this run.\n\n## Evaluation\nNo `evaluation.metric` facts for this run.\n\n## System\n- Store head sequence 14.\n- `attempt.queued` sequence 11 <a href=\"#evt.3.attempt.queued\"><code>evt.3.attempt.queued</code></a>.\n- `attempt.started` sequence 12 <a href=\"#evt.4.attempt.started\"><code>evt.4.attempt.started</code></a>.\n- `attempt.succeeded` sequence 13 <a href=\"#evt.5.attempt.succeeded\"><code>evt.5.attempt.succeeded</code></a>.\n\n## Cost\n- Attention: 1 decisions, 1 answered questions, 0 open questions, 36 rationale characters. <a href=\"#evt.question.answer.1\"><code>evt.question.answer.1</code></a>\nNo `budget.*` facts for this project.\n\n## Lineage\n- Run status `completed` <a href=\"#evt.6.run.completed\"><code>evt.6.run.completed</code></a>.\n- Consumed authorization `plan.authorization.evaluated` sequence 8 <a href=\"#evt.authorization.example-minimal.1\"><code>evt.authorization.example-minimal.1</code></a>.\n- Spec digest `jcs-sha256:3aef52d942c807c1661ea3e10e856b74b7b209e7f7a8a92c47cd183fcb045af0` <a href=\"#evt.1.run.queued\"><code>evt.1.run.queued</code></a>.\n- Registry digest `jcs-sha256:d97eed822c9897500e581f5014bb04e7adb985f7d03aa184d0f0a3ecacec741a` <a href=\"#evt.1.run.queued\"><code>evt.1.run.queued</code></a>.\n- Plan digest `jcs-sha256:a50b5b56f595258c9cd30090f0acc96bdd0987c7c32412008a1dac6eb68ccd1b` <a href=\"#evt.1.run.queued\"><code>evt.1.run.queued</code></a>.\n- `run.queued` sequence 9 <a href=\"#evt.1.run.queued\"><code>evt.1.run.queued</code></a>.\n- `run.started` sequence 10 <a href=\"#evt.2.run.started\"><code>evt.2.run.started</code></a>.\n- `attempt.queued` sequence 11 <a href=\"#evt.3.attempt.queued\"><code>evt.3.attempt.queued</code></a>.\n- `attempt.started` sequence 12 <a href=\"#evt.4.attempt.started\"><code>evt.4.attempt.started</code></a>.\n- `attempt.succeeded` sequence 13 <a href=\"#evt.5.attempt.succeeded\"><code>evt.5.attempt.succeeded</code></a>.\n- `run.completed` sequence 14 <a href=\"#evt.6.run.completed\"><code>evt.6.run.completed</code></a>.\n\n## Event index\n- <a id=\"evt.authorization.example-minimal.1\"></a><code>evt.authorization.example-minimal.1</code> <code>plan.authorization.evaluated</code>\n- <a id=\"evt.1.run.queued\"></a><code>evt.1.run.queued</code> <code>run.queued</code>\n- <a id=\"evt.2.run.started\"></a><code>evt.2.run.started</code> <code>run.started</code>\n- <a id=\"evt.3.attempt.queued\"></a><code>evt.3.attempt.queued</code> <code>attempt.queued</code>\n- <a id=\"evt.4.attempt.started\"></a><code>evt.4.attempt.started</code> <code>attempt.started</code>\n- <a id=\"evt.5.attempt.succeeded\"></a><code>evt.5.attempt.succeeded</code> <code>attempt.succeeded</code>\n- <a id=\"evt.6.run.completed\"></a><code>evt.6.run.completed</code> <code>run.completed</code>\n- <a id=\"evt.proposal.1\"></a><code>evt.proposal.1</code>\n- <a id=\"evt.dissent.1\"></a><code>evt.dissent.1</code>\n- <a id=\"evt.decision.1\"></a><code>evt.decision.1</code>\n- <a id=\"evt.question.1\"></a><code>evt.question.1</code>\n- <a id=\"evt.question.answer.1\"></a><code>evt.question.answer.1</code>\n",
+      "stderr": "",
+      "exitCode": 0,
+      "executionSeconds": 1.3555027539999855,
+      "displaySeconds": 33
+    },
+    {
+      "command": "researchos events verify accept.db",
+      "stdout": "valid: 14 event(s)\n",
+      "stderr": "",
+      "exitCode": 0,
+      "executionSeconds": 0.97544480199997,
+      "displaySeconds": 12
+    }
+  ]
+}

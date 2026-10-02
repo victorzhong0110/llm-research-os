@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "LLM Research OS: decisions, execution, evidence",
+    "output": ".archify/architecture-project-tour-20261002/architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/victorzhong0110/llm-research-os.git",
+      "revision": "65304b0659168d9661dde010ae751c35dedc81b5",
+      "provider": "github",
+      "link_mode": "web"
+    }
+  },
+  "components": [
+    {
+      "id": "researcher",
+      "type": "frontend",
+      "label": "Researcher / CLI",
+      "sublabel": "Human decision",
+      "pos": [
+        40,
+        110
+      ],
+      "size": [
+        200,
+        76
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/cli/m1_commands.py",
+          "line": 46,
+          "end_line": 62
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "type": "backend",
+      "label": "Research loop",
+      "sublabel": "Proposals + dissent",
+      "pos": [
+        365,
+        110
+      ],
+      "size": [
+        215,
+        76
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/m1/prove.py",
+          "line": 162,
+          "end_line": 233
+        },
+        {
+          "path": "src/llm_research_os/research/control.py",
+          "line": 47,
+          "end_line": 93
+        }
+      ]
+    },
+    {
+      "id": "planning",
+      "type": "backend",
+      "label": "Plan + policy gate",
+      "sublabel": "Dry-run before approval",
+      "pos": [
+        710,
+        110
+      ],
+      "size": [
+        230,
+        76
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/execution/kernel.py",
+          "line": 38,
+          "end_line": 113
+        },
+        {
+          "path": "src/llm_research_os/execution/authorization.py",
+          "line": 99,
+          "end_line": 133
+        },
+        {
+          "path": "src/llm_research_os/m2/prove.py",
+          "line": 78,
+          "end_line": 105
+        }
+      ]
+    },
+    {
+      "id": "grants",
+      "type": "security",
+      "label": "Worker control plane",
+      "sublabel": "Bound grant + claimed lease",
+      "pos": [
+        710,
+        375
+      ],
+      "size": [
+        230,
+        80
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/workers/plane.py",
+          "line": 128,
+          "end_line": 183
+        },
+        {
+          "path": "src/llm_research_os/workers/plane.py",
+          "line": 379,
+          "end_line": 412
+        },
+        {
+          "path": "src/llm_research_os/m2/prove.py",
+          "line": 195,
+          "end_line": 275
+        }
+      ]
+    },
+    {
+      "id": "workers",
+      "type": "backend",
+      "label": "Worker runtimes",
+      "sublabel": "CPU OCI / CUDA / MPS",
+      "pos": [
+        1080,
+        375
+      ],
+      "size": [
+        200,
+        80
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/workers/client.py",
+          "line": 208,
+          "end_line": 335
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "type": "database",
+      "label": "Append-only facts",
+      "sublabel": "SQLite + verified replay",
+      "pos": [
+        365,
+        375
+      ],
+      "size": [
+        215,
+        80
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/storage/store.py",
+          "line": 495,
+          "end_line": 560
+        },
+        {
+          "path": "src/llm_research_os/storage/store.py",
+          "line": 686,
+          "end_line": 714
+        },
+        {
+          "path": "src/llm_research_os/research/control.py",
+          "line": 62,
+          "end_line": 80
+        }
+      ]
+    },
+    {
+      "id": "artifacts",
+      "type": "database",
+      "label": "Artifact transfer / CAS",
+      "sublabel": "SHA-256 verified bytes",
+      "pos": [
+        1080,
+        620
+      ],
+      "size": [
+        220,
+        80
+      ],
+      "sources": [
+        {
+          "path": "src/llm_research_os/artifacts/store.py",
+          "line": 132,
+          "end_line": 174
+        },
+        {
+          "path": "src/llm_research_os/workers/http.py",
+          "line": 313,
+          "end_line": 378
+        },
+        {
+          "path": "src/llm_research_os/workers/client.py",
+          "line": 150,
+          "end_line": 192
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "researcher-research",
+      "from": "researcher",
+      "to": "research",
+      "label": "decision",
+      "variant": "emphasis"
+    },
+    {
+      "id": "research-planning",
+      "from": "research",
+      "to": "planning",
+      "label": "dry-run",
+      "variant": "emphasis"
+    },
+    {
+      "id": "planning-grants",
+      "from": "planning",
+      "to": "grants",
+      "label": "bound approval",
+      "variant": "security"
+    },
+    {
+      "id": "research-events",
+      "from": "research",
+      "to": "events",
+      "label": "append / replay",
+      "variant": "default"
+    },
+    {
+      "id": "grants-events",
+      "from": "grants",
+      "to": "events",
+      "label": "lifecycle facts",
+      "variant": "default"
+    },
+    {
+      "id": "grants-workers",
+      "from": "grants",
+      "to": "workers",
+      "label": "valid grant + lease",
+      "variant": "security"
+    },
+    {
+      "id": "workers-artifacts",
+      "from": "workers",
+      "to": "artifacts",
+      "label": "HTTPS artifacts",
+      "variant": "default"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Researcher owns the decision",
+      "items": [
+        "AI proposals and dissent are recorded facts",
+        "A rejected proposal queues no Run"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Evidence survives the process",
+      "items": [
+        "Append-only events support verified replay",
+        "Artifacts are addressed and checked by SHA-256"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Accepted scope and current boundary",
+      "items": [
+        "M2 live evidence is preserved at its original revision",
+        "M3 remote native work is incomplete; Checkpoint B is open"
+      ]
+    }
+  ]
+}

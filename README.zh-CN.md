@@ -1,5 +1,31 @@
 # LLM Research OS（中文）
 
+把 AI 提案、人的决策、实验执行和证据串成可回放记录的研究控制平面。
+
+## 3 分钟看懂
+
+[![架构：决策、执行与证据](docs/assets/project-tour/architecture.png)](docs/assets/project-tour/architecture.html)
+
+| **1,661 项测试通过** | **85.38% 覆盖率** | **2 台真实主机** |
+| --- | --- | --- |
+| PR #118，Linux Python 3.12 | 同一 CI 的语句与分支覆盖率 | 已验收的 M2 CPU/CUDA、取消与恢复证据 |
+
+[**看 80 秒 CLI 录屏**](docs/assets/project-tour/research-loop.mp4) · [动图预览](docs/assets/project-tour/research-loop.gif) · [数字与来源](docs/assets/project-tour/README.md)
+
+[![CLI 录屏：拒绝提案不会排队执行 Run](docs/assets/project-tour/recording-poster.png)](docs/assets/project-tour/research-loop.mp4)
+
+录屏执行真实 CLI 命令，使用确定性 Mock 模型与模拟 Run，不使用 GPU。拒绝提案不会排队执行 Run；接受后记录离线研究闭环，再验证持久化事件日志。两主机数字来自历史上已验收的 M2 证据，不代表尚未完成的 M3 原生执行验收。
+
+体验离线闭环（Python 3.12+ 与 uv；数据库路径须为新路径）：
+
+```bash
+uv sync --locked --all-groups
+uv run researchos m1 prove examples/m1-checkpoint demo.db
+uv run researchos events verify demo.db
+```
+
+架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收；完成剩余范围并验收后冻结，R09 需要后续明确决定。
+
 > 本文是 [README.md](README.md) 的中文版。英文版是权威文本，两者随同一 PR 更新（[ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)）。
 >
 > 当前名称为临时工作名，正式名称将在公开发布前通过 ADR 确认。
