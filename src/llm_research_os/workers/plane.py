@@ -302,6 +302,55 @@ class WorkerPlane:
                 code="execution-binding-mismatch",
             )
 
+    def authorize_native_input_fetch(
+        self, *, worker_id: str, grant_token: str, digest: str, size_bytes: int
+    ) -> None:
+        """Authorize planned native material without claiming or launching work."""
+
+        now = self.clock().astimezone(UTC)
+        claims = verify_grant_token(self.hmac_key, grant_token, now=now)
+        if claims["workerId"] != worker_id:
+            raise WorkerGrantError("grant worker does not match", code="grant-worker-mismatch")
+        fold = self.rebuild()
+        grant = fold.grant(claims["grantId"])
+        if grant is None:
+            raise WorkerGrantError("grantId is not recorded", code="unknown-grant")
+        self._require_live_grant(grant, claims, now=now)
+        queued = fold.queued_work(grant.task_id, grant.attempt_id)
+        if queued is None or queued.runtime != WORKER_RUNTIME_NATIVE_REVIEWED:
+            raise WorkerCallError("native work is required", code="execution-binding-mismatch")
+        self._require_execution_match(grant, queued, claims)
+        lease = fold.lease_for_worker(grant.task_id, grant.attempt_id, worker_id)
+        if lease is not None:
+            lease, bound_grant = self._bind_result_authorization(
+                fold,
+                worker_id=worker_id,
+                lease_id=lease.lease_id,
+                claims=claims,
+            )
+            self._require_live_result_grant(bound_grant, claims, lease, now=now)
+            if lease.status == "completed":
+                raise WorkerCallError("transfer lease is completed", code="lease-terminal")
+        if run_cancel_requested(
+            self.store,
+            project_id=self.project_id,
+            run_id=grant.run_id,
+            attempt_id=grant.attempt_id,
+        ):
+            raise WorkerCallError("native transfer is cancelled", code="transfer-cancel-requested")
+        config = queued.config
+        allowed = {
+            config["code"]["bundleDigest"],
+            config["environment"]["dependencyLockDigest"],
+            config["environment"]["inventoryDigest"],
+        }
+        for item in config["inputs"]:
+            if item["digest"] == digest and item["sizeBytes"] != size_bytes:
+                raise WorkerCallError("input size does not match", code="transfer-size-mismatch")
+            allowed.add(item["digest"])
+        if digest not in allowed:
+            raise WorkerCallError("material is not planned", code="execution-binding-mismatch")
+
     def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> bool:
         """Transport liveness only. Must not append EventStore facts (ADR-0041).
 
