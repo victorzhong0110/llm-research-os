@@ -239,7 +239,25 @@ does not exercise real network/process faults. Journal parents and their stable
 lock files are controller-owned; no untrusted actor may delete them. Private
 staging crash leftovers require owner cleanup. Remote transport, grant-bound
 endpoint enforcement and two-host fault evidence remain R08 implementation
-and acceptance gaps, not current security properties.
+and acceptance gaps for this local helper, not its current security properties.
+
+### TM-069: Grant-scoped native input transport
+
+The additive pinned HTTPS native input endpoint must not expose arbitrary CAS
+bytes, accept a different Worker's session, or convert download replay into
+execution. It rechecks the signed and recorded grant and planned native object
+on every request, denies revocation/cancellation and expired or terminal claimed
+leases, and allows only planned bundle/lock/inventory/input digests. Requests,
+response reads, sizes and retry counts are bounded. The client verifies the
+digest before returning bytes, closes connections, and never retries integrity
+or authorization failures. See `tests/test_native_input_transport.py` and
+[the protocol](../protocols/native-input-transfer-v0alpha1.md).
+
+This is a trusted controller/Worker transport, not a public multi-tenant service.
+Per-request bounds do not add aggregate rate limits or admission control.
+Revocation is checked when a request is authorized; bytes already sent cannot
+be recalled. Output transport, remote launch/recovery and actual two-host fault
+acceptance remain separate R08 gaps. Legacy artifact APIs are not this protocol.
 
 ## 7. M0 security gates
 

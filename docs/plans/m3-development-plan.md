@@ -12,7 +12,7 @@ This revision supersedes the proposed ordering in PR #80 and the earlier
 `fabd73d` / `1729cb2` drafts of #84. Those drafts put Web before native
 execution and assigned different meanings to R03–R16. They are historical
 review material, not alternative execution instructions. PR #80 is not an
-additional plan to merge after #84; its disposition remains with the maintainer.
+additional plan to merge after #84; it was closed as superseded during the maintainer-directed cleanup on 2026-10-02.
 
 The maintainer's agreed R01–R16 definitions below are authoritative for this
 phase. Global planning and review belong to the designated planning/review
@@ -20,6 +20,16 @@ assistant; implementation belongs to the assigned implementer. See
 [development governance](../development-governance.md) and
 [ADR-0064](../adr/0064-planning-and-implementation-ownership.md).
 There is no personal calendar, effort-duration estimate, or delivery deadline.
+
+## Maintainer stop point: Checkpoint B
+
+On 2026-10-02 the maintainer directed a freeze after Checkpoint B. Complete the
+remaining R07/R08 implementation and authorized-host evidence, review it against
+the unchanged acceptance criteria, and record explicit Checkpoint B acceptance
+before freezing. Missing evidence remains pending-live; integration is not acceptance.
+After that acceptance, retain maintenance and agreed fixes only. Do not start R09
+or a new phase without a later explicit maintainer decision. The later package
+and checkpoint definitions below remain plans, not current execution authority.
 
 ## Outcome and checkpoints
 

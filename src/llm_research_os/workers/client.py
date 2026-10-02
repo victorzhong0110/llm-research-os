@@ -85,6 +85,13 @@ class WorkerClient:
     gpu_model_dir: Path | None = None
     gpu_output_dir: Path | None = None
 
+    def fetch_native_input(self, *, digest: str, size_bytes: int) -> bytes:
+        """Fetch one planned native artifact over pinned TLS, with bounded retries."""
+
+        from llm_research_os.workers.native_transfer import fetch_native_input
+
+        return fetch_native_input(self, digest=digest, size_bytes=size_bytes)
+
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
             "POST",

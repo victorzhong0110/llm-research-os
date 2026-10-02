@@ -158,6 +158,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             path = urlparse(self.path).path
             try:
+                if path == "/v0alpha1/native/inputs":
+                    self._native_input()
+                    return
                 if path == "/v0alpha1/work/poll":
                     self._poll()
                     return
@@ -178,6 +181,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     return
             except WorkerGrantError as exc:
                 self._error(401, exc)
+                return
+            except ArtifactNotFoundError:
+                self._error(404, WorkerError("input is missing", code="artifact-missing"))
                 return
             except WorkerError as exc:
                 self._error(400, exc)
@@ -303,6 +309,39 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     "sequence": stored.sequence,
                 },
             )
+
+        def _native_input(self) -> None:
+            if server._tls is None:
+                raise WorkerError("native transfer requires TLS", code="tls-required")
+            self.connection.settimeout(10)
+            worker_id = _session_worker(server, self.headers.get("Authorization"))
+            token = self.headers.get(_GRANT_HEADER)
+            if not token:
+                raise WorkerGrantError("grant token is missing", code="grant-token-missing")
+            raw = self._raw_body(limit=4096)
+            body = json.loads(raw)
+            if type(body) is not dict or set(body) != {"digest", "sizeBytes"}:
+                raise WorkerError("invalid native input request", code="http-invalid")
+            digest = parse_artifact_digest(_require_str(body, "digest"))
+            size = body["sizeBytes"]
+            if type(size) is not int or not 0 <= size <= MAX_WORKER_PUT_BYTES:
+                raise WorkerError("invalid transfer size", code="http-too-large")
+            with EventStore(server._database, require_existing=True) as store:
+                server._plane(store).authorize_native_input_fetch(
+                    worker_id=worker_id,
+                    grant_token=token,
+                    digest=digest,
+                    size_bytes=size,
+                )
+            with server._artifacts.open(digest) as handle:
+                payload = _read_capped(handle, size)
+            if len(payload) != size:
+                raise WorkerError("input size does not match", code="transfer-size-mismatch")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(size))
+            self.end_headers()
+            self.wfile.write(payload)
 
         def _put_artifact(self) -> None:
             header = self.headers.get("Authorization")
