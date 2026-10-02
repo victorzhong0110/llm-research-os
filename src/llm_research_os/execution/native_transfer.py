@@ -991,14 +991,14 @@ def _journal_from(body: dict[str, object]) -> _Journal:
         task_id=_identifier(body["taskId"]),
         run_id=_identifier(body["runId"]),
         attempt_id=_identifier(body["attemptId"]),
-        direction=cast(TransferDirection, direction),
+        direction=direction,
         lease_id=lease,
-        status=cast(TransferStatus, status),
+        status=status,
         observation=cast(TransferObservation, observation),
         completed=list(cast(list[str], completed)),
         attempts=attempts,
         starts=starts,
-        process_observation=cast(Literal["present", "unavailable"], process_observation),
+        process_observation=process_observation,
         process_pid=pid,
     )
 
