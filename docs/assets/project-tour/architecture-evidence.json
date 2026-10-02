@@ -1,0 +1,17 @@
+{
+  "archifyVersion": "3.0.1",
+  "archifyRevision": "2ab3cae7ac2c2a55d7386ca789d03c4fcd31816c",
+  "sourceRevision": "65304b0659168d9661dde010ae751c35dedc81b5",
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "specificationSha256": "7bc47252cdd401a774dba516a19897554d2a0a9bb8706f16d024f7956a333075",
+  "htmlSha256": "85bf6ec3d8d49d088916a885fb7e5edbe3017079058a36d60d8c5a2316c89b20",
+  "htmlVisualReview": "not-requested",
+  "staticExport": "SVG extracted from checked HTML, CSS inlined; static image reviewed separately",
+  "staticVisualReview": "passed: architecture PNG and recording poster inspected; static export typography enlarged for README"
+}

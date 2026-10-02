@@ -1,5 +1,31 @@
 # LLM Research OS
 
+A research control plane that turns AI proposals, human decisions, execution, and evidence into a replayable record.
+
+## Understand it in 3 minutes
+
+[![Architecture: decisions, execution, and evidence](docs/assets/project-tour/architecture.png)](docs/assets/project-tour/architecture.html)
+
+| **1,661 tests passed** | **85.38% coverage** | **2 real hosts** |
+| --- | --- | --- |
+| Linux Python 3.12, PR #118 | Statement + branch coverage, same run | Accepted M2 CPU/CUDA, cancel and restore evidence |
+
+[**Watch the 80-second CLI recording**](docs/assets/project-tour/research-loop.mp4) · [Animated preview](docs/assets/project-tour/research-loop.gif) · [Numbers and provenance](docs/assets/project-tour/README.md)
+
+[![CLI recording: rejecting a proposal queues no Run](docs/assets/project-tour/recording-poster.png)](docs/assets/project-tour/research-loop.mp4)
+
+The recording runs real CLI commands with a deterministic Mock model and a simulated Run; it uses no GPU. Rejecting the proposal queues no Run. Accepting it records the offline research loop, then verifies its durable event log. The two-host number refers to historical accepted M2 evidence, not unfinished M3 native acceptance.
+
+Try the offline loop (Python 3.12+ and uv; choose a new database path):
+
+```bash
+uv sync --locked --all-groups
+uv run researchos m1 prove examples/m1-checkpoint demo.db
+uv run researchos events verify demo.db
+```
+
+Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open; finish and accept its remaining scope, then freeze. R09 requires a later explicit decision.
+
 > Canonical English README. Chinese translation: [README.zh-CN.md](README.zh-CN.md)
 > (keep both in the same pull request; [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)).
 >
