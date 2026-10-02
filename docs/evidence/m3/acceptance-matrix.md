@@ -86,6 +86,33 @@ remote staging orchestration, remote native launch and full restart/fault
 integration are implementation gaps. Authorized two-host and GPU live evidence
 are still pending-live. No R08 full acceptance or Checkpoint B closure is claimed.
 
+## R08 HTTPS output candidate
+
+Base: verified main `6e1e3b0e4fba0776f63e816f55f5a03e4048df2e`, whose
+[final main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37021177400)
+passed after the project tour and maintenance consolidation. This output slice
+is candidate evidence until its PR is merged and main verification is recorded.
+
+The pinned HTTPS output endpoint verifies one canonical native result for an
+already consumed, execution-bound lease. Original verified CAS bytes precede
+one durable Worker completion; exact replay after acknowledgment loss or
+controller restart returns the same fact even after grant expiry/revocation.
+Changed output, foreign session/scope, incomplete authorization, cancellation,
+insufficient disk, unsafe locks, and missing/damaged completed CAS refuse.
+Authorization is rechecked after publication and the EventStore head binds the
+final append against concurrent cancellation/revocation. Native HTTP callers
+cannot bypass the endpoint through generic artifact upload or completion.
+Generated schemas and valid/invalid examples define the output and receipt.
+See [the output protocol](../../protocols/native-output-transfer-v0alpha1.md)
+and TM-070 for the exact boundaries.
+
+This slice neither launches a process nor appends Run/Attempt lifecycle facts.
+The reported full request digest is syntax checked, not independently rebuilt;
+full result verification belongs to the controller's execution integration.
+Durable remote staging, remote executor/recovery and new authorized two-host
+fault evidence remain gaps. Checkpoint B is open, and R09 is not started.
+Candidate check results are recorded in the PR before integration.
+
 ## Checkpoints
 
 | Checkpoint | Packages | Required evidence |

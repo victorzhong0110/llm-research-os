@@ -9,7 +9,8 @@ This does not accept a two-host run. No second machine is contacted.
 `gpu-oci` and `macos-mps` remain `pending-live`. A local copy is not remote
 evidence. The local helper does not enforce Worker grants. A separate pinned
 HTTPS input API checks real grants against the immutable planned execution;
-remote output transport and distributed execution/recovery remain R08 work, distinct from
+a separate output API returns a scoped Worker completion receipt. Distributed
+execution/recovery remain R08 work, distinct from
 missing real-host acceptance. `grantId` is a correlation reference supplied
 by the trusted local caller, not a checked launch credential. Do not expose
 this command or its CAS path to a remote Worker or browser.
@@ -85,3 +86,28 @@ print `unknown`. None of them is success, failure, or stopped.
 Checkpoint bytes are delivered only after the existing restore claim matches
 the completed source Attempt and the new Attempt. Anything else is
 `transfer-restore-unsupported`.
+
+## Pinned HTTPS output API
+
+`WorkerClient.upload_native_output(lease_id=..., payload=...)` uploads one
+canonical `NativeReviewedTaskOutput` envelope for an already consumed native
+claim. Its task/Run/Attempt must match the lease. The same pinned HTTPS origin,
+session and grant are required. The bound is the smaller of reviewed
+`artifactBytes` and 256 MiB. Use the exact canonical bytes produced by the task
+result path, not a pretty-printed JSON document.
+
+The controller verifies the complete object, rechecks authorization after disk
+I/O, and appends a single Worker completion. Repeating the same upload after
+response loss or controller restart returns the same fact and sequence, even
+when authority has since expired or been revoked. Such replay requires the
+already completed lease and the original intact CAS bytes; it cannot repair a
+missing object, change a result or start work. Refusals never retry; disconnects
+and truncated receipts retry at most three times. Native Workers must use this
+endpoint rather than legacy artifact upload/generic HTTP completion.
+
+This is a durable Worker result receipt, not Run success or a fresh process
+observation. The transport verifies the syntax of the reported `requestDigest`;
+it does not reconstruct the full closed request. Run integration must verify
+that citation and the process result separately. Durable remote staging, remote
+launch/recovery integration and new real two-host fault acceptance remain open.
+See [the output protocol](../protocols/native-output-transfer-v0alpha1.md) and TM-070.

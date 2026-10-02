@@ -27,6 +27,7 @@ from llm_research_os.artifacts.store import (
 from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.bind import require_worker_bind_host
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
+from llm_research_os.workers.models import WORKER_RUNTIME_NATIVE_REVIEWED
 from llm_research_os.workers.plane import DEFAULT_LEASE_SECONDS, Clock, WorkerPlane
 from llm_research_os.workers.tls import TlsMaterial
 from llm_research_os.workers.tokens import issue_worker_session, verify_worker_session
@@ -161,6 +162,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/native/inputs":
                     self._native_input()
                     return
+                if path == "/v0alpha1/native/outputs":
+                    self._native_output()
+                    return
                 if path == "/v0alpha1/work/poll":
                     self._poll()
                     return
@@ -276,6 +280,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     lease_id=lease_id,
                     result_digest=result_digest,
                     artifact_digest=artifact_digest,
+                    require_native_output_transport=True,
                 )
             self._write(
                 200,
@@ -343,11 +348,78 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(payload)
 
+        def _native_output(self) -> None:
+            from llm_research_os.workers.native_output import complete_native_output, output_lock
+
+            if server._tls is None:
+                raise WorkerError("native transfer requires TLS", code="tls-required")
+            self.connection.settimeout(10)
+            if self.path != "/v0alpha1/native/outputs":
+                raise WorkerError("native output path is invalid", code="http-invalid")
+            worker_id = _session_worker(server, self.headers.get("Authorization"))
+            token = self.headers.get(_GRANT_HEADER)
+            lease = self.headers.get("X-ResearchOS-Lease")
+            digest = parse_artifact_digest(self.headers.get("X-ResearchOS-Artifact"))
+            lengths = self.headers.get_all("Content-Length", [])
+            if (
+                any(
+                    len(self.headers.get_all(name, [])) != 1
+                    for name in (
+                        "Authorization",
+                        _GRANT_HEADER,
+                        "X-ResearchOS-Lease",
+                        "X-ResearchOS-Artifact",
+                        "Content-Type",
+                    )
+                )
+                or self.headers.get("Content-Type") != "application/json"
+                or not token
+                or not lease
+                or len(lengths) != 1
+                or self.headers.get_all("Transfer-Encoding")
+                or self.headers.get_all("Content-Encoding")
+            ):
+                raise WorkerError("invalid native output headers", code="http-invalid")
+            try:
+                size = int(lengths[0])
+            except ValueError:
+                raise WorkerError("invalid native output size", code="http-invalid") from None
+            with EventStore(server._database, require_existing=True) as store:
+                server._plane(store).authorize_native_output(
+                    worker_id=worker_id,
+                    grant_token=token,
+                    lease_id=lease,
+                    digest=digest,
+                    size_bytes=size,
+                )
+            payload = self._raw_body(limit=size)
+            if len(payload) != size:
+                raise WorkerError("native output interrupted", code="transfer-size-mismatch")
+            with (
+                output_lock(server._database),
+                EventStore(server._database, require_existing=True) as store,
+            ):
+                receipt = complete_native_output(
+                    server._plane(store),
+                    worker_id=worker_id,
+                    grant_token=token,
+                    lease_id=lease,
+                    digest=digest,
+                    payload=payload,
+                )
+            self._write(200, receipt)
+
         def _put_artifact(self) -> None:
             header = self.headers.get("Authorization")
             if type(header) is not str or not header.startswith("Bearer "):
                 raise WorkerGrantError("worker session is missing", code="worker-session-missing")
-            verify_worker_session(server._hmac_key, header.removeprefix("Bearer "))
+            worker_id = verify_worker_session(server._hmac_key, header.removeprefix("Bearer "))
+            with EventStore(server._database, require_existing=True) as store:
+                worker = server._plane(store).rebuild().worker(worker_id)
+                if worker is not None and worker.runtime == WORKER_RUNTIME_NATIVE_REVIEWED:
+                    raise WorkerError(
+                        "native output transport is required", code="native-output-required"
+                    )
             payload = self._raw_body(limit=MAX_WORKER_PUT_BYTES)
             record = server._artifacts.put_bytes(payload, limit=MAX_WORKER_PUT_BYTES)
             self._write(201, {"digest": record.digest, "sizeBytes": record.size_bytes})

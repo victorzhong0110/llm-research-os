@@ -14,6 +14,7 @@ from llm_research_os.events.models import (
     validate_event_document,
 )
 from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
+from llm_research_os.storage.errors import EventSequenceConflictError
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE, EventStore
 from llm_research_os.workers.errors import WorkerCallError, WorkerPayloadError
@@ -175,8 +176,13 @@ class WorkerControl:
                 after = stored.sequence
         return WorkerHead(last_sequence=high_water, fold=fold)
 
-    def append(self, document: dict[str, Any]) -> StoredEvent:
-        return self._append_at(self.rebuild(), document)
+    def append(
+        self, document: dict[str, Any], *, expected_last_sequence: int | None = None
+    ) -> StoredEvent:
+        head = self.rebuild()
+        if expected_last_sequence is not None and head.last_sequence != expected_last_sequence:
+            raise EventSequenceConflictError(expected_last_sequence, head.last_sequence)
+        return self._append_at(head, document)
 
     def _append_at(self, head: WorkerHead, document: dict[str, Any]) -> StoredEvent:
         event = self._preflight_event(head, document)

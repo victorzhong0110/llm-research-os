@@ -92,6 +92,13 @@ class WorkerClient:
 
         return fetch_native_input(self, digest=digest, size_bytes=size_bytes)
 
+    def upload_native_output(self, *, lease_id: str, payload: bytes) -> dict[str, object]:
+        """Verify the scoped output acknowledgement; retries never poll or start work."""
+
+        from llm_research_os.workers.native_transfer import upload_native_output
+
+        return upload_native_output(self, lease_id=lease_id, payload=payload)
+
     def poll(self) -> dict[str, Any] | None:
         status, payload = self._json(
             "POST",

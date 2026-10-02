@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
-from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.artifacts.store import MAX_WORKER_PUT_BYTES, LocalArtifactStore
 from llm_research_os.blocks.registry import BlockRegistry
 from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage.errors import DuplicateEventError, EventSequenceConflictError
@@ -58,6 +58,14 @@ from llm_research_os.workers.tokens import (
 
 Clock = Callable[[], datetime]
 DEFAULT_LEASE_SECONDS = 60
+
+
+@dataclass(frozen=True, slots=True)
+class NativeOutputAuthority:
+    lease: LeaseRecord
+    byte_limit: int
+    head_sequence: int
+    authorized_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -376,6 +384,47 @@ class WorkerPlane:
             attempt_id=lease.attempt_id,
         )
 
+    def authorize_native_output(
+        self, *, worker_id: str, grant_token: str, lease_id: str, digest: str, size_bytes: int
+    ) -> NativeOutputAuthority:
+        """Authorize one result, or a read-only receipt replay for its completed lease."""
+
+        now = self.clock().astimezone(UTC)
+        claims = verify_grant_token(self.hmac_key, grant_token, now=now, require_live=False)
+        head = self._control.rebuild()
+        lease, grant = self._bind_result_authorization(
+            head.fold, worker_id=worker_id, lease_id=lease_id, claims=claims
+        )
+        queued = head.fold.queued_work(lease.task_id, lease.attempt_id)
+        if queued is None or queued.runtime != WORKER_RUNTIME_NATIVE_REVIEWED:
+            raise WorkerCallError("native work is required", code="execution-binding-mismatch")
+        self._require_execution_match(grant, queued, claims)
+        if not lease.claimed or grant.consumed_lease_id != lease_id:
+            raise WorkerCallError("grant was not consumed by this lease", code="grant-not-consumed")
+        limit = queued.config["limits"]["artifactBytes"]
+        if type(limit) is not int or limit < 0:
+            raise WorkerCallError(
+                "native output bound is invalid", code="execution-binding-mismatch"
+            )
+        limit = min(limit, MAX_WORKER_PUT_BYTES)
+        if type(size_bytes) is not int or not 0 < size_bytes <= limit:
+            raise WorkerCallError("native output exceeds its bound", code="transfer-size-mismatch")
+        if lease.status == "completed":
+            if lease.artifact_digest != digest:
+                raise WorkerCallError("completed output differs", code="complete-mismatch")
+        else:
+            self._require_live_result_grant(grant, claims, lease, now=now)
+            if run_cancel_requested(
+                self.store,
+                project_id=self.project_id,
+                run_id=lease.run_id,
+                attempt_id=lease.attempt_id,
+            ):
+                raise WorkerCallError(
+                    "native output is cancelled", code="transfer-cancel-requested"
+                )
+        return NativeOutputAuthority(lease, limit, head.last_sequence, now)
+
     def poll(self, *, worker_id: str, grant_token: str) -> ClaimedWork | None:
         now = self.clock().astimezone(UTC)
         claims = verify_grant_token(self.hmac_key, grant_token, now=now)
@@ -440,6 +489,7 @@ class WorkerPlane:
         result_digest: str,
         artifact_digest: str,
         time: str | None = None,
+        require_native_output_transport: bool = False,
     ) -> StoredEvent:
         now = self.clock().astimezone(UTC)
         claims = verify_grant_token(self.hmac_key, grant_token, now=now, require_live=False)
@@ -447,6 +497,15 @@ class WorkerPlane:
         lease, grant = self._bind_result_authorization(
             fold, worker_id=worker_id, lease_id=lease_id, claims=claims
         )
+        queued = fold.queued_work(lease.task_id, lease.attempt_id)
+        if (
+            require_native_output_transport
+            and queued is not None
+            and queued.runtime == WORKER_RUNTIME_NATIVE_REVIEWED
+        ):
+            raise WorkerCallError(
+                "native output transport is required", code="native-output-required"
+            )
         if lease.status == "completed":
             if lease.result_digest == result_digest and lease.artifact_digest == artifact_digest:
                 stored = self.store.get_event(f"evt.work.completed.{lease.lease_id}")
