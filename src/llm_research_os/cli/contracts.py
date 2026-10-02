@@ -235,6 +235,14 @@ from llm_research_os.training.schema import (
     write_wsl_cuda_training_plan_schema,
     wsl_cuda_training_plan_schema_matches,
 )
+from llm_research_os.workers.native_output_schema import (
+    canonical_native_output_receipt_schema,
+    canonical_native_task_output_schema,
+    native_output_receipt_schema_matches,
+    native_task_output_schema_matches,
+    write_native_output_receipt_schema,
+    write_native_task_output_schema,
+)
 from llm_research_os.workers.schema import (
     authorization_grant_request_schema_matches,
     canonical_authorization_grant_request_schema,
@@ -373,6 +381,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         native_reviewed_execution_request_schema_matches,
         write_native_reviewed_execution_request_schema,
         "schemas/native-reviewed-execution-request/v0alpha1.schema.json",
+    ),
+    "native-reviewed-task-output": _contract(
+        canonical_native_task_output_schema,
+        native_task_output_schema_matches,
+        write_native_task_output_schema,
+        "schemas/native-reviewed-task-output/v0alpha1.schema.json",
+    ),
+    "native-output-receipt": _contract(
+        canonical_native_output_receipt_schema,
+        native_output_receipt_schema_matches,
+        write_native_output_receipt_schema,
+        "schemas/native-output-receipt/v0alpha1.schema.json",
     ),
     "native-reviewed-execution-report": _contract(
         canonical_native_reviewed_execution_report_schema,

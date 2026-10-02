@@ -1,0 +1,9 @@
+{
+  "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "sizeBytes": 333,
+  "resultDigest": "jcs-sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "leaseId": "lease.example",
+  "eventId": "evt.work.completed.lease.example",
+  "type": "work.completed",
+  "sequence": 8
+}

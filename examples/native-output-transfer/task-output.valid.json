@@ -1,0 +1,11 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "NativeReviewedTaskOutput",
+  "requestDigest": "jcs-sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "taskId": "task.example",
+  "runId": "run.example",
+  "attemptId": "attempt.example",
+  "output": {
+    "rows": 1
+  }
+}

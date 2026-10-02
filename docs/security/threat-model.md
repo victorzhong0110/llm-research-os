@@ -256,8 +256,35 @@ or authorization failures. See `tests/test_native_input_transport.py` and
 This is a trusted controller/Worker transport, not a public multi-tenant service.
 Per-request bounds do not add aggregate rate limits or admission control.
 Revocation is checked when a request is authorized; bytes already sent cannot
-be recalled. Output transport, remote launch/recovery and actual two-host fault
-acceptance remain separate R08 gaps. Legacy artifact APIs are not this protocol.
+be recalled. Output completion is a separate protocol (TM-070). Remote launch/recovery and
+actual two-host fault acceptance remain separate R08 gaps. Legacy artifact APIs
+are not the native input protocol.
+
+### TM-070: Native output publication and receipt replay
+
+A native Worker must not upload arbitrary bytes through the legacy endpoint,
+complete a foreign/unconsumed lease, publish noncanonical or mismatched results,
+or turn a lost acknowledgment into another task start. The pinned HTTPS output
+endpoint requires the exact signed/recorded grant, session and queued native
+execution binding; it bounds the body before reading, validates the closed
+output envelope and byte digest, and verifies CAS before committing a single
+Worker completion. A stable controller publication lock serializes output;
+post-I/O reauthorization and expected EventStore head prevent a concurrent
+revocation or cancellation from bypassing the final append. Changed results
+refuse; exact completed replay returns the original fact only if the original
+CAS object still verifies, with no repair or new authority. Native HTTP callers
+cannot bypass this through generic upload/completion. See
+[the output protocol](../protocols/native-output-transfer-v0alpha1.md),
+`tests/test_native_output_transport.py`, and `tests/test_native_output_documents.py`.
+
+Residual limits: this trusted Worker report is not proof of process termination,
+scientific validity, or a successful Run. The reported full request digest has
+syntax checks; full request reconstruction remains controller integration work.
+A revocation/crash after CAS publication may leave an unreferenced object and
+must not be called a completion. Per-request limits are not aggregate admission
+control or a public parser sandbox. Directory/lock ownership relies on the
+trusted controller host. Remote launch, durable staging/recovery integration,
+and actual authorized two-host acceptance remain open.
 
 ## 7. M0 security gates
 

@@ -29,8 +29,9 @@ verification. No credential is placed in the URL or receipt.
 
 Replay downloads the same immutable bytes without changing EventStore,
 claiming work, launching processes or turning unknown into success. It is
-transport replay only, not launch or completion replay. Output upload,
-durable remote staging orchestration, remote native launch, controller/worker
-restart integration and real two-host/GPU acceptance remain outstanding.
+transport replay only, not launch or completion replay. Output upload and committed-receipt replay are specified separately in
+[the output protocol](native-output-transfer-v0alpha1.md). Durable remote staging
+orchestration, remote native launch, full controller/worker restart integration
+and real two-host/GPU acceptance remain outstanding.
 Legacy M2 artifact endpoints retain their existing scope and are not the
 native input protocol or a native launch authority.

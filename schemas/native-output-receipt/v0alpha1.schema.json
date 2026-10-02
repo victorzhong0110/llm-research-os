@@ -1,0 +1,57 @@
+{
+  "$id": "https://researchos.dev/schemas/native-output-receipt/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Digest",
+      "type": "string"
+    },
+    "eventId": {
+      "maxLength": 540,
+      "minLength": 1,
+      "title": "Eventid",
+      "type": "string"
+    },
+    "leaseId": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^[!-~]+$",
+      "title": "Leaseid",
+      "type": "string"
+    },
+    "resultDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Resultdigest",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "sizeBytes": {
+      "maximum": 268435456,
+      "minimum": 1,
+      "title": "Sizebytes",
+      "type": "integer"
+    },
+    "type": {
+      "const": "work.completed",
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "digest",
+    "sizeBytes",
+    "resultDigest",
+    "leaseId",
+    "eventId",
+    "type",
+    "sequence"
+  ],
+  "title": "NativeOutputReceipt",
+  "type": "object"
+}
