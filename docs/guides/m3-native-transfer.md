@@ -7,8 +7,9 @@ lease is a replay of that transfer, not a second task start.
 
 This does not accept a two-host run. No second machine is contacted.
 `gpu-oci` and `macos-mps` remain `pending-live`. A local copy is not remote
-evidence. Remote transport and Worker grant enforcement are not implemented
-by this helper; they are remaining R08 implementation work, distinct from
+evidence. The local helper does not enforce Worker grants. A separate pinned
+HTTPS input API checks real grants against the immutable planned execution;
+remote output transport and distributed execution/recovery remain R08 work, distinct from
 missing real-host acceptance. `grantId` is a correlation reference supplied
 by the trusted local caller, not a checked launch credential. Do not expose
 this command or its CAS path to a remote Worker or browser.
@@ -59,6 +60,24 @@ replacement cannot redirect the held directory descriptors. An input crash
 before publication can leave a private `.transfer-*` file in the local
 staging tree; it is not a completed artifact. Cleanup belongs to the owner of
 that private staging tree, never to a remote caller.
+
+## Pinned HTTPS input API
+
+`WorkerClient.fetch_native_input(digest=..., size_bytes=...)` downloads one
+planned native input, code bundle, dependency lock, or inventory. It requires
+an HTTPS origin, CA and certificate fingerprint. Each request supplies a
+Worker session and grant; the controller checks the recorded, unexpired,
+unrevoked grant and its task/Run/Attempt/execution binding. If work was already
+claimed, its lease must still be live. Cancellation refuses further fetches.
+The call never polls, consumes a grant, starts a process, or appends facts.
+
+The client retries disconnects at most three times, checks the declared byte
+count and SHA-256 before returning bytes, and does not retry refusals or
+integrity failures. Returned bytes may be inserted into the worker's private
+CAS and passed through local staging. This API does not treat a local manifest's
+`grantId` as authorization and does not create a launch receipt.
+
+See [the HTTPS input protocol](../protocols/native-input-transfer-v0alpha1.md).
 `researchos native transfer classify disconnected-cancel` prints
 `cancel-requested` and does not start work. The other classified faults
 print `unknown`. None of them is success, failure, or stopped.
