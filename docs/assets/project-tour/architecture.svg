@@ -4903,8 +4903,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="140" y="146" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Researcher / CLI</text>
-        <text data-detail="context" x="140" y="162" class="t-muted" font-size="9" text-anchor="middle">Human decision</text>
+          <text data-node-label="" data-detail-anchor="" x="140" y="146" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Researcher / CLI</text>
+        <text data-detail="context" x="140" y="162" class="t-muted" font-size="11" text-anchor="middle">Human decision</text>
         </g>
 
         <g id="node-research" data-node-id="research" data-node-label="Research loop" tabindex="0" role="button" aria-label="Focus Research loop, Proposals + dissent, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Proposals + dissent" data-node-context="Architecture component">
@@ -4914,8 +4914,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(371 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="472.5" y="146" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Research loop</text>
-        <text data-detail="context" x="472.5" y="162" class="t-muted" font-size="9" text-anchor="middle">Proposals + dissent</text>
+          <text data-node-label="" data-detail-anchor="" x="472.5" y="146" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Research loop</text>
+        <text data-detail="context" x="472.5" y="162" class="t-muted" font-size="11" text-anchor="middle">Proposals + dissent</text>
         </g>
 
         <g id="node-planning" data-node-id="planning" data-node-label="Plan + policy gate" tabindex="0" role="button" aria-label="Focus Plan + policy gate, Dry-run before approval, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Dry-run before approval" data-node-context="Architecture component">
@@ -4925,8 +4925,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(716 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="825" y="146" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Plan + policy gate</text>
-        <text data-detail="context" x="825" y="162" class="t-muted" font-size="9" text-anchor="middle">Dry-run before approval</text>
+          <text data-node-label="" data-detail-anchor="" x="825" y="146" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Plan + policy gate</text>
+        <text data-detail="context" x="825" y="162" class="t-muted" font-size="11" text-anchor="middle">Dry-run before approval</text>
         </g>
 
         <g id="node-grants" data-node-id="grants" data-node-label="Worker control plane" tabindex="0" role="button" aria-label="Focus Worker control plane, Bound grant + claimed lease, Architecture component" aria-pressed="false" data-node-kind="security" data-node-sublabel="Bound grant + claimed lease" data-node-context="Architecture component">
@@ -4937,8 +4937,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="825" y="413" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Worker control plane</text>
-        <text data-detail="context" x="825" y="429" class="t-muted" font-size="9" text-anchor="middle">Bound grant + claimed lease</text>
+          <text data-node-label="" data-detail-anchor="" x="825" y="413" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Worker control plane</text>
+        <text data-detail="context" x="825" y="429" class="t-muted" font-size="11" text-anchor="middle">Bound grant + claimed lease</text>
         </g>
 
         <g id="node-workers" data-node-id="workers" data-node-label="Worker runtimes" tabindex="0" role="button" aria-label="Focus Worker runtimes, CPU OCI / CUDA / MPS, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="CPU OCI / CUDA / MPS" data-node-context="Architecture component">
@@ -4948,8 +4948,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1086 381) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1180" y="413" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Worker runtimes</text>
-        <text data-detail="context" x="1180" y="429" class="t-muted" font-size="9" text-anchor="middle">CPU OCI / CUDA / MPS</text>
+          <text data-node-label="" data-detail-anchor="" x="1180" y="413" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Worker runtimes</text>
+        <text data-detail="context" x="1180" y="429" class="t-muted" font-size="11" text-anchor="middle">CPU OCI / CUDA / MPS</text>
         </g>
 
         <g id="node-events" data-node-id="events" data-node-label="Append-only facts" tabindex="0" role="button" aria-label="Focus Append-only facts, SQLite + verified replay, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="SQLite + verified replay" data-node-context="Architecture component">
@@ -4960,8 +4960,8 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="472.5" y="413" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Append-only facts</text>
-        <text data-detail="context" x="472.5" y="429" class="t-muted" font-size="9" text-anchor="middle">SQLite + verified replay</text>
+          <text data-node-label="" data-detail-anchor="" x="472.5" y="413" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Append-only facts</text>
+        <text data-detail="context" x="472.5" y="429" class="t-muted" font-size="11" text-anchor="middle">SQLite + verified replay</text>
         </g>
 
         <g id="node-artifacts" data-node-id="artifacts" data-node-label="Artifact transfer / CAS" tabindex="0" role="button" aria-label="Focus Artifact transfer / CAS, SHA-256 verified bytes, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="SHA-256 verified bytes" data-node-context="Architecture component">
@@ -4972,38 +4972,38 @@ svg {background:#0a1525;} .node-label {font-size:15px;} .node-sublabel {font-siz
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1190" y="658" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Artifact transfer / CAS</text>
-        <text data-detail="context" x="1190" y="674" class="t-muted" font-size="9" text-anchor="middle">SHA-256 verified bytes</text>
+          <text data-node-label="" data-detail-anchor="" x="1190" y="658" class="t-primary" font-size="15" font-weight="600" text-anchor="middle">Artifact transfer / CAS</text>
+        <text data-detail="context" x="1190" y="674" class="t-muted" font-size="11" text-anchor="middle">SHA-256 verified bytes</text>
         </g>
 
         <!-- Connection labels -->
         <g data-detail="context" data-edge-from="researcher" data-edge-to="research" data-edge-label="decision" data-edge-key="0" data-edge-id="researcher-research">
           <rect x="278.3" y="128" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="302.5" y="138" class="t-edge-emphasis" font-size="8" text-anchor="middle">decision</text>
+          <text x="302.5" y="138" class="t-edge-emphasis" font-size="11" text-anchor="middle">decision</text>
         </g>
         <g data-detail="context" data-edge-from="research" data-edge-to="planning" data-edge-label="dry-run" data-edge-key="1" data-edge-id="research-planning">
           <rect x="623.2" y="128" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="645" y="138" class="t-edge-emphasis" font-size="8" text-anchor="middle">dry-run</text>
+          <text x="645" y="138" class="t-edge-emphasis" font-size="11" text-anchor="middle">dry-run</text>
         </g>
         <g data-detail="context" data-edge-from="planning" data-edge-to="grants" data-edge-label="bound approval" data-edge-key="2" data-edge-id="planning-grants">
           <rect x="741.8" y="273.5" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="780.4" y="283.5" class="t-edge-security" font-size="8" text-anchor="middle">bound approval</text>
+          <text x="780.4" y="283.5" class="t-edge-security" font-size="11" text-anchor="middle">bound approval</text>
         </g>
         <g data-detail="context" data-edge-from="research" data-edge-to="events" data-edge-label="append / replay" data-edge-key="3" data-edge-id="research-events">
           <rect x="384.5" y="273.5" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="425.5" y="283.5" class="t-edge-default" font-size="8" text-anchor="middle">append / replay</text>
+          <text x="425.5" y="283.5" class="t-edge-default" font-size="11" text-anchor="middle">append / replay</text>
         </g>
         <g data-detail="context" data-edge-from="grants" data-edge-to="events" data-edge-label="lifecycle facts" data-edge-key="4" data-edge-id="grants-events">
           <rect x="604" y="395" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="645" y="405" class="t-edge-default" font-size="8" text-anchor="middle">lifecycle facts</text>
+          <text x="645" y="405" class="t-edge-default" font-size="11" text-anchor="middle">lifecycle facts</text>
         </g>
         <g data-detail="context" data-edge-from="grants" data-edge-to="workers" data-edge-label="valid grant + lease" data-edge-key="5" data-edge-id="grants-workers">
           <rect x="959.4" y="395" width="101.2" height="14" rx="3" class="c-mask"/>
-          <text x="1010" y="405" class="t-edge-security" font-size="8" text-anchor="middle">valid grant + lease</text>
+          <text x="1010" y="405" class="t-edge-security" font-size="11" text-anchor="middle">valid grant + lease</text>
         </g>
         <g data-detail="context" data-edge-from="workers" data-edge-to="artifacts" data-edge-label="HTTPS artifacts" data-edge-key="6" data-edge-id="workers-artifacts">
           <rect x="1092" y="530.5" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="1133" y="540.5" class="t-edge-default" font-size="8" text-anchor="middle">HTTPS artifacts</text>
+          <text x="1133" y="540.5" class="t-edge-default" font-size="11" text-anchor="middle">HTTPS artifacts</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
