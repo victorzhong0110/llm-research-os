@@ -199,6 +199,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 ArtifactPathError,
                 ArtifactStoreError,
                 OSError,
+                RecursionError,
                 ValueError,
                 json.JSONDecodeError,
             ):

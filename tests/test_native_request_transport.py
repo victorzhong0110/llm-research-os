@@ -19,7 +19,7 @@ from llm_research_os.execution.native_reviewed import request_digest
 from llm_research_os.execution.native_reviewed_runtime import _lifecycle
 from llm_research_os.runs.control import RunControl
 from llm_research_os.workers import native_transfer
-from llm_research_os.workers.client import WorkerClient
+from llm_research_os.workers.client import WorkerClient, _connection
 from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.native_request import native_request_from_binding
 from llm_research_os.workers.tokens import parse_rfc3339
@@ -286,4 +286,47 @@ def test_new_results_refuse_a_different_controller_revision(tmp_path: Path) -> N
         )
         assert plane.store.last_sequence() == claimed_sequence + 1
     finally:
+        plane.store.close()
+
+
+@pytest.mark.parametrize(
+    "fault", ["body", "deep", "encoding", "media", "duplicate", "query", "size"]
+)
+def test_request_wire_refuses_ambiguous_or_invalid_requests(tmp_path: Path, fault: str) -> None:
+    _, plane, _, _, server, client = _transport(tmp_path)
+    connection = _connection(
+        native_transfer._origin(client), client.ca_path, client.tls_fingerprint
+    )
+    try:
+        body = (
+            b'{"scope":"all"}'
+            if fault == "body"
+            else b"[" * 1100 + b"]" * 1100
+            if fault == "deep"
+            else b"{}"
+        )
+        path = (
+            "/v0alpha1/native/request?scope=all" if fault == "query" else "/v0alpha1/native/request"
+        )
+        before = plane.store.last_sequence()
+        connection.putrequest("POST", path)
+        connection.putheader("Authorization", f"Bearer {client.session}")
+        if fault == "duplicate":
+            connection.putheader("Authorization", f"Bearer {client.session}")
+        connection.putheader("X-ResearchOS-Grant", client.grant_token)
+        connection.putheader(
+            "Content-Type", "text/plain" if fault == "media" else "application/json"
+        )
+        connection.putheader("Content-Length", "4097" if fault == "size" else str(len(body)))
+        if fault == "encoding":
+            connection.putheader("Transfer-Encoding", "")
+        connection.endheaders(body)
+        response = connection.getresponse()
+        assert response.status == 400
+        response.read()
+        assert plane.store.last_sequence() == before
+        assert plane.rebuild().grant("grant.native").consumed_lease_id is None
+    finally:
+        connection.close()
+        server.stop()
         plane.store.close()
