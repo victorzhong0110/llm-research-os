@@ -11,7 +11,11 @@ from urllib.parse import ParseResult, urlparse
 from pydantic import ValidationError
 
 from llm_research_os.artifacts.store import DIGEST_PATTERN, MAX_WORKER_PUT_BYTES
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.execution.native_reviewed_documents import (
+    MAX_REVIEWED_REQUEST_BYTES,
+    NativeReviewedExecutionRequest,
+)
 from llm_research_os.workers.client import _connection
 from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.native_output_documents import NativeOutputReceipt
@@ -150,3 +154,53 @@ def upload_native_output(
         finally:
             connection.close()
     raise WorkerError("native output interrupted", code="http-disconnect")
+
+
+def fetch_native_request(client: WorkerClient) -> dict[str, object]:
+    """Fetch bound audit context, without consuming a grant or creating a launch receipt."""
+
+    parsed = _origin(client)
+    attempts = min(3, max(1, client.retries))
+    headers = {
+        "Authorization": f"Bearer {client.session}",
+        "X-ResearchOS-Grant": client.grant_token,
+        "Content-Type": "application/json",
+    }
+    for attempt in range(attempts):
+        connection = _connection(parsed, client.ca_path, client.tls_fingerprint)
+        try:
+            connection.request("POST", "/v0alpha1/native/request", b"{}", headers)
+            response = connection.getresponse()
+            if response.status != 200:
+                raise WorkerError("native request refused", code="transfer-refused")
+            try:
+                size = int(response.getheader("Content-Length", ""))
+            except ValueError:
+                raise WorkerError("invalid request size", code="transfer-size-mismatch") from None
+            if not 0 < size <= MAX_REVIEWED_REQUEST_BYTES:
+                raise WorkerError("invalid request size", code="transfer-size-mismatch")
+            body = response.read(size + 1)
+            if len(body) < size:
+                raise OSError("native request interrupted")
+            if len(body) != size:
+                raise WorkerError("invalid request size", code="transfer-size-mismatch")
+            try:
+                document = json.loads(body)
+                request = NativeReviewedExecutionRequest.model_validate(document)
+                if canonical_json(document).encode() != body:
+                    raise ValueError("request is not canonical")
+            except (ValueError, RecursionError):
+                raise WorkerError(
+                    "invalid native request", code="transfer-request-invalid"
+                ) from None
+            if request.worker_id != client.worker_id or content_digest(
+                document
+            ) != response.getheader("X-ResearchOS-Request", ""):
+                raise WorkerError("native request binding differs", code="transfer-request-invalid")
+            return cast(dict[str, object], document)
+        except (OSError, HTTPException) as exc:
+            if attempt == attempts - 1:
+                raise WorkerError("native request interrupted", code="http-disconnect") from exc
+        finally:
+            connection.close()
+    raise WorkerError("native request interrupted", code="http-disconnect")

@@ -162,6 +162,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/native/inputs":
                     self._native_input()
                     return
+                if path == "/v0alpha1/native/request":
+                    self._native_request()
+                    return
                 if path == "/v0alpha1/native/outputs":
                     self._native_output()
                     return
@@ -345,6 +348,48 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Content-Length", str(size))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def _native_request(self) -> None:
+            from llm_research_os.canonical import canonical_json
+            from llm_research_os.execution.native_reviewed import request_digest
+            from llm_research_os.execution.native_reviewed_documents import (
+                MAX_REVIEWED_REQUEST_BYTES,
+            )
+
+            if server._tls is None:
+                raise WorkerError("native request requires TLS", code="tls-required")
+            self.connection.settimeout(10)
+            if (
+                self.path != "/v0alpha1/native/request"
+                or any(
+                    len(self.headers.get_all(name, [])) != 1
+                    for name in ("Authorization", _GRANT_HEADER, "Content-Length", "Content-Type")
+                )
+                or self.headers.get_all("Transfer-Encoding")
+                or self.headers.get_all("Content-Encoding")
+            ):
+                raise WorkerError("invalid native request headers", code="http-invalid")
+            if self.headers.get("Content-Type") != "application/json":
+                raise WorkerError("invalid native request media type", code="http-invalid")
+            worker_id = _session_worker(server, self.headers.get("Authorization"))
+            token = self.headers.get(_GRANT_HEADER)
+            if not token or json.loads(self._raw_body(limit=4096)) != {}:
+                raise WorkerError("native request body must be empty", code="http-invalid")
+            with EventStore(server._database, require_existing=True) as store:
+                request = server._plane(store).native_reviewed_request(
+                    worker_id=worker_id, grant_token=token
+                )
+            payload = canonical_json(
+                request.model_dump(mode="json", by_alias=True, exclude_none=True)
+            ).encode()
+            if len(payload) > MAX_REVIEWED_REQUEST_BYTES:
+                raise WorkerError("native request exceeds its bound", code="http-too-large")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("X-ResearchOS-Request", request_digest(request))
             self.end_headers()
             self.wfile.write(payload)
 

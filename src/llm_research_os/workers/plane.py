@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
 from llm_research_os.artifacts.store import MAX_WORKER_PUT_BYTES, LocalArtifactStore
 from llm_research_os.blocks.registry import BlockRegistry
+from llm_research_os.execution.native_reviewed_documents import NativeReviewedExecutionRequest
 from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage.errors import DuplicateEventError, EventSequenceConflictError
 from llm_research_os.storage.models import StoredEvent
@@ -66,6 +67,7 @@ class NativeOutputAuthority:
     byte_limit: int
     head_sequence: int
     authorized_at: datetime
+    request_digest: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,10 +312,10 @@ class WorkerPlane:
                 code="execution-binding-mismatch",
             )
 
-    def authorize_native_input_fetch(
-        self, *, worker_id: str, grant_token: str, digest: str, size_bytes: int
-    ) -> None:
-        """Authorize planned native material without claiming or launching work."""
+    def native_input_scope(
+        self, *, worker_id: str, grant_token: str
+    ) -> tuple[QueuedWork, GrantRecord]:
+        """Check live material authority without claiming or appending facts."""
 
         now = self.clock().astimezone(UTC)
         claims = verify_grant_token(self.hmac_key, grant_token, now=now)
@@ -346,6 +348,24 @@ class WorkerPlane:
             attempt_id=grant.attempt_id,
         ):
             raise WorkerCallError("native transfer is cancelled", code="transfer-cancel-requested")
+        return queued, grant
+
+    def native_reviewed_request(
+        self, *, worker_id: str, grant_token: str
+    ) -> NativeReviewedExecutionRequest:
+        from llm_research_os.workers.native_request import native_request_from_binding
+
+        queued, grant = self.native_input_scope(worker_id=worker_id, grant_token=grant_token)
+        return native_request_from_binding(
+            self.store, project_id=self.project_id, grant=grant, queued=queued
+        )
+
+    def authorize_native_input_fetch(
+        self, *, worker_id: str, grant_token: str, digest: str, size_bytes: int
+    ) -> None:
+        """Authorize planned native material without claiming or launching work."""
+
+        queued, _ = self.native_input_scope(worker_id=worker_id, grant_token=grant_token)
         config = queued.config
         allowed = {
             config["code"]["bundleDigest"],
@@ -423,7 +443,13 @@ class WorkerPlane:
                 raise WorkerCallError(
                     "native output is cancelled", code="transfer-cancel-requested"
                 )
-        return NativeOutputAuthority(lease, limit, head.last_sequence, now)
+        from llm_research_os.execution.native_reviewed import request_digest
+        from llm_research_os.workers.native_request import native_request_from_binding
+
+        request = native_request_from_binding(
+            self.store, project_id=self.project_id, grant=grant, queued=queued
+        )
+        return NativeOutputAuthority(lease, limit, head.last_sequence, now, request_digest(request))
 
     def poll(self, *, worker_id: str, grant_token: str) -> ClaimedWork | None:
         now = self.clock().astimezone(UTC)

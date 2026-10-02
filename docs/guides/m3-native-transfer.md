@@ -106,8 +106,24 @@ and truncated receipts retry at most three times. Native Workers must use this
 endpoint rather than legacy artifact upload/generic HTTP completion.
 
 This is a durable Worker result receipt, not Run success or a fresh process
-observation. The transport verifies the syntax of the reported `requestDigest`;
-it does not reconstruct the full closed request. Run integration must verify
-that citation and the process result separately. Durable remote staging, remote
+observation. The controller reconstructs the full closed request from recorded facts and
+requires `requestDigest` to match. Run integration must still verify the actual
+process result and original specification/registry execution binding. Durable remote staging, remote
 launch/recovery integration and new real two-host fault acceptance remain open.
 See [the output protocol](../protocols/native-output-transfer-v0alpha1.md) and TM-070.
+
+## Bound request context
+
+`WorkerClient.fetch_native_request()` returns the closed reviewed request derived
+from the existing human authorization fact, recorded grant and immutable queued
+execution. It requires the same live scoped HTTPS authority as inputs and is
+available before claim. Repeating it changes no facts, consumes no grant and
+starts no process. The result's Worker identity, canonical bytes and JCS digest
+are checked. A completed, expired, revoked or cancelled claim refuses this live
+context fetch. It is context for material preparation, not a launch receipt.
+
+Output verification rebuilds that same request independently; a digest for a
+different full request refuses. No controller database/HMAC key is distributed.
+See [the request context protocol](../protocols/native-request-transfer-v0alpha1.md).
+Remote execution/staging/recovery integration and new authorized two-host proof
+remain open.

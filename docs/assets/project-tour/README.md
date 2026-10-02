@@ -51,6 +51,6 @@ uv sync --locked --all-groups
 python scripts/record_project_tour.py --font /absolute/path/to/monospace.ttf
 ```
 
-Checkpoint B remains open: remote output/executor/recovery integration and authorized
+Checkpoint B remains open: remote staging/executor/recovery integration and authorized
 R07/R08 two-host/GPU evidence remain incomplete. After explicit B acceptance, freeze;
 do not start R09 without a later maintainer decision.

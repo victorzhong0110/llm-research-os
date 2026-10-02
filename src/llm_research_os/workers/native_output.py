@@ -88,7 +88,7 @@ def complete_native_output(
             digest=digest,
             size_bytes=len(payload),
         )
-        document = _output_document(payload, authority.lease)
+        document = _output_document(payload, authority.lease, authority.request_digest)
         result_digest = content_digest(document)
         if authority.lease.status == "completed":
             return _replay(plane, authority, digest, len(payload), result_digest)
@@ -145,7 +145,7 @@ def complete_native_output(
     raise WorkerCallError("native completion did not settle", code="complete-conflict")
 
 
-def _output_document(payload: bytes, lease: LeaseRecord) -> dict[str, Any]:
+def _output_document(payload: bytes, lease: LeaseRecord, request_digest: str) -> dict[str, Any]:
     try:
         document = json.loads(payload)
     except (ValueError, RecursionError):
@@ -156,7 +156,11 @@ def _output_document(payload: bytes, lease: LeaseRecord) -> dict[str, Any]:
         parsed = NativeReviewedTaskOutput.model_validate(document)
     except ValidationError:
         raise WorkerCallError("native output is invalid", code="transfer-output-invalid") from None
-    if (parsed.task_id, parsed.run_id, parsed.attempt_id) != (
+    if parsed.request_digest != request_digest or (
+        parsed.task_id,
+        parsed.run_id,
+        parsed.attempt_id,
+    ) != (
         lease.task_id,
         lease.run_id,
         lease.attempt_id,
