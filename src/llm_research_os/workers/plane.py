@@ -357,7 +357,11 @@ class WorkerPlane:
 
         queued, grant = self.native_input_scope(worker_id=worker_id, grant_token=grant_token)
         return native_request_from_binding(
-            self.store, project_id=self.project_id, grant=grant, queued=queued
+            self.store,
+            project_id=self.project_id,
+            grant=grant,
+            queued=queued,
+            expected_revision=self.experiment_revision,
         )
 
     def authorize_native_input_fetch(
@@ -447,7 +451,11 @@ class WorkerPlane:
         from llm_research_os.workers.native_request import native_request_from_binding
 
         request = native_request_from_binding(
-            self.store, project_id=self.project_id, grant=grant, queued=queued
+            self.store,
+            project_id=self.project_id,
+            grant=grant,
+            queued=queued,
+            expected_revision=None if lease.status == "completed" else self.experiment_revision,
         )
         return NativeOutputAuthority(lease, limit, head.last_sequence, now, request_digest(request))
 

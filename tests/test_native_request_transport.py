@@ -235,3 +235,55 @@ def test_request_client_bounds_and_retries(
         assert not reads if fault in {"size", "refused", "disconnect"} else reads
     finally:
         plane.store.close()
+
+
+def test_new_results_refuse_a_different_controller_revision(tmp_path: Path) -> None:
+    world, plane, _, _ = _world(tmp_path)
+    try:
+        before = plane.store.last_sequence()
+        plane.experiment_revision = 2
+        with pytest.raises(WorkerError, match="binding differs"):
+            plane.native_reviewed_request(
+                worker_id=world.request.worker_id, grant_token=world.token
+            )
+        plane.experiment_revision = 1
+        claim = plane.poll(worker_id=world.request.worker_id, grant_token=world.token)
+        assert claim is not None
+        claimed_sequence = plane.store.last_sequence()
+        plane.experiment_revision = 2
+        payload = _payload(world)
+        with pytest.raises(WorkerError, match="binding differs"):
+            plane.authorize_native_output(
+                worker_id=world.request.worker_id,
+                grant_token=world.token,
+                lease_id=claim.lease_id,
+                digest="sha256:" + hashlib.sha256(payload).hexdigest(),
+                size_bytes=len(payload),
+            )
+        assert plane.store.last_sequence() == claimed_sequence > before
+        plane.experiment_revision = 1
+        from llm_research_os.workers.native_output import complete_native_output
+
+        receipt = complete_native_output(
+            plane,
+            worker_id=world.request.worker_id,
+            grant_token=world.token,
+            lease_id=claim.lease_id,
+            digest="sha256:" + hashlib.sha256(payload).hexdigest(),
+            payload=payload,
+        )
+        plane.experiment_revision = 2
+        assert (
+            complete_native_output(
+                plane,
+                worker_id=world.request.worker_id,
+                grant_token=world.token,
+                lease_id=claim.lease_id,
+                digest=receipt["digest"],
+                payload=payload,
+            )
+            == receipt
+        )
+        assert plane.store.last_sequence() == claimed_sequence + 1
+    finally:
+        plane.store.close()

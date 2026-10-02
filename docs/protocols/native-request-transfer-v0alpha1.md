@@ -20,7 +20,9 @@ sequence; task/Run/Attempt/Worker and authorization references come from the
 recorded grant. Profile/platform/code/inputs/environment/limits/restrictions
 come from the immutable queued native execution. The source must be a human
 `authorized` evaluation including `execute.native`, and the full reconstructed
-execution must match the recorded image/configuration digests. An audit-only
+execution must match the recorded image/configuration digests. Live context
+and new output also require the source revision to match the controller.
+A read-only completed receipt retains its original revision when replayed. An audit-only
 source fact by itself cannot obtain this endpoint; live signed and recorded
 Worker authority is also required. Reconstruction does not recompute the source
 specification or imply a supported remote execution path.

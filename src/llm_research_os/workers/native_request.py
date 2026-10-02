@@ -23,7 +23,12 @@ from llm_research_os.workers.models import (
 
 
 def native_request_from_binding(
-    store: EventStore, *, project_id: str, grant: GrantRecord, queued: QueuedWork
+    store: EventStore,
+    *,
+    project_id: str,
+    grant: GrantRecord,
+    queued: QueuedWork,
+    expected_revision: int | None = None,
 ) -> NativeReviewedExecutionRequest:
     """The returned audit context is not permission to launch or replay a process."""
 
@@ -33,6 +38,10 @@ def native_request_from_binding(
         or stored.event.type != PLAN_AUTHORIZATION_EVALUATED_TYPE
         or str(stored.sequence) != grant.authorization_sequence
         or stored.event.data.project_id != project_id
+        or (
+            expected_revision is not None
+            and stored.event.data.experiment_revision != expected_revision
+        )
         or stored.event.data.actor.kind != ActorKind.HUMAN
         or queued.runtime != WORKER_RUNTIME_NATIVE_REVIEWED
         or queued.image_media_type != IMAGE_MEDIA_NATIVE_REVIEWED
