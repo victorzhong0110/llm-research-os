@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
@@ -468,7 +468,9 @@ class WorkerPlane:
         )
         return NativeOutputAuthority(lease, limit, head.last_sequence, now, request_digest(request))
 
-    def poll(self, *, worker_id: str, grant_token: str) -> ClaimedWork | None:
+    def poll(
+        self, *, worker_id: str, grant_token: str, resume_existing: bool = False
+    ) -> ClaimedWork | None:
         now = self.clock().astimezone(UTC)
         claims = verify_grant_token(self.hmac_key, grant_token, now=now)
         if claims["workerId"] != worker_id:
@@ -487,7 +489,10 @@ class WorkerPlane:
         self._require_execution_match(grant, queued, claims)
         existing = fold.lease_for_worker(grant.task_id, grant.attempt_id, worker_id)
         if existing is not None:
-            return self._resume_or_reject(fold, existing, queued, grant, now=now)
+            claimed = self._resume_or_reject(fold, existing, queued, grant, now=now)
+            if resume_existing and claimed is not None:
+                return replace(claimed, resumed=True)
+            return claimed
         if run_cancel_requested(
             self.store,
             project_id=self.project_id,

@@ -341,6 +341,34 @@ Authority may be revoked after preparation, so launch must separately validate
 and consume it. Remote executor/recovery, source spec/registry verification and
 new authorized two-host/GPU acceptance remain open.
 
+### TM-073: Controller-bound remote native claims
+
+A Worker must not consume a native grant from a citation-only dispatch, inject a
+spec/registry through HTTP, take over an existing Run, or treat a persisted
+partial lease/lost response as fresh launch permission. Native polling requires
+TLS and trusted controller-owned spec/registry inputs. The actual kernel plan
+and execution object are rebuilt before any lifecycle/consumption facts.
+Strict bounded poll bodies refuse extra scope, encodings and ambiguous headers.
+The loopback/SSH-forwarded TLS boundary is unchanged.
+
+The existing private output publication lock serializes native claims across
+controllers. RunControl appends one bound Run and queued Attempt with CAS;
+matching partial prefixes replay without duplicate facts, and recorded data is
+checked rather than trusting event IDs. Live scope is rechecked after journal
+I/O. Existing leases always return resumed, including partially claimed leases;
+unknown Attempts without a lease and terminal Runs refuse fresh dispatch.
+Tests: `tests/test_native_remote_claim.py` (real TLS, plan/registry drift,
+missing context, partial Run/Worker facts, lost claim responses, restart,
+revocation/cancellation, lock contention and closed-wire refusals).
+
+Residual scope: this is a claim boundary, not a remote launcher or process
+observer. Run.started means dispatch lifecycle, while Attempt stays queued.
+Worker completion receipts do not independently establish Run success or an
+observed stop. Future launch must persist Worker-local intent/identity and reject
+resumed claims; process recovery and new two-host/GPU evidence remain open.
+Trusted controller inputs/host, same-UID filesystem access and private lock
+parents retain their existing trust limits. No controller key/database copying.
+
 ## 7. M0 security gates
 
 Before merging executable capability, the following gates apply:

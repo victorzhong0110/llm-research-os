@@ -29,7 +29,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R05 | Real native execution through the Worker lifecycle | Merged in #114 at `7abe55c1a8e770a6b0e5a058ea69563edeb7071c` | PR CI passed on Linux/macOS; checkpoint A needs R06 | [R05 candidate](#r05-candidate-evidence) |
 | R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
 | R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
-| R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote executor/staging/recovery remain incomplete; two-host and GPU evidence pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
+| R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote material preparation merged in #122 at `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534) passed). Remote executor/recovery remain incomplete; two-host and GPU evidence pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
 | R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
 | R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
 | R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
@@ -172,6 +172,28 @@ unsupported isolation and remote checkpoint restore explicitly refuse. Remote
 executor/Run integration and process recovery remain implementation gaps, and
 new authorized two-host/GPU proof remains pending-live. This is candidate
 preparation behavior, not R08 full acceptance or Checkpoint B closure. No R09.
+
+## R08 controller-bound remote claim candidate
+
+Base: verified main `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` (#122),
+with passing [main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534).
+The native HTTPS poll boundary requires actual controller-owned spec/registry,
+rebuilds the authorized execution binding and queues one bound Run/Attempt
+before existing Worker grant consumption. Partial lifecycle prefixes replay
+exactly; any existing lease returns resumed, including partially claimed leases.
+Attempt remains queued, with no process start or remote PID observation.
+Missing context/TLS, drift, cancellation/revocation, foreign Run and unknown
+Attempt without a lease refuse. The PR records final-head tests and review.
+Remote launch/process recovery and new authorized-host evidence remain open.
+
+| Evidence dimension | Current status | What it does not establish |
+| --- | --- | --- |
+| Remote CPU native chain and faults | New two-host execution pending-live; transport/preparation/claim tests use real local TLS | GPU availability or GPU execution |
+| Supported GPU runtime | New environment compatibility and real task pending-live; Kaggle is a candidate resource | Remote connection or process recovery |
+| Remote GPU integration | New authorized supported-profile execution and fault evidence pending-live | Inferred from either row above |
+
+These separate records preserve the existing R08 acceptance requirements.
+Checkpoint B is open; freeze after its explicit acceptance; no R09.
 
 ## Checkpoints
 
