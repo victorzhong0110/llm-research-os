@@ -420,6 +420,8 @@ def reconcile_remote_native(
                 )
             if outcome.outcome != "unknown" and observed != OBSERVATION_EXITED:
                 return RemoteNativeResult("unknown", start.lease_id)
+            if outcome.outcome == "unknown":
+                outcome = outcome.model_copy(update={"observation": observed})
             return _publish(client, artifacts, root, name, outcome)
         outcome = NativeOutcomeRequest.model_validate(
             {
@@ -430,8 +432,7 @@ def reconcile_remote_native(
                 "outcome": "unknown",
             }
         )
-        receipt = publish_native_outcome(client, outcome)
-        return RemoteNativeResult(receipt.disposition, start.lease_id, receipt=receipt)
+        return _publish(client, artifacts, root, name, outcome)
 
 
 def _publish(
@@ -442,6 +443,23 @@ def _publish(
     outcome: NativeOutcomeRequest,
     output: Any = None,
 ) -> RemoteNativeResult:
+    if outcome.outcome == "unknown" and outcome.observation == "exited":
+        # Revocation/cancel intent belongs to the controller. A refused report
+        # stays unknown; neither a transport refusal nor a signal proves intent.
+        cancelled = outcome.model_copy(update={"outcome": "cancelled"})
+        try:
+            receipt = publish_native_outcome(client, cancelled)
+        except WorkerError as exc:
+            if exc.code != "native-outcome-refused":
+                raise
+        else:
+            if not _exists(root, name + ".cancelled"):
+                _write(
+                    root,
+                    name + ".cancelled",
+                    cancelled.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
+            return RemoteNativeResult(receipt.disposition, outcome.start.lease_id, receipt=receipt)
     if outcome.outcome == "completed":
         original = NativeReviewedExecutionRequest.model_validate(
             _read(root, name + ".intent")["request"]

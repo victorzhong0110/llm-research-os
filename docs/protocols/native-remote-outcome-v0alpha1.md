@@ -33,7 +33,10 @@ Partially appended matching terminal facts replay with stable event IDs. Existin
 terminal state requires its original journal; corrupt/substituted/missing state
 is refused without repair. The publication lock is shared with start/output.
 
-`unknown/running` passively acknowledges the original start, without a new fact.
+`unknown/running` passively acknowledges the original start. A known revoked
+consumed grant additionally records `run.cancel.requested` with `grant-revoked`,
+matching local native recovery; the next heartbeat can request actual stop.
+That request never represents an observed stop. Otherwise no new fact is appended.
 Other unknown observations append/replay `attempt.unknown`. They cannot downgrade
 a terminal Run or permit another launch. The receipt binds full report digest,
 lease, disposition and last persisted event/sequence; `launchAllowed` is false.

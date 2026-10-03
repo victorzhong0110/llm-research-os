@@ -64,7 +64,11 @@ are refused; this remains the reviewed trusted-host profile, not a sandbox.
 On success, bounded canonical task output is saved in Worker CAS and durable
 result/outcome records before upload. Recovery verifies the original request and
 local identity, observes existing work and replays saved output/outcome only.
-Missing pre-start state remains unknown, never a replacement launch. Running
+Missing pre-start state remains unknown, never a replacement launch. A known
+revoked consumed grant records controller cancellation intent on observation;
+subsequent heartbeat/recovery stops the verified group. A bound observed exit
+can settle cancellation only when the controller confirms cancel/revoke intent.
+Other refusals remain unknown. Running
 work is observed passively; a recorded cancel intent can stop only the verified
 saved group and report cancellation after actual stop. PID reuse/unknown
 observation refuses terminal replay and fresh execution. Unsafe/corrupt state is

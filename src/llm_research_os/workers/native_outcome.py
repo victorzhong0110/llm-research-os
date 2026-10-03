@@ -89,6 +89,20 @@ def reconcile_native_outcome(
                 raise WorkerCallError(
                     "terminal Run cannot become unknown", code="native-outcome-conflict"
                 )
+            if grant.revoked and not run_cancel_requested(
+                plane.store,
+                project_id=request.project_id,
+                run_id=request.run_id,
+                attempt_id=request.attempt_id,
+            ):
+                _append_bound(
+                    run,
+                    plane,
+                    request,
+                    "run.cancel.requested",
+                    {"reasonCode": "grant-revoked"},
+                    attempt=False,
+                )
             if document.observation == "running":
                 final_type = "attempt.started"
             else:

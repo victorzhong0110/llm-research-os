@@ -209,7 +209,8 @@ def test_actual_barrier_refusal_never_imports_task(tmp_path, monkeypatch):  # ty
 
 @pytest.mark.native_remote_live
 @pytest.mark.usefixtures("live_host")
-def test_actual_cancel_observes_process_group_stop(tmp_path):  # type: ignore[no-untyped-def]
+@pytest.mark.parametrize("cancel", ["request", "revoke"])
+def test_actual_cancel_observes_process_group_stop(tmp_path, cancel):  # type: ignore[no-untyped-def]
     task = (
         b"import time\nfrom pathlib import Path\ndef main():\n"
         b" Path('started').write_text('yes')\n time.sleep(30)\n return {}\n"
@@ -230,12 +231,19 @@ def test_actual_cancel_observes_process_group_stop(tmp_path):  # type: ignore[no
         while not (kwargs["workspace"] / "started").exists() and time.monotonic() < deadline:
             time.sleep(0.05)
         assert (kwargs["workspace"] / "started").exists(), errors
-        _lifecycle(
-            RunControl(plane.store, project_id=PROJECT, run_id=world.request.run_id),
-            world.request,
-            "run.cancel.requested",
-            {"reasonCode": "user-requested"},
-        )
+        if cancel == "revoke":
+            plane.revoke_grant(
+                grant_id="grant.native",
+                actor_id=world.request.actor_id,
+                event_id="evt.actual.revoke",
+            )
+        else:
+            _lifecycle(
+                RunControl(plane.store, project_id=PROJECT, run_id=world.request.run_id),
+                world.request,
+                "run.cancel.requested",
+                {"reasonCode": "user-requested"},
+            )
         thread.join(timeout=15)
         assert not thread.is_alive() and not errors
         assert results[0].disposition == "cancelled"
@@ -344,7 +352,8 @@ def test_actual_pending_output_cancel_race_preserves_work_facts(
 
 @pytest.mark.native_remote_live
 @pytest.mark.usefixtures("live_host")
-def test_actual_worker_crash_then_cancel_observes_existing_child(tmp_path):  # type: ignore[no-untyped-def]
+@pytest.mark.parametrize("cancel", ["request", "revoke"])
+def test_actual_worker_crash_then_cancel_observes_existing_child(tmp_path, cancel):  # type: ignore[no-untyped-def]
     import subprocess
     import sys
 
@@ -399,12 +408,21 @@ execute_remote_native(c,artifacts=LocalArtifactStore(Path(p['cas'])),workspace=P
         process.wait(timeout=5)
         # Restart remains passive while the existing child is still running.
         assert _recover(client, world, kwargs).disposition == "running"
-        _lifecycle(
-            RunControl(plane.store, project_id=PROJECT, run_id=world.request.run_id),
-            world.request,
-            "run.cancel.requested",
-            {"reasonCode": "user-requested"},
-        )
+        if cancel == "revoke":
+            plane.revoke_grant(
+                grant_id="grant.native",
+                actor_id=world.request.actor_id,
+                event_id="evt.revoke.crashed.worker",
+            )
+            assert _recover(client, world, kwargs).disposition == "running"
+            assert client.heartbeat(lease_id="lease.grant.native") is True
+        else:
+            _lifecycle(
+                RunControl(plane.store, project_id=PROJECT, run_id=world.request.run_id),
+                world.request,
+                "run.cancel.requested",
+                {"reasonCode": "user-requested"},
+            )
         result = _recover(client, world, kwargs)
         assert result.disposition == "cancelled"
         assert _recover(client, world, kwargs) == result

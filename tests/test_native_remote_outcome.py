@@ -239,3 +239,27 @@ def test_completed_work_does_not_bypass_current_cas_integrity(tmp_path, fault): 
     finally:
         server.stop()
         plane.store.close()
+
+
+def test_running_revoked_grant_records_only_cancel_intent(tmp_path):  # type: ignore[no-untyped-def]
+    world, plane, _, _, server, client = _transport(tmp_path)
+    try:
+        client.poll()
+        start = _document(world)
+        publish_native_start(client, start)
+        plane.revoke_grant(
+            grant_id="grant.native", actor_id=world.request.actor_id, event_id="evt.revoke.passive"
+        )
+        before = plane.store.last_sequence()
+        receipt = publish_native_outcome(client, _outcome(start, "unknown", "running"))
+        assert receipt.disposition == "running"
+        assert plane.store.last_sequence() == before + 1
+        assert client.heartbeat(lease_id=start.lease_id) is True
+        state = _run(world, plane).rebuild().snapshot
+        assert state.status.value == "running" and state.cancellation_requested
+        assert state.attempts[0].status.value == "running"
+        assert publish_native_outcome(client, _outcome(start, "unknown", "running")) == receipt
+        assert plane.store.last_sequence() == before + 1
+    finally:
+        server.stop()
+        plane.store.close()
