@@ -26,8 +26,11 @@ with the original request before preparation, poll or child creation.
 On any existing intent, ambiguous/refused POST or backend history loss, no second
 POST is permitted. `submit_once()` re-entry and `observe()` query only the same
 vendor identity. Returned `RayNativeObservation` has only submission identity and
-vendor status. Observations verify exact entrypoint/metadata/runtime environment
-and CPU/GPU hints. No logs are interpreted as project results; Ray SUCCEEDED,
+vendor status. Observations verify exact entrypoint/metadata/runtime environment. Fixed CPU/GPU
+hints are bound in private intent and metadata digest and sent in the sole POST.
+Ray 2.59.0 [public JobDetails](https://github.com/ray-project/ray/blob/ray-2.59.0/python/ray/dashboard/modules/job/pydantic_models.py)
+omits resource fields; if present in a response they must agree. Reservation is
+not independently certified by GET. No logs are interpreted as project results; Ray SUCCEEDED,
 FAILED and STOPPED never append project lifecycle facts.
 
 `reconcile()` runs on the same compute host **outside the Ray driver**. It checks

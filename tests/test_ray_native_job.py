@@ -256,3 +256,14 @@ def test_expected_native_request_refuses_before_preparation_poll_or_child(job, m
         )
     assert exc.value.code == "native-execution-binding"
     assert not list(task.state_root.glob("*.intent"))
+
+
+def test_pinned_public_job_details_omits_resource_fields_but_binding_retains_them(job):  # type: ignore[no-untyped-def]
+    task, jobs, calls, _, _, _ = job
+    result = task.submit_once()
+    vendor = jobs[result.submission_id]
+    vendor.pop("entrypoint_num_cpus")
+    vendor.pop("entrypoint_num_gpus")
+    assert task.observe() == result
+    assert task._binding()["resources"] == {"entrypoint_num_cpus": 1, "entrypoint_num_gpus": 0}
+    assert calls.count(("POST", "/api/jobs/")) == 1

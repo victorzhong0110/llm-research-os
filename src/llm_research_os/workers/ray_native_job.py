@@ -108,7 +108,16 @@ class RayNativeJob:
         expected = _vendor_job(binding)
         if (
             status != 200
-            or any(info.get(key) != value for key, value in expected.items())
+            or any(
+                info.get(key) != value
+                for key, value in expected.items()
+                if key not in {"entrypoint_num_cpus", "entrypoint_num_gpus"}
+            )
+            or any(
+                info[key] != expected[key]
+                for key in ("entrypoint_num_cpus", "entrypoint_num_gpus")
+                if key in info
+            )
             or type(info.get("status")) is not str
             or info["status"] not in _STATUS
         ):
@@ -151,6 +160,7 @@ def _local_binding(
         raise RayProbeError("Ray native Worker differs")
     return {
         "scope": "reviewed-native-cpu",
+        "resources": {"entrypoint_num_cpus": 1, "entrypoint_num_gpus": 0},
         "submissionId": "researchos-ray-" + _name(request),
         "request": request.model_dump(mode="json", by_alias=True, exclude_none=True),
         "credential": str(paths[0]),
@@ -191,8 +201,7 @@ def _vendor_job(binding: dict[str, Any]) -> dict[str, Any]:
         ),
         "metadata": {"researchos.scope": "reviewed-native-cpu", "researchos.binding": digest},
         "runtime_env": {},
-        "entrypoint_num_cpus": 1,
-        "entrypoint_num_gpus": 0,
+        **binding["resources"],
     }
 
 

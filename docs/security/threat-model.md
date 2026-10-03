@@ -602,8 +602,10 @@ POST never resubmits, including vendor history loss. Driver digest/local context
 checks and the native live-index original-request check precede preparation/poll;
 the existing native consume/start barrier, fixed child and authority checks remain.
 
-Vendor observations verify exact command/metadata/environment/resource hints,
-read no task logs and append no project facts. Native observation/verified output/
+Vendor observations verify exact command/metadata/environment; fixed resource
+hints are bound in intent/metadata and POST. Pinned Ray JobDetails omits resource
+fields; contrary values refuse if supplied, but GET is not a reservation proof.
+Observations read no task logs and append no project facts. Native observation/verified output/
 receipt recovery runs outside Ray with the original private process identity,
 never a new task. Ray stop acknowledgements/status cannot prove group exit;
 controller intent and actual saved-group observation establish cancellation.
