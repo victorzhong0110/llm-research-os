@@ -11,6 +11,12 @@ authorized release.
 
 ### Added
 
+- R08 controller-side remote native claim binding: actual spec/registry plan
+  reconstruction, single-attempt Run queueing, exact-bound journal replay and
+  conservative resumed leases after controller/claim interruption. Native HTTP
+  polling without TLS or trusted controller context refuses. Remote process
+  launch/recovery and new two-host/GPU evidence remain open.
+
 - R08 remote material metadata and Worker-local durable preparation: pinned,
   grant-scoped bundle members and bound environment/configuration documents,
   bounded persistent staging, actual host identity checks and atomic private

@@ -161,3 +161,39 @@ The helper checks live authority again after material and host checks; eventual
 execution must independently recheck/consume authority and preserve process
 identity. See [the preparation protocol](../protocols/native-material-preparation-v0alpha1.md)
 and TM-072. This slice does not close Checkpoint B.
+
+## Controller-side remote claim binding
+
+After remote preparation, the native poll boundary requires trusted controller
+spec/registry inputs. Configure the Python server explicitly:
+
+```python
+from llm_research_os.workers.native_claim import NativeControllerContext
+
+server = LoopbackWorkerServer(
+    database,
+    controller_artifacts,
+    hmac_key=controller_hmac_key,
+    project_id=spec.metadata.id,
+    source=project_source,
+    experiment_revision=spec.metadata.revision,
+    tls=controller_tls,
+    native_context=NativeControllerContext(spec, registry),
+)
+```
+
+These objects come from the controller's reviewed project and registry, never
+from a Worker poll body. The omitted context refuses native dispatch. The
+existing `WorkerClient.poll()` body uses integer `waitSeconds: 0`; a successful
+claim queues one Run/Attempt and consumes the recorded grant without starting a
+process. A retry/restart that finds an existing lease returns `resumed: true`;
+it is observation/recovery context, never permission to launch again. See
+[the claim protocol](../protocols/native-remote-claim-v0alpha1.md) and TM-073.
+The remote executor and process-recovery integration remain unfinished.
+
+Track live evidence separately: (1) two-host CPU native transport/execution and
+faults, (2) availability and actual execution of an already supported GPU profile,
+and (3) that GPU profile over the remote chain. Kaggle is a candidate GPU resource
+until its environment has been probed; a GPU notebook alone cannot certify
+remote fault recovery or current Worker runtime compatibility. These dimensions
+do not reduce the existing Checkpoint B requirements.

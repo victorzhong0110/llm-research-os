@@ -28,6 +28,11 @@ from llm_research_os.storage.store import EventStore
 from llm_research_os.workers.bind import require_worker_bind_host
 from llm_research_os.workers.errors import WorkerError, WorkerGrantError
 from llm_research_os.workers.models import WORKER_RUNTIME_NATIVE_REVIEWED
+from llm_research_os.workers.native_claim import (
+    NativeControllerContext,
+    claim_native,
+    is_native_claim,
+)
 from llm_research_os.workers.plane import DEFAULT_LEASE_SECONDS, Clock, WorkerPlane
 from llm_research_os.workers.tls import TlsMaterial
 from llm_research_os.workers.tokens import issue_worker_session, verify_worker_session
@@ -59,6 +64,7 @@ class LoopbackWorkerServer:
         experiment_revision: int = 1,
         clock: Clock | None = None,
         tls: TlsMaterial | None = None,
+        native_context: NativeControllerContext | None = None,
     ) -> None:
         self._database = database
         self._artifacts = artifacts
@@ -68,6 +74,7 @@ class LoopbackWorkerServer:
         self._experiment_revision = experiment_revision
         self._clock: Clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._tls = tls
+        self._native_context = native_context
         handler = _handler_for(self)
         require_worker_bind_host(host, tls=tls is not None)
         self._httpd = _ReusableLoopbackServer((host, port), handler)
@@ -214,7 +221,10 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             self._error(404, WorkerError("unknown worker path", code="http-not-found"))
 
         def _poll(self) -> None:
-            body = self._json_body()
+            self.connection.settimeout(10)
+            body = json.loads(self._raw_body(limit=4096))
+            if type(body) is not dict:
+                raise WorkerError("poll body must be an object", code="http-invalid")
             worker_id = _require_str(body, "workerId")
             token = _require_str(body, "grantToken")
             _require_session(server, worker_id, self.headers.get("Authorization"))
@@ -222,7 +232,34 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 raise WorkerError("waitSeconds must be 0, 1, or 2", code="http-invalid")
             with EventStore(server._database, require_existing=True) as store:
                 plane = server._plane(store)
-                claimed = plane.poll(worker_id=worker_id, grant_token=token)
+                if is_native_claim(plane, worker_id=worker_id, grant_token=token):
+                    if server._tls is None:
+                        raise WorkerError("native dispatch requires TLS", code="tls-required")
+                    if (
+                        self.path != "/v0alpha1/work/poll"
+                        or set(body) != {"workerId", "grantToken", "waitSeconds"}
+                        or type(body["waitSeconds"]) is not int
+                        or body["waitSeconds"] != 0
+                        or any(
+                            len(self.headers.get_all(name, [])) != 1
+                            for name in ("Authorization", "Content-Length", "Content-Type")
+                        )
+                        or self.headers.get("Content-Type") != _JSON
+                        or self.headers.get_all("Transfer-Encoding")
+                        or self.headers.get_all("Content-Encoding")
+                    ):
+                        raise WorkerError("invalid native poll request", code="http-invalid")
+                    from llm_research_os.workers.native_output import output_lock
+
+                    with output_lock(server._database):
+                        claimed = claim_native(
+                            plane,
+                            context=server._native_context,
+                            worker_id=worker_id,
+                            grant_token=token,
+                        )
+                else:
+                    claimed = plane.poll(worker_id=worker_id, grant_token=token)
             if claimed is None:
                 self._write(204, None)
                 return

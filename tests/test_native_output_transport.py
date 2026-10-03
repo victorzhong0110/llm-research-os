@@ -22,6 +22,7 @@ from llm_research_os.workers import native_output, native_transfer
 from llm_research_os.workers.client import WorkerClient, _connection
 from llm_research_os.workers.errors import WorkerError
 from llm_research_os.workers.http import LoopbackWorkerServer
+from llm_research_os.workers.native_claim import NativeControllerContext
 from llm_research_os.workers.tls import load_or_create_loopback_tls
 
 
@@ -41,7 +42,7 @@ def _payload(world):  # type: ignore[no-untyped-def]
 
 
 def _transport(tmp_path):  # type: ignore[no-untyped-def]
-    world, plane, _, _ = _world(tmp_path)
+    world, plane, spec, registry = _world(tmp_path)
     tls = load_or_create_loopback_tls(tmp_path / "tls")
     clock = [NOW]
     server = LoopbackWorkerServer(
@@ -52,6 +53,7 @@ def _transport(tmp_path):  # type: ignore[no-untyped-def]
         source=SOURCE,
         clock=lambda: clock[0],
         tls=tls,
+        native_context=NativeControllerContext(spec, registry),
     )
     server.start()
     client = WorkerClient(
@@ -95,8 +97,8 @@ def test_scoped_upload_replay_and_controller_restart(
         assert (
             RunControl(plane.store, project_id=PROJECT, run_id=world.request.run_id)
             .rebuild()
-            .snapshot
-            is None
+            .snapshot.status.value
+            == "running"
         )
         # Neither legacy route can bypass native output validation.
         with pytest.raises(WorkerError):
@@ -222,6 +224,7 @@ def test_output_refusals_do_not_complete(
         elif fault == "lock":
             victim = tmp_path / "unrelated"
             victim.write_bytes(b"preserve")
+            native_output.output_lock_path(world.database).unlink()
             native_output.output_lock_path(world.database).symlink_to(victim)
         before = plane.store.last_sequence()
         with pytest.raises(WorkerError, match="refused"):
@@ -237,6 +240,8 @@ def test_output_refusals_do_not_complete(
 
 
 def _start_run(run, request):  # type: ignore[no-untyped-def]
+    if run.rebuild().snapshot is not None:
+        return
     _lifecycle(
         run,
         request,
