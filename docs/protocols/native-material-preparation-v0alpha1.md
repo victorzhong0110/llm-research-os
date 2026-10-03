@@ -47,7 +47,7 @@ bytes or permission to download a controller host program.
 `workers.native_preparation.prepare_remote_native(client, artifacts=...,
 workspace=..., staging_root=...)` uses the Worker's own CAS and private roots.
 No controller SQLite database, HMAC key or TLS private key is copied. Workspace,
-staging and CAS roots must not overlap. Workspace parent and staging root must
+staging and CAS roots must not overlap. CAS root, CAS/staging parents, workspace parent and staging root must
 be owned by the current user and inaccessible to group/other users; directory
 walks reject symlink ancestors. Per-workspace private locks serialize publication
 and refuse another process holding the same lock.

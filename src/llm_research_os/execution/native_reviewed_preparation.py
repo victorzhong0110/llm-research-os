@@ -907,6 +907,8 @@ def _write_relative(root_fd: int, relative: str, payload: bytes) -> None:
         for part in parts[:-1]:
             with contextlib.suppress(FileExistsError):
                 os.mkdir(part, 0o700, dir_fd=parent)
+            # Persist the new directory entry before an atomic workspace publication.
+            os.fsync(parent)
             directory = os.open(part, _DIR_FLAGS, dir_fd=parent)
             owned.append(directory)
             os.fchmod(directory, 0o700)

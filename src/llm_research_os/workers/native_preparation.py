@@ -110,6 +110,9 @@ def prepare_remote_native(
     roots = (workspace, staging_root, artifacts.root)
     if any(a.is_relative_to(b) for i, a in enumerate(roots) for j, b in enumerate(roots) if i != j):
         raise NativeTransferError("preparation roots overlap", code="transfer-path-unauthorized")
+    for root in (artifacts.root, artifacts.root.parent, staging_root.parent):
+        with _directory(root, create=False) as descriptor:
+            _private_directory(descriptor)
     with _workspace_lock(workspace), _directory(staging_root, create=True) as stage_fd:
         _private_directory(stage_fd)
         source = _RemoteSource(artifacts, client, index)

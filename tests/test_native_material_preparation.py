@@ -162,7 +162,19 @@ def test_interrupted_stage_retains_verified_files_and_retry_bound(
 
 @pytest.mark.parametrize(
     "fault",
-    ["workspace", "stage", "symlink", "ancestor", "overlap", "private", "disk", "host", "revoke"],
+    [
+        "workspace",
+        "stage",
+        "symlink",
+        "ancestor",
+        "overlap",
+        "private",
+        "cache-private",
+        "stage-parent",
+        "disk",
+        "host",
+        "revoke",
+    ],
 )
 def test_refusal_does_not_publish_or_consume(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
@@ -189,6 +201,12 @@ def test_refusal_does_not_publish_or_consume(
             staging = artifacts.root / "staging"
         elif fault == "private":
             workspace.parent.chmod(0o755)
+        elif fault == "cache-private":
+            artifacts.root.chmod(0o755)
+        elif fault == "stage-parent":
+            public = tmp_path / "public"
+            public.mkdir(mode=0o755)
+            staging = public / "staging"
         elif fault == "disk":
             monkeypatch.setattr(
                 native_preparation,

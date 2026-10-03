@@ -161,7 +161,10 @@ interpreter/review/configuration downloads, plus Worker-local durable staging
 and atomic preparation. It verifies actual Worker environment bytes and rechecks
 live metadata before publishing the existing non-launching R04 receipt. The
 Worker receives no controller database or HMAC key. Persistent journals retain
-zero starts; corrupted caches/stages/workspaces refuse without repair.
+zero starts; corrupted caches/stages/workspaces refuse without repair. Review
+also requires private CAS/staging parents and synchronizes newly created nested
+directory entries before atomic workspace publication. These checks are in the
+implementation and refusal tests, not waived by transport-only success.
 
 See [the protocol](../../protocols/native-material-preparation-v0alpha1.md),
 TM-072 and the slice PR for exact-head validation/CI evidence. Required
