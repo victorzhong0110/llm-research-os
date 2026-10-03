@@ -68,7 +68,8 @@ def test_bound_request_fetch_preserves_scope_and_facts(
 @pytest.mark.parametrize(
     "fault", ["revoked", "expired", "cancelled", "session", "claim-expired", "completed"]
 )
-def test_request_refuses_inactive_authority(tmp_path: Path, fault: str) -> None:
+@pytest.mark.parametrize("materials", [False, True])
+def test_request_refuses_inactive_authority(tmp_path: Path, fault: str, materials: bool) -> None:
     world, plane, _, clock, server, client = _transport(tmp_path)
     try:
         if fault == "revoked":
@@ -96,7 +97,7 @@ def test_request_refuses_inactive_authority(tmp_path: Path, fault: str) -> None:
                 client.upload_native_output(lease_id=claim["leaseId"], payload=_payload(world))
         before = plane.store.last_sequence()
         with pytest.raises(WorkerError, match="refused"):
-            client.fetch_native_request()
+            (client.fetch_native_material_index if materials else client.fetch_native_request)()
         assert plane.store.last_sequence() == before
     finally:
         server.stop()
@@ -183,12 +184,19 @@ def test_request_rebuild_refuses_substitution(tmp_path: Path, fault: str) -> Non
     "fault",
     ["disconnect", "short", "oversize", "refused", "digest", "invalid", "noncanonical", "size"],
 )
+@pytest.mark.parametrize("materials", [False, True])
 def test_request_client_bounds_and_retries(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, materials: bool
 ) -> None:
     world, plane, _, _ = _world(tmp_path)
     try:
         document = world.request.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if materials:
+            from llm_research_os.workers.native_material import material_index
+
+            document = material_index(
+                plane, worker_id=world.request.worker_id, grant_token=world.token
+            ).model_dump(mode="json", by_alias=True, exclude_none=True)
         body = canonical_json(document).encode()
         if fault == "invalid":
             document["unreviewed"] = True
@@ -228,7 +236,7 @@ def test_request_client_bounds_and_retries(
             "https://host", world.request.worker_id, "session", "grant", retries=99
         )
         with pytest.raises(WorkerError):
-            client.fetch_native_request()
+            (client.fetch_native_material_index if materials else client.fetch_native_request)()
         assert len(calls) == (3 if fault in {"disconnect", "short"} else 1)
         assert len(calls) == len(closed)
         assert all(limit == len(body) + 1 for limit in reads)
@@ -292,7 +300,10 @@ def test_new_results_refuse_a_different_controller_revision(tmp_path: Path) -> N
 @pytest.mark.parametrize(
     "fault", ["body", "deep", "encoding", "media", "duplicate", "query", "size"]
 )
-def test_request_wire_refuses_ambiguous_or_invalid_requests(tmp_path: Path, fault: str) -> None:
+@pytest.mark.parametrize("materials", [False, True])
+def test_request_wire_refuses_ambiguous_or_invalid_requests(
+    tmp_path: Path, fault: str, materials: bool
+) -> None:
     _, plane, _, _, server, client = _transport(tmp_path)
     connection = _connection(
         native_transfer._origin(client), client.ca_path, client.tls_fingerprint
@@ -305,9 +316,9 @@ def test_request_wire_refuses_ambiguous_or_invalid_requests(tmp_path: Path, faul
             if fault == "deep"
             else b"{}"
         )
-        path = (
-            "/v0alpha1/native/request?scope=all" if fault == "query" else "/v0alpha1/native/request"
-        )
+        path = "/v0alpha1/native/materials" if materials else "/v0alpha1/native/request"
+        if fault == "query":
+            path += "?scope=all"
         before = plane.store.last_sequence()
         connection.putrequest("POST", path)
         connection.putheader("Authorization", f"Bearer {client.session}")

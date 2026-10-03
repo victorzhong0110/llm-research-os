@@ -65,7 +65,8 @@ that private staging tree, never to a remote caller.
 ## Pinned HTTPS input API
 
 `WorkerClient.fetch_native_input(digest=..., size_bytes=...)` downloads one
-planned native input, code bundle, dependency lock, or inventory. It requires
+planned native input, code bundle/member, dependency lock, inventory, bound
+interpreter identity/review document, or canonical execution configuration. It requires
 an HTTPS origin, CA and certificate fingerprint. Each request supplies a
 Worker session and grant; the controller checks the recorded, unexpired,
 unrevoked grant and its task/Run/Attempt/execution binding. If work was already
@@ -125,5 +126,38 @@ context fetch. It is context for material preparation, not a launch receipt.
 Output verification rebuilds that same request independently; a digest for a
 different full request refuses. No controller database/HMAC key is distributed.
 See [the request context protocol](../protocols/native-request-transfer-v0alpha1.md).
-Remote execution/staging/recovery integration and new authorized two-host proof
-remain open.
+Remote execution/recovery integration and new authorized two-host proof remain open.
+
+## Worker-local remote preparation API
+
+Create a private Worker parent (mode `0700`), a CAS directory under it, and keep
+the staging root, workspace and CAS separate. Supply the existing pinned
+`WorkerClient` session/grant and call:
+
+```python
+from llm_research_os.workers.native_preparation import prepare_remote_native
+
+receipt = prepare_remote_native(
+    client,
+    artifacts=worker_cas,
+    workspace=worker_root / "workspace",
+    staging_root=worker_root / "staging",
+)
+```
+
+The helper fetches authenticated material metadata and stages at most 64 objects
+of at most 1 MiB each in persistent batches. After an interrupted transfer,
+repeat this call with the same private directories/client scope; it resumes
+verified remaining bytes without polling or starting anything. Three persisted
+attempts per batch is the bound. A completed workspace is inspected and reused;
+a corrupted cache, stage or workspace is refused without repair. Partial
+private publication candidates remain owner-managed scratch after a crash.
+
+Actual Worker interpreter and installed dependencies must match the reviewed
+bytes. Dependencies are not installed automatically. Remote checkpoint inputs
+and required unsupported isolation refuse. `receipt.launch_allowed` stays
+false. Keep database, HMAC key and controller TLS private key on the controller.
+The helper checks live authority again after material and host checks; eventual
+execution must independently recheck/consume authority and preserve process
+identity. See [the preparation protocol](../protocols/native-material-preparation-v0alpha1.md)
+and TM-072. This slice does not close Checkpoint B.

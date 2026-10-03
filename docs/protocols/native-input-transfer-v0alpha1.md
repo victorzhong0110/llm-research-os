@@ -12,7 +12,11 @@ The controller verifies the session's Worker, signed grant, recorded grant
 event and nonce, project, task, Run, Attempt, image and configuration digests,
 expiry, revocation, and the immutable queued native execution object. Only the
 planned code bundle, dependency lock, environment inventory and named input
-digests are available. Named input sizes must match the plan; all downloaded
+digests are available. The [material preparation slice](native-material-preparation-v0alpha1.md)
+also resolves bundle-declared code members, the bound interpreter identity and
+canonical review documents, and synthetic canonical execution configuration.
+These additional objects are capped at the existing 1 MiB preparation bound,
+with full reviewed request reconstruction and document checks. Named input sizes must match the plan; all downloaded
 sizes must match the stored bytes. Arbitrary CAS objects and CAS listing are
 unavailable. Interpreter identity is not permission to export host executables.
 Cancellation denies fetches. An existing claimed lease must belong to the
@@ -31,7 +35,7 @@ Replay downloads the same immutable bytes without changing EventStore,
 claiming work, launching processes or turning unknown into success. It is
 transport replay only, not launch or completion replay. Output upload and committed-receipt replay are specified separately in
 [the output protocol](native-output-transfer-v0alpha1.md). Durable remote staging
-orchestration, remote native launch, full controller/worker restart integration
+is specified in the material preparation protocol. Remote native launch and full execution/recovery integration
 and real two-host/GPU acceptance remain outstanding.
 Legacy M2 artifact endpoints retain their existing scope and are not the
 native input protocol or a native launch authority.

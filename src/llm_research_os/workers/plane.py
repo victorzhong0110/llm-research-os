@@ -366,7 +366,7 @@ class WorkerPlane:
 
     def authorize_native_input_fetch(
         self, *, worker_id: str, grant_token: str, digest: str, size_bytes: int
-    ) -> None:
+    ) -> bytes | None:
         """Authorize planned native material without claiming or launching work."""
 
         queued, _ = self.native_input_scope(worker_id=worker_id, grant_token=grant_token)
@@ -381,7 +381,16 @@ class WorkerPlane:
                 raise WorkerCallError("input size does not match", code="transfer-size-mismatch")
             allowed.add(item["digest"])
         if digest not in allowed:
-            raise WorkerCallError("material is not planned", code="execution-binding-mismatch")
+            from llm_research_os.workers.native_material import extra_material_payload
+
+            return extra_material_payload(
+                self,
+                worker_id=worker_id,
+                grant_token=grant_token,
+                digest=digest,
+                size_bytes=size_bytes,
+            )
+        return None
 
     def heartbeat(self, *, worker_id: str, session: str, lease_id: str) -> bool:
         """Transport liveness only. Must not append EventStore facts (ADR-0041).

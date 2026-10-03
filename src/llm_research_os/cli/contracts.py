@@ -235,6 +235,15 @@ from llm_research_os.training.schema import (
     write_wsl_cuda_training_plan_schema,
     wsl_cuda_training_plan_schema_matches,
 )
+from llm_research_os.workers.native_material_schema import (
+    canonical_schema as canonical_native_material_index_schema,
+)
+from llm_research_os.workers.native_material_schema import (
+    schema_matches as native_material_index_schema_matches,
+)
+from llm_research_os.workers.native_material_schema import (
+    write_schema as write_native_material_index_schema,
+)
 from llm_research_os.workers.native_output_schema import (
     canonical_native_output_receipt_schema,
     canonical_native_task_output_schema,
@@ -381,6 +390,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         native_reviewed_execution_request_schema_matches,
         write_native_reviewed_execution_request_schema,
         "schemas/native-reviewed-execution-request/v0alpha1.schema.json",
+    ),
+    "native-material-index": _contract(
+        canonical_native_material_index_schema,
+        native_material_index_schema_matches,
+        write_native_material_index_schema,
+        "schemas/native-material-index/v0alpha1.schema.json",
     ),
     "native-reviewed-task-output": _contract(
         canonical_native_task_output_schema,
