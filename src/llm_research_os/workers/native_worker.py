@@ -34,23 +34,7 @@ def run_native_worker(
         request_path is not None and (workspace is not None or staging_root is not None)
     ):
         raise WorkerError("native Worker mode is ambiguous", code="native-worker-input-invalid")
-    # Unlike the legacy credential reader, the new executable command requires
-    # private bounded no-follow single-link bytes anchored to their parent.
-    with _directory(credential_path.absolute().parent, create=False) as root:
-        info = os.fstat(root)
-        if info.st_uid != os.getuid() or info.st_mode & 0o077:
-            raise WorkerError("native credential parent is not private", code="credential-invalid")
-        credential = credential_from_document(
-            _read(root, credential_path.name), path=credential_path
-        )
-    client = WorkerClient(
-        credential.control_plane_url,
-        credential.worker_id,
-        credential.session,
-        credential.grant_token,
-        ca_path=credential.tls_ca_path,
-        tls_fingerprint=credential.tls_fingerprint,
-    )
+    client = private_native_client(credential_path)
     artifacts = LocalArtifactStore(artifacts_root)
     if request_path is None:
         if workspace is None or staging_root is None:
@@ -75,3 +59,23 @@ def run_native_worker(
             code="native-outcome-unrecorded",
         )
     return result.receipt
+
+
+def private_native_client(credential_path: Path) -> WorkerClient:
+    # Unlike the legacy credential reader, the new executable command requires
+    # private bounded no-follow single-link bytes anchored to their parent.
+    with _directory(credential_path.absolute().parent, create=False) as root:
+        info = os.fstat(root)
+        if info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise WorkerError("native credential parent is not private", code="credential-invalid")
+        credential = credential_from_document(
+            _read(root, credential_path.name), path=credential_path
+        )
+    return WorkerClient(
+        credential.control_plane_url,
+        credential.worker_id,
+        credential.session,
+        credential.grant_token,
+        ca_path=credential.tls_ca_path,
+        tls_fingerprint=credential.tls_fingerprint,
+    )

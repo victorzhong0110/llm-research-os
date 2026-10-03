@@ -11,6 +11,11 @@ authorized release.
 
 ### Added
 
+- R08 optional Ray Jobs CPU project driver: fixed installed reviewed Worker
+  entrypoint, private durable single-POST intent, original-request binding,
+  backend-only status and native observation outside Ray. A separate real Ray
+  project gate verifies output/replay, lost submit response and observed cancel.
+
 - R08 native Worker CLI composition: explicit reviewed controller spec/registry,
   bounded private credentials, fresh `workers run-native` and observation-only
   `workers reconcile-native` using existing runtime, grants and outcome receipts.

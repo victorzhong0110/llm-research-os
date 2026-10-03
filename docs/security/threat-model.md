@@ -581,3 +581,40 @@ Tests: `tests/test_native_worker_cli.py`, existing isolated Worker regressions;
 the designated native gate requires real separate CLI CPU execution and saved
 receipt replay. Residual trust/profile, Ray/GPU and two-host evidence limits
 remain those of TM-076; no new launch grant, sandbox or acceptance is introduced.
+
+
+### TM-078: Ray scheduling cannot invent native authority or outcomes
+
+A vendor retry, forged job status, driver death or uploaded environment could
+create duplicate work, expose credentials, or claim success/stop without native
+proof. The optional Ray CPU adapter accepts only a fixed installed isolated
+Python module and original reviewed request/private paths. Pinned authenticated
+loopback Jobs API, empty runtime environment and CPU=1/GPU=0 are explicit vendor
+bounds; they are scheduling hints, not an isolation mechanism or GPU capability.
+No controller DB, HMAC/private TLS key, Worker grant/session bytes or package
+archive is passed to Ray metadata, argv, logs or runtime_env.
+
+Owner-only locked state, bounded 0600 no-follow regular single-link intent and
+exclusive fsync precede the sole POST. Project/Run/Attempt, original request,
+Worker/origin/pin/grant fingerprint, paths, host/UID/interpreter/driver bytes and
+Ray endpoint/token fingerprint/version are bound. Existing intent or lost/refused
+POST never resubmits, including vendor history loss. Driver digest/local context
+checks and the native live-index original-request check precede preparation/poll;
+the existing native consume/start barrier, fixed child and authority checks remain.
+
+Vendor observations verify exact command/metadata/environment/resource hints,
+read no task logs and append no project facts. Native observation/verified output/
+receipt recovery runs outside Ray with the original private process identity,
+never a new task. Ray stop acknowledgements/status cannot prove group exit;
+controller intent and actual saved-group observation establish cancellation.
+Gate: `tests/test_ray_native_job.py` refusal/replay fixtures, existing native/CLI
+regressions and `tests/test_ray_native_live.py` in designated `ray-native` CI.
+The latter requires actual Ray CPU project output, real discarded POST response,
+second-instance receipt replay and vendor stop plus controller/OS cancellation;
+missing Ray/OS identity or deadline fails, not simulated or skipped acceptance.
+
+Residual trust: only a provisioned owned single-node same-UID compute environment
+is supported; installed package/host labels/private credentials are trusted
+operator resources. This adds no strong sandbox, remote hardware attestation,
+GPU allocation/device inheritance or multi-node path distribution. Selected
+host/GPU/Kaggle evidence and Checkpoint B acceptance remain pending-live.
