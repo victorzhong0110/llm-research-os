@@ -400,7 +400,9 @@ def reconcile_remote_native(
                 )
                 if not _exists(root, name + ".cancelled"):
                     _write(
-                        root, name + ".cancelled", cancelled.model_dump(mode="json", by_alias=True)
+                        root,
+                        name + ".cancelled",
+                        cancelled.model_dump(mode="json", by_alias=True, exclude_none=True),
                     )
                 return _publish(client, artifacts, root, name, cancelled)
         if _exists(root, name + ".cancelled"):
