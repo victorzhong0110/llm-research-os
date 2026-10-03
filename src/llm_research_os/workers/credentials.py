@@ -67,7 +67,13 @@ def write_hmac_key(path: Path, key: bytes) -> None:
 
 
 def load_worker_credential(path: Path) -> WorkerCredential:
-    document = snapshot_json_document(load_document(path, reject_symlinks=True))
+    document = load_document(path, reject_symlinks=True)
+    return credential_from_document(document, path=path)
+
+
+def credential_from_document(document: Any, *, path: Path) -> WorkerCredential:
+    """Validate the existing credential shape from an already bounded private reader."""
+    document = snapshot_json_document(document)
     if type(document) is not dict:
         raise WorkerError("worker credential must be a JSON object", code="credential-invalid")
     if document.get("apiVersion") != _API_VERSION or document.get("kind") != _KIND:

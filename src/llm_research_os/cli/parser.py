@@ -816,6 +816,52 @@ def build_parser() -> argparse.ArgumentParser:
         default=0,
         help="TCP port; 0 selects an ephemeral port",
     )
+    workers_serve.add_argument(
+        "--native-spec",
+        type=Path,
+        help="reviewed controller spec for native dispatch; requires --native-registry",
+    )
+    workers_serve.add_argument(
+        "--native-registry",
+        type=Path,
+        action="append",
+        default=[],
+        help="reviewed native block manifest; repeat for every registry member",
+    )
+    for name in ("run-native", "reconcile-native"):
+        command = workers_commands.add_parser(
+            name,
+            help="execute one reviewed native claim"
+            if name == "run-native"
+            else "observe/replay existing native work; never claim or launch",
+        )
+        command.add_argument("credential", type=Path, help="existing private WorkerCredential file")
+        command.add_argument(
+            "--artifacts", type=Path, required=True, help="existing owner-only Worker CAS root"
+        )
+        command.add_argument(
+            "--state",
+            type=Path,
+            required=True,
+            help="existing owner-only native execution state root",
+        )
+        if name == "run-native":
+            command.add_argument(
+                "--workspace", type=Path, required=True, help="disjoint reviewed workspace path"
+            )
+            command.add_argument(
+                "--staging",
+                type=Path,
+                required=True,
+                help="disjoint bounded preparation staging path",
+            )
+        else:
+            command.add_argument(
+                "--request",
+                type=Path,
+                required=True,
+                help="original reviewed request; mismatched recovery state refuses",
+            )
     workers_pack = workers_commands.add_parser(
         "pack",
         help="write a remote Worker pack; pending-live, not a two-host proof",

@@ -5,12 +5,16 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage import EventStore
 from llm_research_os.workers.credentials import load_or_create_hmac_key
 from llm_research_os.workers.http import LoopbackWorkerServer
 from llm_research_os.workers.tls import TlsMaterial, load_or_create_tls
+
+if TYPE_CHECKING:
+    from llm_research_os.workers.native_claim import NativeControllerContext
 
 
 def bind_isolated_control_plane(
@@ -23,6 +27,7 @@ def bind_isolated_control_plane(
     experiment_revision: int = 1,
     host: str = "127.0.0.1",
     port: int = 0,
+    native_context: NativeControllerContext | None = None,
 ) -> tuple[LoopbackWorkerServer, TlsMaterial]:
     """Construct the loopback HTTPS server. Caller prints the URL and serves."""
 
@@ -42,6 +47,7 @@ def bind_isolated_control_plane(
         port=port,
         experiment_revision=experiment_revision,
         tls=tls,
+        native_context=native_context,
     )
     return server, tls
 
@@ -56,6 +62,7 @@ def serve_isolated_control_plane(
     experiment_revision: int = 1,
     host: str = "127.0.0.1",
     port: int = 0,
+    native_context: NativeControllerContext | None = None,
 ) -> None:
     """Bind HTTPS, print one URL receipt, then serve. Loopback is not a cross-machine proof."""
 
@@ -68,6 +75,7 @@ def serve_isolated_control_plane(
         experiment_revision=experiment_revision,
         host=host,
         port=port,
+        native_context=native_context,
     )
     receipt = {
         "url": server.base_url,
