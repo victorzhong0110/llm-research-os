@@ -307,6 +307,40 @@ consumed and no lifecycle fact appended by the fetch. Actual material preparatio
 closed spec/registry execution verification, remote start/recovery and new
 two-host acceptance remain separate integration/evidence obligations.
 
+### TM-072: Remote native material and durable private preparation
+
+A Worker must not turn a metadata index into arbitrary CAS access, a substituted
+code/environment workspace, a repaired corrupted artifact or a duplicate task
+start after disconnect. The pinned material endpoint reconstructs the recorded
+live request/grant and publishes bounded closed metadata. Additional downloads
+are limited to the immutable bundle members, bound interpreter/review documents
+and canonical execution configuration; host executable bytes and unplanned
+objects remain unavailable. Controller reads check size before allocation.
+
+The Worker checks raw and semantic identities, stages only indexed objects in
+its own anchored CAS/private roots, reuses persistent bounded transfer journals
+and refuses corruption or symlink paths without repair. Opaque staging paths
+retain the legacy path grammar. Actual host executable/ABI/platform and installed
+dependency bytes are verified using R04; the code-member set must exactly match
+the downloaded bundle. Required unsupported isolation and remote checkpoint
+restores refuse. A second live metadata fetch after staging/host checks prevents
+cached materials from bypassing intervening revocation or changed scope.
+
+Per-workspace locks and private candidate publication prevent partially written
+workspaces from appearing ready. Existing mismatched workspaces are not replaced.
+Interrupted journals/candidates are preparation state, never launch or success.
+Tests: `tests/test_native_material_preparation.py` and shared metadata transport
+refusal/retry tests in `tests/test_native_request_transport.py`. Protocol:
+[remote material preparation](../protocols/native-material-preparation-v0alpha1.md).
+
+Residual scope: private parent ownership is required; same-UID malicious code
+is not sandboxed. Owner-managed orphan candidates may consume disk after crashes.
+Preparation receipts keep launchAllowed false, zero imports/spawns/facts/grant
+consumption/installations, and no controller database/HMAC/private TLS key copy.
+Authority may be revoked after preparation, so launch must separately validate
+and consume it. Remote executor/recovery, source spec/registry verification and
+new authorized two-host/GPU acceptance remain open.
+
 ## 7. M0 security gates
 
 Before merging executable capability, the following gates apply:

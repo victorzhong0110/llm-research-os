@@ -92,6 +92,11 @@ class WorkerClient:
 
         return fetch_native_input(self, digest=digest, size_bytes=size_bytes)
 
+    def fetch_native_material_index(self) -> dict[str, object]:
+        from llm_research_os.workers.native_transfer import fetch_native_material_index
+
+        return fetch_native_material_index(self)
+
     def fetch_native_request(self) -> dict[str, object]:
         from llm_research_os.workers.native_transfer import fetch_native_request
 

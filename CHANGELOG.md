@@ -9,6 +9,14 @@ authorized release.
 
 ## Unreleased
 
+### Added
+
+- R08 remote material metadata and Worker-local durable preparation: pinned,
+  grant-scoped bundle members and bound environment/configuration documents,
+  bounded persistent staging, actual host identity checks and atomic private
+  workspace publication. The existing preparation receipt remains non-launching;
+  remote executor/recovery and new authorized two-host/GPU acceptance remain open.
+
 ### Milestones
 
 - M1 offline checkpoint and M2 local/two-host scope accepted under ADR-0062.

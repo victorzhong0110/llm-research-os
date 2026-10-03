@@ -162,6 +162,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/native/inputs":
                     self._native_input()
                     return
+                if path == "/v0alpha1/native/materials":
+                    self._native_request(materials=True)
+                    return
                 if path == "/v0alpha1/native/request":
                     self._native_request()
                     return
@@ -336,14 +339,15 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             if type(size) is not int or not 0 <= size <= MAX_WORKER_PUT_BYTES:
                 raise WorkerError("invalid transfer size", code="http-too-large")
             with EventStore(server._database, require_existing=True) as store:
-                server._plane(store).authorize_native_input_fetch(
+                payload = server._plane(store).authorize_native_input_fetch(
                     worker_id=worker_id,
                     grant_token=token,
                     digest=digest,
                     size_bytes=size,
                 )
-            with server._artifacts.open(digest) as handle:
-                payload = _read_capped(handle, size)
+            if payload is None:
+                with server._artifacts.open(digest) as handle:
+                    payload = _read_capped(handle, size)
             if len(payload) != size:
                 raise WorkerError("input size does not match", code="transfer-size-mismatch")
             self.send_response(200)
@@ -352,7 +356,7 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(payload)
 
-        def _native_request(self) -> None:
+        def _native_request(self, *, materials: bool = False) -> None:
             from llm_research_os.canonical import canonical_json
             from llm_research_os.execution.native_reviewed import request_digest
             from llm_research_os.execution.native_reviewed_documents import (
@@ -362,8 +366,11 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             if server._tls is None:
                 raise WorkerError("native request requires TLS", code="tls-required")
             self.connection.settimeout(10)
+            expected_path = (
+                "/v0alpha1/native/materials" if materials else "/v0alpha1/native/request"
+            )
             if (
-                self.path != "/v0alpha1/native/request"
+                self.path != expected_path
                 or any(
                     len(self.headers.get_all(name, [])) != 1
                     for name in ("Authorization", _GRANT_HEADER, "Content-Length", "Content-Type")
@@ -379,18 +386,27 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             if not token or json.loads(self._raw_body(limit=4096)) != {}:
                 raise WorkerError("native request body must be empty", code="http-invalid")
             with EventStore(server._database, require_existing=True) as store:
-                request = server._plane(store).native_reviewed_request(
-                    worker_id=worker_id, grant_token=token
-                )
-            payload = canonical_json(
-                request.model_dump(mode="json", by_alias=True, exclude_none=True)
-            ).encode()
+                plane = server._plane(store)
+                if materials:
+                    from llm_research_os.canonical import content_digest
+                    from llm_research_os.workers.native_material import material_index
+
+                    index = material_index(plane, worker_id=worker_id, grant_token=token)
+                    document = index.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    digest = content_digest(document)
+                else:
+                    request = plane.native_reviewed_request(worker_id=worker_id, grant_token=token)
+                    document = request.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    digest = request_digest(request)
+            payload = canonical_json(document).encode()
             if len(payload) > MAX_REVIEWED_REQUEST_BYTES:
                 raise WorkerError("native request exceeds its bound", code="http-too-large")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
-            self.send_header("X-ResearchOS-Request", request_digest(request))
+            self.send_header(
+                "X-ResearchOS-Material-Index" if materials else "X-ResearchOS-Request", digest
+            )
             self.end_headers()
             self.wfile.write(payload)
 

@@ -139,9 +139,36 @@ output endpoint requires its reported request digest to match this full
 reconstruction; syntax-only checking of that citation is superseded by this
 candidate. Existing execution/configuration and grant semantics are retained.
 See [the context protocol](../../protocols/native-request-transfer-v0alpha1.md)
-and TM-071. Check results and CI are recorded in its PR before integration.
+and TM-071. Integrated in [#121](https://github.com/victorzhong0110/llm-research-os/pull/121)
+at `e5f01f32f668842604506a0b13b1d332e81c7061`; final-head CI
+[37079684137](https://github.com/victorzhong0110/llm-research-os/actions/runs/37079684137)
+passed all five Python jobs, Linux OCI and authorship. Linux Python 3.12 passed
+1731 selected tests, with 12 OCI-only deselected and zero failures/skips.
+[Post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37080366169)
+passed all five Python jobs and Linux OCI at that exact merge commit. Local
+final-head evidence was 1715 passed, the same 12 host namespace/process failures,
+4 skips and 12 deselected; unrounded coverage was 85.025624%. The local suite
+still failed due to those environment-sensitive failures; no gates were weakened.
 Remote material staging, executor/recovery integration and new authorized
 two-host/GPU evidence remain open; no Checkpoint B acceptance or R09 start.
+
+## R08 remote material preparation candidate
+
+Base: verified main `e5f01f32f668842604506a0b13b1d332e81c7061` and passing
+[main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37080366169).
+This slice adds a closed pinned material index and exact bundle-member,
+interpreter/review/configuration downloads, plus Worker-local durable staging
+and atomic preparation. It verifies actual Worker environment bytes and rechecks
+live metadata before publishing the existing non-launching R04 receipt. The
+Worker receives no controller database or HMAC key. Persistent journals retain
+zero starts; corrupted caches/stages/workspaces refuse without repair.
+
+See [the protocol](../../protocols/native-material-preparation-v0alpha1.md),
+TM-072 and the slice PR for exact-head validation/CI evidence. Required
+unsupported isolation and remote checkpoint restore explicitly refuse. Remote
+executor/Run integration and process recovery remain implementation gaps, and
+new authorized two-host/GPU proof remains pending-live. This is candidate
+preparation behavior, not R08 full acceptance or Checkpoint B closure. No R09.
 
 ## Checkpoints
 

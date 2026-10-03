@@ -18,6 +18,7 @@ from llm_research_os.execution.native_reviewed_documents import (
 )
 from llm_research_os.workers.client import _connection
 from llm_research_os.workers.errors import WorkerError
+from llm_research_os.workers.native_material_documents import NativeMaterialIndex
 from llm_research_os.workers.native_output_documents import NativeOutputReceipt
 
 if TYPE_CHECKING:
@@ -157,7 +158,15 @@ def upload_native_output(
 
 
 def fetch_native_request(client: WorkerClient) -> dict[str, object]:
-    """Fetch bound audit context, without consuming a grant or creating a launch receipt."""
+    return _fetch_native_context(client, materials=False)
+
+
+def fetch_native_material_index(client: WorkerClient) -> dict[str, object]:
+    return _fetch_native_context(client, materials=True)
+
+
+def _fetch_native_context(client: WorkerClient, *, materials: bool) -> dict[str, object]:
+    """Fetch scoped metadata without consuming a grant or creating launch authority."""
 
     parsed = _origin(client)
     attempts = min(3, max(1, client.retries))
@@ -169,7 +178,12 @@ def fetch_native_request(client: WorkerClient) -> dict[str, object]:
     for attempt in range(attempts):
         connection = _connection(parsed, client.ca_path, client.tls_fingerprint)
         try:
-            connection.request("POST", "/v0alpha1/native/request", b"{}", headers)
+            connection.request(
+                "POST",
+                "/v0alpha1/native/materials" if materials else "/v0alpha1/native/request",
+                b"{}",
+                headers,
+            )
             response = connection.getresponse()
             if response.status != 200:
                 raise WorkerError("native request refused", code="transfer-refused")
@@ -186,7 +200,11 @@ def fetch_native_request(client: WorkerClient) -> dict[str, object]:
                 raise WorkerError("invalid request size", code="transfer-size-mismatch")
             try:
                 document = json.loads(body)
-                request = NativeReviewedExecutionRequest.model_validate(document)
+                if materials:
+                    index = NativeMaterialIndex.model_validate(document)
+                    request = index.request
+                else:
+                    request = NativeReviewedExecutionRequest.model_validate(document)
                 if canonical_json(document).encode() != body:
                     raise ValueError("request is not canonical")
             except (ValueError, RecursionError):
@@ -195,7 +213,9 @@ def fetch_native_request(client: WorkerClient) -> dict[str, object]:
                 ) from None
             if request.worker_id != client.worker_id or content_digest(
                 document
-            ) != response.getheader("X-ResearchOS-Request", ""):
+            ) != response.getheader(
+                "X-ResearchOS-Material-Index" if materials else "X-ResearchOS-Request", ""
+            ):
                 raise WorkerError("native request binding differs", code="transfer-request-invalid")
             return cast(dict[str, object], document)
         except (OSError, HTTPException) as exc:
