@@ -7,6 +7,7 @@ import os
 import threading
 import time
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from test_native_material_preparation import _worker
@@ -83,6 +84,20 @@ def _recover(client, world, kwargs):  # type: ignore[no-untyped-def]
     )
 
 
+def _forbid_task_launch(monkeypatch):  # type: ignore[no-untyped-def]
+    original = native_executor.subprocess.Popen
+
+    def observe_only(argv, *args, **kwargs):  # type: ignore[no-untyped-def]
+        # macOS OS observation uses fixed ps/pgrep subprocesses. Allow actual
+        # observation while retaining the tripwire against any task/driver launch.
+        assert isinstance(argv, list) and Path(argv[0]).name in {"ps", "pgrep"}, (
+            "recovery attempted to launch a task"
+        )
+        return original(argv, *args, **kwargs)
+
+    monkeypatch.setattr(native_executor.subprocess, "Popen", observe_only)
+
+
 @pytest.mark.native_remote_live
 @pytest.mark.usefixtures("live_host")
 def test_actual_cpu_output_and_restart_replays_without_launch(tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
@@ -101,11 +116,7 @@ def test_actual_cpu_output_and_restart_replays_without_launch(tmp_path, monkeypa
             p.read_text() for p in kwargs["state_root"].iterdir() if p.stat().st_size
         )
         before = plane.store.last_sequence()
-        monkeypatch.setattr(
-            native_executor.subprocess,
-            "Popen",
-            lambda *a, **k: pytest.fail("recovery launched a child"),
-        )
+        _forbid_task_launch(monkeypatch)
         monkeypatch.setattr(WorkerClient, "poll", lambda *a: pytest.fail("recovery polled"))
         replay = _recover(client, world, kwargs)
         assert replay == result
@@ -259,9 +270,7 @@ def test_actual_stopped_child_result_survives_disconnect(tmp_path, monkeypatch, 
             execute_remote_native(client, **kwargs)
         assert _snapshot(world, plane).status.value == "running"
         monkeypatch.setattr(target, attribute, original)
-        monkeypatch.setattr(
-            native_executor.subprocess, "Popen", lambda *a, **k: pytest.fail("recovery relaunched")
-        )
+        _forbid_task_launch(monkeypatch)
         monkeypatch.setattr(WorkerClient, "poll", lambda *a: pytest.fail("recovery polled"))
         result = _recover(client, world, kwargs)
         assert result.disposition == "completed"
