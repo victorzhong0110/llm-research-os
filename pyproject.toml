@@ -61,6 +61,7 @@ packages = ["llm_research_os"]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
 markers = [
+  "ray_native_live: real optional Ray project CPU jobs; designated CI must fail instead of skip",
   "native_remote_live: real POSIX remote native executor; designated CI fails instead of skip",
   "oci_live: live docker engine; designated Linux OCI CI must fail instead of skip",
   "mps_live: live Apple MPS + extras/ms-swift-mps; skip unless RESEARCHOS_MPS_REQUIRED=1",

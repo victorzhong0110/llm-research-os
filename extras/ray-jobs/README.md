@@ -1,6 +1,6 @@
 # Optional Ray Jobs compute host
 
-Ray 2.59.0 is pinned for the R08 resource-probe candidate. This extra belongs on
+Ray 2.59.0 is pinned for R08 resource probes and reviewed CPU project jobs. This extra belongs on
 an explicitly owned compute host, not the controller's default environment.
 There is no model download, training installation or cloud provisioning.
 
@@ -34,6 +34,8 @@ corrupted state refuses; cluster history loss never resubmits. Use a deliberatel
 new `--name` and state directory to authorize another diagnostic. Token values
 are process-local and omitted from saved adapter state and output.
 
-Actual project-task dispatch, GPU execution profiles, task result receipts,
-process recovery and Checkpoint B acceptance remain separate work. See
-[the protocol](../../docs/protocols/ray-jobs-resource-probe-v0alpha1.md).
+For an actual approved CPU project task, use the fixed driver adapter and
+independent native outcome recovery in [the project-job guide](../../docs/guides/ray-native-cpu-jobs.md).
+Resource probes remain separate [diagnostics](../../docs/protocols/ray-jobs-resource-probe-v0alpha1.md).
+GPU execution profiles, selected two-host evidence and Checkpoint B acceptance
+remain open; CPU project completion does not substitute for them.

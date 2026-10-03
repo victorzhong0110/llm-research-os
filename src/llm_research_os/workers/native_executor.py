@@ -70,6 +70,7 @@ def execute_remote_native(
     workspace: Path,
     staging_root: Path,
     state_root: Path,
+    expected_request: NativeReviewedExecutionRequest | None = None,
 ) -> RemoteNativeResult:
     """Only a fresh claim can create a child; uncertain intent is retained forever."""
     _origin(client)
@@ -80,6 +81,8 @@ def execute_remote_native(
         raise WorkerError("native executor roots overlap", code="native-state-invalid")
     index = NativeMaterialIndex.model_validate(client.fetch_native_material_index())
     request = index.request
+    if expected_request is not None and request != expected_request:
+        raise WorkerError("native request changed", code="native-execution-binding")
     name = _name(request)
     with private_state_lock(state_root, name) as root:
         if _exists(root, name + ".intent"):

@@ -58,7 +58,7 @@ jobs:
       - name: Count selected tests
         run: >
           uv run pytest --collect-only -q
-          -m "not oci_live and not slow"
+          -m "not oci_live and not slow and not ray_native_live"
           | tail -n 20
       - name: Test with coverage report
         timeout-minutes: 15
@@ -66,7 +66,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: >
           uv run pytest
-          -m "not oci_live and not slow"
+          -m "not oci_live and not slow and not ray_native_live"
           --cov=llm_research_os
           --cov-report=term-missing:skip-covered
           --cov-report=json:coverage.json
@@ -135,6 +135,33 @@ jobs:
         run: >
           /tmp/researchos-ray-jobs/bin/python examples/r08-ray-jobs/probe.py
           --device cpu --name ci-cpu --state /tmp/researchos-ray-jobs-state
+
+  ray-native:
+    name: Linux Ray native project execution integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+      - name: Install isolated locked core and optional Ray compute environment
+        run: |
+          uv export --frozen --all-groups --no-emit-project > /tmp/researchos-ray-native-constraints.txt
+          uv venv --python 3.12 /tmp/researchos-ray-native
+          uv pip install --python /tmp/researchos-ray-native/bin/python -r /tmp/researchos-ray-native-constraints.txt -r extras/ray-jobs/requirements.txt .
+      - name: Require actual project output, lost submit response and observed cancellation
+        env:
+          RESEARCHOS_NATIVE_REMOTE_REQUIRED: "1"
+          RESEARCHOS_RAY_NATIVE_REQUIRED: "1"
+        run: >
+          timeout --signal=TERM --kill-after=10s 240s
+          /tmp/researchos-ray-native/bin/python -m pytest
+          -m ray_native_live --tb=short -v
 
   native-remote:
     name: Linux native remote execution integration
