@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import TypeAdapter, ValidationError
+
 from llm_research_os.artifacts.store import MAX_WORKER_PUT_BYTES, LocalArtifactStore
 from llm_research_os.canonical import canonical_json, content_digest
 from llm_research_os.execution.native_reviewed import execution_object, request_digest
@@ -26,7 +28,10 @@ from llm_research_os.execution.native_reviewed_runtime import (
 )
 from llm_research_os.workers.client import WorkerClient
 from llm_research_os.workers.errors import WorkerError
-from llm_research_os.workers.models import WORKER_RUNTIME_NATIVE_REVIEWED
+from llm_research_os.workers.models import (
+    IMAGE_MEDIA_NATIVE_REVIEWED,
+    WORKER_RUNTIME_NATIVE_REVIEWED,
+)
 from llm_research_os.workers.native_material_documents import NativeMaterialIndex
 from llm_research_os.workers.native_outcome_client import publish_native_outcome
 from llm_research_os.workers.native_outcome_documents import (
@@ -35,7 +40,7 @@ from llm_research_os.workers.native_outcome_documents import (
 )
 from llm_research_os.workers.native_preparation import prepare_remote_native
 from llm_research_os.workers.native_start_client import publish_native_start
-from llm_research_os.workers.native_start_documents import NativeStartRequest
+from llm_research_os.workers.native_start_documents import LeaseIdentifier, NativeStartRequest
 from llm_research_os.workers.native_state import private_state_lock
 from llm_research_os.workers.native_transfer import _origin
 from llm_research_os.workers.supervise import (
@@ -128,11 +133,11 @@ def execute_remote_native(
                     "taskId": request.task_id,
                     "runId": request.run_id,
                     "attemptId": request.attempt_id,
-                    "grantId": index.grant_id,
                     "imageDigest": request.code.bundle_digest,
                     "configDigest": request.config_digest,
                     "config": execution_object(request),
                     "runtime": WORKER_RUNTIME_NATIVE_REVIEWED,
+                    "imageMediaType": IMAGE_MEDIA_NATIVE_REVIEWED,
                     "inputs": {},
                 }.items()
             )
@@ -140,7 +145,10 @@ def execute_remote_native(
             raise WorkerError(
                 "native claim is not a fresh bound claim", code="native-claim-unavailable"
             )
-        lease_id = claim["leaseId"]
+        try:
+            lease_id = TypeAdapter(LeaseIdentifier).validate_python(claim.get("leaseId"))
+        except ValidationError:
+            raise WorkerError("native lease is invalid", code="native-claim-unavailable") from None
         _write(root, name + ".claim", {"leaseId": lease_id})
         # Recheck host/material/live authority after consuming, before creating the blocked child.
         if (
@@ -257,6 +265,9 @@ def execute_remote_native(
             if identity.start_token is not None:
                 stopped = observe_and_stop(identity)
                 observation = "exited" if stopped == OBSERVED_STOP else "unknown"
+                if observation == "exited":
+                    with contextlib.suppress(subprocess.TimeoutExpired):
+                        child.wait(timeout=3)
             else:
                 # Reap the still-owned blocked child; this proves no process-group stop.
                 if child.poll() is None:
@@ -447,7 +458,26 @@ def _publish(
             or "sha256:" + hashlib.sha256(payload).hexdigest() != result["digest"]
         ):
             raise WorkerError("native result bytes differ", code="native-execution-binding")
-        client.upload_native_output(lease_id=outcome.start.lease_id, payload=payload)
+        try:
+            client.upload_native_output(lease_id=outcome.start.lease_id, payload=payload)
+        except WorkerError as exc:
+            if exc.code != "transfer-refused" or outcome.observation != "exited":
+                raise
+            # A refusal is not cancellation. Only the controller's bound cancel
+            # prerequisite can settle this already-observed exit as cancelled.
+            cancelled = outcome.model_copy(update={"outcome": "cancelled"})
+            try:
+                receipt = publish_native_outcome(client, cancelled)
+            except WorkerError:
+                raise exc from None
+            if not _exists(root, name + ".cancelled"):
+                _write(
+                    root,
+                    name + ".cancelled",
+                    cancelled.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
+            return RemoteNativeResult(receipt.disposition, outcome.start.lease_id, receipt=receipt)
+
         output = json.loads(payload)["output"]
     receipt = publish_native_outcome(client, outcome)
     return RemoteNativeResult(receipt.disposition, outcome.start.lease_id, output, receipt)
