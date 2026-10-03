@@ -12,7 +12,7 @@ import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from http.client import HTTPConnection
+from http.client import HTTPConnection, HTTPException
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -222,7 +222,7 @@ class RayJobsProbe:
             if type(document) is not dict:
                 raise RayProbeError("Ray probe response is invalid")
             return response.status, document
-        except (OSError, ValueError, RecursionError):
+        except (OSError, HTTPException, ValueError, RecursionError):
             raise RayProbeError("Ray probe transport or response is unavailable") from None
         finally:
             connection.close()

@@ -240,7 +240,7 @@ def test_probe_state_refuses_missing_or_unsafe_intent(backend, fault):  # type: 
 
 
 @pytest.mark.parametrize(
-    "fault", ["large", "short", "encoding", "invalid", "nonobject", "disconnect"]
+    "fault", ["large", "short", "encoding", "invalid", "nonobject", "disconnect", "protocol"]
 )
 def test_ray_transport_is_bounded_single_attempt_and_always_closes(
     monkeypatch: pytest.MonkeyPatch, fault: str
@@ -283,6 +283,10 @@ def test_ray_transport_is_bounded_single_attempt_and_always_closes(
                 raise OSError(TOKEN)
 
         def getresponse(self):  # type: ignore[no-untyped-def]
+            if fault == "protocol":
+                from http.client import BadStatusLine
+
+                raise BadStatusLine(TOKEN)
             return Response()
 
         def close(self):  # type: ignore[no-untyped-def]
@@ -293,7 +297,7 @@ def test_ray_transport_is_bounded_single_attempt_and_always_closes(
         RayJobsProbe("http://127.0.0.1:8265", TOKEN)._call("GET", "/api/version")
     assert TOKEN not in str(exc.value)
     assert len(calls) == len(closed) == 1
-    assert reads == ([] if fault in {"large", "encoding", "disconnect"} else [16385])
+    assert reads == ([] if fault in {"large", "encoding", "disconnect", "protocol"} else [16385])
 
 
 def test_unknown_probe_cannot_emit_stop_and_nonstring_status_refuses(backend):  # type: ignore[no-untyped-def]

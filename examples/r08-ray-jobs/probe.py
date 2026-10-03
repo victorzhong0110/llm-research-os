@@ -7,6 +7,7 @@ import os
 import secrets
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -26,8 +27,10 @@ def child(args: argparse.Namespace) -> int:
     if ray.__version__ != RAY_PROBE_VERSION:
         raise RuntimeError("unexpected Ray version")
     args.state.mkdir(mode=0o700, parents=True, exist_ok=True)
-    cluster = args.state / "owned-cluster"
-    cluster.mkdir(mode=0o700, exist_ok=True)
+    # Dashboard Unix sockets include the session/module names (Linux limit: 108 bytes).
+    # Keep cluster scratch short and separate from durable adapter intent.
+    cluster_temp = tempfile.TemporaryDirectory(prefix="rr-", dir="/tmp")
+    cluster = Path(cluster_temp.name)
     for directory in (args.state, cluster):
         with _directory(directory, create=False) as descriptor:
             info = os.fstat(descriptor)
@@ -75,9 +78,22 @@ def child(args: argparse.Namespace) -> int:
             print("backend_stop_requested", requested, flush=True)
             return 2
         return 0
+    except Exception:
+        # Fixed owned-cluster logs only; bound output and remove the ephemeral token.
+        logs = cluster / "session_latest" / "logs"
+        for name in ("dashboard_MetricsHead.err", "dashboard_JobHead.err", "dashboard.err"):
+            path = logs / name
+            if path.is_file():
+                with path.open("rb") as stream:
+                    stream.seek(0, 2)
+                    stream.seek(max(0, stream.tell() - 8192))
+                    output = stream.read(8192).decode(errors="replace")
+                print(name, output.replace(os.environ["RAY_AUTH_TOKEN"], "[redacted]"), flush=True)
+        raise
     finally:
         # Only the explicitly owned cluster is shut down; no global `ray stop`.
         ray.shutdown()
+        cluster_temp.cleanup()
 
 
 def main() -> int:
