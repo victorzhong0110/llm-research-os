@@ -508,3 +508,26 @@ a malicious host or compromised signing key remains trusted-host risk. A signatu
 attests bytes and key possession, not the original human actor's authentication.
 Historical audit flags and Worker HMAC lifecycle are unchanged. Native execution
 remains a separate reviewed boundary.
+
+### TM-075: Remote native start recording is not process observation
+
+A remote Worker could swap preparation/identity or replay a start response as a
+fresh launch permit. Closed documents bind the claimed consumed lease, complete
+preparation and Worker-local identity digest. The controller rechecks actual
+kernel plan binding, all preparation material citations, exact remote Run prefix,
+live lease/grant and cancellation before recording and before acknowledgement.
+No remote PID or host path is accepted as controller-local identity.
+
+A held directory and nonblocking cross-controller lock anchor owner-only,
+no-follow regular single-link bounded immutable journals; file/directory fsync
+precede the single exact `attempt.started` fact. Interrupted prefixes complete
+only the same recording. Missing/corrupt journals, changed identities, unknown
+or terminal attempts refuse. Pinned TLS and bounded identical-body replay cannot
+invoke another claim or process. Test: `tests/test_native_remote_start.py`.
+
+Residual trust: an authenticated Worker's identity digest/preparation report does
+not prove remote OS observation. A future executor still needs its reviewed
+workspace, durable local identity, fixed pre-import child barrier, no-redispatch
+rule and observed stop. This endpoint starts zero processes; its receipt has
+literal `launchAllowed: false`. It cannot establish Ray task execution, GPU
+usability, process cancellation or two-host/Checkpoint B acceptance.

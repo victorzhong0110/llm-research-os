@@ -11,6 +11,8 @@ authorized release.
 
 ### Added
 
+- R08 remote native start recording: pinned TLS, consumed-lease and real-plan binding, immutable controller journals and exact interrupted-response replay. Receipts stay non-launch credentials; remote execution and process observation remain open.
+
 - R08 optional Ray Jobs 2.59.0 resource-probe bridge: fixed CPU/CUDA jobs,
   bounded local token-authenticated vendor API, durable single-submission intent
   and query-only reconnect. A separate real CPU integration gate and compute-host

@@ -1,0 +1,9 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "NativeStartReceipt",
+  "leaseId": "lease.example",
+  "bindingDigest": "jcs-sha256:649a62bbc0b2512c656448087f29d8d2ed375613cba0c9fa78c24e5636951e07",
+  "eventId": "evt.native.remote.run.1.attempt.1.attempt.started",
+  "sequence": 12,
+  "launchAllowed": true
+}
