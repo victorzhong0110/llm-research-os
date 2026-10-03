@@ -211,3 +211,31 @@ def test_terminal_phase_requires_actual_exit_report(tmp_path, phase, observation
     finally:
         server.stop()
         plane.store.close()
+
+
+@pytest.mark.parametrize("fault", ["bytes", "oversize", "missing"])
+def test_completed_work_does_not_bypass_current_cas_integrity(tmp_path, fault):  # type: ignore[no-untyped-def]
+    from llm_research_os.artifacts.store import storage_key_for
+
+    world, plane, _, _, server, client = _transport(tmp_path)
+    try:
+        client.poll()
+        start = _document(world)
+        publish_native_start(client, start)
+        receipt = client.upload_native_output(lease_id=start.lease_id, payload=_payload(world))
+        path = plane.artifacts.root / storage_key_for(receipt["digest"])
+        if fault == "missing":
+            path.unlink()
+        elif fault == "oversize":
+            with path.open("r+b") as stream:
+                stream.truncate(world.request.limits.artifact_bytes + 1)
+        else:
+            path.write_bytes(b"x" * path.stat().st_size)
+        before = plane.store.last_sequence()
+        with pytest.raises(WorkerError, match="refused"):
+            publish_native_outcome(client, _outcome(start))
+        assert plane.store.last_sequence() == before
+        assert _run(world, plane).rebuild().snapshot.status.value == "running"
+    finally:
+        server.stop()
+        plane.store.close()

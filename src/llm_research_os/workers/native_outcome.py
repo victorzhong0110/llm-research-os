@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from datetime import UTC
 from typing import Any
 
@@ -144,19 +145,15 @@ def reconcile_native_outcome(
                         raise WorkerCallError(
                             "verified completion is missing", code="native-outcome-conflict"
                         )
-                    record = plane.artifacts.verify(lease.artifact_digest)
-                    if (
-                        not 0
-                        < record.size_bytes
-                        <= min(request.limits.artifact_bytes, MAX_WORKER_PUT_BYTES)
-                    ):
-                        raise WorkerCallError(
-                            "native output exceeds its bound", code="native-outcome-binding"
-                        )
                     with plane.artifacts.open(lease.artifact_digest) as stream:
-                        output_bytes = stream.read(record.size_bytes + 1)
+                        size = os.fstat(stream.fileno()).st_size
+                        if not 0 < size <= min(request.limits.artifact_bytes, MAX_WORKER_PUT_BYTES):
+                            raise WorkerCallError(
+                                "native output exceeds its bound", code="native-outcome-binding"
+                            )
+                        output_bytes = stream.read(size + 1)
                     if (
-                        len(output_bytes) != record.size_bytes
+                        len(output_bytes) != size
                         or "sha256:" + hashlib.sha256(output_bytes).hexdigest()
                         != lease.artifact_digest
                     ):

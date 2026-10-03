@@ -16,7 +16,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 
-from llm_research_os.artifacts.store import MAX_WORKER_PUT_BYTES, LocalArtifactStore
+from llm_research_os.artifacts.store import DIGEST_PATTERN, MAX_WORKER_PUT_BYTES, LocalArtifactStore
 from llm_research_os.canonical import canonical_json, content_digest
 from llm_research_os.execution.native_reviewed import execution_object, request_digest
 from llm_research_os.execution.native_reviewed_documents import NativeReviewedExecutionRequest
@@ -443,17 +443,22 @@ def _publish(
     output: Any = None,
 ) -> RemoteNativeResult:
     if outcome.outcome == "completed":
+        original = NativeReviewedExecutionRequest.model_validate(
+            _read(root, name + ".intent")["request"]
+        )
+        bound = min(original.limits.artifact_bytes, MAX_WORKER_PUT_BYTES)
         result = _read(root, name + ".result")
         if (
             set(result) != {"digest", "sizeBytes"}
             or type(result["sizeBytes"]) is not int
-            or not 0 < result["sizeBytes"] <= MAX_WORKER_PUT_BYTES
+            or not 0 < result["sizeBytes"] <= bound
+            or type(result["digest"]) is not str
+            or DIGEST_PATTERN.fullmatch(result["digest"]) is None
         ):
             raise WorkerError("native result record differs", code="native-execution-binding")
-        verified = artifacts.verify(result["digest"])
-        if verified.size_bytes != result["sizeBytes"]:
-            raise WorkerError("native result bytes differ", code="native-execution-binding")
         with artifacts.open(result["digest"]) as stream:
+            if os.fstat(stream.fileno()).st_size != result["sizeBytes"]:
+                raise WorkerError("native result bytes differ", code="native-execution-binding")
             payload = stream.read(result["sizeBytes"] + 1)
         if (
             len(payload) != result["sizeBytes"]
