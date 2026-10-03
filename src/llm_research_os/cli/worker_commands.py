@@ -58,7 +58,11 @@ def run_workers(args: argparse.Namespace) -> int:
             args.revision,
             args.host,
             args.port,
+            native_spec=getattr(args, "native_spec", None),
+            native_registry=getattr(args, "native_registry", []),
         )
+    if args.workers_command in {"run-native", "reconcile-native"}:
+        return _native_worker_command(args)
     if args.workers_command == "run":
         return _run_isolated_worker(
             args.credential,
@@ -143,10 +147,25 @@ def _serve_worker_plane(
     revision: int,
     host: str,
     port: int,
+    *,
+    native_spec: Path | None = None,
+    native_registry: list[Path] | None = None,
 ) -> int:
     from llm_research_os.workers.serve import serve_isolated_control_plane
 
     try:
+        if (native_spec is None) != (not native_registry):
+            raise WorkerError(
+                "native spec and registry must be supplied together", code="native-context-invalid"
+            )
+        context = None
+        if native_spec is not None:
+            from llm_research_os.workers.native_claim import NativeControllerContext
+
+            spec = load_spec(native_spec)
+            if spec.metadata.id != project_id:
+                raise WorkerError("native spec project differs", code="native-context-invalid")
+            context = NativeControllerContext(spec, build_registry(native_registry or []))
         serve_isolated_control_plane(
             database=database,
             artifacts_root=artifacts,
@@ -156,6 +175,7 @@ def _serve_worker_plane(
             experiment_revision=revision,
             host=host,
             port=port,
+            native_context=context,
         )
     except WorkerError as exc:
         print_error(exc, "json")
@@ -164,6 +184,42 @@ def _serve_worker_plane(
         print_error(exc, "json")
         return 2
     return 0
+
+
+def _native_worker_command(args: argparse.Namespace) -> int:
+    from llm_research_os.artifacts.errors import ArtifactStoreError
+    from llm_research_os.execution.errors import NativeReviewedPreparationError, NativeTransferError
+    from llm_research_os.workers.native_worker import run_native_worker
+
+    try:
+        receipt = run_native_worker(
+            credential_path=args.credential,
+            artifacts_root=args.artifacts,
+            state_root=args.state,
+            workspace=getattr(args, "workspace", None),
+            staging_root=getattr(args, "staging", None),
+            request_path=getattr(args, "request", None),
+        )
+    except (WorkerError, NativeReviewedPreparationError, NativeTransferError) as exc:
+        print_error(exc, "json")
+        return 1
+    except ArtifactStoreError:
+        print_error(
+            WorkerError(
+                "native Worker artifact verification failed", code="native-worker-artifact-invalid"
+            ),
+            "json",
+        )
+        return 1
+    except _INPUT_ERRORS:
+        # Credential/request parser bodies must never become CLI diagnostics.
+        print_error(
+            WorkerError("native Worker input is invalid", code="native-worker-input-invalid"),
+            "json",
+        )
+        return 2
+    print(dumps_json(receipt.model_dump(mode="json", by_alias=True, exclude_none=True)))
+    return 0 if receipt.disposition in {"completed", "cancelled", "running"} else 1
 
 
 def _run_isolated_worker(

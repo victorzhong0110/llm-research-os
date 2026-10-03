@@ -597,7 +597,16 @@ def _read(root: int, name: str) -> dict[str, Any]:
             or info.st_size > 65536
         ):
             raise WorkerError("native state is unsafe", code="native-state-invalid")
-        value = json.loads(os.read(descriptor, 65537))
+
+        def unique_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            value: dict[str, Any] = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("duplicate private JSON field")
+                value[key] = item
+            return value
+
+        value = json.loads(os.read(descriptor, 65537), object_pairs_hook=unique_fields)
         if type(value) is not dict:
             raise WorkerError("native state is invalid", code="native-state-invalid")
         return value

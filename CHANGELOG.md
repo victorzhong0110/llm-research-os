@@ -11,6 +11,11 @@ authorized release.
 
 ### Added
 
+- R08 native Worker CLI composition: explicit reviewed controller spec/registry,
+  bounded private credentials, fresh `workers run-native` and observation-only
+  `workers reconcile-native` using existing runtime, grants and outcome receipts.
+  Real separate CLI CPU/replay tests extend the required native integration gate.
+
 - R08 Worker-local reviewed native CPU executor over pinned TLS: private durable
   single-launch intent and identity, fixed pre-import barrier, bounded collection,
   verified output and restart-only outcome replay. Controller terminal records

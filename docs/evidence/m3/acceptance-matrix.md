@@ -262,6 +262,24 @@ single-host TLS/CAS integration is still not two distinct machines, GPU executio
 or Ray project-job hosting. Those evidence records and Checkpoint B remain open;
 freeze after actual B acceptance and do not begin R09.
 
+## R08 native Worker CLI candidate
+
+Verified base: #126, `c6903c3d795fbef3705d966bec84c1a212c491fe`;
+main CI 37139063831 passed all five Python jobs plus live native, OCI and Ray.
+The main Linux suite had 1926 passed, zero failures/skips and 85.605744% coverage.
+#126 integrated actual Worker-local CPU/barrier/output and conservative recovery;
+its 13 designated real-process tests are integration evidence, not two hosts.
+
+This slice exposes that same service through existing Worker commands and
+explicit trusted spec/registry on controller startup. Private credentials and
+original recovery request are bounded; no fresh poll/launch occurs in recovery.
+It prints the existing non-launch outcome receipt. The required native gate
+adds real CLI CPU execution and a second isolated CLI process replaying the
+same receipt. Ordinary unsafe input/context fixtures cannot replace that gate.
+The PR records exact final-head review and CI. Ray project-job hosting, GPU/
+Kaggle, actual selected hosts and B acceptance remain open; no R09, freeze after
+actual B acceptance. No baseline authorization/profile/schema meaning changes.
+
 ## Checkpoints
 
 | Checkpoint | Packages | Required evidence |

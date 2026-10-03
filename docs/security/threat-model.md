@@ -560,3 +560,24 @@ Residual trust: the authenticated Worker reports remote OS observations; the
 controller cannot independently prove them. This is the existing trusted-host
 reviewed profile, not protection from a malicious administrator, a sandbox,
 GPU execution, Ray project-job hosting or two-host/Checkpoint B acceptance.
+
+### TM-077: Native Worker CLI reuses the reviewed boundary
+
+Command composition could silently enable native dispatch, leak credentials
+through argv/parser errors, or turn a recovery command into a fresh task.
+Controller startup requires explicit paired spec/registry and matching project
+before state/listener creation; the existing kernel-bound endpoints still
+validate dispatch/start. Worker credentials are bounded private no-follow,
+regular single-link files anchored to an owner-only parent. Existing credential
+and CA-pin validation is reused without changing legacy semantics. Execution
+calls only the fixed reviewed service; observation requires the original closed
+bounded request and calls only the existing no-redispatch recovery service.
+
+Stdout uses the existing closed non-launch outcome receipt; parser diagnostics
+are sanitized ProblemReport on stderr. Unknown prefixes retain intent and cannot
+be converted to success, stop or launch authority by an exit code. Controller
+DB/HMAC/private TLS state is neither an argument nor a copied Worker resource.
+Tests: `tests/test_native_worker_cli.py`, existing isolated Worker regressions;
+the designated native gate requires real separate CLI CPU execution and saved
+receipt replay. Residual trust/profile, Ray/GPU and two-host evidence limits
+remain those of TM-076; no new launch grant, sandbox or acceptance is introduced.
