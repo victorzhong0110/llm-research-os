@@ -11,6 +11,12 @@ authorized release.
 
 ### Added
 
+- R08 optional Ray Jobs 2.59.0 resource-probe bridge: fixed CPU/CUDA jobs,
+  bounded local token-authenticated vendor API, durable single-submission intent
+  and query-only reconnect. A separate real CPU integration gate and compute-host
+  extra evaluate the open-source backend without adding Ray to the controller.
+  GPU/Kaggle and project-task execution/recovery remain unaccepted.
+
 - R08 controller-side remote native claim binding: actual spec/registry plan
   reconstruction, single-attempt Run queueing, exact-bound journal replay and
   conservative resumed leases after controller/claim interruption. Native HTTP

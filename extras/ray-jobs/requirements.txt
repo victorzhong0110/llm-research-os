@@ -1,0 +1,2 @@
+# Compute-host extra only; not a control-plane or default development dependency.
+ray[default]==2.59.0
