@@ -195,6 +195,30 @@ Remote launch/process recovery and new authorized-host evidence remain open.
 These separate records preserve the existing R08 acceptance requirements.
 Checkpoint B is open; freeze after its explicit acceptance; no R09.
 
+## R08 optional open-source compute adapter candidate
+
+The maintainer authorized evaluating available open-source execution services
+on 2026-10-03. The current base is verified main
+`8979bd3c6325fa2f1a8babe5ecc448d95ade93f4` (#123), with passing
+[main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37128007772).
+#123 integrated actual controller plan binding, exact-prefix single-Run queueing
+and conservative existing-lease replay; it did not start remote processes.
+
+The optional Ray Jobs 2.59.0 bridge submits only fixed resource probes, persists
+intent before a single POST and resumes only observation after interruption or
+cluster history loss. A dedicated real Ray CPU job is the integration gate;
+ordinary HTTP fixtures are not a pass for this gate. This workspace's actual
+Ray startup currently fails on Ray/psutil PID visibility (`NoSuchProcess`),
+so no local successful Ray/GPU evidence is claimed. The PR records exact-head
+CI results and review. CUDA/Kaggle execution remains pending-live.
+
+The next concrete decision is whether the demonstrated optional backend is
+usable on the selected compute host. Its probe/result is separate from the
+native CPU remote-chain and remote GPU integration records above. A Ray resource
+probe cannot substitute for grant-bound project execution, a supported GPU
+profile, verified results or actual fault/process observation. Full remote
+executor/recovery remain gaps; B is open, freeze after acceptance, no R09.
+
 ## Checkpoints
 
 | Checkpoint | Packages | Required evidence |

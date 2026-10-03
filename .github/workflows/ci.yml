@@ -113,6 +113,29 @@ jobs:
           RESEARCHOS_OCI_REQUIRED: "1"
         run: uv run pytest -m oci_live --tb=short
 
+  ray-jobs:
+    name: Linux Ray Jobs resource integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+      - name: Install isolated Ray compute environment
+        run: |
+          uv export --frozen --no-dev --no-emit-project > /tmp/researchos-core-constraints.txt
+          uv venv --python 3.12 /tmp/researchos-ray-jobs
+          uv pip install --python /tmp/researchos-ray-jobs/bin/python --constraint /tmp/researchos-core-constraints.txt -r extras/ray-jobs/requirements.txt .
+      - name: Require a real Ray CPU job and durable observation replay
+        run: >
+          /tmp/researchos-ray-jobs/bin/python examples/r08-ray-jobs/probe.py
+          --device cpu --name ci-cpu --state /tmp/researchos-ray-jobs-state
+
   authorship:
     name: Human authorship
     # ADR-0040: editor-injected Cursor / bot Co-authored-by trailers are not

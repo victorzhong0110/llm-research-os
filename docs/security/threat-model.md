@@ -369,6 +369,31 @@ resumed claims; process recovery and new two-host/GPU evidence remain open.
 Trusted controller inputs/host, same-UID filesystem access and private lock
 parents retain their existing trust limits. No controller key/database copying.
 
+### TM-074: Finite optional Ray Jobs resource bridge
+
+Ray exposes powerful code execution, and an idempotent-looking submission ID
+alone cannot survive cluster history loss safely. The finite adapter accepts only
+literal loopback endpoints with an explicit Ray token and pinned Ray/API version.
+It emits only repository-fixed CPU/CUDA diagnostics with no arbitrary task,
+package installation or runtime environment. Bounded single-attempt HTTP and
+exact command/metadata/environment/result binding reject substituted observations.
+The token is not saved or printed. It is not the controller HMAC or a native grant.
+
+A private held directory descriptor, owner-only no-follow regular single-link
+state, nonblocking lock, exclusive intent and file/directory synchronization
+precede submission. Reconnect queries only the persisted ID; missing history,
+refused/ambiguous POSTs and damaged state never start another probe. Stop is an
+asynchronous vendor request, not an observed process-group stop or Run transition.
+No PID is copied into the controller identity store. Test:
+`tests/test_ray_probe.py`; actual CPU gate: `Linux Ray Jobs resource integration`.
+
+Residual scope: trusted compute host/Ray service and same-UID access remain trust
+boundaries. Ray scheduling is not network/filesystem/memory isolation. The owned
+example bootstrap has a parent startup deadline and never stops unrelated Ray
+clusters. Diagnostics append zero project facts and consume no native grants.
+CUDA/Kaggle compatibility and full task/grant/identity/result/recovery integration
+remain open. Fixtures and vendor success cannot close R08 or Checkpoint B.
+
 ## 7. M0 security gates
 
 Before merging executable capability, the following gates apply:
