@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import stat
 from collections.abc import Iterator
@@ -24,6 +23,7 @@ from llm_research_os.workers.native_claim import (
 )
 from llm_research_os.workers.native_material import _read_bound, material_index
 from llm_research_os.workers.native_start_documents import NativeStartReceipt, NativeStartRequest
+from llm_research_os.workers.native_state import start_journal_name
 from llm_research_os.workers.plane import WorkerPlane
 
 
@@ -130,13 +130,7 @@ def record_native_start(
     payload = canonical_json(binding).encode()
     if len(payload) > 16384:
         raise WorkerCallError("native start exceeds its bound", code="http-too-large")
-    name = (
-        "native-start-"
-        + hashlib.sha256(
-            f"{plane.store.path.name}:{request.project_id}:{request.run_id}:{request.attempt_id}".encode()
-        ).hexdigest()
-        + ".json"
-    )
+    name = start_journal_name(plane.store.path, request)
     with _journal(
         plane.store.path.parent,
         name,

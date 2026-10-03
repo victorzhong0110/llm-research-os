@@ -136,6 +136,26 @@ jobs:
           /tmp/researchos-ray-jobs/bin/python examples/r08-ray-jobs/probe.py
           --device cpu --name ci-cpu --state /tmp/researchos-ray-jobs-state
 
+  native-remote:
+    name: Linux native remote execution integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: uv sync --locked --all-groups
+      - name: Require real native CPU execution and restart/cancel faults
+        env:
+          RESEARCHOS_NATIVE_REMOTE_REQUIRED: "1"
+        run: uv run pytest -m native_remote_live --tb=short
+
   authorship:
     name: Human authorship
     # ADR-0040: editor-injected Cursor / bot Co-authored-by trailers are not

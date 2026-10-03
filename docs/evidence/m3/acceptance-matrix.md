@@ -239,6 +239,29 @@ execution and conservative recovery. Full remote executor/output reconciliation,
 new authorized CPU/GPU evidence and B acceptance remain pending; freeze after
 actual B acceptance, no R09.
 
+## R08 remote Worker execution candidate
+
+The verified base is #125, `9b11323eaa2bccf651c633c0d5e0aaffb23df5d3`;
+main CI 37133951296 passed all five Python jobs, live OCI and real Ray CPU.
+This slice composes independent Worker-local preparation/CAS and the controller
+start record with the fixed reviewed child. Launch intent precedes claim; local
+identity and controller acknowledgement precede user-code import. Recovery only
+observes saved identity or replays saved results, never claims or launches again.
+
+A designated Linux native remote execution job requires real CPU output, observed
+cancellation, lost acknowledgement and interrupted-upload recovery without mocked
+OS identity or skip. Ordinary TLS outcome tests use explicit Worker-report
+fixtures and prove only controller reconciliation. This workspace hides POSIX
+start identity, so local live tests remain skipped and are not acceptance.
+The implementation PR records exact final-head review and CI outcomes.
+
+Controller lifecycle facts trust the bound authenticated Worker's OS observation;
+no PID, private controller key or database crosses into Worker state. An unknown
+observation cannot settle terminal facts or create rerun authority. An actual
+single-host TLS/CAS integration is still not two distinct machines, GPU execution
+or Ray project-job hosting. Those evidence records and Checkpoint B remain open;
+freeze after actual B acceptance and do not begin R09.
+
 ## Checkpoints
 
 | Checkpoint | Packages | Required evidence |
