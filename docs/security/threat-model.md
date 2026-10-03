@@ -278,13 +278,34 @@ cannot bypass this through generic upload/completion. See
 `tests/test_native_output_transport.py`, and `tests/test_native_output_documents.py`.
 
 Residual limits: this trusted Worker report is not proof of process termination,
-scientific validity, or a successful Run. The reported full request digest has
-syntax checks; full request reconstruction remains controller integration work.
+scientific validity, or a successful Run. The full request digest is rebuilt from the exact source authorization, grant
+and queued execution; this remains distinct from actual process/result proof.
 A revocation/crash after CAS publication may leave an unreferenced object and
 must not be called a completion. Per-request limits are not aggregate admission
 control or a public parser sandbox. Directory/lock ownership relies on the
 trusted controller host. Remote launch, durable staging/recovery integration,
 and actual authorized two-host acceptance remain open.
+
+### TM-071: Bound native request context
+
+A remote Worker must not receive substituted project/Run/Attempt/actor/digest
+metadata or treat a downloadable audit request as a launch permit. The additive
+pinned HTTPS context endpoint requires a live signed and recorded grant with
+exact queued native execution scope. The complete request is reconstructed from
+the cited human authorization at its recorded sequence, the grant and immutable
+queue, without changing existing configuration digests or creating a second
+authority ledger. The client checks the published closed request schema,
+canonical bytes, Worker identity and full JCS digest with bounded reads/retries.
+Native output compares its citation against this reconstructed full request
+before publication/replay. See `tests/test_native_request_transport.py` and
+[the context protocol](../protocols/native-request-transfer-v0alpha1.md).
+
+The descriptor is not execution or host feasibility evidence. The source remains
+audit-only; live Worker authority is checked separately. No controller database
+or HMAC key is copied, no entrypoint imported, no process spawned, no lease
+consumed and no lifecycle fact appended by the fetch. Actual material preparation,
+closed spec/registry execution verification, remote start/recovery and new
+two-host acceptance remain separate integration/evidence obligations.
 
 ## 7. M0 security gates
 

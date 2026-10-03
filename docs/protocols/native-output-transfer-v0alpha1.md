@@ -27,10 +27,12 @@ and no recorded cancellation request.
 Body SHA-256 must equal the header digest. Task/Run/Attempt identifiers must
 match the claimed lease. Unknown keys, malformed JSON, duplicate keys,
 noncanonical bytes and unsupported canonical numbers are refused before CAS
-publication. `requestDigest` has a strict JCS digest syntax; this transport does
-not independently reconstruct the full reviewed request to verify that reported
-citation. A controller integrating this receipt into Run success must still
-verify the full reviewed request and process result. A Worker completion is a
+publication. `requestDigest` must equal the full request reconstructed from the exact
+recorded human authorization, grant and immutable queued native execution
+([request context protocol](native-request-transfer-v0alpha1.md)). A syntactically
+valid digest of a different request refuses before publication. A controller
+integrating this receipt into Run success must still verify the actual process
+result and original specification/registry execution binding. A Worker completion is a
 report from the trusted Worker, not independent proof that a process stopped or
 that an experiment's scientific claims are valid.
 
