@@ -531,3 +531,32 @@ workspace, durable local identity, fixed pre-import child barrier, no-redispatch
 rule and observed stop. This endpoint starts zero processes; its receipt has
 literal `launchAllowed: false`. It cannot establish Ray task execution, GPU
 usability, process cancellation or two-host/Checkpoint B acceptance.
+
+### TM-076: Bound remote native executor and outcome replay
+
+An authenticated Worker could swap its task/environment/identity, repeat a lost
+claim, publish unverified completion, or confuse cancellation with signal/HTTP
+acknowledgement. The fixed runner uses private independently verified material,
+durable immutable launch intent before a single fresh poll, local start-token
+identity, reviewed interpreter bytes and a pre-import stdin barrier. Only the
+same created child is released after the bound controller start acknowledgement
+and material/live-authority rechecks. Required unsupported isolation refuses.
+Wall/stream limits remain active independently of stalled heartbeat I/O.
+
+Recovery never prepares, polls or launches; it verifies original bound state,
+observes the saved group, and replays only durable results. Missing or unsafe
+state, PID reuse, unavailable observation and transport ambiguity cannot grant
+rerun or terminal stop. Cancellation settles only after verified group stop.
+Controller reconciliation requires the consumed binding, exact original start
+journal/prefix, distinct phase journal and corresponding verified Work facts;
+completion rechecks bounded CAS bytes and result digest. Terminal facts and
+receipts are exact idempotent replay; receipts are not launch credentials.
+Pinned TLS and closed bounded outcome documents carry no remote PID/host path.
+Tests: `tests/test_native_remote_outcome.py`, `tests/test_native_remote_executor.py`;
+the designated Linux native remote execution gate fails if real observation is
+unavailable, rather than accepting a mocked observer or skipped task.
+
+Residual trust: the authenticated Worker reports remote OS observations; the
+controller cannot independently prove them. This is the existing trusted-host
+reviewed profile, not protection from a malicious administrator, a sandbox,
+GPU execution, Ray project-job hosting or two-host/Checkpoint B acceptance.

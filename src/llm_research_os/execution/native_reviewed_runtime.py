@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BufferedReader
@@ -474,6 +475,8 @@ def _lifecycle(
 def _collect(
     child: subprocess.Popen[bytes],
     request: NativeReviewedExecutionRequest,
+    *,
+    cancelled: Callable[[], bool] | None = None,
 ) -> tuple[bytes, bytes, int]:
     if child.stdout is None or child.stderr is None:
         raise NativeLaunchError("runner pipes are unavailable")
@@ -484,6 +487,8 @@ def _collect(
         for pipe in bounds:
             selector.register(pipe, selectors.EVENT_READ)
         while selector.get_map():
+            if cancelled is not None and cancelled():
+                raise NativeLaunchError("reviewed cancellation is requested")
             if time.monotonic() >= deadline:
                 raise NativeLaunchError("reviewed wall-clock limit exceeded")
             for key, _ in selector.select(timeout=min(0.25, max(0, deadline - time.monotonic()))):
@@ -498,5 +503,18 @@ def _collect(
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise NativeLaunchError("reviewed wall-clock limit exceeded")
-    code = child.wait(timeout=remaining)
+    if cancelled is None:
+        code = child.wait(timeout=remaining)
+    else:
+        while True:
+            if cancelled():
+                raise NativeLaunchError("reviewed cancellation is requested")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise NativeLaunchError("reviewed wall-clock limit exceeded")
+            try:
+                code = child.wait(timeout=min(0.25, remaining))
+                break
+            except subprocess.TimeoutExpired:
+                continue
     return bytes(captured[child.stdout]), bytes(captured[child.stderr]), code

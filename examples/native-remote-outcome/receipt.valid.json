@@ -1,0 +1,10 @@
+{
+  "apiVersion": "researchos.dev/v0alpha1",
+  "kind": "NativeOutcomeReceipt",
+  "leaseId": "lease.example",
+  "bindingDigest": "jcs-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "disposition": "completed",
+  "eventId": "evt.native.remote.run.native.attempt.native.run.completed",
+  "sequence": 12,
+  "launchAllowed": false
+}

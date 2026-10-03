@@ -11,6 +11,13 @@ authorized release.
 
 ### Added
 
+- R08 Worker-local reviewed native CPU executor over pinned TLS: private durable
+  single-launch intent and identity, fixed pre-import barrier, bounded collection,
+  verified output and restart-only outcome replay. Controller terminal records
+  bind authenticated Worker exit reports to the original start and Work facts.
+  A designated real POSIX execution gate covers CPU execution and cancellation;
+  Ray project jobs, GPU/Kaggle and two-host acceptance remain open.
+
 - R08 remote native start recording: pinned TLS, consumed-lease and real-plan binding, immutable controller journals and exact interrupted-response replay. Receipts stay non-launch credentials; remote execution and process observation remain open.
 
 - R08 optional Ray Jobs 2.59.0 resource-probe bridge: fixed CPU/CUDA jobs,

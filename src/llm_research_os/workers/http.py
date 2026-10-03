@@ -181,6 +181,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/native/start":
                     self._native_start()
                     return
+                if path == "/v0alpha1/native/outcome":
+                    self._native_outcome()
+                    return
                 if path == "/v0alpha1/work/poll":
                     self._poll()
                     return
@@ -484,6 +487,39 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                     worker_id=worker_id,
                     grant_token=token,
                     document=document,
+                )
+            self._write(200, receipt.model_dump(mode="json", by_alias=True))
+
+        def _native_outcome(self) -> None:
+            from llm_research_os.workers.native_outcome import reconcile_native_outcome
+            from llm_research_os.workers.native_outcome_documents import NativeOutcomeRequest
+            from llm_research_os.workers.native_output import output_lock
+
+            if server._tls is None:
+                raise WorkerError("native outcome requires TLS", code="tls-required")
+            self.connection.settimeout(10)
+            if (
+                self.path != "/v0alpha1/native/outcome"
+                or any(
+                    len(self.headers.get_all(name, [])) != 1
+                    for name in ("Authorization", _GRANT_HEADER, "Content-Length", "Content-Type")
+                )
+                or self.headers.get("Content-Type") != _JSON
+                or self.headers.get_all("Transfer-Encoding")
+                or self.headers.get_all("Content-Encoding")
+            ):
+                raise WorkerError("invalid native outcome headers", code="http-invalid")
+            worker_id = _session_worker(server, self.headers.get("Authorization"))
+            token = self.headers.get(_GRANT_HEADER)
+            if not token:
+                raise WorkerError("native outcome grant is missing", code="http-invalid")
+            document = NativeOutcomeRequest.model_validate(json.loads(self._raw_body(limit=16384)))
+            with (
+                output_lock(server._database),
+                EventStore(server._database, require_existing=True) as store,
+            ):
+                receipt = reconcile_native_outcome(
+                    server._plane(store), worker_id=worker_id, grant_token=token, document=document
                 )
             self._write(200, receipt.model_dump(mode="json", by_alias=True))
 
