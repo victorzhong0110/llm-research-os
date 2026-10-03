@@ -13,7 +13,9 @@ host. Credential files are 0600, regular single-link files under a 0700 parent.
 Create separate 0700 CAS, workspace, staging, native state and Ray state roots;
 none may contain another. No controller EventStore, HMAC key or TLS private key
 is a Worker input. A private Ray token is supplied in memory, never CLI argv or
-runtime environment of the submitted job.
+submitted `runtime_env`. Ray
+cluster processes use their own token authentication configuration; set it before
+importing Ray, as in the owned-cluster probe example.
 
 ```python
 from pathlib import Path

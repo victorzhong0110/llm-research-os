@@ -30,15 +30,16 @@ def ray_backend():  # type: ignore[no-untyped-def]
     if os.environ.get("RESEARCHOS_RAY_NATIVE_REQUIRED") != "1":
         pytest.skip("optional compute gate requires RESEARCHOS_RAY_NATIVE_REQUIRED=1")
     # The designated gate must fail on missing Ray; no importorskip or mocked OS.
-    import ray
-
-    assert ray.__version__ == RAY_PROBE_VERSION
-    assert not ray.is_initialized(), "integration may only start its own cluster"
     os.environ["RAY_USAGE_STATS_ENABLED"] = "0"
     os.environ["RAY_AUTH_MODE"] = "token"
     os.environ["RAY_AUTH_TOKEN"] = secrets.token_hex(32)
     os.environ["RAY_ENABLE_WINDOWS_OR_OSX_CLUSTER"] = "0"
     os.environ["RAY_gcs_rpc_server_connect_timeout_s"] = "5"  # noqa: SIM112 - Ray exact key
+    # Ray caches auth mode/token at import; configure before the first import.
+    import ray
+
+    assert ray.__version__ == RAY_PROBE_VERSION
+    assert not ray.is_initialized(), "integration may only start its own cluster"
     with tempfile.TemporaryDirectory(prefix="rn-", dir="/tmp") as scratch:
         try:
             context = ray.init(
