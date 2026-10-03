@@ -219,6 +219,26 @@ probe cannot substitute for grant-bound project execution, a supported GPU
 profile, verified results or actual fault/process observation. Full remote
 executor/recovery remain gaps; B is open, freeze after acceptance, no R09.
 
+## R08 remote start-record candidate
+
+The verified base is #124, `c8f0195c71947ea117c668c16209ba91c065e03e`;
+main CI 37131649684 passed all five Python jobs, live OCI and real Ray CPU.
+The finite Ray bridge is merged, but CUDA and project-task execution remain open.
+
+The next controller boundary records a consumed, fully-bound native lease's
+start intent over pinned TLS. It rechecks actual kernel plan binding, complete
+preparation citations and exact Run prefix, persists an immutable identity-bound
+journal, and appends/replays one `attempt.started`. No process is started or
+observed here; `launchAllowed` remains false. Unknown/terminal state and changed
+or missing execution state never authorize redispatch. The implementation PR
+records exact-head review and CI; local TLS fixtures are not two-host evidence.
+
+Next decision: once the boundary passes review/CI, integrate the existing
+Worker-local fixed child and backend with this record, then verify actual task
+execution and conservative recovery. Full remote executor/output reconciliation,
+new authorized CPU/GPU evidence and B acceptance remain pending; freeze after
+actual B acceptance, no R09.
+
 ## Checkpoints
 
 | Checkpoint | Packages | Required evidence |

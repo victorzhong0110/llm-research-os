@@ -252,6 +252,14 @@ from llm_research_os.workers.native_output_schema import (
     write_native_output_receipt_schema,
     write_native_task_output_schema,
 )
+from llm_research_os.workers.native_start_schema import (
+    canonical_native_start_receipt_schema,
+    canonical_native_start_request_schema,
+    native_start_receipt_schema_matches,
+    native_start_request_schema_matches,
+    write_native_start_receipt_schema,
+    write_native_start_request_schema,
+)
 from llm_research_os.workers.schema import (
     authorization_grant_request_schema_matches,
     canonical_authorization_grant_request_schema,
@@ -402,6 +410,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         native_task_output_schema_matches,
         write_native_task_output_schema,
         "schemas/native-reviewed-task-output/v0alpha1.schema.json",
+    ),
+    "native-start-request": _contract(
+        canonical_native_start_request_schema,
+        native_start_request_schema_matches,
+        write_native_start_request_schema,
+        "schemas/native-start-request/v0alpha1.schema.json",
+    ),
+    "native-start-receipt": _contract(
+        canonical_native_start_receipt_schema,
+        native_start_receipt_schema_matches,
+        write_native_start_receipt_schema,
+        "schemas/native-start-receipt/v0alpha1.schema.json",
     ),
     "native-output-receipt": _contract(
         canonical_native_output_receipt_schema,

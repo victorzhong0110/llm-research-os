@@ -1,0 +1,56 @@
+{
+  "$id": "https://researchos.dev/schemas/native-start-receipt/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "bindingDigest": {
+      "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+      "title": "Bindingdigest",
+      "type": "string"
+    },
+    "eventId": {
+      "maxLength": 540,
+      "minLength": 1,
+      "title": "Eventid",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeStartReceipt",
+      "title": "Kind",
+      "type": "string"
+    },
+    "launchAllowed": {
+      "const": false,
+      "title": "Launchallowed",
+      "type": "boolean"
+    },
+    "leaseId": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^[!-~]+$",
+      "title": "Leaseid",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "leaseId",
+    "bindingDigest",
+    "eventId",
+    "sequence",
+    "launchAllowed"
+  ],
+  "title": "NativeStartReceipt",
+  "type": "object"
+}

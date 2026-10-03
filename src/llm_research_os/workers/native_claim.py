@@ -62,25 +62,7 @@ def claim_native(
     queued_id = _event_id(request, "run.queued")
     if run.rebuild().snapshot is not None and plane.store.get_event(queued_id) is None:
         raise WorkerCallError("Run belongs to another dispatch", code="native-run-conflict")
-    rows: tuple[tuple[str, dict[str, Any], bool], ...] = (
-        (
-            "run.queued",
-            {
-                "workflowId": request.workflow_id,
-                "specDigest": request.spec_digest,
-                "registryDigest": request.registry_digest,
-                "planDigest": request.plan_digest,
-                "decisionDigest": request.decision_digest,
-                "authorizationEventId": request.authorization_event_id,
-                "authorizationSequence": request.authorization_sequence,
-                "maxAttempts": 1,
-            },
-            False,
-        ),
-        ("run.started", {}, False),
-        ("attempt.queued", {"ordinal": 1, "retryOf": None, "retryDecisionId": None}, True),
-    )
-    for event_type, payload, attempt in rows:
+    for event_type, payload, attempt in _queue_rows(request):
         _append_bound(run, plane, request, event_type, payload, attempt=attempt)
     snapshot = run.rebuild().snapshot
     lease = plane.rebuild().lease_for_worker(request.task_id, request.attempt_id, worker_id)
@@ -103,6 +85,29 @@ def claim_native(
     # Even an unclaimed persisted lease is a restart boundary, not fresh launch
     # permission. Decide inside the plane's fold, including a racing local caller.
     return plane.poll(worker_id=worker_id, grant_token=grant_token, resume_existing=True)
+
+
+def _queue_rows(
+    request: NativeReviewedExecutionRequest,
+) -> tuple[tuple[str, dict[str, Any], bool], ...]:
+    return (
+        (
+            "run.queued",
+            {
+                "workflowId": request.workflow_id,
+                "specDigest": request.spec_digest,
+                "registryDigest": request.registry_digest,
+                "planDigest": request.plan_digest,
+                "decisionDigest": request.decision_digest,
+                "authorizationEventId": request.authorization_event_id,
+                "authorizationSequence": request.authorization_sequence,
+                "maxAttempts": 1,
+            },
+            False,
+        ),
+        ("run.started", {}, False),
+        ("attempt.queued", {"ordinal": 1, "retryOf": None, "retryDecisionId": None}, True),
+    )
 
 
 def _require_binding(

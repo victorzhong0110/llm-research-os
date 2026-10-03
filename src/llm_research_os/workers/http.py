@@ -178,6 +178,9 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
                 if path == "/v0alpha1/native/outputs":
                     self._native_output()
                     return
+                if path == "/v0alpha1/native/start":
+                    self._native_start()
+                    return
                 if path == "/v0alpha1/work/poll":
                     self._poll()
                     return
@@ -446,6 +449,43 @@ def _handler_for(server: LoopbackWorkerServer) -> type[BaseHTTPRequestHandler]:
             )
             self.end_headers()
             self.wfile.write(payload)
+
+        def _native_start(self) -> None:
+            from llm_research_os.workers.native_output import output_lock
+            from llm_research_os.workers.native_start import record_native_start
+            from llm_research_os.workers.native_start_documents import NativeStartRequest
+
+            if server._tls is None:
+                raise WorkerError("native start requires TLS", code="tls-required")
+            self.connection.settimeout(10)
+            if (
+                self.path != "/v0alpha1/native/start"
+                or any(
+                    len(self.headers.get_all(name, [])) != 1
+                    for name in ("Authorization", _GRANT_HEADER, "Content-Length", "Content-Type")
+                )
+                or self.headers.get("Content-Type") != _JSON
+                or self.headers.get_all("Transfer-Encoding")
+                or self.headers.get_all("Content-Encoding")
+            ):
+                raise WorkerError("invalid native start headers", code="http-invalid")
+            worker_id = _session_worker(server, self.headers.get("Authorization"))
+            token = self.headers.get(_GRANT_HEADER)
+            if not token:
+                raise WorkerError("native start grant is missing", code="http-invalid")
+            document = NativeStartRequest.model_validate(json.loads(self._raw_body(limit=16384)))
+            with (
+                output_lock(server._database),
+                EventStore(server._database, require_existing=True) as store,
+            ):
+                receipt = record_native_start(
+                    server._plane(store),
+                    context=server._native_context,
+                    worker_id=worker_id,
+                    grant_token=token,
+                    document=document,
+                )
+            self._write(200, receipt.model_dump(mode="json", by_alias=True))
 
         def _native_output(self) -> None:
             from llm_research_os.workers.native_output import complete_native_output, output_lock
