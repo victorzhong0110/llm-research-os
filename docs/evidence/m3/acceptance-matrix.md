@@ -1,8 +1,14 @@
 # M3 evidence and acceptance matrix
 
-Status: **R01–R07 integrated; R08 local transfer foundation and HTTPS input/output slices integrated. Checkpoint B is not accepted; freeze after its acceptance and do not start R09.**
+Status: **R01–R07 integrated; R08 CPU native/Ray execution and transfer slices integrated. Checkpoint B is not accepted. Sequential completion through R16 is authorized; each predecessor must be merged and accepted before the next package starts.**
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
+
+The maintainer's 2026-10-04 direction supersedes the former B freeze in historical
+candidate entries below; their implementation identities and evidence gaps are
+unchanged. Use the [live runbook](../../guides/r08-live-acceptance.md) and
+[pending evidence checklist](r08-live-acceptance.md) to close R07/R08. No B
+acceptance or R09 start is claimed by this direction update.
 
 ## Recording rules
 
@@ -30,14 +36,14 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
 | R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
 | R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote material preparation merged in #122 at `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534) passed). Remote executor/recovery merged in #126 at `c6903c3d795fbef3705d966bec84c1a212c491fe`; CLI merged in #127 at `35eda8cc9d9c71f251e35a41a2a231174f40c9e0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37141821193) passed). Actual selected two-host and GPU evidence remain pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
-| R09 | Local API and browser authority boundaries | Planned | Not yet accepted | Add scoped evidence with R09 |
-| R10 | Read-only research workbench | Planned | Not yet accepted | Add scoped evidence with R10 |
-| R11 | Browser approval, execution, cancellation, and restore | Planned | Not yet accepted | Add scoped evidence with R11 |
-| R12 | AI proposals, citations, and researcher decisions | Planned | Not yet accepted | Add scoped evidence with R12 |
-| R13 | Real evaluation, comparison, and conclusions | Planned | Not yet accepted | Add scoped evidence with R13 |
-| R14 | Minimal extension mechanism and permission boundary | Planned | Not yet accepted | Add scoped evidence with R14 |
-| R15 | Installation, startup, backup, and recovery | Planned | Not yet accepted | Add scoped evidence with R15 |
-| R16 | Independent trials and phase acceptance | Planned | Not yet accepted | Add scoped evidence with R16 |
+| R09 | Local API and browser authority boundaries | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R09 |
+| R10 | Read-only research workbench | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R10 |
+| R11 | Browser approval, execution, cancellation, and restore | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R11 |
+| R12 | AI proposals, citations, and researcher decisions | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R12 |
+| R13 | Real evaluation, comparison, and conclusions | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R13 |
+| R14 | Minimal extension mechanism and permission boundary | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R14 |
+| R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
+| R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
 
 ## R08 HTTPS input candidate
 

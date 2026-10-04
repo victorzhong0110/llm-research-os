@@ -29,4 +29,8 @@ The optional Ray resource probe is already merged in #124 at
 `c8f0195c71947ea117c668c16209ba91c065e03e`; its main CI 37131649684 passed.
 This start-record slice is the next controller boundary. Full Ray/native task
 launch, output reconciliation, recovery, CUDA and new authorized-host evidence
-remain pending. Checkpoint B is open; freeze after acceptance and do not open R09.
+remain pending at this slice's review identity. Later execution/recovery slices
+are recorded in the [acceptance matrix](../evidence/m3/acceptance-matrix.md).
+Checkpoint B remains open. The 2026-10-04 maintainer direction supersedes the
+former freeze: complete sequentially through R16 after each predecessor is merged
+and accepted. See the [live acceptance runbook](r08-live-acceptance.md).

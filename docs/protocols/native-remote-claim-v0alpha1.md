@@ -59,4 +59,6 @@ output protocol still records only its bound Worker completion receipt.
 Remote launch/recovery and new two-host native evidence remain open. CPU remote
 connectivity/execution, GPU runtime availability and remote GPU integration are
 separate evidence dimensions; success in one does not imply the others. R08 and
-Checkpoint B are not accepted by this slice; R09 remains frozen.
+Checkpoint B are not accepted by this slice. R09 still depends on B acceptance;
+the [current plan](../plans/m3-development-plan.md) records the maintainer's
+2026-10-04 authorization to continue sequentially through R16.

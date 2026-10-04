@@ -30,25 +30,31 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-04, Asia/Taipei**. Verified execution baseline:
+Snapshot date: **2026-10-04, after 18:41:11 Asia/Taipei**. Verified execution baseline:
 `ed6fb30d6cb239ad37a34404814183764bce2a58`.
-This documentation change does not advance the execution baseline.
+Verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
+([main CI 37183362803](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803)
+passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08; Checkpoint B remains open. R09 has not started. Freeze after actual B acceptance. |
+| Current package | R08; Checkpoint B remains open. R09 has not started. The maintainer authorized sequential completion through R16 on 2026-10-04, merging each predecessor first; the previous B freeze is superseded. Existing acceptance dependencies remain. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Codex currently records planning/review and completed implementation evidence. No new implementer assignment is recorded here. |
+| Responsibility | Codex is assigned the remaining implementation, review and sequential integration. COMM-0003 acknowledges the assignment and COMM-0002 handoff. No additional agent was assigned or started. |
+| Next gate | Follow the [live acceptance runbook](guides/r08-live-acceptance.md) and [evidence checklist](evidence/m3/r08-live-acceptance.md). Connection configuration and candidate GPU execution access are still missing; see COMM-0004. |
 
 ## Open handoffs
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
-| COMM-0002 | Next explicitly assigned collaborator | Open; no acknowledgement recorded | Read the baseline and acceptance gaps; reply here with the actual assigned scope and current branch before changing project state. |
+| COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
+
+COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
+the acknowledgement does not establish acceptance.
 
 ## Message history
 
@@ -88,6 +94,49 @@ This documentation change does not advance the execution baseline.
 - Next action / owner: The next assigned collaborator replies to COMM-0002 with
   their scope, actual branch/base, available inputs and remaining blockers. Keep
   B open and R09 unopened until the required acceptance review is complete.
+
+### COMM-0003 — Resume sequential delivery through R16
+
+- Date/time: 2026-10-04T18:41:11+08:00 (maintainer instruction time).
+- From: Codex, recording and acknowledging the maintainer's assignment.
+- To: Maintainer and subsequent assigned collaborators.
+- Reply to: COMM-0002.
+- State: Acknowledged by Codex; handoff accepted, live evidence still pending.
+- Message / decision: Complete all remaining packages, merging the preceding
+  package before starting the next. This supersedes the previous freeze after B.
+  Existing package definitions, acceptance dependencies and resource boundaries
+  continue to apply. Codex continues implementation and review sequentially.
+- Branch / head / base / PR: `docs/sequential-r08-r16-acceptance`, based on verified
+  main `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`; exact submitted head and checks
+  are tracked by this documentation PR.
+- Evidence / checks: [Verified main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803);
+  [updated canonical plan](plans/m3-development-plan.md#maintainer-execution-direction-complete-sequentially-through-r16).
+- Gaps / required inputs: R07/R08 selected-host and supported GPU proof; see
+  COMM-0004. This direction update does not claim B acceptance or start R09.
+- Next action / owner: Codex merges the direction/runbook change, then collects
+  R07/R08 evidence when the missing resource configuration is available.
+
+### COMM-0004 — Missing execution inputs for the R08 acceptance gate
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0003.
+- From: Codex.
+- To: Maintainer / owner of the selected compute resources.
+- Reply to: COMM-0003.
+- State: Blocked on missing execution input, not an additional merge approval.
+- Message / decision: Prior project context confirms two hosts and a GPU exist,
+  but no reusable connection configuration or Kaggle session/execution arrangement
+  was supplied. CPU software and designated single-host gates are already merged.
+  The [runbook](guides/r08-live-acceptance.md) and
+  [pending evidence checklist](evidence/m3/r08-live-acceptance.md) prepare the
+  required selected-host runs without claiming they occurred.
+- Evidence / checks: Existing CPU baseline in the snapshot; resource availability
+  is not inferred from that baseline or historical M2 hardware evidence.
+- Gaps / required inputs: Privately supplied host connection configuration,
+  trusted host-key/identity location and approved tunnel arrangement, plus selected
+  GPU environment access or candidate probe output. No secret belongs in this file.
+- Next action / owner: Maintainer/resource owner supplies the existing access
+  details; Codex performs the real runs, fixes observed defects, merges evidence,
+  reviews B and then advances to R09. No acceptance criteria are waived.
 
 ## Message template
 

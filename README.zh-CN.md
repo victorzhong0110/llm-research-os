@@ -24,7 +24,7 @@ uv run researchos m1 prove examples/m1-checkpoint demo.db
 uv run researchos events verify demo.db
 ```
 
-架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收；完成剩余范围并验收后冻结，R09 需要后续明确决定。
+架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收。维护者于 2026-10-04 授权按顺序完成至 R16：每个工作包先合入并验收，再开始下一个。当前先补齐 [R08 真实环境验收](docs/guides/r08-live-acceptance.md)。
 
 > 本文是 [README.md](README.md) 的中文版。英文版是权威文本，两者随同一 PR 更新（[ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)）。
 >

@@ -51,6 +51,8 @@ uv sync --locked --all-groups
 python scripts/record_project_tour.py --font /absolute/path/to/monospace.ttf
 ```
 
-Checkpoint B remains open: remote staging/executor/recovery integration and authorized
-R07/R08 two-host/GPU evidence remain incomplete. After explicit B acceptance, freeze;
-do not start R09 without a later maintainer decision.
+Checkpoint B remains open: CPU remote staging/executor/recovery slices are
+integrated, but authorized R07/R08 two-host/GPU evidence remains incomplete.
+On 2026-10-04 the maintainer authorized sequential completion through R16,
+merging and accepting each predecessor before starting the next. The displayed
+tour numbers remain frozen evidence at their original identities.

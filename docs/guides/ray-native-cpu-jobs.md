@@ -68,4 +68,7 @@ real lost-submit-response replay and vendor stop followed by controller-intent/
 actual process observation. It fails on missing Ray/OS identity or deadline;
 protocol fixtures and ordinary skips are not live evidence. This is single-host
 integration; selected two-host, GPU/Kaggle and Checkpoint B acceptance remain open.
-R09 remains frozen until B is accepted. No paid host provisioning is included.
+The 2026-10-04 direction authorizes sequential work through R16, with each
+predecessor merged and accepted before the next starts. R09 still awaits B;
+see the [live acceptance runbook](r08-live-acceptance.md). No paid host
+provisioning is included.

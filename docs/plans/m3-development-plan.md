@@ -21,15 +21,23 @@ assistant; implementation belongs to the assigned implementer. See
 [ADR-0064](../adr/0064-planning-and-implementation-ownership.md).
 There is no personal calendar, effort-duration estimate, or delivery deadline.
 
-## Maintainer stop point: Checkpoint B
+## Maintainer execution direction: complete sequentially through R16
 
-On 2026-10-02 the maintainer directed a freeze after Checkpoint B. Complete the
-remaining R07/R08 implementation and authorized-host evidence, review it against
-the unchanged acceptance criteria, and record explicit Checkpoint B acceptance
-before freezing. Missing evidence remains pending-live; integration is not acceptance.
-After that acceptance, retain maintenance and agreed fixes only. Do not start R09
-or a new phase without a later explicit maintainer decision. The later package
-and checkpoint definitions below remain plans, not current execution authority.
+On 2026-10-04 at 18:41:11 Asia/Taipei, the maintainer instructed: complete all
+remaining work, merging the preceding package before starting the next. This
+supersedes the 2026-10-02 instruction to freeze after Checkpoint B.
+
+Complete R07/R08 implementation and authorized-host evidence first, then proceed
+through R09–R16 in their existing order and scope. Review, required checks,
+integration, and predecessor acceptance remain distinct gates. Start each next
+package from verified main only after its predecessor is merged and accepted;
+do not stack package branches or infer acceptance from a merge alone.
+
+Missing evidence remains pending-live. This instruction authorizes the remaining
+implementation, review, and sequential merges; it does not waive acceptance
+criteria, supply missing access, authorize paid resources, or publish a release.
+Use the [R08 live acceptance runbook](../guides/r08-live-acceptance.md) to close
+the current dependency before beginning R09.
 
 ## Outcome and checkpoints
 

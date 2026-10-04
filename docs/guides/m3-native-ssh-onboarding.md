@@ -4,8 +4,10 @@ The pack records one user-owned SSH target and its pinned host key. `ssh-doctor`
 uses the pack to check the actual host, optionally install an offline wheelhouse,
 and verify a registered Worker through its existing HTTPS control-plane endpoint.
 It does not run training or turn the native `--transport ssh` option into a task
-executor. No second host has yet been authorized for the R07 live acceptance;
-the pack's `pending-live` record remains pending.
+executor. No selected-host R07 live acceptance has been recorded; the current
+execution environment still lacks the host connection configuration. The pack's
+`pending-live` record remains pending. Follow the
+[live acceptance runbook](r08-live-acceptance.md) for the required inputs and evidence.
 
 ## Prepare the target and pack
 
