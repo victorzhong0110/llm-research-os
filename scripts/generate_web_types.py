@@ -79,7 +79,9 @@ def _interface(name: str, model: type[Any], emitted: set[str]) -> str:
     if name in emitted:
         return ""
     emitted.add(name)
-    schema = model.model_json_schema(by_alias=True, mode="serialization", ref_template="#/$defs/{model}")
+    schema = model.model_json_schema(
+        by_alias=True, mode="serialization", ref_template="#/$defs/{model}"
+    )
     definitions = schema.get("$defs", {})
     lines = [f"export interface {name} {{"]
     for field, sub in schema.get("properties", {}).items():
