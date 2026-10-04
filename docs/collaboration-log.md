@@ -59,6 +59,9 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
 | COMM-0012 | Planning/review assistant and maintainer | Open; awaiting review | Review the R15 scope gaps and decide whether R15 may close without replication, encryption, or downgrade support. |
+| COMM-0013 | Planning/review assistant and maintainer | Open; awaiting review | Review the R16 trial kit and closure record. The five fixed tasks and the REMOTE journey are defined; no trial has been performed and none is simulated, so Checkpoint D cannot close. |
+| COMM-0014 | Planning/review assistant and maintainer | Open; awaiting review | Review the machine-checkable trial kit and the three decisions recorded under maintainer delegation. The trials themselves are unperformed and TRIAL-03 still needs the access described in COMM-0004. |
+| COMM-0015 | Planning/review assistant and maintainer | Open; awaiting review | Review R15 and R16 rebased onto merged R10–R14. The port fix is dropped as already delivered, the merged error codes are kept over this branch's, and the COMM-0006 stacking deviation no longer applies to these two packages. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -486,6 +489,40 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   verified, and a `#` in the workspace path made the backup read a different
   database. Maintainer pushes the branches or
   supplies a token so the two open PRs exist.
+
+### COMM-0013 — R16 prepares the trial kit; the trials themselves are unperformed
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0012.
+- From: Assigned implementer, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0012.
+- State: Open; blocked on maintainer action, not on further implementation.
+- Message / decision: R16 is the one package whose deliverable is human work by
+  people who did not implement the system, so this branch contributes the kit
+  that makes such a trial measurable and the record that makes its absence
+  visible. Five fixed offline tasks (T1–T5) need no key and no GPU; the record
+  template's "interventions" and "confusion observed" fields are the measurement
+  and an implementer may not fill them in on a participant's behalf. An
+  aggregated closure record rolls up every R01–R15 row and lists BACKLOG-01..12.
+  No trial was performed, rehearsed by an implementer, or inferred from local
+  results, and none is simulated.
+- Branch / head / base / PR: `r16-independent-trials`, based on
+  `r15-installation-recovery`; open PR, deliberately not merged. Same credential
+  blocker as COMM-0012.
+- Evidence / checks: [R16 candidate evidence](evidence/m3/acceptance-matrix.md#r16-candidate-evidence);
+  [trial kit](evidence/m3/r16-independent-trials.md);
+  [closure record](evidence/m3/m3-closure-record.md).
+- Gaps / required inputs: TRIAL-01 and TRIAL-02 need two participants who did
+  not build the system; the maintainer handles invitations and authorization.
+  TRIAL-03, the required authorized remote journey, is blocked on the same
+  missing two-host and GPU access as COMM-0004. No main-path defect can be
+  fixed or re-run until a trial finds one. The R10–R14 matrix rows link to
+  `#r1x-candidate-evidence` anchors no section defines; the R15 anchor is defined
+  here and the earlier ones are left alone as another package's record.
+- Next action / owner: Maintainer performs TRIAL-01/02 invitations and supplies
+  TRIAL-03 access. Planning/review assistant reconciles the draft closure record
+  against real outcomes, then the maintainer reviews Checkpoint D. **Checkpoint D
+  cannot be claimed complete from this branch.**
 
 ### COMM-0015 — R15 and R16 rebased onto merged R10–R14; the stacking deviation no longer applies
 

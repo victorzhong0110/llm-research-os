@@ -70,6 +70,29 @@ authorized release.
   in the image carries instead of folding an empty ledger on both sides and
   reporting a match. A rename that leaves the manifest disagreeing with every
   stored event is now a closed `restore-ledger-mismatch`.
+- R16 the independent-trial kit: six fixed offline tasks (T1–T5 and REMOTE), a
+  TRIAL-01..05 pending table, and an aggregated closure record with a
+  BACKLOG-01..12 remainder list. **No trial was performed and none is simulated**;
+  Checkpoint D cannot close from this branch.
+
+- R16 the trial record is a validated contract, not a prose template. A
+  `TrialRecord` authored by `recordedBy: implementer` is refused if it names any
+  intervention or confusion, because "no confusion observed" and "nobody wrote
+  the confusion down" are otherwise indistinguishable; `evidenceAttached` must be
+  non-empty so a record can be reviewed later; and `task` is restricted to the
+  agreed list. `researchos trial scaffold` writes deliberately invalid slots and
+  exits 1, `validate` refuses an unfilled one, and `aggregate` reports
+  participants, tasks covered, recorded remote journeys, unresolved blockers, and
+  `checkpointD`. Two new published contracts, `trial-record` and `trial-kit`.
+
+- R16 the missing-control-store error no longer renders a host path. A fresh
+  workspace still has no EventStore until the first append — that accepted R02
+  contract is unchanged — but the error now says so and names the next step
+  instead of printing `/absolute/host/path`. `EventStoreSchemaError` also
+  carries a `code` attribute; routing it into the `ProblemReport` `type` field
+  would change a published error surface, so that is raised as a review proposal
+  rather than taken here.
+
 - R14 minimal extension mechanism and permission boundary: a versioned manifest
   contract with a closed permission set, a compatibility refusal, a bounded
   subprocess host for one reviewed same-user adapter, and explicit

@@ -43,7 +43,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R15 | Installation, startup, backup, and recovery | Candidate on `r15-installation-recovery`, rebased onto merged R14 (`bf8a45a`); open PR, not merged | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
-| R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
+| R16 | Independent trials and phase acceptance | Trial kit and closure record on `r16-independent-trials`, rebased onto merged R14; open PR, not merged | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
 
 ## R10 candidate evidence
 
@@ -1117,3 +1117,108 @@ limit fixture's shell pipeline encountered a denied group cleanup signal,
 masking its original bound error. The follow-up preserves that error, falls
 back to killing its own SSH child, and uses a single-process output fixture.
 The 38 SSH tests and static checks passed locally before publication.
+
+## R16 candidate evidence
+
+Status: **trial kit prepared on the R16 branch; no trial performed; not merged,
+not accepted.** Checkpoint D is open and cannot close from this branch.
+
+R16 is the one package whose deliverable is human work by people who did not
+implement the system. What this branch can honestly contribute is the kit that
+makes such a trial measurable and the record that makes its absence visible.
+
+### Delivered
+
+| Item | Where |
+| --- | --- |
+| Fixed trial tasks T1–T5 and REMOTE, offline, no key, no GPU | [`r16-independent-trials.md`](r16-independent-trials.md) |
+| A validated `TrialRecord` / `TrialKit` contract and published schemas | [`trial-record`](../../schemas/trial-record/v0alpha1.schema.json), [`trial-kit`](../../schemas/trial-kit/v0alpha1.schema.json) |
+| `researchos trial scaffold/validate/aggregate` | `src/llm_research_os/cli/trial_commands.py` |
+| TRIAL-01..05 pending table with owners | same |
+| Aggregated per-package roll-up, checkpoint status, and BACKLOG-01..12 | [`m3-closure-record.md`](m3-closure-record.md) |
+
+### The kit is machine-checkable, not a prose template
+
+A trial record kept as free text cannot be validated, aggregated, or
+distinguished from one the implementer filled in. `TrialRecord` is a closed
+contract instead:
+
+- `interventions` and `confusionObserved` are the measurement, and a record
+  authored by `recordedBy: implementer` is **refused** if either is non-empty.
+  The guard is the point: without it, "no confusion observed" and "nobody wrote
+  down the confusion" look identical.
+- `evidenceAttached` must be non-empty, so a record that cannot be reviewed
+  later is refused now.
+- `task` is restricted to the agreed task list, so a report from outside the kit
+  cannot be aggregated with the rest of R16's evidence.
+- `researchos trial scaffold` writes deliberately **invalid** record slots and
+  exits `1`. An unrun trial therefore reads as unrun in a machine-readable way
+  rather than as a missing file.
+- `researchos trial aggregate` reports participants, tasks covered, recorded
+  remote journeys, and the blockers still unresolved, and reports
+  `checkpointD: false` until two participants and one remote journey exist.
+
+### One main-path defect fixed, and its path re-tested
+
+Found during R15 implementation rather than during a trial, and recorded as
+such: a fresh workspace has no EventStore until the first append (the accepted
+R02 contract), and the first command an operator ran against one returned
+`EventStoreSchemaError: database does not exist: /absolute/host/path`. That
+rendered a host path into CLI output, which the rest of the project treats as a
+disclosure defect, and gave no next step.
+
+`EventStoreSchemaError` now carries a `code` attribute, and the
+missing-database message is path-free and actionable: the control store does not
+exist, a fresh workspace has no EventStore until a command appends a fact, or
+restore one from a backup image. The R02 contract is unchanged; only the message
+changed. This does **not** close TRIAL-04, which is scoped to defects found in
+TRIAL-01/02.
+
+### Proposed normative change for review: the `type` of a store error
+
+(R16 slice; the R09 proposal above is separate and still open.)
+
+Routing the new `code` into the `ProblemReport` `type` field, as every other
+coded error in the project does, would replace `EventStoreSchemaError` with
+`event-store-absent` in CLI output. Three existing tests assert the class name,
+so this is a change to a published error surface rather than a bug fix, and it is
+**not** taken here. The path leak is fixed without it.
+
+Whether `EventStoreSchemaError` should become a coded error in the
+`ProblemReport` surface, for consistency with `BudgetError`, `WorkerError` and
+the rest, is a normative question for the planning/review assistant. The `code`
+attribute now exists, so adopting it later is a routing change only.
+
+### Three decisions taken under maintainer delegation
+
+On 2026-10-05 the maintainer delegated three review decisions to the implementer.
+Each is recorded as an implementer decision under delegation, not as maintainer
+acceptance, and none of them accepts a package.
+
+| Decision | Choice | Reasoning |
+| --- | --- | --- |
+| May R15 close without replication, encryption, and downgrade support? | **Yes, with those three named as accepted limitations** | None is in the R15 acceptance criteria; the plan's R15 out-of-scope list already names publishing, garbage collection, and naive SQLite copying. Adding them would be new scope, and a backup tool that silently claims durability it does not provide is worse than one that names its limits. Recorded as limitations in the protocol and guide, and as BACKLOG-12. |
+| What to do about the R10–R14 undefined anchors? | **Add a routing table; do not edit another package's record** | The anchors are broken, but filling them means writing evidence attributed to packages this one did not build. The table routes a reader to the authoritative PR instead. Whether each should be filled retroactively stays open as BACKLOG-04. |
+| Should a fresh workspace materialize its EventStore at init (BACKLOG-06)? | **No. Keep the R02 contract; fix the error instead** | `ApplicationService.open` reporting `store-missing` on a fresh workspace is accepted R02 behaviour. Changing `init_workspace` to create the store would alter an accepted package's semantics to remove a rough edge, which is a scope change disguised as a convenience. The closed-code error above removes the actual harm. BACKLOG-06 stays open for a scoped decision. |
+
+### What is not delivered, and cannot be from here
+
+| Requirement | State |
+| --- | --- |
+| Two independent participants completing the core journeys | **Not performed** (TRIAL-01/02) |
+| Interventions, confusion, and recovery recorded per task | **Not performed** |
+| At least one authorized remote journey | **Not performed** — blocked on COMM-0004 access |
+| Main-path defects fixed and paths re-run | Not applicable until a trial finds one |
+
+No trial was simulated, rehearsed by an implementer, or inferred from local
+results. A rehearsal by someone who built the system is not a trial, and the
+plan states that unperformed live work remains pending-live and prevents
+claiming the checkpoint complete.
+
+### Next action / owner
+
+Maintainer performs the invitations and authorization for TRIAL-01/02 and
+supplies the access TRIAL-03 needs. The planning/review assistant reconciles the
+draft closure record against real outcomes. The maintainer then reviews
+Checkpoint D.
+
