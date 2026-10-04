@@ -30,7 +30,7 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-05, sequential PR integration review**. Verified integration main:
+Snapshot date: **2026-10-05, sequential PR integration review**. Verified reviewed R12 integration:
 `89b9ab4f021ff8e3d1e53ef041989ab11605da57` (#134), final-head CI 37230774848
 passed. Historical live execution baseline remains
 `ed6fb30d6cb239ad37a34404814183764bce2a58` at its recorded platforms.
@@ -40,14 +40,14 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133 and #134 are reviewed and integrated; #135 fixture evaluation mechanics is in final-head CI, then existing #136. R11/R12 full acceptance and B/C live evidence remain open. |
+| Current package | #133/#134 are integrated; #135/#136 are reviewed and repaired partial slices. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
 | Responsibility | Maintainer assigned Codex to review, repair and integrate all open PRs; no additional package is started. |
-| Downstream gate | After #132 reports merged and its required final-head checks passed, the next implementer fetches main and preserves these fixes before integrating their package. R08 connection/GPU inputs remain separate, see COMM-0004. |
+| Downstream gate | Any separately assigned next package fetches current main and preserves the reviewed #133–#136 repairs. R08 connection/GPU inputs remain separate, see COMM-0004. Cleanup of existing PRs does not start R15. |
 
 ## Open handoffs
 

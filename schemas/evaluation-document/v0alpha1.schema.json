@@ -368,6 +368,12 @@
           "title": "Rationale",
           "type": "string"
         },
+        "systemDerived": {
+          "const": false,
+          "default": false,
+          "title": "Systemderived",
+          "type": "boolean"
+        },
         "verdict": {
           "enum": [
             "insufficient-evidence",

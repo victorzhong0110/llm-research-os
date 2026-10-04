@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator
 from web_helpers import BOOTSTRAP, ORIGIN, Client
 
 from llm_research_os.application.workspace import init_workspace, load_workspace
+from llm_research_os.evaluation.schema import build_schema
 from llm_research_os.storage import EventStore
 from llm_research_os.web.app import LocalApi
 from llm_research_os.web.sessions import SessionStore
@@ -82,7 +84,10 @@ def _run(
         origin=ORIGIN,
     )
     assert status == 200, payload
-    return payload["result"]
+    result = payload["result"]
+    if result.get("kind") in {"ResearchConclusion", "EvaluationComparison"}:
+        Draft202012Validator(build_schema()).validate(result)
+    return result
 
 
 # --- A real evaluation ---------------------------------------------------------
