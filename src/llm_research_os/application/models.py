@@ -27,7 +27,14 @@ APPLICATION_RECEIPT_SCHEMA_ID = (
 
 _MUTATING = frozenset({"research.decision", "run.simulate", "run.cancel", "authorization.revoke"})
 _REVISION_BOUND = frozenset(
-    {"spec.validate", "spec.diff", "plan.dry-run", "research.decision", "run.simulate"}
+    {
+        "spec.validate",
+        "spec.diff",
+        "plan.dry-run",
+        "research.decision",
+        "run.simulate",
+        "plan.preflight",
+    }
 )
 _HEAD_BOUND = frozenset(
     {
@@ -37,6 +44,8 @@ _HEAD_BOUND = frozenset(
         "run.show",
         "run.simulate",
         "run.cancel",
+        "proposal.submit",
+        "proposal.validate",
     }
 )
 _PATH_PATTERN = r"^[^\x00-\x1F\x7F]+$"

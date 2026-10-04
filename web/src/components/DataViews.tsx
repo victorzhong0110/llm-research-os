@@ -15,7 +15,7 @@ import {
 import { Badge, BoundedList, Code, Empty, Failure, KeyValue, Loading } from "./Primitives";
 import { usePage } from "./usePage";
 import type { EventItem, RunItem } from "../generated/local-api";
-import type { Paged } from "../api";
+import { Inspector } from "./Inspection";
 
 const PAGE_LIMIT = 50;
 const LIST_CAP = 200;
@@ -90,20 +90,10 @@ export function RunsView() {
 }
 
 function RunDetail({ runId, onClose }: { readonly runId: string; readonly onClose: () => void }) {
-  const load = useCallback(async (): Promise<Paged<EventItem>> => {
-    const collected: Array<EventItem> = [];
-    let cursor: string | null = null;
-    for (let page = 0; page < 5; page += 1) {
-      const result = await api.events(cursor, PAGE_LIMIT);
-      collected.push(...result.items.filter((item) => item.runId === runId));
-      if (result.nextCursor === null) {
-        break;
-      }
-      cursor = result.nextCursor;
-    }
-    return { items: collected, nextCursor: null, highWaterMark: 0 };
-  }, [runId]);
-  const { page, error, reload } = usePage<EventItem>(load, null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [fact, setFact] = useState<string | null>(null);
+  const load = useCallback((next: string | null) => api.events(next, PAGE_LIMIT, runId), [runId]);
+  const { page, error, reload } = usePage<EventItem>(load, cursor);
 
   return (
     <article className="detail" aria-label={`Run ${runId}`}>
@@ -125,7 +115,7 @@ function RunDetail({ runId, onClose }: { readonly runId: string; readonly onClos
           totalLabel="run facts"
           row={(item) => (
             <tr key={item.sequence}>
-              <td>{item.sequence}</td>
+              <td><button type="button" onClick={() => setFact(String(item.sequence))}>{item.sequence}</button></td>
               <td>{item.type}</td>
               <td>{formatTime(item.occurredAt)}</td>
               <td>
@@ -135,13 +125,17 @@ function RunDetail({ runId, onClose }: { readonly runId: string; readonly onClos
           )}
         />
       ) : null}
+      {page?.nextCursor ? <button type="button" onClick={() => setCursor(page.nextCursor ?? null)}>Next run facts</button> : null}
+      {page !== null ? <p>Snapshot high-water mark: {page.highWaterMark}</p> : null}
+      {fact === null ? null : <Inspector kind="event" identity={fact} />}
     </article>
   );
 }
 
-export function EventsView() {
+export function EventsView({ title = "Events", types }: { readonly title?: string; readonly types?: string }) {
+  const [fact, setFact] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
-  const load = useCallback((next: string | null) => api.events(next, PAGE_LIMIT), []);
+  const load = useCallback((next: string | null) => api.events(next, PAGE_LIMIT, undefined, types), [types]);
   const { page, error, reload } = usePage<EventItem>(load, cursor);
 
   if (error !== null) {
@@ -152,7 +146,7 @@ export function EventsView() {
   }
   return (
     <section aria-labelledby="events-heading">
-      <h2 id="events-heading">Events</h2>
+      <h2 id="events-heading">{title}</h2>
       <p className="note">
         Verified append-only facts for this project, read against high-water mark {page.highWaterMark}. A
         refresh resumes from the same cursor, so nothing is silently skipped.
@@ -166,7 +160,7 @@ export function EventsView() {
           totalLabel="events"
           row={(item) => (
             <tr key={item.sequence}>
-              <td>{item.sequence}</td>
+              <td><button type="button" onClick={() => setFact(String(item.sequence))}>{item.sequence}</button></td>
               <td>{item.type}</td>
               <td>{formatTime(item.occurredAt)}</td>
               <td>
@@ -178,9 +172,10 @@ export function EventsView() {
       )}
       {page.nextCursor !== null ? (
         <button type="button" onClick={() => setCursor(page.nextCursor)}>
-          Older events
+          Next events
         </button>
       ) : null}
+      {fact === null ? null : <Inspector kind="event" identity={fact} />}
     </section>
   );
 }

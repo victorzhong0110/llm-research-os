@@ -1,13 +1,14 @@
 /** Typed client for the local read API.
  *
  * The request types come from `generated/local-api.ts`, which is rendered from
- * the Python contracts. A server response is validated against the same
- * interface before it reaches a component, so a contract change surfaces as a
- * type error here rather than as an empty view.
+ * the Python contracts. Contract drift is checked during generation and CI type checking.
+ * TypeScript interfaces do not perform runtime validation.
  */
 
 import type {
   ArtifactView,
+  InspectionView,
+  LineageLink,
   CommandReceipt,
   Capabilities,
   Error as ApiError,
@@ -156,8 +157,8 @@ export const api = {
   workspace(): Promise<WorkspaceView> {
     return request<WorkspaceView>("/workspace");
   },
-  events(cursor: string | null, limit: number): Promise<Paged<EventPage["items"][number]>> {
-    return request<EventPage>(`/events${pageQuery(cursor, limit)}`).then((page) => ({
+  events(cursor: string | null, limit: number, runId?: string, types?: string): Promise<Paged<EventPage["items"][number]>> {
+    return request<EventPage>(`/events${pageQuery(cursor, limit)}${runId === undefined ? "" : `&runId=${encodeURIComponent(runId)}`}${types === undefined ? "" : `&type=${encodeURIComponent(types)}`}`).then((page) => ({
       items: page.items,
       nextCursor: page.nextCursor ?? null,
       highWaterMark: page.highWaterMark,
@@ -179,6 +180,10 @@ export const api = {
   },
   async research(): Promise<ResearchLedgerView> {
     return request<ResearchLedgerView>("/research");
+  },
+  inspect(kind: LineageLink["kind"], identity: string, via: ReadonlyArray<string> = []): Promise<InspectionView> {
+    const group = kind === "event" ? "events" : kind === "revision" ? "revisions" : "artifacts";
+    return request<InspectionView>(`/inspect/${group}/${encodeURIComponent(identity)}?via=${encodeURIComponent(JSON.stringify(via))}`);
   },
   artifact(digest: string): Promise<ArtifactView> {
     return request<ArtifactView>(`/artifacts/${encodeURIComponent(digest)}`);

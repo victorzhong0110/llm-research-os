@@ -77,7 +77,6 @@ from llm_research_os.research.requests import (
 from llm_research_os.runs.cancellation import (
     RunCancellationRequestDocument,
     load_run_cancellation_request,
-    request_cancellation,
 )
 from llm_research_os.runs.control import RunControl
 from llm_research_os.runs.errors import RunControlError
@@ -217,8 +216,21 @@ class ApplicationService:
         spec = _spec_from_snapshot(frozen.spec)
         _require_project(str(spec.metadata.id), self._workspace.project_id)
         _require_revision(spec.metadata.revision, command.expected_revision)
+        try:
+            report = TrustedKernel(_registry_from_snapshots(frozen.registry_manifests)).dry_run(
+                spec, workflow_id=operation.workflow_id
+            )
+        except (
+            ManifestLoadError,
+            OSError,
+            PlanningInputError,
+            RegistryError,
+            ValidationError,
+        ) as exc:
+            raise ApplicationError("dry-run-refused", "preflight did not produce a plan") from exc
         return _Outcome(
             result={
+                "dryRun": report.model_dump(mode="json", by_alias=True, exclude_none=True),
                 "planIdentity": {
                     "projectId": str(spec.metadata.id),
                     "revision": spec.metadata.revision,
@@ -245,7 +257,9 @@ class ApplicationService:
                         "kind": str(resource.kind),
                         "count": resource.count,
                         "paid": resource.paid,
-                        "maxCost": resource.max_cost,
+                        "maxCost": str(resource.max_cost)
+                        if resource.max_cost is not None
+                        else None,
                         "currency": resource.currency,
                         "maxWallTimeSeconds": resource.max_wall_time_seconds,
                     }
@@ -273,19 +287,34 @@ class ApplicationService:
         operation = command.operation
         if not isinstance(operation, RunCancelOperation) or frozen.cancellation is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
+        _require_project(frozen.cancellation.project_id, self._workspace.project_id)
         try:
             with self._open_store(create=False) as store:
-                result = request_cancellation(store, frozen.cancellation)
+                draft = frozen.cancellation.event_draft()
+                existing = store.get_event(frozen.cancellation.event.id)
+                if existing is not None:
+                    _require_identical_fact(draft, existing)
+                    stored = existing
+                else:
+                    stored = (
+                        RunControl(
+                            store,
+                            project_id=self._workspace.project_id,
+                            run_id=frozen.cancellation.run_id,
+                        )
+                        .append(draft, expected_last_sequence=command.expected_head)
+                        .stored
+                    )
         except (EventStoreError, ValueError) as exc:
             raise ApplicationError("run-cancel", "cancellation request was refused") from exc
         return _Outcome(
             result={
-                "runId": str(result.snapshot.run_id),
+                "runId": str(frozen.cancellation.run_id),
                 "disposition": "cancel-requested",
                 "observedStop": False,
                 "note": "A cancellation request was recorded. No process outcome is claimed.",
             },
-            fact_event_ids=(str(result.stored.event.id),),
+            fact_event_ids=(str(stored.event.id),),
         )
 
     def _revoke(self, command: ApplicationCommand) -> _Outcome:
@@ -306,19 +335,28 @@ class ApplicationService:
                 grant = control.rebuild().fold.grant(operation.grant_id)
                 if grant is None:
                     raise ApplicationError("unknown-grant", "grant is not recorded")
-                stored = control.append(
-                    grant_revoked_draft(
-                        project_id=self._workspace.project_id,
-                        grant_id=operation.grant_id,
-                        run_id=grant.run_id,
-                        attempt_id=grant.attempt_id,
-                        event_id=operation.event_id,
-                        time=command.submitted_at,
-                        source=_WORKER_EVENT_SOURCE,
-                        actor_id=command.actor_id,
-                        reason_code=operation.reason_code,
+                if grant.consumed_lease_id is not None:
+                    raise ApplicationError(
+                        "grant-consumed", "used authority cannot be revoked here"
                     )
+                draft = grant_revoked_draft(
+                    project_id=self._workspace.project_id,
+                    grant_id=operation.grant_id,
+                    run_id=grant.run_id,
+                    attempt_id=grant.attempt_id,
+                    event_id=operation.event_id,
+                    time=command.submitted_at,
+                    source=_WORKER_EVENT_SOURCE,
+                    actor_id=command.actor_id,
+                    reason_code=operation.reason_code,
                 )
+                existing = store.get_event(operation.event_id)
+                if existing is not None:
+                    _require_identical_fact(draft, existing)
+                    stored = existing
+                else:
+                    stored = control.append(draft, expected_last_sequence=command.expected_head)
+
         except (EventStoreError, RunControlError, ValueError) as exc:
             if isinstance(exc, ApplicationError):
                 raise
@@ -370,9 +408,11 @@ class ApplicationService:
             "experimentRevision": proposal.experiment_revision,
             "proposedSpecDigest": proposal.proposed_spec_digest,
             "specDiffDigest": proposal.spec_diff_digest,
-            "predictions": [str(item) for item in proposal.predictions],
+            "predictions": [
+                item.model_dump(mode="json", by_alias=True) for item in proposal.predictions
+            ],
             "falsificationConditions": [str(item) for item in proposal.falsification_conditions],
-            "riskAssessment": str(proposal.risk_assessment),
+            "riskAssessment": proposal.risk_assessment.model_dump(mode="json", by_alias=True),
             "rationaleCharacters": len(str(proposal.rationale)),
             "citations": list(resolved),
             "unresolvedCitations": list(unresolved),
@@ -424,8 +464,12 @@ class ApplicationService:
             )
         try:
             with self._open_store(create=False) as store:
-                result = ResearchControl(store, project_id=self._workspace.project_id).append(
-                    frozen.proposal.event_draft()
+                event_id, _sequence, _type = _append_or_recover_decision(
+                    store,
+                    project_id=self._workspace.project_id,
+                    draft=frozen.proposal.event_draft(),
+                    event_id=str(frozen.proposal.event.id),
+                    expected_head=command.expected_head if command.expected_head is not None else 0,
                 )
         except (ResearchControlError, ResearchLedgerError, EventStoreError) as exc:
             raise ApplicationError("proposal-refused", "the proposal was refused") from exc
@@ -436,7 +480,7 @@ class ApplicationService:
                 "runQueued": False,
                 "grantedPermissions": [],
             },
-            fact_event_ids=(str(result.stored.event.id),),
+            fact_event_ids=(event_id,),
         )
 
     def _validate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
@@ -730,6 +774,42 @@ class ApplicationService:
         """True when this decision fact is already stored, so a stale head can recover it."""
 
         operation = command.operation
+        if isinstance(operation, ProposalSubmitOperation) and frozen.proposal is not None:
+            _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
+            with self._open_store(create=False) as store:
+                existing = store.get_event(frozen.proposal.event.id)
+            return existing is not None and _same_committed_fact(
+                frozen.proposal.event_draft(), existing
+            )
+        if isinstance(operation, RunCancelOperation) and frozen.cancellation is not None:
+            _require_project(frozen.cancellation.project_id, self._workspace.project_id)
+            with self._open_store(create=False) as store:
+                existing = store.get_event(frozen.cancellation.event.id)
+            return existing is not None and _same_committed_fact(
+                frozen.cancellation.event_draft(), existing
+            )
+        if isinstance(operation, AuthorizationRevokeOperation):
+            with self._open_store(create=False) as store:
+                existing = store.get_event(operation.event_id)
+                grant = (
+                    WorkerControl(store, project_id=self._workspace.project_id)
+                    .rebuild()
+                    .fold.grant(operation.grant_id)
+                )
+            if existing is None or grant is None:
+                return False
+            draft = grant_revoked_draft(
+                project_id=self._workspace.project_id,
+                grant_id=operation.grant_id,
+                run_id=grant.run_id,
+                attempt_id=grant.attempt_id,
+                event_id=operation.event_id,
+                time=command.submitted_at,
+                source=_WORKER_EVENT_SOURCE,
+                actor_id=command.actor_id,
+                reason_code=operation.reason_code,
+            )
+            return _same_committed_fact(draft, existing)
         if not isinstance(operation, ResearchDecisionOperation) or frozen.decision is None:
             return False
         if not self._workspace.control_db.exists():
@@ -783,6 +863,10 @@ def _replay_document(document: dict[str, object]) -> dict[str, Any]:
 def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) -> dict[str, Any]:
     operation = command.operation
     kind = operation.kind
+    if isinstance(operation, (ProposalValidateOperation, ProposalSubmitOperation)):
+        if frozen.proposal is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {"kind": kind, "request": frozen.proposal.model_dump(mode="json", by_alias=True)}
     if isinstance(operation, SpecValidateOperation):
         if frozen.spec is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
@@ -804,6 +888,21 @@ def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) ->
             "specDigest": frozen.spec.digest(),
             "workflowId": operation.workflow_id,
         }
+    if isinstance(operation, PlanPreflightOperation):
+        if frozen.spec is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {
+            "kind": kind,
+            "specDigest": frozen.spec.digest(),
+            "registryDigests": list(frozen.registry_digests),
+            "workflowId": operation.workflow_id,
+        }
+    if isinstance(operation, RunCancelOperation):
+        if frozen.cancellation is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {"kind": kind, "request": frozen.cancellation.model_dump(mode="json", by_alias=True)}
+    if isinstance(operation, AuthorizationRevokeOperation):
+        return operation.model_dump(mode="json", by_alias=True)
     if isinstance(operation, ResearchDecisionOperation):
         if frozen.decision is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")

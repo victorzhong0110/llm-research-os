@@ -91,3 +91,17 @@ browser rather than by any test.
   automated, and CI drives no browser.
 - Approval of a proposal is R12; this surface dispatches a decision document a
   human has already authored, it does not offer an approve button.
+
+## Integration review correction (2026-10-05)
+
+This is an R11 preflight/cancellation/revocation slice, not completed R11 acceptance.
+Start and restore remain missing product work; the live R08 gap does not itself
+prevent implementing local browser operations. No acceptance rule is waived.
+CI now includes the inherited real Playwright browser job. The repaired browser
+retains and retries the exact serialized command, refuses a new intent while an
+outcome is uncertain, and exposes unused-grant revocation. Preflight shows the
+result rather than only its receipt metadata. Operator inputs must be absolute
+regular files staged within the workspace, without symlink ancestors. This is a
+same-user file boundary, not isolation from another process owned by that user.
+Browser results redact structured secret fields and host paths; resultDigest
+identifies the served redacted result. CLI receipts retain their original result.

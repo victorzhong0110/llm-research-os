@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, BinaryIO
@@ -19,7 +20,7 @@ from llm_research_os.evidence.extract import (
     MAX_EVIDENCE_BYTES,
     MAX_EXTRACTED_CHARS,
     MAX_PDF_PAGES,
-    extract_pdf_pages,
+    extract_text,
 )
 from llm_research_os.spec.io import MAX_DECODED_DEPTH, MAX_DECODED_NODES, SpecLoadError
 from llm_research_os.spec.io import decode_document_text as _decode_spec_document
@@ -132,8 +133,13 @@ def read_bounded_body(
     read = reader if callable(reader) else stream.read
     chunks: list[bytes] = []
     remaining = declared
+    deadline = time.monotonic() + limits.read_timeout_seconds
     while remaining > 0:
         chunk = read(min(_BODY_CHUNK_BYTES, remaining))
+        if time.monotonic() > deadline:
+            raise LocalApiError(
+                "query-timeout", "The request body exceeded its deadline.", status=408
+            )
         if not chunk:
             break
         chunks.append(chunk)
@@ -212,7 +218,7 @@ def extract_bounded_pdf(payload: bytes, *, limits: RequestLimits) -> dict[str, A
     if len(payload) > limits.max_evidence_bytes:
         raise bad_request("body-too-large", "PDF exceeds the bounded evidence size.")
     try:
-        text = extract_pdf_pages(payload)
+        text = extract_text(payload, "application/pdf")
     except Exception as exc:
         raise bad_request(
             "document-hostile", "The PDF was refused by the bounded extractor."
