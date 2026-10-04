@@ -47,6 +47,27 @@ This is a scope decision, not a self-resolution. Whether R11 may close with canc
 and revoke only, deferring start and restore until R08's live evidence exists, is
 for the maintainer and the planning/review assistant to decide. See COMM-0008.
 
+### Recorded partial delivery: R14 scope, 2026-10-05
+
+R14 delivered a versioned manifest contract with a closed permission set, a
+compatibility refusal, a bounded subprocess host for one reviewed same-user
+adapter, and enable/disable/uninstall. **No evaluator or provider extension
+point is exercised with a real external extension, there is no
+`researchos extensions` CLI command, and `BlockRegistry` is not merged into the
+extension registry.** The boundary is proven with one inline reviewed adapter
+rather than a third-party one.
+
+One finding is worth recording normatively: the resource limits a reviewed
+adapter runs under are **probed, not assumed**. macOS rejects `RLIMIT_AS`, and
+an unbounded-looking limit that the platform silently ignores is worse than an
+honest narrower set. The capability surface therefore reports the limits
+actually enforced. A limit is a bound, not a sandbox, and `trust="untrusted"`
+is refused because no verified isolation profile exists here.
+
+Whether R14 may close on a Python-only surface with one inline adapter, or
+requires a CLI and a real third-party extension, is for the maintainer and the
+planning/review assistant to decide. See COMM-0011.
+
 ### Recorded deviation: delivery is currently a stacked, unmerged sequence
 
 A later maintainer instruction on 2026-10-04 asked for the remaining packages to

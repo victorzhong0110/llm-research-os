@@ -10,6 +10,26 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R14 minimal extension mechanism and permission boundary: a versioned manifest
+  contract with a closed permission set, a compatibility refusal, a bounded
+  subprocess host for one reviewed same-user adapter, and explicit
+  enable/disable/uninstall. Loading a manifest is inert — read with `O_NOFOLLOW`
+  under a size bound, parsed as JSON, validated, with nothing imported, evaluated
+  or fetched.
+
+- R14 a declared permission is a request, not a grant. An unrecognised permission
+  refuses the manifest rather than being silently narrowed, and
+  `NEVER_GRANTED` names what this host will never provide whatever a manifest
+  asks: `execution.launch`, `control.write`, `events.write`, `artifacts.write`,
+  `authority.create`, `secrets.read`, `network.outbound`. `trust="untrusted"` is
+  refused outright because no verified isolation profile exists here.
+
+- R14 the enforced resource-limit set is probed, not assumed. macOS rejects
+  `RLIMIT_AS`, and a limit that cannot be applied is not a limit, so
+  `effective_limits()` probes the platform once and the capability surface
+  reports the set actually enforced. A limit is a bound, not a sandbox, and the
+  surface says so.
+
 - R13 real evaluation, comparison and human conclusions: a deterministic
   evaluator over a fixed, committed held-out set. Every evaluation records the
   dataset digest, evaluator version, split, seed and example count, stores the

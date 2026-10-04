@@ -38,7 +38,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134) and R13 (`r13-evaluation`, open PR); none is merged or accepted. R14–R16 are not started. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134), R13 (PR #135) and R14 (`r14-extension-boundary`, open PR); none is merged or accepted. R15–R16 are not started. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -314,6 +314,34 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   tooling reason in COMM-0009.
 - Next action / owner: Reviewer decides whether R13 may close without the report
   renderer, or whether it is required for the phase.
+
+### COMM-0011 — R14 adds a bounded extension surface; three scope gaps recorded
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0010.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; three scope gaps recorded, not resolved.
+- Message / decision: R14 adds a versioned manifest contract with a closed
+  permission set, a compatibility refusal, a bounded subprocess host for one
+  reviewed same-user adapter, and enable/disable/uninstall. Loading a manifest
+  is inert and is proven so by two tests that run the entry module and assert
+  its marker file never appears. A declared permission is a request: an unknown
+  name refuses the manifest rather than being narrowed, and `trust="untrusted"`
+  is refused because no verified isolation profile exists here.
+- Branch / head / base / PR: `r14-extension-boundary`, based on `r13-evaluation`
+  at `3e67bb7`; open PR, deliberately not merged.
+- Evidence / checks: [R14 candidate evidence](evidence/m3/acceptance-matrix.md#r14-candidate);
+  27 tests.
+- Gaps / required inputs: No evaluator or provider extension point is exercised
+  with a real external extension; no `researchos extensions` CLI command;
+  `BlockRegistry` is not merged into this registry, so blocks and extensions
+  remain separate concepts; the "removing training adapters leaves core
+  functional" acceptance bullet is not exercised because this package adds and
+  removes no training adapter.
+- Next action / owner: Reviewer decides whether R14 may close on a Python-only
+  surface with one inline adapter, or requires a CLI and a real third-party
+  extension.
 
 ## Message template
 

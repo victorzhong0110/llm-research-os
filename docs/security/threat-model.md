@@ -835,3 +835,41 @@ completeness, refused comparison, and the single-metric-cannot-conclude test;
 `tests/test_web_evaluation.py` real labelling, no-events-appended, and the
 conclusion refusal paths. Residual trust: the held-out set is small, so every
 comparison states its repeat-variance limitation in the document itself.
+
+
+### TM-091: An extension manifest executes code or obtains authority by declaring it
+
+A plugin surface that imports a manifest, or that quietly narrows an unknown
+permission, turns a declaration into a grant. Extension manifests are therefore
+read with `O_NOFOLLOW` under a size bound, parsed as JSON and validated without
+import, evaluation or network access; two tests run an entry module that writes
+a marker file and assert it does not appear, both when the manifest is accepted
+and when it is refused. Permissions form a closed set and an unrecognised name
+refuses the manifest rather than being dropped, so a capability the author
+expected is never silently absent. `NEVER_GRANTED` names what this host will
+never provide — `execution.launch`, `control.write`, `events.write`,
+`artifacts.write`, `authority.create`, `secrets.read`, `network.outbound` — and a
+manifest requesting one is refused. Incompatible contract versions are refused
+before anything else is trusted, and `trust="untrusted"` is refused outright
+because no verified isolation profile exists here.
+
+Gate: `tests/test_extensions.py` inert-load marker tests, unknown and
+never-granted permission refusals for every name, contract refusal, symlink and
+oversize refusals, and the untrusted trust-level refusal.
+
+### TM-092: An extension crashes, hangs, floods output, or inherits the operator's secrets
+
+A reviewed same-user adapter is still code that can fail, so its message,
+duration, output and resource use are bounded, and it receives a minimal
+environment rather than the caller's. The child is proven not to inherit
+`HOME`, `SSH_AUTH_SOCK` or provider keys, and a crash, a non-zero exit, a
+wall-clock timeout and oversized output each leave the registry intact. Output
+clipping is reported in byte counts so truncation is visible. Critically, the
+enforced resource-limit set is probed rather than assumed — macOS rejects
+`RLIMIT_AS` — and the capability surface reports what the platform actually
+applies, because a limit that cannot be set is not a limit. The surface states
+in plain text that these bounds are not a sandbox.
+
+Gate: `tests/test_extensions.py` crash, timeout, output-bound, environment-isolation
+and effective-limit-probe tests, plus a crashing extension leaving a healthy one
+resolvable.
