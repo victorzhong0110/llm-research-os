@@ -33,6 +33,36 @@ integration, and predecessor acceptance remain distinct gates. Start each next
 package from verified main only after its predecessor is merged and accepted;
 do not stack package branches or infer acceptance from a merge alone.
 
+### Historical deviation: initial delivery used a stacked, unmerged sequence
+
+A later maintainer instruction on 2026-10-04 asked for the remaining packages to
+be completed with no pull request merged yet. That is incompatible with the two
+rules immediately above — merge the predecessor before starting the next, and do
+not stack package branches — because neither can hold while every merge is
+withheld.
+
+Work therefore continues as a linear stack of one package per branch and one
+reviewable pull request per package, each based on the previous package's branch
+rather than on `main`. Each pull request states its base explicitly. The
+following remain unchanged and are not treated as satisfied by the stack:
+
+- package acceptance still requires review against the unchanged criteria;
+- a merge is still an integration fact, not acceptance;
+- R08's live two-host and GPU evidence stays pending-live and Checkpoint B stays
+  open;
+- no package renumbering, no parallel R work, and no inference that a later
+  package's presence implies an earlier one was accepted.
+
+This deviation is recorded for maintainer review rather than resolved silently.
+If the maintainer prefers sequential unmerged work without stacking, the
+alternative is to pause at the first unmerged package; that decision belongs to
+the maintainer, not to the implementer.
+
+The maintainer superseded the no-merge direction on 2026-10-04 at 21:59:47
+Asia/Taipei: Codex fixes and merges R09/R10 while the other implementer completes
+the next assigned package. Integrate the existing stack sequentially; downstream
+work must synchronize with each merged baseline. This does not close Checkpoint B.
+
 Missing evidence remains pending-live. This instruction authorizes the remaining
 implementation, review, and sequential merges; it does not waive acceptance
 criteria, supply missing access, authorize paid resources, or publish a release.

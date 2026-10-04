@@ -30,7 +30,7 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-04, after 18:41:11 Asia/Taipei**. Verified execution baseline:
+Snapshot date: **2026-10-04, after 21:59:47 Asia/Taipei**. Verified execution baseline:
 `ed6fb30d6cb239ad37a34404814183764bce2a58`.
 Verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
 ([main CI 37183362803](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803)
@@ -38,23 +38,25 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08; Checkpoint B remains open. R09 has not started. The maintainer authorized sequential completion through R16 on 2026-10-04, merging each predecessor first; the previous B freeze is superseded. Existing acceptance dependencies remain. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. R09 has a candidate implementation on branch `r09-local-api` (open PR, deliberately unmerged) and is not accepted. R10 is submitted in #132; another implementer owns the next assigned package. The previous B freeze is superseded by the 2026-10-04 direction. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Codex is assigned the remaining implementation, review and sequential integration. COMM-0003 acknowledges the assignment and COMM-0002 handoff. No additional agent was assigned or started. |
-| Next gate | Follow the [live acceptance runbook](guides/r08-live-acceptance.md) and [evidence checklist](evidence/m3/r08-live-acceptance.md). Connection configuration and candidate GPU execution access are still missing; see COMM-0004. |
+| Responsibility | The maintainer reassigned Codex to fix and merge #131/#132; another implementer completes the next package. Codex starts no additional package. |
+| Next gate | R08: supply connection configuration and GPU/Kaggle access, see COMM-0004. R09: review the transport deviation (COMM-0005) and the stacking deviation (COMM-0006) before R10 is built on it. |
 
 ## Open handoffs
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
+| COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
 
 COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
-the acknowledgement does not establish acceptance.
+the acknowledgement does not establish acceptance. COMM-0005 and COMM-0006 are
+review requests raised by the R09 slice, not acknowledgements by anyone else.
 
 ## Message history
 
@@ -137,6 +139,85 @@ the acknowledgement does not establish acceptance.
 - Next action / owner: Maintainer/resource owner supplies the existing access
   details; Codex performs the real runs, fixes observed defects, merges evidence,
   reviews B and then advances to R09. No acceptance criteria are waived.
+
+### COMM-0005 — R09 local API is a standard-library WSGI surface, not FastAPI
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0003.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; proposed normative change awaiting review.
+- Message / decision: R09 was implemented as a loopback-only WSGI application on
+  `wsgiref` rather than the "optional FastAPI/ASGI" the plan described. Rationale
+  is dependency restraint: the core carries five dependencies, and a framework plus
+  an ASGI server would add several more, including compiled ones, to every install
+  and to the supply chain already tracked as TM-016. The documented contract —
+  versioned JSON, closed structured errors, same-origin sessions, bounded
+  projections, resumable SSE with polling fallback — is unchanged. The framework
+  would not have supplied the Host, Origin, CSRF or parser-budget controls; those
+  are explicit code in either design.
+- Branch / head / base / PR: `r09-local-api`, based on
+  `docs/sequential-r08-r16-acceptance` at `021f18e`; open PR, deliberately not
+  merged. Exact submitted head and CI outcome are recorded by that PR.
+- Evidence / checks: [R09 candidate evidence](evidence/m3/acceptance-matrix.md#r09-candidate);
+  `tests/test_web_api.py` 50 passed; `mypy src` clean over 241 files; ruff, schema
+  `--check-all`, event catalog, project status and digest conformance passed.
+- Gaps / required inputs: No browser has loaded the surface, so there is no E2E or
+  accessibility evidence. A large-volume query baseline is unmeasured. `wsgiref` is
+  a development server and is not hardened against a hostile network peer.
+- Next action / owner: Reviewer decides whether to accept the stdlib transport or
+  require a framework-backed implementation. Replacing the transport later does not
+  change the protocol document, so this need not block R10 design work.
+
+### COMM-0006 — Recorded conflict between "no merges yet" and "do not stack branches"
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0005.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; maintainer decision required. Not silently resolved.
+- Message / decision: A later maintainer instruction asked for the remaining
+  packages to be completed with no pull request merged. The canonical plan requires
+  the opposite in two places: start each package from verified main only after its
+  predecessor is merged and accepted, and do not stack package branches. Those cannot
+  both hold while every merge is withheld. Rather than pick one silently, delivery
+  continues as a linear stack of one package per branch and one reviewable PR per
+  package, each based on the previous package's branch, with the base stated on every
+  PR. Acceptance is still a separate review, a merge is still an integration fact
+  rather than acceptance, R08 live evidence is still pending-live, and Checkpoint B is
+  still open.
+- Branch / head / base / PR: `r09-local-api` based on
+  `docs/sequential-r08-r16-acceptance`; see the plan's "Recorded deviation" section.
+- Evidence / checks: Plan section
+  "Recorded deviation: delivery is currently a stacked, unmerged sequence".
+- Gaps / required inputs: If the maintainer prefers unmerged work without stacking,
+  the alternative is to pause at the first unmerged package. That is a maintainer
+  decision, not an implementer one.
+- Next action / owner: Maintainer confirms the stacking deviation or directs a pause.
+
+### COMM-0008 — Maintainer assigns direct repair and sequential integration
+
+- Date/time: 2026-10-04T21:59:47+08:00 (maintainer instruction).
+- From: Codex, planning/review and integration.
+- To: Maintainer and next-package implementer.
+- Reply to: COMM-0005 and COMM-0006; supersedes the historical no-merge direction.
+- State: Open; repair/integration in progress.
+- Message / decision: The maintainer explicitly asked Codex to fix and merge the
+  two submitted packages while another AI completes the next work package.
+  The loopback stdlib transport is approved for this scope after the bounded
+  threading, SSE lifetime, read-only query and isolated-parser corrections.
+- Branch / head / base / PR: #130 merged to main at
+  `a5d730cc171318daafda13dc81d2b0cd6bc18d73`. R09 original reviewed head
+  `4cc2f825dec7942fbe7b4ad956eb1f31082939bd` (#131); R10 original head
+  `abd3524e36d56e6bf711dbfc91878f3bff0e09c0` (#132). Exact repair heads and
+  final checks are recorded in their PRs and subsequent integration messages.
+- Evidence / checks: R09 API/socket/regressions: 70 passed; real 10k metadata
+  query timings in the acceptance matrix. Full validation and final-head CI pending.
+- Gaps / required inputs: No B acceptance, GPU/selected-host evidence or release
+  is claimed. R10 missing inspection/lineage scope is being completed.
+- Next action / owner: Codex validates and merges R09, then R10. The downstream
+  implementer synchronizes against merged main before integration; no read receipt
+  or acknowledgement from that implementer is claimed.
 
 ## Message template
 
