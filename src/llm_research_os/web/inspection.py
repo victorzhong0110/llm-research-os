@@ -48,6 +48,8 @@ def references(value: Any) -> list[dict[str, str]]:
             )
             if not kind and key.endswith("Sequence") and item.isascii() and item.isdigit():
                 kind = "event"
+            if kind == "event" and not key.endswith("Sequence"):
+                item = "id:" + item
             if kind:
                 result[(kind, item)] = {"kind": kind, "target": item, "label": key}
         elif isinstance(item, int) and not isinstance(item, bool) and key.endswith("Sequence"):

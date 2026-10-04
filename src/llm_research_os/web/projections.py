@@ -381,9 +381,12 @@ class ReadProjections:
     def event_document(self, identity: str) -> dict[str, Any]:
         from llm_research_os.web.inspection import references, safe_document
 
+        by_id = identity.startswith("id:")
+        if by_id:
+            identity = identity[3:]
         if not identity or len(identity) > 255:
             raise bad_request("parameter-invalid", "The event identity is invalid.")
-        if identity.isascii() and identity.isdigit():
+        if not by_id and identity.isascii() and identity.isdigit():
             sequence = int(identity)
             if not 1 <= sequence <= CLOUD_EVENTS_INTEGER_MAX:
                 raise bad_request("parameter-invalid", "The event sequence is invalid.")

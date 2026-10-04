@@ -133,7 +133,7 @@ def test_event_inspection_and_artifact_links_resolve_without_cross_project_acces
     status, _, record = client.request("GET", PREFIX + "/inspect/events/review.real")
     assert status == 200
     Draft202012Validator(build_schema()).validate(record)
-    assert {link["target"] for link in record["links"]} == {"decision.real", "1"}
+    assert {link["target"] for link in record["links"]} == {"id:decision.real", "1"}
     body = json.dumps(record)
     assert "event-secret" not in body and "/private/code" not in body
     assert client.request("GET", PREFIX + "/inspect/events/foreign.private")[0] == 404
@@ -446,3 +446,42 @@ def test_sse_event_cap_holds_after_partial_poll_and_new_facts(tmp_path: Path) ->
 def test_invalid_query_bounds_are_parameter_errors(tmp_path: Path, query: str) -> None:
     status, _, body = _client(_root(tmp_path)).request("GET", PREFIX + "/events", query=query)
     assert status == 400 and body["code"] == "parameter-invalid"
+
+
+def test_numeric_event_id_link_cannot_resolve_as_an_unrelated_sequence(tmp_path: Path) -> None:
+    root = _root(tmp_path)
+    with EventStore(root / "control.db") as store:
+        store.append(
+            _draft(
+                "custom.fixture",
+                {"value": "wrong-record"},
+                event_id="evt.first",
+                project="proj-alpha",
+                run="run-late",
+            )
+        )
+        store.append(
+            _draft(
+                "custom.fixture",
+                {"value": "correct-record"},
+                event_id="1",
+                project="proj-alpha",
+                run="run-late",
+            )
+        )
+        store.append(
+            _draft(
+                "custom.fixture",
+                {"decisionEventId": "1"},
+                event_id="evt.ref",
+                project="proj-alpha",
+                run="run-late",
+            )
+        )
+    client = _client(root)
+    _, _, ref = client.request("GET", PREFIX + "/inspect/events/evt.ref")
+    assert ref["links"][0]["target"] == "id:1"
+    status, _, record = client.request(
+        "GET", PREFIX + "/inspect/events/" + ref["links"][0]["target"]
+    )
+    assert status == 200 and record["document"]["data"]["payload"]["value"] == "correct-record"
