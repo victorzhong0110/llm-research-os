@@ -58,7 +58,10 @@ if not (root / "workspace.json").exists():
         for i in range(1, 252):
             _append(store, i, project="proj-foreign")
         control = RunControl(store, project_id="proj-alpha", run_id="run-late")
-        control.append(_queued_draft(project="proj-alpha", run="run-late"))
+        queued = _queued_draft(project="proj-alpha", run="run-late")
+        queued["data"]["payload"]["specDigest"] = spec_obj.digest
+        queued["data"]["evidenceRefs"] = [result_obj.digest]
+        control.append(queued)
         control.append(_started_draft(project="proj-alpha", run="run-late"))
         control.append(
             _draft(
