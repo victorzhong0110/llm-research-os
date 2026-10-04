@@ -5,6 +5,12 @@ and [development governance](docs/development-governance.md) before changes.
 For M3 use the single [R01–R16 plan](docs/plans/m3-development-plan.md) and
 [acceptance matrix](docs/evidence/m3/acceptance-matrix.md). Older #80/#84 draft
 mappings do not override the corrected plan or explicit maintainer instructions.
+Read [the collaboration communication log](docs/collaboration-log.md) before
+resuming work. Keep its current snapshot and open handoffs accurate; append your
+own dated message for assignments, review results, blockers, and handoffs in the
+same PR as the related work. Reply by message ID and record only acknowledgements
+actually received. The log preserves communication; the plan, acceptance matrix,
+and maintainer instructions continue to govern scope and authority.
 
 ## Responsibilities
 
