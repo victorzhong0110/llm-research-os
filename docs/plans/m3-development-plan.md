@@ -33,6 +33,20 @@ integration, and predecessor acceptance remain distinct gates. Start each next
 package from verified main only after its predecessor is merged and accepted;
 do not stack package branches or infer acceptance from a merge alone.
 
+### Recorded partial delivery: R11 scope, 2026-10-04
+
+R11 delivered `plan.preflight`, `run.cancel` and `authorization.revoke` through
+the shared application services, so the browser, the CLI and event replay cannot
+disagree. **Start, reconnect/observe and restore were not delivered.** They
+depend on the R08 reviewed native launch path and its live two-host evidence, and
+restore prerequisites cannot be met without a real Attempt. No stub was left in
+their place, and the R11 acceptance bullets covering disconnect/reconnect and
+restore prerequisites are recorded as not met rather than claimed.
+
+This is a scope decision, not a self-resolution. Whether R11 may close with cancel
+and revoke only, deferring start and restore until R08's live evidence exists, is
+for the maintainer and the planning/review assistant to decide. See COMM-0008.
+
 ### Recorded deviation: delivery is currently a stacked, unmerged sequence
 
 A later maintainer instruction on 2026-10-04 asked for the remaining packages to

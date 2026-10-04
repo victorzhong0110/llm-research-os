@@ -2,17 +2,29 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, exchangeBootstrap, SessionExpiredError, takeBootstrapSecret } from "./api";
+import type { WorkspaceView } from "./generated/local-api";
 import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
+import { OperationsView } from "./components/OperationsView";
 import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
 import { Failure, Loading } from "./components/Primitives";
 
-type ViewId = "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
+type ViewId =
+  | "artifacts"
+  | "environment"
+  | "events"
+  | "graph"
+  | "legend"
+  | "operations"
+  | "project"
+  | "revisions"
+  | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "project", label: "Project" },
   { id: "revisions", label: "Spec revisions" },
   { id: "graph", label: "Execution graph" },
   { id: "runs", label: "Runs" },
+  { id: "operations", label: "Operations" },
   { id: "events", label: "Events and logs" },
   { id: "artifacts", label: "Artifacts" },
   { id: "environment", label: "Environment" },
@@ -28,6 +40,8 @@ type Phase =
 export function App() {
   const [phase, setPhase] = useState<Phase>({ status: "bootstrapping" });
   const [view, setView] = useState<ViewId>("project");
+  const [workspace, setWorkspace] = useState<WorkspaceView | null>(null);
+  const expectedHead = workspace?.highWaterMark;
 
   const establish = useCallback(async () => {
     setPhase({ status: "bootstrapping" });
@@ -36,8 +50,13 @@ export function App() {
       if (secret !== null) {
         await exchangeBootstrap(secret);
       }
-      const workspace = await api.workspace();
-      setPhase({ status: "ready", projectId: workspace.projectId });
+      // Always read the session, not just on bootstrap: a reload keeps the
+      // HttpOnly cookie but loses the double-submit CSRF value, and without it
+      // every write would be refused.
+      await api.session();
+      const loaded = await api.workspace();
+      setWorkspace(loaded);
+      setPhase({ status: "ready", projectId: loaded.projectId });
     } catch (error) {
       if (error instanceof SessionExpiredError) {
         setPhase({ status: "needs-secret" });
@@ -117,6 +136,9 @@ export function App() {
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}
+        {view === "operations" && expectedHead !== undefined ? (
+          <OperationsView expectedHead={expectedHead} />
+        ) : null}
       </main>
     </div>
   );

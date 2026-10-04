@@ -9,8 +9,9 @@ from __future__ import annotations
 import socket
 import sys
 from pathlib import Path
+from socketserver import ThreadingMixIn
 from typing import Any, Final
-from wsgiref.simple_server import WSGIRequestHandler, make_server
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.workspace import load_workspace
@@ -22,6 +23,22 @@ LOOPBACK_HOST: Final = "127.0.0.1"
 DEFAULT_PORT: Final = 8787
 MAX_PORT: Final = 65535
 SOCKET_TIMEOUT_SECONDS: Final = 30.0
+
+
+class _ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
+    """Serve each request on its own thread.
+
+    ``wsgiref``'s default server handles one request at a time, so a single
+    held or slow connection would block every other request — and the bounded
+    concurrency gate in ``web.limits`` could never refuse anything, because
+    requests would never overlap to reach it. Threading is what makes that
+    limit real in the deployed server rather than only in-process. Daemon
+    threads mean a stuck worker cannot keep the process alive after Ctrl-C.
+    """
+
+    daemon_threads = True
+    # A short accept backlog plus no reaping delay is enough for one operator.
+    request_queue_size = 16
 
 
 class _QuietHandler(WSGIRequestHandler):
@@ -83,7 +100,9 @@ def serve(root: Path, *, host: str = LOOPBACK_HOST, port: int = DEFAULT_PORT) ->
             file=sys.stderr,
         )
         return 2
-    server = make_server(host, port, api.wsgi, handler_class=_QuietHandler)
+    server = make_server(
+        host, port, api.wsgi, server_class=_ThreadingWSGIServer, handler_class=_QuietHandler
+    )
     bound = server.server_address[0]
     bound_host = bound[0] if isinstance(bound, tuple) else host
     bound_port = bound[1] if isinstance(bound, tuple) and isinstance(bound[1], int) else port

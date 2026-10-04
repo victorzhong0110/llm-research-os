@@ -22,8 +22,11 @@ from llm_research_os.application.models import (
     ApplicationCommand,
     ApplicationOperation,
     ApplicationReceipt,
+    AuthorizationRevokeOperation,
     PlanDryRunOperation,
+    PlanPreflightOperation,
     ResearchDecisionOperation,
+    RunCancelOperation,
     RunShowOperation,
     RunSimulateOperation,
     SpecDiffOperation,
@@ -65,11 +68,22 @@ from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
     validate_decision_record_request,
 )
+from llm_research_os.runs.cancellation import (
+    RunCancellationRequestDocument,
+    load_run_cancellation_request,
+    request_cancellation,
+)
 from llm_research_os.runs.control import RunControl
 from llm_research_os.runs.errors import RunControlError
 from llm_research_os.runs.models import run_snapshot_document
 from llm_research_os.spec.diff import semantic_diff
-from llm_research_os.spec.io import SpecLoadError, decode_document_text
+from llm_research_os.spec.io import (
+    MAX_DECODED_DEPTH,
+    MAX_DECODED_NODES,
+    MAX_DOCUMENT_BYTES,
+    SpecLoadError,
+    decode_document_text,
+)
 from llm_research_os.spec.models import ResearchSpec
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.errors import (
@@ -79,8 +93,15 @@ from llm_research_os.storage.errors import (
 )
 from llm_research_os.storage.models import StoredEvent
 from llm_research_os.storage.schema import SCHEMA_VERSION
+from llm_research_os.workers.control import WorkerControl
+from llm_research_os.workers.drafts import grant_revoked_draft
 
 _MAX_DIGEST_BYTES = 1_048_576
+
+
+# A control-plane source for Worker grant facts. The browser revokes authority as
+# a control-plane record; it never acts as, or holds credentials for, a Worker.
+_WORKER_EVENT_SOURCE = "researchos-dev/projects/control-plane"
 
 
 class ApplicationService:
@@ -164,7 +185,142 @@ class ApplicationService:
             return self._run_show(command)
         if kind == "run.simulate":
             return self._simulate(command, frozen)
+        if kind == "plan.preflight":
+            return self._preflight(command, frozen)
+        if kind == "run.cancel":
+            return self._cancel(command, frozen)
+        if kind == "authorization.revoke":
+            return self._revoke(command)
         raise ApplicationError("operation-unsupported", "operation is not implemented")
+
+    def _preflight(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        """Describe what a plan requires. Reads only; authorizes nothing.
+
+        The reported limits are the ones this build actually enforces, and
+        ``launchAllowed`` is always false: a preflight report is not a launch
+        credential.
+        """
+
+        operation = command.operation
+        if not isinstance(operation, PlanPreflightOperation) or frozen.spec is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        spec = _spec_from_snapshot(frozen.spec)
+        _require_project(str(spec.metadata.id), self._workspace.project_id)
+        _require_revision(spec.metadata.revision, command.expected_revision)
+        return _Outcome(
+            result={
+                "planIdentity": {
+                    "projectId": str(spec.metadata.id),
+                    "revision": spec.metadata.revision,
+                    "specDigest": content_digest(
+                        spec.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    ),
+                },
+                "target": {
+                    "workflows": [str(workflow.id) for workflow in spec.workflows],
+                    "datasets": [str(dataset.id) for dataset in spec.datasets],
+                    "models": [str(model.id) for model in spec.models],
+                },
+                "policy": {
+                    "paidActionsRequireApproval": spec.policies.paid_actions_require_approval,
+                    "destructiveActionsRequireApproval": (
+                        spec.policies.destructive_actions_require_approval
+                    ),
+                    "preserveAiDissent": spec.policies.preserve_ai_dissent,
+                    "unknownEvidenceMayTrain": spec.policies.unknown_evidence_may_train,
+                },
+                "resources": [
+                    {
+                        "id": str(resource.id),
+                        "kind": str(resource.kind),
+                        "count": resource.count,
+                        "paid": resource.paid,
+                        "maxCost": resource.max_cost,
+                        "currency": resource.currency,
+                        "maxWallTimeSeconds": resource.max_wall_time_seconds,
+                    }
+                    for resource in spec.resources
+                ],
+                "registry": list(frozen.registry_digests),
+                "enforcedLimits": {
+                    "documentBytes": MAX_DOCUMENT_BYTES,
+                    "decodedDepth": MAX_DECODED_DEPTH,
+                    "decodedNodes": MAX_DECODED_NODES,
+                },
+                "resourceRequirements": "declared in the spec; not enforced by a preflight",
+                "budgetRequirement": "declared in the spec; no reservation is made by a preflight",
+                "launchAllowed": False,
+            }
+        )
+
+    def _cancel(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        """Append exactly one cancellation-request fact through RunControl CAS.
+
+        The receipt proves a *request* was committed. It is not an observed stop
+        and must not be rendered as one.
+        """
+
+        operation = command.operation
+        if not isinstance(operation, RunCancelOperation) or frozen.cancellation is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        try:
+            with self._open_store(create=False) as store:
+                result = request_cancellation(store, frozen.cancellation)
+        except (EventStoreError, ValueError) as exc:
+            raise ApplicationError("run-cancel", "cancellation request was refused") from exc
+        return _Outcome(
+            result={
+                "runId": str(result.snapshot.run_id),
+                "disposition": "cancel-requested",
+                "observedStop": False,
+                "note": "A cancellation request was recorded. No process outcome is claimed.",
+            },
+            fact_event_ids=(str(result.stored.event.id),),
+        )
+
+    def _revoke(self, command: ApplicationCommand) -> _Outcome:
+        """Revoke an unused Worker grant as a control-plane fact.
+
+        This deliberately uses the control plane rather than the Worker plane:
+        ``WorkerPlane`` needs an HMAC key, and a browser must never hold a
+        Worker credential. Revocation is a control-plane record of an authority
+        that is no longer valid, not a Worker-plane action.
+        """
+
+        operation = command.operation
+        if not isinstance(operation, AuthorizationRevokeOperation):
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        try:
+            with self._open_store(create=False) as store:
+                control = WorkerControl(store, project_id=self._workspace.project_id)
+                grant = control.rebuild().fold.grant(operation.grant_id)
+                if grant is None:
+                    raise ApplicationError("unknown-grant", "grant is not recorded")
+                stored = control.append(
+                    grant_revoked_draft(
+                        project_id=self._workspace.project_id,
+                        grant_id=operation.grant_id,
+                        run_id=grant.run_id,
+                        attempt_id=grant.attempt_id,
+                        event_id=operation.event_id,
+                        time=command.submitted_at,
+                        source=_WORKER_EVENT_SOURCE,
+                        actor_id=command.actor_id,
+                        reason_code=operation.reason_code,
+                    )
+                )
+        except (EventStoreError, RunControlError, ValueError) as exc:
+            if isinstance(exc, ApplicationError):
+                raise
+            raise ApplicationError("authorization-revoke", "grant revocation was refused") from exc
+        return _Outcome(
+            result={
+                "grantId": operation.grant_id,
+                "disposition": "revoked",
+                "launchAllowed": False,
+            },
+            fact_event_ids=(str(stored.event.id),),
+        )
 
     def _validate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation
@@ -634,6 +790,15 @@ def _freeze_operation(operation: ApplicationOperation) -> _FrozenOperation:
                 registry_digests=digests,
                 registry_manifests=manifests,
             )
+        if isinstance(operation, PlanPreflightOperation):
+            digests, manifests = _freeze_registry(operation.registry)
+            return _FrozenOperation(
+                spec=_read_snapshot(Path(operation.document)),
+                registry_digests=digests,
+                registry_manifests=manifests,
+            )
+        if isinstance(operation, RunCancelOperation):
+            return _FrozenOperation(cancellation=_freeze_cancellation(Path(operation.request)))
     except RegistryError as exc:
         if isinstance(operation, PlanDryRunOperation):
             raise ApplicationError("dry-run-refused", "dry-run did not produce a report") from exc
@@ -782,8 +947,21 @@ class _FrozenOperation:
     new_spec: _Snapshot | None = None
     decision: _Snapshot | None = None
     simulation_request: _Snapshot | None = None
+    cancellation: RunCancellationRequestDocument | None = None
     registry_digests: tuple[str, ...] = ()
     registry_manifests: tuple[_Snapshot, ...] = ()
+
+
+def _freeze_cancellation(path: Path) -> RunCancellationRequestDocument:
+    """Load and freeze one cancellation request before it is dispatched."""
+
+    try:
+        document: RunCancellationRequestDocument = load_run_cancellation_request(path)
+    except (OSError, ValueError, ValidationError) as exc:
+        raise ApplicationError(
+            "cancellation-invalid", "cancellation request failed validation"
+        ) from exc
+    return document
 
 
 def _require_project(document_project: str, workspace_project: str) -> None:

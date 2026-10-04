@@ -18,17 +18,23 @@ from collections.abc import Callable, Iterable
 from typing import Any, Final
 from urllib.parse import parse_qs
 
+from pydantic import ValidationError
+
 from llm_research_os.application.errors import ApplicationError
+from llm_research_os.application.models import ApplicationCommand
+from llm_research_os.application.service import ApplicationService
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage import EventStore
 from llm_research_os.web.assets import AssetError
 from llm_research_os.web.assets import load as load_asset
+from llm_research_os.web.contracts import CommandReceipt
 from llm_research_os.web.errors import LOCAL_API_VERSION, LocalApiError, bad_request, not_found
 from llm_research_os.web.limits import (
     ConcurrencyGate,
     RequestLimits,
     bounded_document,
+    decode_bounded_json,
     document_kind,
     json_bytes,
     read_bounded_body,
@@ -170,6 +176,10 @@ class LocalApi:
             if method != "GET":
                 raise LocalApiError("method-not-allowed", "Stream with GET.", status=405)
             return self._stream(resume=_resume(environ, _query(environ)))
+        if route == "/commands":
+            if method != "POST":
+                raise LocalApiError("method-not-allowed", "Submit a command with POST.", status=405)
+            return self._command(environ)
         if route == "/preview/document":
             if method != "POST":
                 raise LocalApiError(
@@ -300,6 +310,49 @@ class LocalApi:
                 "workspace-invalid", "The workspace event store does not exist.", status=503
             )
         return EventStore(self._workspace.control_db, require_existing=True)
+
+    def _command(self, environ: dict[str, Any]) -> Response:
+        """Execute one caller-owned application command.
+
+        The browser supplies the command identity. The shared service owns the
+        durable receipt, so a double-click, a retransmission or a second window
+        replays the first receipt instead of appending a second fact. The
+        browser cannot mint authority: it dispatches commands that a human
+        already authored, and every receipt reports a request rather than an
+        observed process outcome.
+        """
+
+        payload = read_bounded_body(
+            environ["wsgi.input"],
+            content_length=environ.get("CONTENT_LENGTH"),
+            limits=self._limits,
+        )
+        if not payload:
+            raise bad_request("document-invalid", "Send one application command document.")
+        document = decode_bounded_json(payload, limits=self._limits)
+        try:
+            command = ApplicationCommand.model_validate(document)
+        except ValidationError as exc:
+            raise bad_request(
+                "document-invalid", "The command document failed validation."
+            ) from exc
+        try:
+            receipt = ApplicationService.open(self._workspace.root).execute(command)
+        except ApplicationError as exc:
+            raise LocalApiError(
+                "command-refused",
+                "The command was refused by the shared service.",
+                status=409,
+            ) from exc
+        # Validated against the same contract the browser types are generated
+        # from, so a shape drift fails here rather than in the client.
+        try:
+            document = CommandReceipt.model_validate(receipt).model_dump(mode="json", by_alias=True)
+        except ValidationError as exc:
+            raise LocalApiError(
+                "internal-error", "The command receipt did not match its contract.", status=500
+            ) from exc
+        return self._json(document)
 
     def _preview(self, environ: dict[str, Any], query: dict[str, str]) -> Response:
         payload = read_bounded_body(

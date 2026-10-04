@@ -741,3 +741,42 @@ Gate: `tests/test_web_assets.py` traversal, symlink, directory, content-type,
 bundle-without-session and API-still-gated tests; `uv build` verified to ship
 `web/static` and no `node_modules`. Residual trust: a same-user local process can
 read the installed package files directly, as it could before.
+
+
+### TM-086: A browser command duplicates work or reports a request as an outcome
+
+A click that is dispatched twice, a second window, or a retry after a lost
+response must not append a second fact, and an accepted cancellation must never
+be shown as a stopped process. The browser mints one command identity per
+operator intent and reuses it on retry, so the shared service's durable receipt
+decides: same identity and content replays the prior receipt, same identity with
+different content is refused, and a stale `expectedHead` or `expectedRevision`
+fails visibly. A 5xx or transport loss is reported as *uncertain* with the
+identity retained, never as success or failure, and resending it either replays
+or appends one fact. The cancellation receipt carries `observedStop: false` and
+the run index keeps reporting whatever the run's facts support, so a request
+cannot silently become an outcome. Commands reuse the CLI's services rather than
+a browser-side state machine, so replay and the CLI cannot disagree.
+
+Gate: `tests/test_web_commands.py` repeat/replay, conflicting content, two
+windows, terminal-run refusal, unknown-grant refusal, session/CSRF/Origin
+refusals and the `observedStop` assertion; verified in Chrome, where a committed
+cancellation left the run index reading `Running`. Residual trust: a real
+double-click is not driven in CI, which runs no browser; the receipt semantics
+are covered in pytest, not by an end-to-end click.
+
+### TM-087: A browser command needs a Worker credential to revoke authority
+
+Revoking a grant through the Worker plane would require an HMAC key, putting a
+Worker credential in the browser's path and turning a read-plus-cancel surface
+into a launch-capable one. Revocation therefore appends one `grant.revoked` fact
+through the control plane, which needs no Worker credential, never grants, never
+completes or stops work, and refuses an unknown grant. No command in this surface
+can report `launchAllowed: true`, and the preflight that shows a plan before
+authorization is read-only and always reports false.
+
+Gate: `tests/test_web_commands.py` unknown-grant refusal, preflight
+`launchAllowed: false`, and the operations surface asserting that a `true`
+`launchAllowed` would be flagged. Residual trust: any local process running as the
+same user can append facts directly to the store; this boundary is about the
+browser surface, not about the filesystem.

@@ -10,6 +10,25 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R11 browser operations: `POST /api/v0alpha1/commands` dispatches caller-owned
+  application commands through the same shared services the CLI uses, so browser,
+  CLI and event replay cannot disagree. Three operations are exposed:
+  `plan.preflight` (read-only plan identity, target, policy, declared resources and
+  enforced limits, always `launchAllowed: false`), `run.cancel` (exactly one
+  cancellation-request fact through RunControl CAS) and `authorization.revoke`.
+
+- R11 idempotency by durable identity rather than debounce. The browser mints one
+  command identity per operator intent and reuses it on retry, so the shared
+  receipt log decides: the same identity and content replays the prior receipt,
+  the same identity with different content is refused, a second window replays,
+  and a 5xx or transport loss is reported as *uncertain* with the identity
+  retained rather than as success or failure.
+
+- R11 `authorization.revoke` records a control-plane `grant.revoked` fact through
+  `WorkerControl` rather than `WorkerPlane`. `WorkerPlane` requires an HMAC key,
+  and a browser must never hold a Worker credential, so revoking authority as a
+  Worker action would have put one in the browser's path.
+
 
 - R10 read-only research workbench: a React 19 + TypeScript + Vite surface over
   the verified EventStore folds and the CAS, with the built bundle committed and
@@ -91,6 +110,18 @@ authorized release.
   bounded persistent staging, actual host identity checks and atomic private
   workspace publication. The existing preparation receipt remains non-launching;
   remote executor/recovery and new authorized two-host/GPU acceptance remain open.
+
+### Fixed
+
+- The local workbench client never sent the double-submit CSRF token, so every
+  browser write was refused. Found by running the real page; the unit tests set
+  the header directly and could not see it.
+- A page reload lost the CSRF value, so every write after a refresh would have
+  been refused. The session is now re-read on every load.
+- The local API server was single-threaded, so one held connection blocked every
+  other request and the bounded concurrency gate could never refuse anything in
+  the deployed server. It is now threaded, with a test that holds one request open
+  while asserting a second is answered.
 
 ### Milestones
 

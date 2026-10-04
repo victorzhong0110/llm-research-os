@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
 
@@ -151,6 +151,48 @@ class DocumentPreviewDocument(Contract):
     decoded: dict[str, Any]
 
 
+class CommandReceipt(Contract):
+    """Result of one browser-dispatched shared command.
+
+    R11's honesty rule lives in this shape: ``disposition`` says whether the
+    command was newly committed or replayed from a prior receipt, and the
+    result carries ``observedStop``/``launchAllowed`` so the client can never
+    render an accepted request as an observed process outcome.
+    """
+
+    # The receipt is the shared application's own document, passed through
+    # unchanged. The local API envelope carries the local-api version; the body
+    # keeps the identity the CLI, Python and browser all agree on.
+    api_version: Literal["researchos.dev/application/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["ApplicationReceipt"]
+    command_id: str = Field(alias="commandId")
+    actor_id: str = Field(alias="actorId")
+    submitted_at: str = Field(alias="submittedAt")
+    operation: str
+    request_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
+        alias="requestDigest"
+    )
+    expected_head: int | None = Field(default=None, alias="expectedHead", ge=0)
+    expected_revision: int | None = Field(default=None, alias="expectedRevision", ge=1)
+    observed_head: int = Field(alias="observedHead", ge=0)
+    disposition: Literal["committed", "replayed"]
+    fact_event_ids: tuple[str, ...] = Field(alias="factEventIds")
+    artifact_digests: tuple[str, ...] = Field(alias="artifactDigests")
+    result_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
+        alias="resultDigest"
+    )
+    result: dict[str, Any]
+
+    @field_validator("fact_event_ids", "artifact_digests", mode="before")
+    @classmethod
+    def identifier_lists_are_arrays(cls, value: object) -> object:
+        if type(value) is list:
+            return tuple(value)
+        if type(value) is tuple:
+            return value
+        raise ValueError("receipt list fields must be JSON arrays")
+
+
 class _Page(Contract):
     api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
     next_cursor: str | None = Field(default=None, alias="nextCursor")
@@ -175,6 +217,7 @@ class RunPageDocument(_Page):
 CONTRACT_MODELS: dict[str, type[Contract]] = {
     "ArtifactView": ArtifactDocument,
     "Capabilities": CapabilitiesDocument,
+    "CommandReceipt": CommandReceipt,
     "DocumentPreview": DocumentPreviewDocument,
     "Error": ErrorDocument,
     "EventPage": EventPageDocument,

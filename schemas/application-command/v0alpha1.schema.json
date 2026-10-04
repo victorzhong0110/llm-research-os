@@ -1,5 +1,45 @@
 {
   "$defs": {
+    "AuthorizationRevokeOperation": {
+      "additionalProperties": false,
+      "description": "Revoke an unused Worker grant. Revocation never launches or completes work.",
+      "properties": {
+        "eventId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Eventid",
+          "type": "string"
+        },
+        "grantId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Grantid",
+          "type": "string"
+        },
+        "kind": {
+          "const": "authorization.revoke",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reasonCode": {
+          "default": "human.revoke",
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reasoncode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "grantId",
+        "eventId"
+      ],
+      "title": "AuthorizationRevokeOperation",
+      "type": "object"
+    },
     "PlanDryRunOperation": {
       "additionalProperties": false,
       "properties": {
@@ -46,6 +86,55 @@
         "document"
       ],
       "title": "PlanDryRunOperation",
+      "type": "object"
+    },
+    "PlanPreflightOperation": {
+      "additionalProperties": false,
+      "description": "Show what a plan would require, without authorizing anything.\n\nThe browser must be able to display exact plan identity, target,\npermissions, supported/enforced limits and resource or budget requirements\n*before* a human authorizes it. This operation therefore reads only: it\nmints no grant, records no fact, and never reports a launch as allowed.",
+      "properties": {
+        "document": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Document",
+          "type": "string"
+        },
+        "kind": {
+          "const": "plan.preflight",
+          "title": "Kind",
+          "type": "string"
+        },
+        "registry": {
+          "items": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+            "type": "string"
+          },
+          "title": "Registry",
+          "type": "array"
+        },
+        "workflowId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workflowid"
+        }
+      },
+      "required": [
+        "kind",
+        "document"
+      ],
+      "title": "PlanPreflightOperation",
       "type": "object"
     },
     "ResearchDecisionOperation": {
@@ -99,6 +188,30 @@
         "kind"
       ],
       "title": "RevisionListOperation",
+      "type": "object"
+    },
+    "RunCancelOperation": {
+      "additionalProperties": false,
+      "description": "Request cancellation of a Run or one active Attempt.\n\nA request is not an outcome. The receipt reports that the request was\ncommitted; the observed stop, if any, arrives as a later fact.",
+      "properties": {
+        "kind": {
+          "const": "run.cancel",
+          "title": "Kind",
+          "type": "string"
+        },
+        "request": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "request"
+      ],
+      "title": "RunCancelOperation",
       "type": "object"
     },
     "RunShowOperation": {
@@ -295,10 +408,13 @@
     "operation": {
       "discriminator": {
         "mapping": {
+          "authorization.revoke": "#/$defs/AuthorizationRevokeOperation",
           "plan.dry-run": "#/$defs/PlanDryRunOperation",
+          "plan.preflight": "#/$defs/PlanPreflightOperation",
           "research.decision": "#/$defs/ResearchDecisionOperation",
           "research.ledger": "#/$defs/ResearchLedgerOperation",
           "revision.list": "#/$defs/RevisionListOperation",
+          "run.cancel": "#/$defs/RunCancelOperation",
           "run.show": "#/$defs/RunShowOperation",
           "run.simulate": "#/$defs/RunSimulateOperation",
           "spec.diff": "#/$defs/SpecDiffOperation",
@@ -334,6 +450,15 @@
         },
         {
           "$ref": "#/$defs/WorkspaceShowOperation"
+        },
+        {
+          "$ref": "#/$defs/PlanPreflightOperation"
+        },
+        {
+          "$ref": "#/$defs/RunCancelOperation"
+        },
+        {
+          "$ref": "#/$defs/AuthorizationRevokeOperation"
         }
       ],
       "title": "Operation"

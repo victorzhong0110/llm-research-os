@@ -46,6 +46,24 @@ export interface SessionDocument {
   readonly idleTimeoutSeconds: number;
 }
 
+export interface CommandReceipt {
+  readonly apiVersion: "researchos.dev/application/v0alpha1";
+  readonly kind: "ApplicationReceipt";
+  readonly commandId: string;
+  readonly actorId: string;
+  readonly submittedAt: string;
+  readonly operation: string;
+  readonly requestDigest: string;
+  readonly expectedHead?: number | null;
+  readonly expectedRevision?: number | null;
+  readonly observedHead: number;
+  readonly disposition: "committed" | "replayed";
+  readonly factEventIds: ReadonlyArray<string>;
+  readonly artifactDigests: ReadonlyArray<string>;
+  readonly resultDigest: string;
+  readonly result: Readonly<Record<string, unknown>>;
+}
+
 export interface DocumentPreview {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "DocumentPreview";

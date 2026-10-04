@@ -38,7 +38,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. R09 has a candidate on `r09-local-api` (PR #131, unmerged). R10 has a candidate on `r10-workbench` (open PR, unmerged). R11–R16 are not started. The previous B freeze is superseded by the 2026-10-04 direction. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (`r09-local-api`, PR #131), R10 (`r10-workbench`, PR #132) and R11 (`r11-browser-operations`, open PR); none is merged or accepted. R12–R16 are not started. The previous B freeze is superseded by the 2026-10-04 direction. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -54,6 +54,7 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
 | COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
+| COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
 COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
 the acknowledgement does not establish acceptance. COMM-0005 and COMM-0006 are
@@ -224,6 +225,37 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   existing `run_projections` cache, so a store with many runs will be slow.
 - Next action / owner: Reviewer decides whether to require React Flow now. This
   does not block R11 design work, because R11 reuses the same API contract.
+
+### COMM-0008 — R11 delivers cancel and revoke, not start, reconnect or restore
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0007.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; a scope decision is needed, not a self-resolution.
+- Message / decision: R11 adds a mutating browser surface that dispatches
+  caller-owned application commands through the CLI's own services, so browser,
+  CLI and event replay cannot disagree. `plan.preflight`, `run.cancel` and
+  `authorization.revoke` are delivered. **Start, reconnect/observe and restore are
+  not**: they depend on the R08 reviewed native launch path and its live
+  two-host evidence, and restore prerequisites cannot be met without a real
+  Attempt. No stub was left in their place, and the R11 acceptance bullets for
+  disconnect/reconnect and restore prerequisites are recorded as not met rather
+  than claimed.
+- Branch / head / base / PR: `r11-browser-operations`, based on `r10-workbench` at
+  `abd3524`; open PR, deliberately not merged.
+- Evidence / checks: [R11 candidate evidence](evidence/m3/acceptance-matrix.md#r11-candidate);
+  112 tests across the web modules; a real Chrome run in which a committed
+  cancellation left the run index reading `Running` with the badge "Request
+  recorded — no observed stop", and zero console errors.
+- Gaps / required inputs: A decision on whether R11 may close with cancel and
+  revoke only, with start/restore deferred until R08's live evidence exists. No
+  automated browser E2E exists; CI runs no browser, so a real double-click is
+  proven at the service layer rather than through a click.
+- Next action / owner: Reviewer decides the scope question. Separately, three
+  defects found by running the real thing were fixed: the client never sent the
+  CSRF token, a reload lost it, and the server was single-threaded so the R09
+  concurrency gate could not fire in the deployed service.
 
 ## Message template
 
