@@ -174,6 +174,15 @@ from llm_research_os.execution.request_schema import (
 from llm_research_os.execution.schema import canonical_schema as canonical_dry_run_schema
 from llm_research_os.execution.schema import schema_matches as dry_run_schema_matches
 from llm_research_os.execution.schema import write_schema as write_dry_run_schema
+from llm_research_os.extensions.schema import (
+    canonical_schema as canonical_extension_schema,
+)
+from llm_research_os.extensions.schema import (
+    schema_matches as extension_schema_matches,
+)
+from llm_research_os.extensions.schema import (
+    write_schema as write_extension_schema,
+)
 from llm_research_os.problem_schema import canonical_schema as canonical_problem_schema
 from llm_research_os.problem_schema import schema_matches as problem_schema_matches
 from llm_research_os.problem_schema import write_schema as write_problem_schema
@@ -317,6 +326,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "extension-document": _contract(
+        canonical_extension_schema,
+        extension_schema_matches,
+        write_extension_schema,
+        "schemas/extension-document/v0alpha1.schema.json",
+    ),
     "evaluation-document": _contract(
         canonical_evaluation_schema,
         evaluation_schema_matches,

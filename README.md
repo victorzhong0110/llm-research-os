@@ -90,6 +90,8 @@ acceptance checklist of that milestone.
 
 ## Project documents
 
+- [Partial reviewed Python extension API](docs/guides/extensions.md)
+- [Fixture evaluation and human conclusion mechanics](docs/protocols/evaluation-conclusion-v0alpha1.md)
 - [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
 - [M3 development plan (R01–R16)](docs/plans/m3-development-plan.md)
 - [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)

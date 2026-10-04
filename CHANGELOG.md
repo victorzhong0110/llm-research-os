@@ -10,6 +10,11 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R14 partial Python extension boundary: inert immutable manifests, registered
+  JSON schemas, explicit reviewed dispatch, bounded subprocess streams/deadlines
+  and owned-group cleanup. This is not a malicious-code sandbox or full R14/D
+  acceptance; typed external integrations and an extensions CLI remain open.
+
 - R13 partial evaluation mechanics and human conclusions: a deterministic
   evaluator over a fixed, synthetic 12-example CPU fixture, labelled
   `computed-fixture`; no real-model or Checkpoint C acceptance is claimed. Every evaluation records the

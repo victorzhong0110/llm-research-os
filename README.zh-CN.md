@@ -78,6 +78,8 @@ Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
 
 ## 项目文档
 
+- [部分实现：已审查的 Python 扩展 API](docs/guides/extensions.md)
+- [合成数据评估与人工结论机制](docs/protocols/evaluation-conclusion-v0alpha1.md)
 - [M1/M2 验收与 M3 边界](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
 - [M3 计划文档（R01–R16）](docs/plans/m3-development-plan.md)
 - [M3 证据与验收矩阵](docs/evidence/m3/acceptance-matrix.md)

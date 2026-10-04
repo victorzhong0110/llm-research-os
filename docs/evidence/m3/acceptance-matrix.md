@@ -40,8 +40,8 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R10 | Read-only research workbench | Reviewed repair in #132; exact integration state/SHA at the PR | Final-head browser/type/build/full-suite CI is the integration gate | [R10 candidate](#r10-candidate-evidence) |
 | R11 | Browser approval, execution, cancellation, and restore | Partial operations slice merged #133 at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` | Final-head CI 37224701233 passed; start/restore and B remain open | [R11 review](../../reviews/pr134-136-2026-10-05.md) |
 | R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice merged in #134 at `89b9ab4`; final-head CI 37230774848 passed | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics reviewed in #135; final head and CI at the PR | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R14 | Minimal extension mechanism and permission boundary | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R14 |
+| R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
+| R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
 | R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
 

@@ -1,7 +1,7 @@
 # Real evaluation, comparison and conclusions (R13)
 
-Status: **Implemented on branch `r13-evaluation`; candidate evidence only. Not merged,
-not accepted.** Checkpoint C is not accepted.
+Status: Partial fixture mechanics integrated through #135 at `bc0bcbc` after
+CI 37232561416 passed. Full R13 and Checkpoint C are not accepted.
 Requirements: [M3 plan R13](../plans/m3-development-plan.md#r13-real-evaluation-comparison-and-conclusions).
 
 ## What "real" means here
