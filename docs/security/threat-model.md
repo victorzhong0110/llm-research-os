@@ -620,3 +620,68 @@ is supported; installed package/host labels/private credentials are trusted
 operator resources. This adds no strong sandbox, remote hardware attestation,
 GPU allocation/device inheritance or multi-node path distribution. Selected
 host/GPU/Kaggle evidence and Checkpoint B acceptance remain pending-live.
+
+
+### TM-079: A local browser reads or crashes more than it should
+
+A browser is an untrusted client even on loopback, so a stalled or hostile
+socket must not become an unbounded read of the operator's process. The local
+API refuses an oversized declared length without reading, cuts an understated
+length off at the cap instead of trusting it, and refuses rather than queues a
+request above the concurrency cap. Source-byte bounds are not treated as parser
+bounds: JSON and YAML bodies are re-decoded through the existing
+duplicate-key-rejecting, alias-refusing loader and PDFs through the existing
+bounded extractor, so nesting, node count, page count and extraction seconds are
+capped during the work rather than after it. Every limit is reported by
+`/capabilities` so a client cannot silently assume a larger allowance.
+
+Gate: `tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
+concurrency and declared-length cases. Residual trust: a local user can still
+read their own project through the filesystem, and `wsgiref` is not hardened
+against a hostile network peer.
+
+
+### TM-080: Local API errors leak paths, bodies or credentials
+
+An error body crosses the same trust boundary as a request and is the easiest
+place to leak an absolute path, a source document or a stack trace. Every
+failure is rendered as one closed `LocalApiError` code with fixed operator
+text; the unhandled-exception branch produces the same shape rather than a
+traceback. Project views report only manifest-relative paths. Artifact bytes are
+inlined only below a size cap and are never returned for a digest the project
+does not reference.
+
+Gate: `tests/test_web_api.py` relative-path, unknown-route, oversized-body and
+cross-project artifact cases.
+
+
+### TM-081: A browser session is reused as launch or Worker authority
+
+A local session that also worked as a grant, bearer token or client certificate
+would turn a read surface into a launch path. Access requires a one-time
+bootstrap secret shown in a URL fragment, which is never transmitted, logged or
+put in a `Referer`. The resulting cookie is `HttpOnly; SameSite=Strict` and
+exists only in memory, bounded in count and idle expiry. `Host` must equal the
+exact configured authority, which closes DNS rebinding; unsafe methods require a
+matching `Origin` and a double-submit CSRF token. No route accepts a Worker
+grant, a private TLS key or a bearer token, and none forwards a session to the
+Worker plane.
+
+Gate: `tests/test_web_api.py` host, origin, bootstrap replay, forged cookie,
+missing/mismatched CSRF and session-is-not-a-Worker-credential cases. Residual
+trust: any process running as the same OS user can read the operator's files, so
+this boundary is same-user, not same-privilege.
+
+
+### TM-082: A global content index leaks another project's artifacts
+
+The artifact index is keyed by digest alone, so a digest-scoped read would
+expose any object ever referenced by any project. Artifact access is proven from
+linked events instead: a digest is visible only when a verified event of the
+requesting project references it, resolved through a bounded link page rather
+than a full-table scan. Event, revision and run pages filter on `projectId`, and
+cursors are opaque server-issued values that cannot be forged into an arbitrary
+offset.
+
+Gate: `tests/test_web_api.py` cross-project denial, own-project success, forged
+cursor and cursor-walk coverage.

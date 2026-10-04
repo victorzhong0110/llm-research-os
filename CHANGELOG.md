@@ -11,6 +11,23 @@ authorized release.
 
 ### Added
 
+- R09 local workbench API: a read-only, loopback-bound surface over verified
+  EventStore folds and the CAS, implemented as a standard-library WSGI
+  application. Versioned JSON with a closed structured error set, one-time
+  bootstrap secret delivered in a URL fragment, in-memory `HttpOnly;
+  SameSite=Strict` sessions, exact-`Host` and matching-`Origin` enforcement, and
+  double-submit CSRF. A browser session is never a Worker credential and no
+  route accepts a grant, private TLS key or bearer token. Bounded body,
+  concurrency, depth, node, page and extraction limits are enforced during
+  parsing, not after; JSON/YAML reuse the existing alias-rejecting loader and
+  PDF the bounded extractor. Project-scoped pages carry opaque cursors and a
+  high-water mark; artifact access is proven from linked events because the
+  content index is global. Resumable SSE with a polling fallback.
+
+- R09 `EventStore.list_artifact_links_page`: a bounded, validated page of
+  artifact links for one digest, so a browser read surface can prove project
+  scope without scanning the whole link table.
+
 - R08 optional Ray Jobs CPU project driver: fixed installed reviewed Worker
   entrypoint, private durable single-POST intent, original-request binding,
   backend-only status and native observation outside Ray. A separate real Ray

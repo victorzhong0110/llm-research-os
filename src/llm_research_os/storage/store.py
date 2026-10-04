@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import stat
 from collections.abc import Callable, Iterator
@@ -16,7 +17,11 @@ from typing import Any, Self, cast
 
 from pydantic import ValidationError
 
-from llm_research_os.canonical import legacy_canonical_json, legacy_content_digest
+from llm_research_os.canonical import (
+    SEMANTIC_DIGEST_PATTERN,
+    legacy_canonical_json,
+    legacy_content_digest,
+)
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX, validate_event_document
 from llm_research_os.storage.errors import (
     DuplicateEventError,
@@ -90,6 +95,14 @@ def _validate_until_sequence(value: int | None) -> int | None:
     if value < 0 or value > CLOUD_EVENTS_INTEGER_MAX:
         raise ValueError("until_sequence is outside the supported sequence range")
     return value
+
+
+def _require_content_digest(digest: str) -> str:
+    """Accept only a canonical content digest, mirroring the artifacts table check."""
+
+    if type(digest) is not str or re.fullmatch(SEMANTIC_DIGEST_PATTERN, digest) is None:
+        raise ValueError("digest must be a canonical sha256: or jcs-sha256: content digest")
+    return digest
 
 
 def _validate_event_types(value: frozenset[str] | None) -> frozenset[str] | None:
@@ -845,6 +858,51 @@ class EventStore:
             FROM artifact_links
             ORDER BY event_sequence, role, digest
             """
+        ).fetchall()
+        return tuple(
+            ArtifactLinkRecord(
+                digest=cast(str, row[0]),
+                event_sequence=cast(int, row[1]),
+                role=cast(str, row[2]),
+            )
+            for row in rows
+        )
+
+    def list_artifact_links_page(
+        self,
+        digest: str,
+        *,
+        after_sequence: int = 0,
+        limit: int = 100,
+    ) -> tuple[ArtifactLinkRecord, ...]:
+        """Return one bounded page of links for a single digest.
+
+        The artifact index is global by content digest, so a browser read
+        surface must resolve project scope link by link instead of scanning the
+        whole table. Callers verify each referenced event through
+        :meth:`read_events`; this method only pages the index.
+        """
+
+        candidate = _require_content_digest(digest)
+        if isinstance(after_sequence, bool) or not isinstance(after_sequence, int):
+            raise ValueError("after_sequence must be an integer")
+        if after_sequence < 0 or after_sequence > CLOUD_EVENTS_INTEGER_MAX:
+            raise ValueError("after_sequence is outside the supported sequence range")
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or not 1 <= limit <= MAX_READ_PAGE_SIZE
+        ):
+            raise ValueError(f"limit must be an integer in 1..{MAX_READ_PAGE_SIZE}")
+        rows = self._connection.execute(
+            """
+            SELECT digest, event_sequence, role
+            FROM artifact_links
+            WHERE digest = ? AND event_sequence > ?
+            ORDER BY event_sequence, role
+            LIMIT ?
+            """,
+            (candidate, after_sequence, limit),
         ).fetchall()
         return tuple(
             ArtifactLinkRecord(

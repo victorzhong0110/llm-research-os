@@ -36,7 +36,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
 | R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
 | R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote material preparation merged in #122 at `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534) passed). Remote executor/recovery merged in #126 at `c6903c3d795fbef3705d966bec84c1a212c491fe`; CLI merged in #127 at `35eda8cc9d9c71f251e35a41a2a231174f40c9e0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37141821193) passed). Actual selected two-host and GPU evidence remain pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
-| R09 | Local API and browser authority boundaries | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R09 |
+| R09 | Local API and browser authority boundaries | Candidate on this branch; not merged | Not accepted; R08 live evidence still pending-live | [R09 candidate](#r09-candidate-evidence) |
 | R10 | Read-only research workbench | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R10 |
 | R11 | Browser approval, execution, cancellation, and restore | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R11 |
 | R12 | AI proposals, citations, and researcher decisions | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R12 |
@@ -45,7 +45,92 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
 | R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
 
-## R08 HTTPS input candidate
+## R09 candidate
+
+Status: **Implemented on branch `r09-local-api`; candidate evidence only. Not merged,
+not accepted.** Base: `docs/sequential-r08-r16-acceptance` at `021f18e`. Checkpoint B
+is still open and R08 live two-host/GPU evidence is still pending-live; R09 work was
+authorized sequentially and does not close that gate.
+
+### Proposed normative change for review
+
+The R09 plan described "optional FastAPI/ASGI". The implementation is a
+standard-library WSGI application on `wsgiref`, loopback only, to avoid adding a web
+framework and ASGI server to a core that currently carries five dependencies. The
+versioned JSON contract, same-origin session boundary, bounded projections and
+resumable SSE are unchanged. Review decision: accept the deviation, or require a
+framework-backed implementation. Replacing the transport later does not change the
+documented contract.
+
+### Implemented behavior against the plan's R09 deliverables
+
+| Plan deliverable | Where |
+| --- | --- |
+| Versioned read/validation/preview endpoints | `src/llm_research_os/web/app.py`; `/capabilities`, `/workspace`, `/events`, `/revisions`, `/runs`, `/artifacts/{digest}`, `/preview/document`, `/session` |
+| Structured errors | `web/errors.py` closed `ApiErrorCode`; fixed operator text, no request echo |
+| Bounded projections | `web/projections.py`; every page carries `nextCursor` and `highWaterMark` |
+| Resumable SSE with polling fallback | `web/app.py::_stream`; `Last-Event-ID` or `?cursor=`, `high-water` and closing `idle` events, same cursor semantics on `/events` |
+| Local same-origin sessions, Host/Origin validation, authentication, CSRF | `web/sessions.py`; one-time bootstrap secret in a URL fragment, `HttpOnly; SameSite=Strict` cookie in memory, exact-`Host`, matching-`Origin` on unsafe methods, double-submit CSRF |
+| Browser session is not a Worker credential | No route accepts a grant, private TLS key or bearer token; asserted by test |
+| Body/depth/node/time/concurrency limits during parsing, on real JSON/YAML/PDF paths | `web/limits.py`; oversized declared length refused unread, understated length cut at the cap, JSON/YAML through the alias-rejecting loader, PDF through the bounded extractor, `ConcurrencyGate` refuses instead of queueing |
+| Project-scoped cursors and artifact access | `ReadProjections` filters on `projectId`; artifact scope proven from linked events via `EventStore.list_artifact_links_page` |
+| Snapshot high-water marks; bounded metric chunks rather than per-sample events | `highWaterMark` on every page; metrics remain CAS chunks per `metrics/chunk.py` and this surface appends no metric fact |
+
+### Acceptance bullets
+
+| Plan acceptance | Result |
+| --- | --- |
+| Cross-site/unauthorized requests tested | `403 host-forbidden`, `403 origin-forbidden`, `403 csrf-invalid`, `401 session-required`, `401 session-expired`, `409 bootstrap-consumed`, `403 bootstrap-invalid` |
+| Wrong-project access tested | Foreign digest is `404 not-found`; own digest is served and inlined |
+| Hostile documents tested | YAML alias amplification, duplicate JSON keys, 400-level nesting, malformed PDF, unsupported media type, traversal in `documentName` all refused |
+| Oversized inputs tested | Declared and actual body caps, `parameter-invalid` for a non-numeric `Content-Length` |
+| Slow clients tested | Above-cap concurrency returns `503 concurrency-exhausted` rather than queueing; the stream closes on its idle deadline instead of holding the connection |
+| Reconnects tested | `Last-Event-ID` resume; cursor walk covers every event exactly once; run cursor pages strictly older runs without overlap |
+| Queries bounded at representative volume; baseline recorded | Every page is capped at `MAX_PAGE_LIMIT=500` and a stream at `MAX_STREAM_EVENTS=200`. Baseline: with 3 seeded events an event page reads 3 rows, a run page folds 3 events, and a 200-event stream reads 2 verified pages of 100. A large-volume EventStore baseline is still outstanding and is not claimed. |
+| Errors and logs do not leak credentials, bodies or host paths | Workspace view reports manifest-relative paths only; error bodies are fixed text; the access log is suppressed because it echoes request paths; artifact bytes inlined only below 256 KiB |
+
+### Validation actually run
+
+Local macOS, Python 3.12.13, branch `r09-local-api`, uncommitted at the time of
+recording.
+
+- `uv run ruff check src/ tests/` — passed.
+- `uv run ruff format --check src/` — passed.
+- `uv run mypy src` — passed, 241 source files.
+- `uv run pytest tests/test_web_api.py` — 50 passed.
+- `uv run researchos schema --check-all` — every registered schema current.
+- `uv run python scripts/event_catalog.py --check` and
+  `uv run python scripts/project_status.py --check` — passed.
+- `node conformance/digest/verify.mjs` — 13 vectors passed.
+- Full `-m "not oci_live and not slow and not ray_native_live"` run with
+  `--cov-fail-under=85`: see the pull request for the exact counts.
+
+CI results, the merge SHA and post-merge coverage are recorded after they exist. This
+entry predicts neither.
+
+### Local environment limitation, not a repository defect
+
+One pre-existing failure in the mainline suite is unrelated to R09 and reproduces on
+`origin/main` in this workspace: `tests/test_native_ssh_live.py::test_offline_install_is_idempotent_and_keeps_unrelated_files`.
+The R07 offline install creates its venv with `venv.EnvBuilder(with_pip=True)`, and the
+uv-managed standalone CPython 3.12.13 here aborts in the child
+`ensurepip` with `dyld: Library not loaded: @rpath/libpython3.12.dylib`, so the install
+returns `blocked/install-failed`. It is a macOS dynamic-linking limitation of this
+machine's Python, not changed R09 behaviour, and the main CI run at `0acb62b` passes that
+test.
+
+### Gaps
+
+- No browser has loaded this surface; there is no E2E or accessibility evidence.
+- The run page folds the project's events to derive the index. It is bounded in the
+  response, not in derivation cost; a store with many runs needs the existing
+  `run_projections` cache, which this surface does not yet use.
+- No large-volume query baseline. A slow query at production event volume is unmeasured.
+- Mutating browser commands, restore, proposals and evaluation are R11–R13.
+- `wsgiref` is a development server. It is loopback-only and single-user, and is not
+  hardened against a hostile network peer.
+- R08's live two-host and GPU evidence remains pending-live and is not addressed here.
+
 
 ### Integration update (2026-10-02)
 
