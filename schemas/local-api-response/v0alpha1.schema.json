@@ -99,6 +99,123 @@
       "title": "CapabilitiesDocument",
       "type": "object"
     },
+    "CommandReceipt": {
+      "additionalProperties": false,
+      "description": "Result of one browser-dispatched shared command.\n\nR11's honesty rule lives in this shape: ``disposition`` says whether the\ncommand was newly committed or replayed from a prior receipt, and the\nresult carries ``observedStop``/``launchAllowed`` so the client can never\nrender an accepted request as an observed process outcome.",
+      "properties": {
+        "actorId": {
+          "title": "Actorid",
+          "type": "string"
+        },
+        "apiVersion": {
+          "const": "researchos.dev/application/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "artifactDigests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifactdigests",
+          "type": "array"
+        },
+        "commandId": {
+          "title": "Commandid",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "committed",
+            "replayed"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "expectedHead": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectedhead"
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectedrevision"
+        },
+        "factEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Facteventids",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ApplicationReceipt",
+          "title": "Kind",
+          "type": "string"
+        },
+        "observedHead": {
+          "minimum": 0,
+          "title": "Observedhead",
+          "type": "integer"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "requestDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Requestdigest",
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": true,
+          "title": "Result",
+          "type": "object"
+        },
+        "resultDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Resultdigest",
+          "type": "string"
+        },
+        "submittedAt": {
+          "title": "Submittedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "commandId",
+        "actorId",
+        "submittedAt",
+        "operation",
+        "requestDigest",
+        "observedHead",
+        "disposition",
+        "factEventIds",
+        "artifactDigests",
+        "resultDigest",
+        "result"
+      ],
+      "title": "CommandReceipt",
+      "type": "object"
+    },
     "DocumentPreviewDocument": {
       "additionalProperties": false,
       "properties": {
@@ -154,6 +271,7 @@
           "enum": [
             "body-too-large",
             "concurrency-exhausted",
+            "command-refused",
             "content-type-unsupported",
             "csrf-invalid",
             "document-hostile",
@@ -770,6 +888,9 @@
     },
     {
       "$ref": "#/$defs/CapabilitiesDocument"
+    },
+    {
+      "$ref": "#/$defs/CommandReceipt"
     },
     {
       "$ref": "#/$defs/DocumentPreviewDocument"

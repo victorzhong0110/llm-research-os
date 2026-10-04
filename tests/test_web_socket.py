@@ -221,6 +221,97 @@ def test_stream_closes_over_a_real_socket(server: Server) -> None:
     connection.close()
 
 
+def test_server_serves_requests_concurrently(server: Server) -> None:
+    """A held request must not block every other request.
+
+    Regression guard. ``wsgiref``'s default server is single-threaded, so one
+    slow connection would serialize the server and the bounded concurrency gate
+    could never refuse anything in the deployed service. Two overlapping
+    requests must both be answered.
+    """
+
+    import threading
+
+    started = threading.Event()
+    release = threading.Event()
+    slow_status: list[int] = []
+
+    original = server.api._dispatch
+
+    def blocking_dispatch(environ: dict[str, Any]) -> Any:
+        # Only the held route blocks. It must differ from both the bootstrap
+        # route and the probe route, or the harness deadlocks on its own.
+        if environ.get("PATH_INFO", "").endswith("/runs"):
+            started.set()
+            release.wait(timeout=20)
+        return original(environ)
+
+    server.api._dispatch = blocking_dispatch  # type: ignore[method-assign]
+    try:
+        # A real session cookie, so the probe is refused for concurrency only if
+        # it is genuinely blocked rather than for want of authority. The helper
+        # client is pinned to a fixed port, so the exchange happens here.
+        cookie = _bootstrap(server)
+
+        held = _raw(server, cookie)
+        slow = threading.Thread(
+            target=lambda: slow_status.append(_get(held, "/api/v0alpha1/runs", cookie))
+        )
+        slow.start()
+        assert started.wait(timeout=10), "the held request never reached the app"
+
+        fast = _raw(server, cookie)
+        assert _get(fast, "/api/v0alpha1/capabilities", cookie) == 200, (
+            "a second request must not be blocked by the held one"
+        )
+    finally:
+        release.set()
+        slow.join(timeout=20)
+        server.api._dispatch = original  # type: ignore[method-assign]
+    assert slow_status == [200]
+
+
+def _raw(server: Server, cookie: str) -> http.client.HTTPConnection:
+    return http.client.HTTPConnection("127.0.0.1", server.port, timeout=REQUEST_TIMEOUT)
+
+
+def _bootstrap(server: Server) -> str:
+    """Exchange the one-time secret and return the session cookie."""
+
+    connection = _raw(server, "")
+    connection.request(
+        "POST",
+        "/api/v0alpha1/session",
+        headers={
+            "Host": server.authority,
+            "X-ResearchOS-Bootstrap": BOOTSTRAP,
+            "Origin": server.origin,
+        },
+    )
+    response = connection.getresponse()
+    response.read()
+    assert response.status == 201, (
+        f"bootstrap must succeed before the concurrency probe, got {response.status}"
+    )
+    return str(response.getheader("set-cookie")).split(";", 1)[0]
+
+
+def _get(connection: http.client.HTTPConnection, path: str, cookie: str) -> int:
+    # The API refuses any Host that is not the exact configured authority, port
+    # included, so the header must carry it explicitly.
+    connection.request(
+        "GET",
+        path,
+        headers={
+            "Host": connection.host.split(":")[0] + ":" + str(connection.port),
+            "Cookie": cookie,
+        },
+    )
+    response = connection.getresponse()
+    response.read()
+    return int(response.status)
+
+
 def test_bounded_reader_stops_at_the_declared_length() -> None:
     """A stream that blocks after the declared bytes must still be released."""
 

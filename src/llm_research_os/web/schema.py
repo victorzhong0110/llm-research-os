@@ -12,6 +12,7 @@ from llm_research_os.spec.schema import SCHEMA_DIALECT
 from llm_research_os.web.contracts import (
     ArtifactDocument,
     CapabilitiesDocument,
+    CommandReceipt,
     DocumentPreviewDocument,
     ErrorDocument,
     EventPageDocument,
@@ -26,6 +27,7 @@ from llm_research_os.web.contracts import (
 ResponseDocument = (
     ArtifactDocument
     | CapabilitiesDocument
+    | CommandReceipt
     | DocumentPreviewDocument
     | ErrorDocument
     | EventPageDocument

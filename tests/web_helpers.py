@@ -74,11 +74,24 @@ class Client:
             self.cookie = set_cookie.split(";", 1)[0]
         return int(captured["status"]), headers_out, _decode(raw)
 
-    def bootstrap(self) -> tuple[int, dict[str, str], Any]:
+    def fork(self, *, session: bool = True) -> Client:
+        """A second view over the same app, modelling another window or tab.
+
+        ``session=False`` yields a caller that holds no session cookie, which
+        is how an unauthenticated request is exercised.
+        """
+
+        other = Client(self._api)
+        if session:
+            other.cookie = self.cookie
+            other.csrf = self.csrf
+        return other
+
+    def bootstrap(self, secret: str = BOOTSTRAP) -> tuple[int, dict[str, str], Any]:
         status, headers, payload = self.request(
             "POST",
             "/api/v0alpha1/session",
-            headers={"X-ResearchOS-Bootstrap": BOOTSTRAP},
+            headers={"X-ResearchOS-Bootstrap": secret},
             origin=ORIGIN,
         )
         if status == 201 and isinstance(payload, dict):

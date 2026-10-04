@@ -9,6 +9,7 @@ import type {
   ArtifactView,
   InspectionView,
   LineageLink,
+  CommandReceipt,
   Capabilities,
   Error as ApiError,
   EventPage,
@@ -48,6 +49,28 @@ export class OfflineError extends Error {
   }
 }
 
+/**
+ * The double-submit CSRF value for this session.
+ *
+ * The cookie is HttpOnly, so same-origin script learns the token from the
+ * session body and echoes it on every unsafe request. Losing it makes the
+ * server refuse writes, which is the intended failure.
+ */
+let csrfToken: string | null = null;
+
+function rememberCsrf(session: Session): void {
+  csrfToken = session.csrfToken;
+}
+
+function unsafeHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { ...(extra ?? {}) };
+  if (csrfToken === null) {
+    throw new SessionExpiredError();
+  }
+  headers["X-ResearchOS-CSRF"] = csrfToken;
+  return headers;
+}
+
 function isApiError(value: unknown): value is ApiError {
   return (
     typeof value === "object" &&
@@ -60,10 +83,15 @@ function isApiError(value: unknown): value is ApiError {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
+    const isUnsafe = init?.method !== undefined && init.method.toUpperCase() !== "GET";
     response = await fetch(`${API_PREFIX}${path}`, {
       ...init,
       credentials: "same-origin",
-      headers: { Accept: "application/json", ...(init?.headers ?? {}) },
+      headers: {
+        Accept: "application/json",
+        ...(isUnsafe ? unsafeHeaders(init.headers as Record<string, string> | undefined) : {}),
+        ...(init?.headers ?? {}),
+      },
     });
   } catch {
     throw new OfflineError();
@@ -117,8 +145,10 @@ export const api = {
     }
     return (await response.json()) as Health;
   },
-  session(): Promise<Session> {
-    return request<Session>("/session");
+  async session(): Promise<Session> {
+    const session = await request<Session>("/session");
+    rememberCsrf(session);
+    return session;
   },
   capabilities(): Promise<Capabilities> {
     return request<Capabilities>("/capabilities");
@@ -154,6 +184,14 @@ export const api = {
   artifact(digest: string): Promise<ArtifactView> {
     return request<ArtifactView>(`/artifacts/${encodeURIComponent(digest)}`);
   },
+  /** Dispatch one caller-owned application command. The body is sent verbatim. */
+  command(body: string): Promise<CommandReceipt> {
+    return request<CommandReceipt>("/commands", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+  },
 } as const;
 
 /** Read the one-time bootstrap secret out of the URL fragment, then clear it.
@@ -181,5 +219,7 @@ export async function exchangeBootstrap(secret: string): Promise<Session> {
     const payload = (await response.json()) as ApiError;
     throw new ApiRequestError(payload.code, payload.message, response.status);
   }
-  return (await response.json()) as Session;
+  const session = (await response.json()) as Session;
+  rememberCsrf(session);
+  return session;
 }

@@ -67,6 +67,22 @@ try {
     await page.getByRole("button", {name:tab,exact:true}).click();
     await page.locator("main section").first().waitFor();
   }
+  await page.getByRole("button", {name:"Operations",exact:true}).click();
+  await page.getByRole("textbox", {name:"ResearchSpec path",exact:true}).fill(fixture.inputSpec);
+  let lost = false;
+  await page.route("**/api/v0alpha1/commands", async route => {
+    if (!lost) {lost = true; await route.fetch(); await route.abort();}
+    else await route.continue();
+  });
+  await page.getByRole("button", {name:"Preflight",exact:true}).click();
+  await page.getByRole("heading", {name:"Outcome not confirmed",exact:true}).waitFor();
+  await page.getByRole("button", {name:"Retry same command",exact:true}).click();
+  await page.getByText("Replayed (no new fact)",{exact:true}).waitFor();
+  await page.getByText(/"launchAllowed": false/).waitFor();
+  await page.getByRole("textbox", {name:"Unused grant ID",exact:true}).fill("unknown-grant");
+  await page.getByRole("button", {name:"Revoke unused grant",exact:true}).click();
+  await page.getByRole("heading", {name:"Command refused",exact:true}).waitFor();
+  await page.unroute("**/api/v0alpha1/commands");
   await page.route("**/api/v0alpha1/events*", route => route.abort());
   await page.getByRole("button", {name:"Events and logs",exact:true}).click();
   await page.getByRole("heading", {name:"Local API unreachable",exact:true}).waitFor();
@@ -77,7 +93,7 @@ try {
   await page.getByRole("heading", {name:"Research workbench"}).waitFor();
   await page.getByRole("button", {name:"Runs",exact:true}).click();
   await page.getByText("Cancellation requested", {exact:true}).waitFor();
-  assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED")), []);
+  assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED") && !text.includes("409 (Conflict)")), []);
   console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh and persisted-store restart.");
 } finally {
   if (browser) await browser.close();

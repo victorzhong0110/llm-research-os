@@ -96,7 +96,10 @@
         "revision.list",
         "run.show",
         "run.simulate",
-        "workspace.show"
+        "workspace.show",
+        "plan.preflight",
+        "run.cancel",
+        "authorization.revoke"
       ],
       "title": "Operation",
       "type": "string"

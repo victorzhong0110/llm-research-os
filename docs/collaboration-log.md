@@ -44,7 +44,7 @@ passed). Documentation changes do not advance the execution baseline.
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | The maintainer reassigned Codex to fix and merge #131/#132; another implementer completes the next package. Codex starts no additional package. |
+| Responsibility | Maintainer assigned Codex to review, repair and integrate all open PRs; no additional package is started. |
 | Downstream gate | After #132 reports merged and its required final-head checks passed, the next implementer fetches main and preserves these fixes before integrating their package. R08 connection/GPU inputs remain separate, see COMM-0004. |
 
 ## Open handoffs
@@ -54,6 +54,7 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
+| COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
 COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
 the acknowledgement does not establish acceptance. COMM-0005 and COMM-0006 are
@@ -306,6 +307,37 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   reconciles their existing branch and runs its checks before their integration.
   Codex does not start or replace that implementer's next package.
 
+### COMM-0008 — R11 delivers cancel and revoke, not start, reconnect or restore
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0007.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; a scope decision is needed, not a self-resolution.
+- Message / decision: R11 adds a mutating browser surface that dispatches
+  caller-owned application commands through the CLI's own services, so browser,
+  CLI and event replay cannot disagree. `plan.preflight`, `run.cancel` and
+  `authorization.revoke` are delivered. **Start, reconnect/observe and restore are
+  not**: they depend on the R08 reviewed native launch path and its live
+  two-host evidence, and restore prerequisites cannot be met without a real
+  Attempt. No stub was left in their place, and the R11 acceptance bullets for
+  disconnect/reconnect and restore prerequisites are recorded as not met rather
+  than claimed.
+- Branch / head / base / PR: `r11-browser-operations`, based on `r10-workbench` at
+  `abd3524`; open PR, deliberately not merged.
+- Evidence / checks: [R11 candidate evidence](evidence/m3/acceptance-matrix.md#r11-candidate);
+  112 tests across the web modules; a real Chrome run in which a committed
+  cancellation left the run index reading `Running` with the badge "Request
+  recorded — no observed stop", and zero console errors.
+- Gaps / required inputs: A decision on whether R11 may close with cancel and
+  revoke only, with start/restore deferred until R08's live evidence exists. No
+  automated browser E2E exists; CI runs no browser, so a real double-click is
+  proven at the service layer rather than through a click.
+- Next action / owner: Reviewer decides the scope question. Separately, three
+  defects found by running the real thing were fixed: the client never sent the
+  CSRF token, a reload lost it, and the server was single-threaded so the R09
+  concurrency gate could not fire in the deployed service.
+
 ## Message template
 
 Copy this template into the history and replace every placeholder:
@@ -324,3 +356,19 @@ Copy this template into the history and replace every placeholder:
 - Gaps / required inputs: Specific missing evidence or input, or none
 - Next action / owner: Concrete next step and responsible collaborator
 ```
+
+## REVIEW-20261005-133 — Maintainer-directed PR cleanup
+
+- Sender: Codex planning/review assistant; recipient: maintainer and implementer.
+- Time: 2026-10-05T02:22:00+08:00; state: integration review in progress.
+- Assignment: review every open llm-research-os PR, directly fix and merge suitable
+  slices, close only superseded or unsuitable proposals. No next package started.
+- #138 integrated at `3b2a075b056f10e9ae433922533522b9a6bee912`; original CI
+  37222447522 passed, local locked frontend typecheck/rebuild matched assets.
+- #133 is reconciled with R09/R10 repairs; arbitrary host input paths, unbound
+  cancellation/revocation receipt identities, missing caller-head CAS, and inert
+  retry/revoke UI were repaired. Final-head CI remains required before merge.
+- R11 is a partial operations slice; missing start/restore and corresponding
+  acceptance remain open. R08 selected hosts/GPU remain pending-live.
+- Historical duplicate COMM identifiers from stacked candidates are provenance,
+  not acknowledgements; new review messages use this unique REVIEW prefix.

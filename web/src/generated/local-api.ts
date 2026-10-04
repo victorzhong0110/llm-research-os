@@ -45,6 +45,24 @@ export interface SessionDetails {
   readonly idleTimeoutSeconds: number;
 }
 
+export interface CommandReceipt {
+  readonly apiVersion: "researchos.dev/application/v0alpha1";
+  readonly kind: "ApplicationReceipt";
+  readonly commandId: string;
+  readonly actorId: string;
+  readonly submittedAt: string;
+  readonly operation: string;
+  readonly requestDigest: string;
+  readonly expectedHead?: number | null;
+  readonly expectedRevision?: number | null;
+  readonly observedHead: number;
+  readonly disposition: "committed" | "replayed";
+  readonly factEventIds: ReadonlyArray<string>;
+  readonly artifactDigests: ReadonlyArray<string>;
+  readonly resultDigest: string;
+  readonly result: Readonly<Record<string, unknown>>;
+}
+
 export interface DocumentPreview {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "DocumentPreview";
@@ -56,7 +74,7 @@ export interface DocumentPreview {
 export interface Error {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "LocalApiError";
-  readonly code: "body-too-large" | "concurrency-exhausted" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
+  readonly code: "body-too-large" | "concurrency-exhausted" | "command-refused" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
   readonly message: string;
 }
 
@@ -114,7 +132,7 @@ export interface Limits {
 export interface LocalApiError {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "LocalApiError";
-  readonly code: "body-too-large" | "concurrency-exhausted" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
+  readonly code: "body-too-large" | "concurrency-exhausted" | "command-refused" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
   readonly message: string;
 }
 

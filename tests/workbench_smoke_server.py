@@ -82,6 +82,13 @@ if not (root / "workspace.json").exists():
         json.dumps({"spec": spec_obj.digest, "result": result_obj.digest})
     )
 fixture = json.loads((base / "fixture.json").read_text())
+input_spec = load_spec(Path(__file__).parents[1] / "examples/valid/minimal.yaml").model_dump(
+    mode="json", by_alias=True
+)
+input_spec["metadata"]["id"] = "proj-alpha"
+input_path = root / "browser-spec.json"
+input_path.write_text(json.dumps(input_spec))
+fixture["inputSpec"] = str(input_path)
 # Bind before constructing the Host boundary, so an ephemeral port is exact.
 server = make_server(
     "127.0.0.1", 0, lambda *_: [], server_class=BoundedWSGIServer, handler_class=_QuietHandler

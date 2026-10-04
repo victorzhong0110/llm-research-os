@@ -16,21 +16,30 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterable
+from pathlib import Path
 from typing import Any, Final
 from urllib.parse import parse_qs
 
+from pydantic import ValidationError
+
 from llm_research_os.application.errors import ApplicationError
+from llm_research_os.application.models import ApplicationCommand
+from llm_research_os.application.service import ApplicationService
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.canonical import content_digest
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
 from llm_research_os.web.assets import AssetError
 from llm_research_os.web.assets import load as load_asset
+from llm_research_os.web.contracts import CommandReceipt
 from llm_research_os.web.errors import LOCAL_API_VERSION, LocalApiError, bad_request, not_found
+from llm_research_os.web.inspection import safe_document
 from llm_research_os.web.limits import (
     ConcurrencyGate,
     RequestLimits,
     bounded_document,
+    decode_bounded_json,
     document_kind,
     json_bytes,
     read_bounded_body,
@@ -185,6 +194,10 @@ class LocalApi:
             if method != "GET":
                 raise LocalApiError("method-not-allowed", "Stream with GET.", status=405)
             return self._stream(resume=_resume(environ, _query(environ)))
+        if route == "/commands":
+            if method != "POST":
+                raise LocalApiError("method-not-allowed", "Submit a command with POST.", status=405)
+            return self._command(environ)
         if route == "/preview/document":
             if method != "POST":
                 raise LocalApiError(
@@ -342,6 +355,82 @@ class LocalApi:
                 "workspace-invalid", "The workspace event store does not exist.", status=503
             )
         return EventStore(self._workspace.control_db, create=False)
+
+    def _command(self, environ: dict[str, Any]) -> Response:
+        """Execute one caller-owned application command.
+
+        The browser supplies the command identity. The shared service owns the
+        durable receipt, so a double-click, a retransmission or a second window
+        replays the first receipt instead of appending a second fact. The
+        browser cannot mint authority: it dispatches commands that a human
+        already authored, and every receipt reports a request rather than an
+        observed process outcome.
+        """
+
+        payload = read_bounded_body(
+            environ["wsgi.input"],
+            content_length=environ.get("CONTENT_LENGTH"),
+            limits=self._limits,
+        )
+        if not payload:
+            raise bad_request("document-invalid", "Send one application command document.")
+        document = decode_bounded_json(payload, limits=self._limits)
+        try:
+            command = ApplicationCommand.model_validate(document)
+        except ValidationError as exc:
+            raise bad_request(
+                "document-invalid", "The command document failed validation."
+            ) from exc
+        self._check_command_paths(command)
+        try:
+            receipt = ApplicationService.open(self._workspace.root).execute(command)
+        except ApplicationError as exc:
+            raise LocalApiError(
+                "command-refused",
+                "The command was refused by the shared service.",
+                status=409,
+            ) from exc
+        # Validated against the same contract the browser types are generated
+        # from, so a shape drift fails here rather than in the client.
+        try:
+            document = CommandReceipt.model_validate(receipt).model_dump(mode="json", by_alias=True)
+        except ValidationError as exc:
+            raise LocalApiError(
+                "internal-error", "The command receipt did not match its contract.", status=500
+            ) from exc
+        document["result"] = safe_document(document["result"])
+        document["resultDigest"] = content_digest(document["result"])
+        return self._json(document)
+
+    def _check_command_paths(self, command: ApplicationCommand) -> None:
+        """Browser inputs are operator-staged workspace files, never arbitrary host reads."""
+        if command.operation.kind not in {"plan.preflight", "run.cancel", "authorization.revoke"}:
+            raise LocalApiError(
+                "command-refused", "This command is not exposed to the browser.", status=409
+            )
+        root = self._workspace.root.resolve()
+        operation = command.operation.model_dump(mode="json", by_alias=True)
+        for key in ("document", "request", "old", "new", "registry"):
+            value = operation.get(key)
+            paths = value if isinstance(value, list) else ([] if value is None else [value])
+            for name in paths:
+                path = Path(name)
+                if not path.is_absolute():
+                    raise LocalApiError(
+                        "command-refused", "Stage inputs inside the workspace.", status=409
+                    )
+                try:
+                    relative = path.relative_to(root)
+                    current = root
+                    for part in relative.parts:
+                        current = current / part
+                        if current.is_symlink():
+                            raise ValueError("symlink")
+                    path.resolve(strict=True).relative_to(root)
+                except (ValueError, OSError):
+                    raise LocalApiError(
+                        "command-refused", "Stage inputs inside the workspace.", status=409
+                    ) from None
 
     def _preview(self, environ: dict[str, Any], query: dict[str, str]) -> Response:
         payload = read_bounded_body(

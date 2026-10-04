@@ -25,9 +25,16 @@ APPLICATION_RECEIPT_SCHEMA_ID = (
     "https://researchos.dev/schemas/application-receipt/v0alpha1.schema.json"
 )
 
-_MUTATING = frozenset({"research.decision", "run.simulate"})
+_MUTATING = frozenset({"research.decision", "run.simulate", "run.cancel", "authorization.revoke"})
 _REVISION_BOUND = frozenset(
-    {"spec.validate", "spec.diff", "plan.dry-run", "research.decision", "run.simulate"}
+    {
+        "spec.validate",
+        "spec.diff",
+        "plan.dry-run",
+        "research.decision",
+        "run.simulate",
+        "plan.preflight",
+    }
 )
 _HEAD_BOUND = frozenset(
     {
@@ -36,6 +43,7 @@ _HEAD_BOUND = frozenset(
         "revision.list",
         "run.show",
         "run.simulate",
+        "run.cancel",
     }
 )
 _PATH_PATTERN = r"^[^\x00-\x1F\x7F]+$"
@@ -123,6 +131,46 @@ class WorkspaceShowOperation(ApplicationModel):
     kind: Literal["workspace.show"]
 
 
+class PlanPreflightOperation(ApplicationModel):
+    """Show what a plan would require, without authorizing anything.
+
+    The browser must be able to display exact plan identity, target,
+    permissions, supported/enforced limits and resource or budget requirements
+    *before* a human authorizes it. This operation therefore reads only: it
+    mints no grant, records no fact, and never reports a launch as allowed.
+    """
+
+    kind: Literal["plan.preflight"]
+    document: CommandPath
+    workflow_id: EventIdentifier | None = Field(default=None, alias="workflowId")
+    registry: tuple[CommandPath, ...] = Field(default_factory=tuple)
+
+    @field_validator("registry", mode="before")
+    @classmethod
+    def registry_is_array(cls, value: object) -> object:
+        return _require_path_array(value)
+
+
+class RunCancelOperation(ApplicationModel):
+    """Request cancellation of a Run or one active Attempt.
+
+    A request is not an outcome. The receipt reports that the request was
+    committed; the observed stop, if any, arrives as a later fact.
+    """
+
+    kind: Literal["run.cancel"]
+    request: CommandPath
+
+
+class AuthorizationRevokeOperation(ApplicationModel):
+    """Revoke an unused Worker grant. Revocation never launches or completes work."""
+
+    kind: Literal["authorization.revoke"]
+    grant_id: EventIdentifier = Field(alias="grantId")
+    event_id: EventIdentifier = Field(alias="eventId")
+    reason_code: EventIdentifier = Field(default="human.revoke", alias="reasonCode")
+
+
 ApplicationOperation = Annotated[
     SpecValidateOperation
     | SpecDiffOperation
@@ -132,7 +180,10 @@ ApplicationOperation = Annotated[
     | RevisionListOperation
     | RunShowOperation
     | RunSimulateOperation
-    | WorkspaceShowOperation,
+    | WorkspaceShowOperation
+    | PlanPreflightOperation
+    | RunCancelOperation
+    | AuthorizationRevokeOperation,
     Field(discriminator="kind"),
 ]
 
@@ -189,6 +240,9 @@ class ApplicationReceipt(ApplicationModel):
         "run.show",
         "run.simulate",
         "workspace.show",
+        "plan.preflight",
+        "run.cancel",
+        "authorization.revoke",
     ]
     request_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
         alias="requestDigest"

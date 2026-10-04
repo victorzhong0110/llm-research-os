@@ -356,7 +356,15 @@ def test_client_only_calls_routed_endpoints() -> None:
     ).decode("utf-8", errors="replace")
     called = {path for path in re.findall(r'["`](/[a-z][a-zA-Z0-9_/-]*)', bundle)}
     assert called, "the bundle must reference the API paths"
-    assert {"/capabilities", "/workspace", "/events", "/revisions", "/runs", "/session"} <= called
+    assert {
+        "/capabilities",
+        "/workspace",
+        "/events",
+        "/revisions",
+        "/runs",
+        "/session",
+        "/commands",
+    } <= called
     assert any(path.startswith("/artifacts/") for path in called)
 
     # `/api/v0alpha1` is the prefix constant and `/api/health` the liveness
@@ -365,6 +373,7 @@ def test_client_only_calls_routed_endpoints() -> None:
         "api",
         "artifacts",
         "capabilities",
+        "commands",
         "events",
         "inspect",
         "revisions",

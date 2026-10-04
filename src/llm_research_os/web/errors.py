@@ -15,6 +15,7 @@ LOCAL_API_VERSION = "researchos.dev/local-api/v0alpha1"
 ApiErrorCode = Literal[
     "body-too-large",
     "concurrency-exhausted",
+    "command-refused",
     "content-type-unsupported",
     "csrf-invalid",
     "document-hostile",
