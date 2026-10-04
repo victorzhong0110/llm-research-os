@@ -40,6 +40,140 @@
       "title": "AuthorizationRevokeOperation",
       "type": "object"
     },
+    "ConclusionRecordOperation": {
+      "additionalProperties": false,
+      "description": "Record a human conclusion. The system never supplies the judgement.",
+      "properties": {
+        "baseline": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Baseline",
+          "type": "string"
+        },
+        "candidate": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "conclusionId": {
+          "title": "Conclusionid",
+          "type": "string"
+        },
+        "kind": {
+          "const": "conclusion.record",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "insufficient-evidence",
+            "supported",
+            "unsupported"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "baseline",
+        "candidate",
+        "verdict",
+        "rationale",
+        "conclusionId"
+      ],
+      "title": "ConclusionRecordOperation",
+      "type": "object"
+    },
+    "EvaluationCompareOperation": {
+      "additionalProperties": false,
+      "description": "Compare a baseline and a candidate result, refusing incompatible setups.",
+      "properties": {
+        "baseline": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Baseline",
+          "type": "string"
+        },
+        "candidate": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "kind": {
+          "const": "evaluation.compare",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "baseline",
+        "candidate"
+      ],
+      "title": "EvaluationCompareOperation",
+      "type": "object"
+    },
+    "EvaluationRunOperation": {
+      "additionalProperties": false,
+      "description": "Compute one real evaluation over the fixed held-out set.\n\nReads the committed dataset and the registered predictors, writes a detail\nartifact, and appends no per-sample events. A caller may add their own\npredictor later by registering it; this slice evaluates the baseline and the\nthreshold candidate only, and says so.",
+      "properties": {
+        "kind": {
+          "const": "evaluation.run",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "candidate",
+            "majority",
+            "threshold"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "kind",
+        "mode"
+      ],
+      "title": "EvaluationRunOperation",
+      "type": "object"
+    },
     "PlanDryRunOperation": {
       "additionalProperties": false,
       "properties": {
@@ -457,6 +591,9 @@
       "discriminator": {
         "mapping": {
           "authorization.revoke": "#/$defs/AuthorizationRevokeOperation",
+          "conclusion.record": "#/$defs/ConclusionRecordOperation",
+          "evaluation.compare": "#/$defs/EvaluationCompareOperation",
+          "evaluation.run": "#/$defs/EvaluationRunOperation",
           "plan.dry-run": "#/$defs/PlanDryRunOperation",
           "plan.preflight": "#/$defs/PlanPreflightOperation",
           "proposal.submit": "#/$defs/ProposalSubmitOperation",
@@ -500,6 +637,15 @@
         },
         {
           "$ref": "#/$defs/WorkspaceShowOperation"
+        },
+        {
+          "$ref": "#/$defs/ConclusionRecordOperation"
+        },
+        {
+          "$ref": "#/$defs/EvaluationCompareOperation"
+        },
+        {
+          "$ref": "#/$defs/EvaluationRunOperation"
         },
         {
           "$ref": "#/$defs/PlanPreflightOperation"

@@ -38,7 +38,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133) and R12 (`r12-research-workflow`, open PR); none is merged or accepted. R13–R16 are not started. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134) and R13 (`r13-evaluation`, open PR); none is merged or accepted. R14–R16 are not started. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -285,6 +285,35 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - Next action / owner: Reviewer decides whether R12 may close without a browser
   rendering check, given the environment limit is a tooling one rather than a
   product one.
+
+### COMM-0010 — R13 adds a real evaluation path; the editable report is not delivered
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0009.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; two scope gaps recorded, not resolved.
+- Message / decision: R13 adds a deterministic evaluator over a fixed, committed
+  held-out set. The evaluation is really computed from real labelled data on
+  CPU — it is not a trained-model evaluation, and the baseline is asserted to be
+  imperfect so the comparison means something. Every evaluation records dataset
+  digest, evaluator version, split, seed and example count, stores the full
+  per-example detail as one CAS artifact, appends no per-sample event, and is
+  re-derivable from that detail. Incompatible comparisons are refused with the
+  differing field named. Conclusions are a versioned three-verdict human
+  contract with `systemDerived: false`.
+- Branch / head / base / PR: `r13-evaluation`, based on `r12-research-workflow`
+  at `80812ff`; open PR, deliberately not merged.
+- Evidence / checks: [R13 candidate evidence](evidence/m3/acceptance-matrix.md#r13-candidate);
+  31 tests across the evaluation module and the shared command path.
+- Gaps / required inputs: **The editable evidence-linked report is not
+  delivered** — the comparison and conclusion documents are served but no
+  renderer produces a human-editable report file. No repeat-variance estimate
+  is computed; every comparison states that limitation. Only two predictors
+  are registered. Checkpoint C's browser half is not demonstrated, for the
+  tooling reason in COMM-0009.
+- Next action / owner: Reviewer decides whether R13 may close without the report
+  renderer, or whether it is required for the phase.
 
 ## Message template
 

@@ -813,3 +813,25 @@ rejection cannot be manufactured after the fact.
 Gate: `tests/test_web_research.py` preserved-disagreement and
 rationale-survives-refresh tests, plus the closed-proposal refusal the rejection
 test depends on.
+
+
+### TM-090: A reported number cannot be reproduced, or a better score is treated as a finding
+
+A metric with no stored detail cannot be re-derived, so a result whose aggregate
+disagrees with its own per-example artifact is not evidence. Every evaluation
+therefore records dataset digest, evaluator version, split, seed and example
+count, stores the full per-example detail as one CAS artifact, and appends no
+per-sample event. Metrics are fixed-precision decimal strings so a comparison
+cannot depend on binary rounding, and `recompute` re-derives the aggregate from
+the stored detail. Comparisons across differing provenance are refused with the
+mismatch named rather than averaged, a comparison declares
+`supportsAConclusion` only with at least two required metrics, and conclusions
+are human judgements in a versioned three-verdict contract that records
+`systemDerived: false`. A negative or inconclusive result is a legitimate
+recorded outcome.
+
+Gate: `tests/test_evaluation.py` determinism, detail reproducibility, provenance
+completeness, refused comparison, and the single-metric-cannot-conclude test;
+`tests/test_web_evaluation.py` real labelling, no-events-appended, and the
+conclusion refusal paths. Residual trust: the held-out set is small, so every
+comparison states its repeat-variance limitation in the document itself.

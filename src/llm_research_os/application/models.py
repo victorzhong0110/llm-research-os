@@ -25,9 +25,31 @@ APPLICATION_RECEIPT_SCHEMA_ID = (
     "https://researchos.dev/schemas/application-receipt/v0alpha1.schema.json"
 )
 
-_MUTATING = frozenset({"research.decision", "run.simulate", "run.cancel", "authorization.revoke"})
+# `evaluation.run` writes a CAS detail artifact but appends no event, so it is
+# revision-bound without being head-bound. Only an operation that appends a fact
+# needs the CAS token.
+_MUTATING = frozenset(
+    {
+        "authorization.revoke",
+        "conclusion.record",
+        "proposal.submit",
+        "research.decision",
+        "run.cancel",
+        "run.simulate",
+    }
+)
 _REVISION_BOUND = frozenset(
-    {"spec.validate", "spec.diff", "plan.dry-run", "research.decision", "run.simulate"}
+    {
+        "conclusion.record",
+        "evaluation.run",
+        "plan.dry-run",
+        "proposal.submit",
+        "proposal.validate",
+        "research.decision",
+        "run.simulate",
+        "spec.diff",
+        "spec.validate",
+    }
 )
 _HEAD_BOUND = frozenset(
     {
@@ -179,6 +201,40 @@ class ProposalSubmitOperation(ApplicationModel):
     request: CommandPath
 
 
+class EvaluationRunOperation(ApplicationModel):
+    """Compute one real evaluation over the fixed held-out set.
+
+    Reads the committed dataset and the registered predictors, writes a detail
+    artifact, and appends no per-sample events. A caller may add their own
+    predictor later by registering it; this slice evaluates the baseline and the
+    threshold candidate only, and says so.
+    """
+
+    kind: Literal["evaluation.run"]
+    mode: Literal["candidate", "majority", "threshold"]
+    threshold: float | None = None
+    seed: int | None = None
+
+
+class EvaluationCompareOperation(ApplicationModel):
+    """Compare a baseline and a candidate result, refusing incompatible setups."""
+
+    kind: Literal["evaluation.compare"]
+    baseline: CommandPath
+    candidate: CommandPath
+
+
+class ConclusionRecordOperation(ApplicationModel):
+    """Record a human conclusion. The system never supplies the judgement."""
+
+    kind: Literal["conclusion.record"]
+    baseline: CommandPath
+    candidate: CommandPath
+    verdict: Literal["insufficient-evidence", "supported", "unsupported"]
+    rationale: str
+    conclusion_id: str = Field(alias="conclusionId")
+
+
 class AuthorizationRevokeOperation(ApplicationModel):
     """Revoke an unused Worker grant. Revocation never launches or completes work."""
 
@@ -198,6 +254,9 @@ ApplicationOperation = Annotated[
     | RunShowOperation
     | RunSimulateOperation
     | WorkspaceShowOperation
+    | ConclusionRecordOperation
+    | EvaluationCompareOperation
+    | EvaluationRunOperation
     | PlanPreflightOperation
     | ProposalSubmitOperation
     | ProposalValidateOperation
@@ -260,6 +319,9 @@ class ApplicationReceipt(ApplicationModel):
         "run.simulate",
         "workspace.show",
         "authorization.revoke",
+        "conclusion.record",
+        "evaluation.compare",
+        "evaluation.run",
         "plan.preflight",
         "proposal.submit",
         "proposal.validate",

@@ -10,6 +10,25 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R13 real evaluation, comparison and human conclusions: a deterministic
+  evaluator over a fixed, committed held-out set. Every evaluation records the
+  dataset digest, evaluator version, split, seed and example count, stores the
+  full per-example detail as one CAS artifact, and appends no per-sample event.
+  Metrics are fixed-precision decimal strings and the aggregate is re-derivable
+  from the stored detail, so a reported number is reproducible or it is not a
+  result.
+
+- R13 comparison refuses incompatible setups instead of averaging across them,
+  naming the differing dataset, evaluator, version, split, seed or example count,
+  and a comparison declares `supportsAConclusion` only with at least two
+  required metrics — one improved score is an observation, not a finding.
+
+- R13 `ResearchConclusion`: a versioned contract with exactly three human
+  verdicts (`supported`, `unsupported`, `insufficient-evidence`), no partial
+  member, a mandatory rationale and human actor, and `systemDerived: false` so a
+  conclusion is never mistaken for a fact the control plane derived. A negative
+  or inconclusive result is a legitimate recorded outcome.
+
 - R12 research workflow in the browser: a read-only, bounded research ledger
   plus proposal validation and decision recording through the CLI's own shared
   services. A proposal may cite only evidence this project has actually
