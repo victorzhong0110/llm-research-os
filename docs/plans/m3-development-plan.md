@@ -33,7 +33,7 @@ integration, and predecessor acceptance remain distinct gates. Start each next
 package from verified main only after its predecessor is merged and accepted;
 do not stack package branches or infer acceptance from a merge alone.
 
-### Recorded deviation: delivery is currently a stacked, unmerged sequence
+### Historical deviation: initial delivery used a stacked, unmerged sequence
 
 A later maintainer instruction on 2026-10-04 asked for the remaining packages to
 be completed with no pull request merged yet. That is incompatible with the two
@@ -57,6 +57,11 @@ This deviation is recorded for maintainer review rather than resolved silently.
 If the maintainer prefers sequential unmerged work without stacking, the
 alternative is to pause at the first unmerged package; that decision belongs to
 the maintainer, not to the implementer.
+
+The maintainer superseded the no-merge direction on 2026-10-04 at 21:59:47
+Asia/Taipei: Codex fixes and merges R09/R10 while the other implementer completes
+the next assigned package. Integrate the existing stack sequentially; downstream
+work must synchronize with each merged baseline. This does not close Checkpoint B.
 
 Missing evidence remains pending-live. This instruction authorizes the remaining
 implementation, review, and sequential merges; it does not waive acceptance

@@ -635,7 +635,15 @@ bounded extractor, so nesting, node count, page count and extraction seconds are
 capped during the work rather than after it. Every limit is reported by
 `/capabilities` so a client cannot silently assume a larger allowance.
 
-Gate: `tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
+The listener bounds socket handlers before thread creation and applies both an
+idle timeout and an absolute request deadline, including headers. SSE keeps its
+application slot until exhaustion or close. Dedicated SQLite read-only connections
+have a progress-handler deadline; SQL applies project/type filters before LIMIT.
+PDF previews use the isolated evidence worker, rather than parsing in-process.
+
+Gate: `tests/test_web_regressions.py` real SSE concurrency, scoped snapshot paging,
+10k-store query evidence, PDF worker tripwire, query interruption and header deadline;
+`tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
 concurrency and declared-length cases. Residual trust: a local user can still
 read their own project through the filesystem, and `wsgiref` is not hardened
 against a hostile network peer.

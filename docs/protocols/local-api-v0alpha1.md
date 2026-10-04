@@ -66,11 +66,16 @@ document body, a host path, a stack trace, or a credential.
 | Concurrent requests | 8, refused with `503` rather than queued |
 | Decoded depth / nodes | 128 / 100 000, shared with the existing document loader |
 | Evidence size / extracted chars / PDF pages | 8 MiB / 400 000 / 64 |
+| SQLite query work | 2 s per dedicated read connection |
+| Socket idle / absolute request deadline | 10 s / 30 s, including incomplete headers |
 | SSE idle | 20 s, then a closing `idle` event |
 
 Body bounds are not treated as parser bounds. JSON and YAML go through the
 existing duplicate-key, alias-rejecting loader; PDF goes through the existing
-bounded extractor. A `Content-Length` that understates the body is cut off at
+isolated PDF worker (5 s wall, 4 s CPU, 256 MiB address space). The service
+limits socket handler threads before creation, retains an application concurrency
+slot for the entire SSE lifetime, and opens SQLite in read-only mode.
+A `Content-Length` that understates the body is cut off at
 the cap rather than trusted.
 
 ## Project scoping
@@ -80,6 +85,8 @@ proven from linked events: a digest is visible only when a verified event of
 *this* project references it. Event, revision and run pages are filtered by
 `projectId`, and every page reports the `highWaterMark` it was frozen against.
 
+Cursors bind the project, filters, and frozen high-water mark. Filtering occurs
+in SQL before limiting, and continuation excludes facts appended after that mark.
 Cursors are opaque and issued by the server. A run index is newest-first, so
 its cursor means "strictly older than this"; event and revision cursors mean
 "after this sequence".

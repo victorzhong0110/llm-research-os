@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import socket
 import sys
+import threading
+from contextlib import suppress
 from pathlib import Path
+from socketserver import ThreadingMixIn
 from typing import Any, Final
-from wsgiref.simple_server import WSGIRequestHandler, make_server
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.workspace import load_workspace
@@ -21,7 +24,40 @@ from llm_research_os.web.sessions import SessionStore
 LOOPBACK_HOST: Final = "127.0.0.1"
 DEFAULT_PORT: Final = 8787
 MAX_PORT: Final = 65535
-SOCKET_TIMEOUT_SECONDS: Final = 30.0
+SOCKET_TIMEOUT_SECONDS: Final = 10.0
+
+
+class BoundedWSGIServer(ThreadingMixIn, WSGIServer):
+    """Bound socket handlers before creating threads; no unbounded queue."""
+
+    daemon_threads = True
+    block_on_close = False
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._slots = threading.BoundedSemaphore(8)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        if not self._slots.acquire(blocking=False):
+            try:
+                request.settimeout(0.1)
+                request.sendall(b"HTTP/1.0 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n")
+            except OSError:
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self._slots.release()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._slots.release()
 
 
 class _QuietHandler(WSGIRequestHandler):
@@ -34,6 +70,7 @@ class _QuietHandler(WSGIRequestHandler):
     """
 
     timeout = SOCKET_TIMEOUT_SECONDS
+    request_deadline_seconds = 30.0
 
     def log_message(self, format: str, *args: Any) -> None:
         return
@@ -43,7 +80,17 @@ class _QuietHandler(WSGIRequestHandler):
             self.request.settimeout(SOCKET_TIMEOUT_SECONDS)
         except OSError:
             return
-        super().handle()
+        timer = threading.Timer(self.request_deadline_seconds, self._expire_request)
+        timer.daemon = True
+        timer.start()
+        try:
+            super().handle()
+        finally:
+            timer.cancel()
+
+    def _expire_request(self) -> None:
+        with suppress(OSError):
+            self.request.shutdown(socket.SHUT_RDWR)
 
 
 def build_api(
@@ -83,7 +130,16 @@ def serve(root: Path, *, host: str = LOOPBACK_HOST, port: int = DEFAULT_PORT) ->
             file=sys.stderr,
         )
         return 2
-    server = make_server(host, port, api.wsgi, handler_class=_QuietHandler)
+    try:
+        server = make_server(
+            host, port, api.wsgi, handler_class=_QuietHandler, server_class=BoundedWSGIServer
+        )
+    except OSError:
+        print(
+            '{"code":"listener-unavailable","message":"the local listener could not start"}',
+            file=sys.stderr,
+        )
+        return 2
     bound = server.server_address[0]
     bound_host = bound[0] if isinstance(bound, tuple) else host
     bound_port = bound[1] if isinstance(bound, tuple) and isinstance(bound[1], int) else port

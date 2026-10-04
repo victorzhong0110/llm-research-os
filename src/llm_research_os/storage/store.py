@@ -658,6 +658,8 @@ class EventStore:
         limit: int = 100,
         until_sequence: int | None = None,
         event_types: frozenset[str] | None = None,
+        project_id: str | None = None,
+        run_id: str | None = None,
     ) -> list[StoredEvent]:
         """Read a bounded page in global append order, verifying every row.
 
@@ -679,6 +681,12 @@ class EventStore:
         types = _validate_event_types(event_types)
         clauses = ["sequence > ?"]
         params: list[object] = [after_sequence]
+        for name, value in (("project_id", project_id), ("run_id", run_id)):
+            if value is not None:
+                if type(value) is not str or not 1 <= len(value) <= 255:
+                    raise ValueError(f"{name} must be a bounded identifier")
+                clauses.append(f"{name} = ?")
+                params.append(value)
         if upper is not None:
             clauses.append("sequence <= ?")
             params.append(upper)
@@ -695,6 +703,56 @@ class EventStore:
             tuple(params),
         ).fetchall()
         return [self._stored_event_from_row(row) for row in rows]
+
+    @contextmanager
+    def query_budget(self, seconds: float = 2.0) -> Iterator[None]:
+        """Bound SQLite work on this dedicated read connection."""
+        if not 0 < seconds <= 10:
+            raise ValueError("query budget must be in (0, 10]")
+        deadline = monotonic() + seconds
+        self._connection.set_progress_handler(lambda: int(monotonic() >= deadline), 1000)
+        try:
+            yield
+        finally:
+            self._connection.set_progress_handler(None, 0)
+
+    def list_run_heads_page(
+        self, project_id: str, *, before: int, until: int, limit: int
+    ) -> list[StoredEvent]:
+        """Return verified latest event rows for a bounded page of project Runs."""
+        if not 1 <= limit <= MAX_READ_PAGE_SIZE or before < 0 or until < 0:
+            raise ValueError("invalid run page bounds")
+        rows = self._connection.execute(
+            "SELECT MAX(sequence) AS head FROM events "
+            "WHERE project_id = ? AND run_id IS NOT NULL AND sequence <= ? "
+            "GROUP BY run_id HAVING head < ? ORDER BY head DESC LIMIT ?",
+            (project_id, until, before or until + 1, limit),
+        ).fetchall()
+        result: list[StoredEvent] = []
+        for row in rows:
+            result.extend(
+                self.read_events(
+                    after_sequence=int(row[0]) - 1,
+                    until_sequence=int(row[0]),
+                    limit=1,
+                    project_id=project_id,
+                )
+            )
+        return result
+
+    def list_spec_revisions_page(
+        self, project_id: str, *, after: int, until: int, limit: int
+    ) -> tuple[SpecRevisionRecord, ...]:
+        """Read a bounded project revision page against an explicit prefix."""
+        if not 1 <= limit <= MAX_READ_PAGE_SIZE or after < 0 or until < 0:
+            raise ValueError("invalid revision page bounds")
+        rows = self._connection.execute(
+            "SELECT project_id, revision, spec_digest, first_seen_sequence "
+            "FROM spec_revisions WHERE project_id = ? AND first_seen_sequence > ? "
+            "AND first_seen_sequence <= ? ORDER BY first_seen_sequence LIMIT ?",
+            (project_id, after, until, limit),
+        ).fetchall()
+        return tuple(SpecRevisionRecord(str(r[0]), int(r[1]), str(r[2]), int(r[3])) for r in rows)
 
     def verify_integrity(self) -> int:
         """Verify SQLite, schema, ordering, indexes, canonical JSON and every event digest."""

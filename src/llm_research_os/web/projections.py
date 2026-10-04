@@ -12,12 +12,14 @@ from __future__ import annotations
 import base64
 import binascii
 import re
+import sqlite3
 from dataclasses import dataclass
 from typing import Any
 
 from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
+from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.errors import EventStoreError
 from llm_research_os.storage.models import StoredEvent
@@ -46,10 +48,11 @@ class Page:
         }
 
 
-def encode_cursor(sequence: int) -> str:
+def encode_cursor(sequence: int, *, high_water: int | None = None, scope: str = "") -> str:
     """Opaque cursor. The value is a last-seen sequence, not a client-chosen offset."""
 
-    raw = f"{_CURSOR_PREFIX}{sequence}".encode()
+    value = f"{sequence}" if high_water is None else f"{sequence}:{high_water}:{scope}"
+    raw = f"{_CURSOR_PREFIX}{value}".encode()
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
@@ -58,6 +61,8 @@ def decode_cursor(cursor: str | None) -> int:
 
     if cursor is None or cursor == "":
         return 0
+    if len(cursor) > 2048:
+        raise bad_request("parameter-invalid", "The cursor is not a valid page token.")
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
         raw = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
@@ -65,10 +70,13 @@ def decode_cursor(cursor: str | None) -> int:
         raise bad_request("parameter-invalid", "The cursor is not a valid page token.") from exc
     if not raw.startswith(_CURSOR_PREFIX):
         raise bad_request("parameter-invalid", "The cursor is not a valid page token.")
-    tail = raw[len(_CURSOR_PREFIX) :]
-    if not tail.isdigit():
+    tail = raw[len(_CURSOR_PREFIX) :].split(":", 2)[0]
+    if not tail.isascii() or not tail.isdigit() or len(tail) > 16:
         raise bad_request("parameter-invalid", "The cursor is not a valid page token.")
-    return int(tail)
+    value = int(tail)
+    if value > CLOUD_EVENTS_INTEGER_MAX:
+        raise bad_request("parameter-invalid", "The cursor is not a valid page token.")
+    return value
 
 
 def parse_limit(raw: str | None) -> int:
@@ -105,7 +113,13 @@ class ReadProjections:
 
         try:
             return action(*args, **kwargs)
-        except (EventStoreError, ArtifactNotFoundError, ArtifactStoreError, OSError) as exc:
+        except (
+            EventStoreError,
+            ArtifactNotFoundError,
+            ArtifactStoreError,
+            OSError,
+            sqlite3.Error,
+        ) as exc:
             raise LocalApiError(
                 "event-store-unavailable",
                 "The control store could not answer this read.",
@@ -118,6 +132,27 @@ class ReadProjections:
         )
         return rows
 
+    def _bounds(self, cursor: str | None, scope: str) -> tuple[int, int]:
+        after = decode_cursor(cursor)
+        live = self._guarded(self._store.last_sequence)
+        if cursor:
+            raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
+            parts = raw[len(_CURSOR_PREFIX) :].split(":", 2)
+            if len(parts) > 1:
+                if (
+                    len(parts) != 3
+                    or parts[2] != scope
+                    or not parts[1].isascii()
+                    or not parts[1].isdigit()
+                    or len(parts[1]) > 16
+                ):
+                    raise bad_request("parameter-invalid", "The cursor scope is not valid.")
+                high_water = int(parts[1])
+                if high_water > live or after > high_water:
+                    raise bad_request("parameter-invalid", "The cursor snapshot is not available.")
+                return after, high_water
+        return after, live
+
     def event_page(
         self,
         *,
@@ -127,12 +162,17 @@ class ReadProjections:
     ) -> Page:
         """One bounded project-scoped event page with a frozen high-water mark."""
 
-        after = decode_cursor(cursor)
+        scope = self._project_id + "|events|" + ",".join(sorted(event_types or ()))
+        after, high_water = self._bounds(cursor, scope)
         size = limit if limit is not None else parse_limit(None)
-        high_water = self._guarded(self._store.last_sequence)
-        rows = self._events(after_sequence=after, limit=size)
-        if event_types is not None:
-            rows = [row for row in rows if str(row.event.type) in event_types]
+        rows = self._guarded(
+            self._store.read_events,
+            after_sequence=after,
+            limit=size,
+            until_sequence=high_water,
+            event_types=event_types,
+            project_id=self._project_id,
+        )
         items = [
             {
                 "sequence": row.sequence,
@@ -151,17 +191,23 @@ class ReadProjections:
         last = rows[-1].sequence if rows else after
         return Page(
             items=tuple(items),
-            next_cursor=encode_cursor(last) if len(rows) == size else None,
+            next_cursor=encode_cursor(last, high_water=high_water, scope=scope)
+            if len(rows) == size
+            else None,
             high_water_mark=high_water,
         )
 
     def revision_page(self, *, cursor: str | None, limit: int | None = None) -> Page:
-        after = decode_cursor(cursor)
+        scope = self._project_id + "|revisions"
+        after, high_water = self._bounds(cursor, scope)
         size = limit if limit is not None else parse_limit(None)
-        high_water = self._guarded(self._store.last_sequence)
-        rows = self._guarded(self._store.list_spec_revisions)
-        scoped = [row for row in rows if row.project_id == self._project_id]
-        selected = [row for row in scoped if row.first_seen_sequence > after][:size]
+        selected = self._guarded(
+            self._store.list_spec_revisions_page,
+            self._project_id,
+            after=after,
+            until=high_water,
+            limit=size,
+        )
         items = [
             {
                 "revision": row.revision,
@@ -173,45 +219,46 @@ class ReadProjections:
         last = selected[-1].first_seen_sequence if selected else after
         return Page(
             items=tuple(items),
-            next_cursor=encode_cursor(last) if len(selected) == size else None,
+            next_cursor=encode_cursor(last, high_water=high_water, scope=scope)
+            if len(selected) == size
+            else None,
             high_water_mark=high_water,
         )
 
     def run_page(self, *, cursor: str | None, limit: int | None = None) -> Page:
         """Bounded run index derived from verified Run facts, newest first.
 
-        The fold is scanned once against the frozen high-water mark, so a page
-        is bounded in the response but the derivation cost is the project run
-        count. The cursor resumes strictly below the last returned sequence.
+        SQL selects only the requested heads against the frozen high-water mark,
+        then verifies each selected fact. The query budget bounds index work.
+        The cursor resumes strictly below the last returned sequence.
         """
 
-        after = decode_cursor(cursor)
+        scope = self._project_id + "|runs"
+        after, high_water = self._bounds(cursor, scope)
         size = limit if limit is not None else parse_limit(None)
-        high_water = self._guarded(self._store.last_sequence)
-        rows = self._events(after_sequence=0, limit=high_water or 1)
-        latest: dict[str, dict[str, Any]] = {}
-        for row in rows:
-            if row.event.data.project_id != self._project_id or row.event.data.run_id is None:
-                continue
-            run_id = str(row.event.data.run_id)
-            entry = latest.get(run_id)
-            if entry is not None and row.sequence <= int(entry["lastSequence"]):
-                continue
-            latest[run_id] = {
-                "runId": run_id,
+        rows = self._guarded(
+            self._store.list_run_heads_page,
+            self._project_id,
+            before=after,
+            until=high_water,
+            limit=size,
+        )
+        items = tuple(
+            {
+                "runId": str(row.event.data.run_id),
                 "lastSequence": row.sequence,
                 "lastEventType": str(row.event.type),
                 "attemptId": None
                 if row.event.data.attempt_id is None
                 else str(row.event.data.attempt_id),
             }
-        ordered = sorted(latest.values(), key=lambda item: int(item["lastSequence"]), reverse=True)
-        # The index is newest-first, so a cursor means "strictly older than this".
-        remaining = [item for item in ordered if after == 0 or int(item["lastSequence"]) < after]
-        selected = remaining[:size]
+            for row in rows
+        )
         return Page(
-            items=tuple(selected),
-            next_cursor=encode_cursor(int(selected[-1]["lastSequence"])) if selected else None,
+            items=items,
+            next_cursor=encode_cursor(rows[-1].sequence, high_water=high_water, scope=scope)
+            if len(rows) == size
+            else None,
             high_water_mark=high_water,
         )
 

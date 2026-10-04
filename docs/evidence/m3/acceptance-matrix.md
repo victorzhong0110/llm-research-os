@@ -52,6 +52,30 @@ not accepted.** Base: `docs/sequential-r08-r16-acceptance` at `021f18e`. Checkpo
 is still open and R08 live two-host/GPU evidence is still pending-live; R09 work was
 authorized sequentially and does not close that gate.
 
+### Review correction candidate (2026-10-04)
+
+The maintainer assigned Codex to fix and merge #131/#132. #130 was merged at
+`a5d730cc171318daafda13dc81d2b0cd6bc18d73`; this candidate integrates that main.
+The stdlib transport is accepted by the planning/review assistant for the local,
+read-only scope with bounded handler threads, lifetime-held SSE slots, socket
+idle/absolute deadlines, read-only SQLite and query budgets. The historical
+stacking deviation is superseded by the explicit sequential integration request.
+Checkpoint B and selected-host/GPU evidence remain open.
+
+Review regressions cover 1,001-event Run reads, filters before pagination, frozen
+scoped cursors, SSE after foreign-project prefixes, concurrent health while SSE
+is open, slot release before iteration, read-only stores, SQLite interruption,
+and valid PDF extraction in an isolated worker. API/socket/regression suite:
+70 passed before the additional absolute-header-deadline regression was added.
+Final-head CI remains authoritative; original Mac 3.13 failure is not a green run.
+
+Actual 10,000-event SQLite baseline on this managed Linux Python 3.12.14 host:
+5,000 events per project, one Run in the selected project, page limit 100.
+Event page: 100 items, 5.443 ms; Run page: one item, 3.480 ms; revision page:
+zero items, 0.069 ms; all returned high-water mark 10,000 under the query budget.
+This records metadata-query scale, not multi-Run execution or revision-scale
+acceptance. Fixtures are synthetic and do not supply R08 live evidence.
+
 ### Proposed normative change for review
 
 The R09 plan described "optional FastAPI/ASGI". The implementation is a

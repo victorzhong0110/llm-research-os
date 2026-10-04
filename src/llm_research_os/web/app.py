@@ -104,8 +104,16 @@ class LocalApi:
         """The WSGI entrypoint. Never raises; every fault becomes a safe body."""
 
         try:
-            with self._gate:
-                status, headers, body = self._dispatch(environ)
+            self._gate.__enter__()
+        except LocalApiError as exc:
+            error_status, error_headers, error_body = self._error(exc)
+            start_response(
+                f"{error_status} {_REASON.get(error_status, 'Status')}",
+                [*error_headers, ("Content-Length", str(len(error_body)))],
+            )
+            return [error_body]
+        try:
+            status, headers, body = self._dispatch(environ)
         except LocalApiError as exc:
             status, headers, body = self._error(exc)
         except ApplicationError:
@@ -121,14 +129,19 @@ class LocalApi:
                 LocalApiError("internal-error", "The request could not be completed.", status=500)
             )
         if isinstance(body, bytes):
+            self._gate.__exit__(None, None, None)
             start_response(
                 f"{status} {_REASON.get(status, 'Status')}",
                 [*headers, ("Content-Length", str(len(body)))],
             )
             return [body]
         # SSE streams yield bytes chunks; the total length is unknown up front.
-        start_response(f"{status} {_REASON.get(status, 'Status')}", headers)
-        return body
+        try:
+            start_response(f"{status} {_REASON.get(status, 'Status')}", headers)
+        except Exception:
+            self._gate.__exit__(None, None, None)
+            raise
+        return _GatedStream(body, self._gate)
 
     def _error(self, exc: LocalApiError) -> Response:
         return exc.status, _json_headers(), json_bytes(exc.document())
@@ -219,7 +232,7 @@ class LocalApi:
                     "pollFallbackSeconds": self._stream_poll_seconds,
                 }
             )
-        with self._open_store() as store:
+        with self._open_store() as store, store.query_budget():
             views = ReadProjections(
                 store, LocalArtifactStore(self._workspace.cas_root), self._workspace.project_id
             )
@@ -262,7 +275,7 @@ class LocalApi:
             raise LocalApiError(
                 "workspace-invalid", "The workspace event store does not exist.", status=503
             )
-        return EventStore(self._workspace.control_db, require_existing=True)
+        return EventStore(self._workspace.control_db, create=False)
 
     def _preview(self, environ: dict[str, Any], query: dict[str, str]) -> Response:
         payload = read_bounded_body(
@@ -302,7 +315,7 @@ class LocalApi:
             deadline = time.monotonic() + self._stream_idle_seconds
             yield b": open\n\n"
             while emitted < MAX_STREAM_EVENTS and time.monotonic() < deadline:
-                with self._open_store() as store:
+                with self._open_store() as store, store.query_budget():
                     page = ReadProjections(
                         store,
                         LocalArtifactStore(workspace.cas_root),
@@ -334,6 +347,41 @@ class LocalApi:
             ],
             body(),
         )
+
+
+class _GatedStream:
+    """Retain a concurrency slot until exhausted or closed, even before first next."""
+
+    def __init__(self, body: Iterable[bytes], gate: ConcurrencyGate) -> None:
+        self._body = iter(body)
+        self._gate = gate
+        self._closed = False
+
+    def __iter__(self) -> _GatedStream:
+        return self
+
+    def __next__(self) -> bytes:
+        if self._closed:
+            raise StopIteration
+        try:
+            return next(self._body)
+        except StopIteration:
+            self.close()
+            raise
+        except Exception:
+            self.close()
+            # Headers are already committed; send only a fixed stream error.
+            return b'event: error\ndata: {"code":"event-store-unavailable"}\n\n'
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            try:
+                close = getattr(self._body, "close", None)
+                if callable(close):
+                    close()
+            finally:
+                self._gate.__exit__(None, None, None)
 
 
 def _header_key(name: str) -> str:
