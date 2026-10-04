@@ -24,7 +24,7 @@ uv run researchos m1 prove examples/m1-checkpoint demo.db
 uv run researchos events verify demo.db
 ```
 
-架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收。维护者于 2026-10-04 授权按顺序完成至 R16。当前先补齐 [R08 真实环境验收](docs/guides/r08-live-acceptance.md)。R09 只读[本地 API](docs/guides/m3-local-api.md)、R10 [研究工作台](docs/guides/m3-workbench.md)、R11 [浏览器操作](docs/guides/m3-browser-operations.md)、R12 [研究流程](docs/protocols/research-workflow-v0alpha1.md)与 R13 [评估与结论](docs/protocols/evaluation-conclusion-v0alpha1.md)已有候选实现，尚未合入、尚未验收。
+架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收。维护者于 2026-10-04 授权按顺序完成至 R16。当前先补齐 [R08 真实环境验收](docs/guides/r08-live-acceptance.md)。R09 只读[本地 API](docs/guides/m3-local-api.md)与 R10 [研究工作台](docs/guides/m3-workbench.md)分别由 #131（R09 已合入）和 #132（R10 审查修复）跟踪。代码合入不代表真实环境验收闸门已经关闭。
 
 > 本文是 [README.md](README.md) 的中文版。英文版是权威文本，两者随同一 PR 更新（[ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)）。
 >

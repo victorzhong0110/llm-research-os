@@ -377,6 +377,7 @@ def test_client_only_calls_routed_endpoints() -> None:
         "commands",
         "events",
         "research",
+        "inspect",
         "revisions",
         "runs",
         "session",

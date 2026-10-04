@@ -10,8 +10,9 @@ authorized release.
 ## Unreleased
 
 ### Added
-- R13 real evaluation, comparison and human conclusions: a deterministic
-  evaluator over a fixed, committed held-out set. Every evaluation records the
+- R13 partial evaluation mechanics and human conclusions: a deterministic
+  evaluator over a fixed, synthetic 12-example CPU fixture, labelled
+  `computed-fixture`; no real-model or Checkpoint C acceptance is claimed. Every evaluation records the
   dataset digest, evaluator version, split, seed and example count, stores the
   full per-example detail as one CAS artifact, and appends no per-sample event.
   Metrics are fixed-precision decimal strings and the aggregate is re-derivable

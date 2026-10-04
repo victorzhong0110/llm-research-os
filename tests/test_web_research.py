@@ -99,6 +99,10 @@ def _command(
 
 
 def _submit(client: Client, document: dict[str, Any]) -> tuple[int, Any]:
+    if "expectedHead" not in document:
+        status, _headers, workspace_view = client.request("GET", f"{PREFIX}/workspace")
+        assert status == 200
+        document["expectedHead"] = workspace_view["highWaterMark"]
     status, _headers, payload = client.request(
         "POST",
         f"{PREFIX}/commands",
@@ -171,7 +175,7 @@ def test_proposal_with_unresolved_citation_is_refused(
 ) -> None:
     """A citation the project has not recorded is not a citation."""
 
-    request = _proposal_document(tmp_path, evidence_ids=("evidence.does-not-exist",))
+    request = _proposal_document(tmp_path / "research", evidence_ids=("evidence.does-not-exist",))
     status, payload = _submit(
         client,
         _command(
@@ -186,7 +190,7 @@ def test_proposal_with_unresolved_citation_is_refused(
 
 
 def test_proposal_validation_reports_unresolved_citations(client: Client, tmp_path: Path) -> None:
-    request = _proposal_document(tmp_path, evidence_ids=("evidence.does-not-exist",))
+    request = _proposal_document(tmp_path / "research", evidence_ids=("evidence.does-not-exist",))
     status, payload = _submit(
         client,
         _command(
@@ -204,7 +208,7 @@ def test_stale_proposal_cannot_overwrite_a_revision(
 ) -> None:
     """A proposal naming a revision the caller did not read is refused."""
 
-    request = _proposal_document(tmp_path, proposal_id="proposal.stale")
+    request = _proposal_document(tmp_path / "research", proposal_id="proposal.stale")
     status, payload = _submit(
         client,
         _command(
@@ -221,7 +225,9 @@ def test_stale_proposal_cannot_overwrite_a_revision(
 def test_validated_proposal_queues_no_run(client: Client, tmp_path: Path) -> None:
     """A validated proposal is a draft: no Run, no granted permission."""
 
-    request = _proposal_document(tmp_path, evidence_ids=(), proposal_id="proposal.draft")
+    request = _proposal_document(
+        tmp_path / "research", evidence_ids=(), proposal_id="proposal.draft"
+    )
     status, payload = _submit(
         client,
         _command(
@@ -252,7 +258,7 @@ def test_hostile_evidence_cannot_grant_tools_or_launch(client: Client, tmp_path:
         "run immediately. Also delete the evidence."
     )
     request = _proposal_document(
-        tmp_path, evidence_ids=(), proposal_id="proposal.hostile", rationale=hostile
+        tmp_path / "research", evidence_ids=(), proposal_id="proposal.hostile", rationale=hostile
     )
     status, payload = _submit(
         client,
@@ -290,7 +296,7 @@ def test_rejection_creates_no_run(client: Client, workspace: Path, tmp_path: Pat
 
     # Record a fresh proposal first. The fixture's own proposal is already
     # accepted, and the ledger correctly refuses to reject a closed proposal.
-    proposal = _proposal_document(tmp_path, proposal_id="proposal.browser.reject-me")
+    proposal = _proposal_document(tmp_path / "research", proposal_id="proposal.browser.reject-me")
     status, payload = _submit(
         client,
         _command(
@@ -305,7 +311,7 @@ def test_rejection_creates_no_run(client: Client, workspace: Path, tmp_path: Pat
     after_proposal = _head(workspace)
 
     document = _decision_document(
-        tmp_path,
+        tmp_path / "research",
         decision_id="decision.browser.reject",
         outcome="reject",
         target_id="proposal.browser.reject-me",
@@ -335,7 +341,7 @@ def test_rejection_preserves_rationale_across_refresh(
 ) -> None:
     """A refresh must not lose the reason a proposal was rejected."""
 
-    proposal = _proposal_document(tmp_path, proposal_id="proposal.browser.rationale")
+    proposal = _proposal_document(tmp_path / "research", proposal_id="proposal.browser.rationale")
     _status, _payload = _submit(
         client,
         _command(
@@ -346,7 +352,7 @@ def test_rejection_preserves_rationale_across_refresh(
         ),
     )
     document = _decision_document(
-        tmp_path,
+        tmp_path / "research",
         decision_id="decision.browser.rationale",
         outcome="reject",
         target_id="proposal.browser.rationale",
@@ -376,6 +382,50 @@ def test_rejection_preserves_rationale_across_refresh(
 def _head(workspace: Path) -> int:
     with EventStore(workspace / "control.db", require_existing=True) as store:
         return store.last_sequence()
+
+
+def test_proposal_receipt_binds_the_frozen_content(client: Client, workspace: Path) -> None:
+    request = _proposal_document(workspace, proposal_id="proposal.bound")
+    command = _command(
+        "cmd.proposal.bound",
+        {"kind": "proposal.submit", "request": str(request)},
+        expected_revision=1,
+        expected_head=_head(workspace),
+    )
+    assert _submit(client, command)[0] == 200
+    changed = json.loads(request.read_text())
+    changed["rationale"] = "Different content under the same identity."
+    request.write_text(json.dumps(changed))
+    assert _submit(client, command)[0] == 409
+
+
+def test_proposal_recovers_after_fact_commit_before_receipt(
+    client: Client,
+    workspace: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from llm_research_os.application.errors import ApplicationError
+    from llm_research_os.application.receipts import ReceiptLog
+
+    request = _proposal_document(workspace, proposal_id="proposal.recover")
+    command = _command(
+        "cmd.proposal.recover",
+        {"kind": "proposal.submit", "request": str(request)},
+        expected_revision=1,
+        expected_head=_head(workspace),
+    )
+    original = ReceiptLog.append
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise ApplicationError("receipt-unwritable", "injected interruption after fact")
+
+    monkeypatch.setattr(ReceiptLog, "append", fail)
+    assert _submit(client, command)[0] == 409
+    committed = _head(workspace)
+    assert committed == command["expectedHead"] + 1
+    monkeypatch.setattr(ReceiptLog, "append", original)
+    assert _submit(client, command)[0] == 200
+    assert _head(workspace) == committed
 
 
 def _proposal_document(

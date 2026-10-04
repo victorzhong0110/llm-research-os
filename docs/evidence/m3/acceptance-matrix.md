@@ -36,14 +36,41 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R06 | Cancellation, observation, and crash recovery | Merged in #115 at `62cfad00af76b04a58de27671edf76a1127b0f5a` | [Main CI #258](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) passed; no blanket checkpoint acceptance | [R06 candidate](#r06-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/115) |
 | R07 | SSH onboarding and doctor | Merged in #116 at `1f8b14226728a3c3c710ea95ea1e3347d40716be` | [Main CI #260](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) passed; authorized-host acceptance pending-live | [R07 candidate](#r07-candidate-evidence), [integration record](https://github.com/victorzhong0110/llm-research-os/pull/116) |
 | R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote material preparation merged in #122 at `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534) passed). Remote executor/recovery merged in #126 at `c6903c3d795fbef3705d966bec84c1a212c491fe`; CLI merged in #127 at `35eda8cc9d9c71f251e35a41a2a231174f40c9e0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37141821193) passed). Actual selected two-host and GPU evidence remain pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
-| R09 | Local API and browser authority boundaries | Candidate on this branch; not merged | Not accepted; R08 live evidence still pending-live | [R09 candidate](#r09-candidate-evidence) |
-| R10 | Read-only research workbench | Candidate on this branch; not merged | Not accepted; no automated browser E2E in CI | [R10 candidate](#r10-candidate-evidence) |
-| R11 | Browser approval, execution, cancellation, restore | Candidate on this branch; not merged | Not accepted; start/reconnect/restore not delivered | [R11 candidate](#r11-candidate-evidence) |
-| R12 | AI proposals, citations, researcher decisions | Candidate on this branch; not merged | Not accepted; browser evidence-import form not delivered | [R12 candidate](#r12-candidate-evidence) |
-| R13 | Real evaluation, comparison, conclusions | Candidate on this branch; not merged | Not accepted; no editable report renderer | [R13 candidate](#r13-candidate-evidence) |
+| R09 | Local API and browser authority boundaries | Merged #131 at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93` | Final-head CI 37209190785 passed; B live evidence remains open | [R09 candidate](#r09-candidate-evidence) |
+| R10 | Read-only research workbench | Reviewed repair in #132; exact integration state/SHA at the PR | Final-head browser/type/build/full-suite CI is the integration gate | [R10 candidate](#r10-candidate-evidence) |
+| R11 | Browser approval, execution, cancellation, and restore | Partial operations slice merged #133 at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` | Final-head CI 37224701233 passed; start/restore and B remain open | [R11 review](../../reviews/pr134-136-2026-10-05.md) |
+| R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice reviewed in #134; final head and CI at the PR | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
+| R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics reviewed in #135; final head and CI at the PR | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R14 | Minimal extension mechanism and permission boundary | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R14 |
 | R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
 | R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
+
+## R10 candidate evidence
+
+Original submission: `abd3524e36d56e6bf711dbfc91878f3bff0e09c0`, #132. Review
+repairs integrate merged R09 main `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`.
+Cancellation uses the existing reducer and remains distinct from observed stop;
+Run details use scoped frozen pages. Event inspection, immutable stored spec/plan
+inspection and actual dependency topology, decision/dissent/authorization history,
+log/metric/artifact/environment contents and verified transitive lineage are
+implemented as bounded reads. Missing content/provenance and unsupported nested
+graphs are explicit. No measurements are inferred from IDs or numeric values.
+
+The published response schema and generated frontend contracts are checked against
+actual API responses. Focused API/socket/contract/CLI validation: **150 passed**; ruff/format, mypy
+(245 source files), generated schemas, frontend type/build and wheel build passed.
+The local browser download was blocked; final-head CI must establish its pass.
+New regressions cover fresh/poisoned caches, late Run facts,
+actual cancellation control, transitive project proof, redaction, oversized/binary
+objects and the existing plan compiler. Browser fixtures are synthetic, use actual
+SQLite/CAS and preserve the store across server restart; they do not supply live
+GPU or Worker acceptance. Final-head CI and exact repair head are recorded in #132.
+
+R09 integration evidence: reviewed repair `ce83a41bc22b3082d47b23c84ecd181bcbd7acb0`,
+merged #131 at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`; CI
+[37209190785](https://github.com/victorzhong0110/llm-research-os/actions/runs/37209190785)
+passed all five Python and real native/Ray/OCI gates. B remains open. Historical
+candidate notes below describe original submissions and do not override this update.
 
 ## R09 candidate
 
@@ -51,6 +78,30 @@ Status: **Implemented on branch `r09-local-api`; candidate evidence only. Not me
 not accepted.** Base: `docs/sequential-r08-r16-acceptance` at `021f18e`. Checkpoint B
 is still open and R08 live two-host/GPU evidence is still pending-live; R09 work was
 authorized sequentially and does not close that gate.
+
+### Review correction candidate (2026-10-04)
+
+The maintainer assigned Codex to fix and merge #131/#132. #130 was merged at
+`a5d730cc171318daafda13dc81d2b0cd6bc18d73`; this candidate integrates that main.
+The stdlib transport is accepted by the planning/review assistant for the local,
+read-only scope with bounded handler threads, lifetime-held SSE slots, socket
+idle/absolute deadlines, read-only SQLite and query budgets. The historical
+stacking deviation is superseded by the explicit sequential integration request.
+Checkpoint B and selected-host/GPU evidence remain open.
+
+Review regressions cover 1,001-event Run reads, filters before pagination, frozen
+scoped cursors, SSE after foreign-project prefixes, concurrent health while SSE
+is open, slot release before iteration, read-only stores, SQLite interruption,
+and valid PDF extraction in an isolated worker. API/socket/regression suite:
+70 passed before the additional absolute-header-deadline regression was added.
+Final-head CI remains authoritative; original Mac 3.13 failure is not a green run.
+
+Actual 10,000-event SQLite baseline on this managed Linux Python 3.12.14 host:
+5,000 events per project, one Run in the selected project, page limit 100.
+Event page: 100 items, 5.443 ms; Run page: one item, 3.480 ms; revision page:
+zero items, 0.069 ms; all returned high-water mark 10,000 under the query budget.
+This records metadata-query scale, not multi-Run execution or revision-scale
+acceptance. Fixtures are synthetic and do not supply R08 live evidence.
 
 ### Proposed normative change for review
 

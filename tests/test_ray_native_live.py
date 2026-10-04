@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import secrets
+import shutil
 import tempfile
 import time
 from dataclasses import replace
@@ -41,24 +43,25 @@ def ray_backend():  # type: ignore[no-untyped-def]
 
     assert ray.__version__ == RAY_PROBE_VERSION
     assert not ray.is_initialized(), "integration may only start its own cluster"
-    with tempfile.TemporaryDirectory(prefix="rn-", dir="/tmp") as scratch:
-        try:
-            context = ray.init(
-                address="local",
-                num_cpus=1,
-                include_dashboard=True,
-                dashboard_host="127.0.0.1",
-                dashboard_port=0,
-                _node_ip_address="127.0.0.1",
-                _temp_dir=scratch,
-                object_store_memory=80 * 1024 * 1024,
-                _memory=256 * 1024 * 1024,
-                logging_level="ERROR",
-            )
-            assert len([n for n in ray.nodes() if n["Alive"]]) == 1
-            yield RayJobsProbe("http://" + context.dashboard_url, os.environ["RAY_AUTH_TOKEN"])
-        finally:
-            ray.shutdown()  # no reuse or global ray stop
+    scratch = tempfile.mkdtemp(prefix="rn-", dir="/tmp")
+    try:
+        context = ray.init(
+            address="local",
+            num_cpus=1,
+            include_dashboard=True,
+            dashboard_host="127.0.0.1",
+            dashboard_port=0,
+            _node_ip_address="127.0.0.1",
+            _temp_dir=scratch,
+            object_store_memory=80 * 1024 * 1024,
+            _memory=256 * 1024 * 1024,
+            logging_level="ERROR",
+        )
+        assert len([n for n in ray.nodes() if n["Alive"]]) == 1
+        yield RayJobsProbe("http://" + context.dashboard_url, os.environ["RAY_AUTH_TOKEN"])
+    finally:
+        ray.shutdown()  # no reuse or global ray stop
+        _remove_ray_scratch(scratch)
 
 
 def _job(tmp_path, backend, world, client, kwargs):  # type: ignore[no-untyped-def]
@@ -177,3 +180,18 @@ def test_ray_stop_status_requires_controller_cancel_and_actual_group_observation
     finally:
         server.stop()
         plane.store.close()
+
+
+def _remove_ray_scratch(scratch: str, *, timeout: float = 5.0) -> None:
+    """Bound only transient ENOTEMPTY races from the owned cluster's log writers."""
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            shutil.rmtree(scratch)
+            return
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            if exc.errno != errno.ENOTEMPTY or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.05)

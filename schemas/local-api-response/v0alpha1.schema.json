@@ -1,0 +1,923 @@
+{
+  "$defs": {
+    "ArtifactDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "byteLength": {
+          "minimum": 0,
+          "title": "Bytelength",
+          "type": "integer"
+        },
+        "digest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "inline": {
+          "title": "Inline",
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "ArtifactView",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "verification": {
+          "default": "not-inlined",
+          "enum": [
+            "verified",
+            "not-inlined"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "digest",
+        "byteLength",
+        "inline"
+      ],
+      "title": "ArtifactDocument",
+      "type": "object"
+    },
+    "CapabilitiesDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "Capabilities",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/$defs/LimitsDocument"
+        },
+        "pollFallbackSeconds": {
+          "exclusiveMinimum": 0,
+          "title": "Pollfallbackseconds",
+          "type": "number"
+        },
+        "readOnly": {
+          "title": "Readonly",
+          "type": "boolean"
+        },
+        "session": {
+          "$ref": "#/$defs/SessionDetails"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "readOnly",
+        "limits",
+        "session",
+        "pollFallbackSeconds"
+      ],
+      "title": "CapabilitiesDocument",
+      "type": "object"
+    },
+    "CommandReceipt": {
+      "additionalProperties": false,
+      "description": "Result of one browser-dispatched shared command.\n\nR11's honesty rule lives in this shape: ``disposition`` says whether the\ncommand was newly committed or replayed from a prior receipt, and the\nresult carries ``observedStop``/``launchAllowed`` so the client can never\nrender an accepted request as an observed process outcome.",
+      "properties": {
+        "actorId": {
+          "title": "Actorid",
+          "type": "string"
+        },
+        "apiVersion": {
+          "const": "researchos.dev/application/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "artifactDigests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifactdigests",
+          "type": "array"
+        },
+        "commandId": {
+          "title": "Commandid",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "committed",
+            "replayed"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "expectedHead": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectedhead"
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectedrevision"
+        },
+        "factEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Facteventids",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ApplicationReceipt",
+          "title": "Kind",
+          "type": "string"
+        },
+        "observedHead": {
+          "minimum": 0,
+          "title": "Observedhead",
+          "type": "integer"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "requestDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Requestdigest",
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": true,
+          "title": "Result",
+          "type": "object"
+        },
+        "resultDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Resultdigest",
+          "type": "string"
+        },
+        "submittedAt": {
+          "title": "Submittedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "commandId",
+        "actorId",
+        "submittedAt",
+        "operation",
+        "requestDigest",
+        "observedHead",
+        "disposition",
+        "factEventIds",
+        "artifactDigests",
+        "resultDigest",
+        "result"
+      ],
+      "title": "CommandReceipt",
+      "type": "object"
+    },
+    "DocumentPreviewDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "byteLength": {
+          "minimum": 1,
+          "title": "Bytelength",
+          "type": "integer"
+        },
+        "decoded": {
+          "additionalProperties": true,
+          "title": "Decoded",
+          "type": "object"
+        },
+        "documentKind": {
+          "enum": [
+            "json",
+            "pdf",
+            "yaml"
+          ],
+          "title": "Documentkind",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DocumentPreview",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "documentKind",
+        "byteLength",
+        "decoded"
+      ],
+      "title": "DocumentPreviewDocument",
+      "type": "object"
+    },
+    "ErrorDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "body-too-large",
+            "concurrency-exhausted",
+            "command-refused",
+            "content-type-unsupported",
+            "csrf-invalid",
+            "document-hostile",
+            "document-invalid",
+            "event-store-unavailable",
+            "host-forbidden",
+            "internal-error",
+            "method-not-allowed",
+            "not-found",
+            "origin-forbidden",
+            "parameter-invalid",
+            "query-timeout",
+            "session-expired",
+            "session-required",
+            "bootstrap-invalid",
+            "bootstrap-consumed",
+            "workspace-invalid"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "kind": {
+          "const": "LocalApiError",
+          "title": "Kind",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "code",
+        "message"
+      ],
+      "title": "ErrorDocument",
+      "type": "object"
+    },
+    "EventItem": {
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attemptid"
+        },
+        "eventId": {
+          "title": "Eventid",
+          "type": "string"
+        },
+        "occurredAt": {
+          "title": "Occurredat",
+          "type": "string"
+        },
+        "projectId": {
+          "title": "Projectid",
+          "type": "string"
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runid"
+        },
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "eventId",
+        "type",
+        "occurredAt",
+        "projectId"
+      ],
+      "title": "EventItem",
+      "type": "object"
+    },
+    "EventPageDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EventItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "EventPage",
+          "title": "Kind",
+          "type": "string"
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nextcursor"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "highWaterMark",
+        "kind",
+        "items"
+      ],
+      "title": "EventPageDocument",
+      "type": "object"
+    },
+    "HealthDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "Health",
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "const": "ready",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "status"
+      ],
+      "title": "HealthDocument",
+      "type": "object"
+    },
+    "InspectionDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "document": {
+          "additionalProperties": true,
+          "title": "Document",
+          "type": "object"
+        },
+        "identity": {
+          "title": "Identity",
+          "type": "string"
+        },
+        "immutable": {
+          "const": true,
+          "title": "Immutable",
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "InspectionView",
+          "title": "Kind",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/LineageLink"
+          },
+          "title": "Links",
+          "type": "array"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "identity",
+        "document",
+        "links",
+        "immutable"
+      ],
+      "title": "InspectionDocument",
+      "type": "object"
+    },
+    "LimitsDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "maxBodyBytes": {
+          "minimum": 1,
+          "title": "Maxbodybytes",
+          "type": "integer"
+        },
+        "maxConcurrentRequests": {
+          "minimum": 1,
+          "title": "Maxconcurrentrequests",
+          "type": "integer"
+        },
+        "maxDecodedDepth": {
+          "minimum": 1,
+          "title": "Maxdecodeddepth",
+          "type": "integer"
+        },
+        "maxDecodedNodes": {
+          "minimum": 1,
+          "title": "Maxdecodednodes",
+          "type": "integer"
+        },
+        "maxEvidenceBytes": {
+          "minimum": 1,
+          "title": "Maxevidencebytes",
+          "type": "integer"
+        },
+        "maxExtractedChars": {
+          "minimum": 1,
+          "title": "Maxextractedchars",
+          "type": "integer"
+        },
+        "maxPdfPages": {
+          "minimum": 1,
+          "title": "Maxpdfpages",
+          "type": "integer"
+        },
+        "readTimeoutSeconds": {
+          "exclusiveMinimum": 0,
+          "title": "Readtimeoutseconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "maxBodyBytes",
+        "maxConcurrentRequests",
+        "maxDecodedDepth",
+        "maxDecodedNodes",
+        "maxEvidenceBytes",
+        "maxExtractedChars",
+        "maxPdfPages",
+        "readTimeoutSeconds"
+      ],
+      "title": "LimitsDocument",
+      "type": "object"
+    },
+    "LineageLink": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "event",
+            "artifact",
+            "revision"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "via": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 9,
+          "title": "Via",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "label"
+      ],
+      "title": "LineageLink",
+      "type": "object"
+    },
+    "RevisionItem": {
+      "additionalProperties": false,
+      "properties": {
+        "firstSeenSequence": {
+          "minimum": 1,
+          "title": "Firstseensequence",
+          "type": "integer"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "specDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Specdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "revision",
+        "specDigest",
+        "firstSeenSequence"
+      ],
+      "title": "RevisionItem",
+      "type": "object"
+    },
+    "RevisionPageDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RevisionItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "RevisionPage",
+          "title": "Kind",
+          "type": "string"
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nextcursor"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "highWaterMark",
+        "kind",
+        "items"
+      ],
+      "title": "RevisionPageDocument",
+      "type": "object"
+    },
+    "RunItem": {
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attemptid"
+        },
+        "lastEventType": {
+          "title": "Lasteventtype",
+          "type": "string"
+        },
+        "lastSequence": {
+          "minimum": 1,
+          "title": "Lastsequence",
+          "type": "integer"
+        },
+        "observation": {
+          "default": "absent",
+          "enum": [
+            "absent",
+            "cancel-requested",
+            "failed",
+            "lost",
+            "observed-stop",
+            "queued",
+            "running",
+            "succeeded",
+            "unknown"
+          ],
+          "title": "Observation",
+          "type": "string"
+        },
+        "origin": {
+          "default": "absent",
+          "enum": [
+            "absent",
+            "real",
+            "synthetic"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "lastSequence",
+        "lastEventType"
+      ],
+      "title": "RunItem",
+      "type": "object"
+    },
+    "RunPageDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RunItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "RunPage",
+          "title": "Kind",
+          "type": "string"
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nextcursor"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "highWaterMark",
+        "kind",
+        "items"
+      ],
+      "title": "RunPageDocument",
+      "type": "object"
+    },
+    "SessionDetails": {
+      "additionalProperties": false,
+      "properties": {
+        "csrfHeader": {
+          "title": "Csrfheader",
+          "type": "string"
+        },
+        "csrfToken": {
+          "title": "Csrftoken",
+          "type": "string"
+        },
+        "idleTimeoutSeconds": {
+          "minimum": 1,
+          "title": "Idletimeoutseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "csrfToken",
+        "csrfHeader",
+        "idleTimeoutSeconds"
+      ],
+      "title": "SessionDetails",
+      "type": "object"
+    },
+    "SessionDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "csrfHeader": {
+          "title": "Csrfheader",
+          "type": "string"
+        },
+        "csrfToken": {
+          "title": "Csrftoken",
+          "type": "string"
+        },
+        "idleTimeoutSeconds": {
+          "minimum": 1,
+          "title": "Idletimeoutseconds",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "BrowserSession",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "csrfToken",
+        "csrfHeader",
+        "idleTimeoutSeconds",
+        "apiVersion",
+        "kind"
+      ],
+      "title": "SessionDocument",
+      "type": "object"
+    },
+    "WorkspaceDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "casRoot": {
+          "title": "Casroot",
+          "type": "string"
+        },
+        "controlDb": {
+          "title": "Controldb",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "WorkspaceView",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "title": "Projectid",
+          "type": "string"
+        },
+        "workerRoot": {
+          "title": "Workerroot",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "projectId",
+        "controlDb",
+        "casRoot",
+        "workerRoot",
+        "highWaterMark"
+      ],
+      "title": "WorkspaceDocument",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/local-api-response/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/ArtifactDocument"
+    },
+    {
+      "$ref": "#/$defs/CapabilitiesDocument"
+    },
+    {
+      "$ref": "#/$defs/CommandReceipt"
+    },
+    {
+      "$ref": "#/$defs/DocumentPreviewDocument"
+    },
+    {
+      "$ref": "#/$defs/ErrorDocument"
+    },
+    {
+      "$ref": "#/$defs/EventPageDocument"
+    },
+    {
+      "$ref": "#/$defs/HealthDocument"
+    },
+    {
+      "$ref": "#/$defs/InspectionDocument"
+    },
+    {
+      "$ref": "#/$defs/RevisionPageDocument"
+    },
+    {
+      "$ref": "#/$defs/RunPageDocument"
+    },
+    {
+      "$ref": "#/$defs/SessionDocument"
+    },
+    {
+      "$ref": "#/$defs/WorkspaceDocument"
+    }
+  ]
+}

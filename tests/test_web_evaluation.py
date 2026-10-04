@@ -92,7 +92,8 @@ def test_evaluation_is_real_labelled_and_reproducible(client: Client, workspace:
     result = _run(
         client, workspace, "cmd.eval.candidate", {"kind": "evaluation.run", "mode": "candidate"}
     )
-    assert result["label"] == "real", "a computed number must not be filed as synthetic"
+    assert result["label"] == "computed-fixture"
+    assert "Synthetic" in result["limitations"][0]
     assert result["reproducible"] is True
     assert set(result["metrics"]) == {"accuracy", "macro_f1", "mean_absolute_error"}
     assert result["provenance"]["split"] == "held-out"
@@ -419,3 +420,69 @@ def test_a_conclusion_needs_a_rationale(client: Client, workspace: Path) -> None
     )
     assert status == 409
     assert payload["code"] == "command-refused"
+
+
+def test_same_command_cannot_replay_different_evaluator_parameters(
+    client: Client, workspace: Path
+) -> None:
+    _run(client, workspace, "cmd.eval.identity", {"kind": "evaluation.run", "mode": "candidate"})
+    document = {
+        "apiVersion": "researchos.dev/application/v0alpha1",
+        "kind": "ApplicationCommand",
+        "commandId": "cmd.eval.identity",
+        "actorId": "researcher.alice",
+        "submittedAt": "2026-10-04T12:00:00+08:00",
+        "expectedRevision": 1,
+        "expectedHead": _head(workspace),
+        "operation": {"kind": "evaluation.run", "mode": "threshold", "threshold": 0.95},
+    }
+    status, _, payload = client.request(
+        "POST",
+        f"{PREFIX}/commands",
+        body=json.dumps(document).encode(),
+        content_type="application/json",
+        origin=ORIGIN,
+    )
+    assert status == 409
+    assert payload["code"] == "command-refused"
+    from llm_research_os.application.errors import ApplicationError
+    from llm_research_os.application.models import ApplicationCommand
+    from llm_research_os.application.service import ApplicationService
+
+    with pytest.raises(ApplicationError, match="different content") as fault:
+        ApplicationService.open(workspace).execute(ApplicationCommand.model_validate(document))
+    assert fault.value.code == "receipt-conflict"
+
+
+def test_forged_aggregate_is_refused_through_service(client: Client, workspace: Path) -> None:
+    from llm_research_os.artifacts.store import LocalArtifactStore
+    from llm_research_os.evaluation import evaluate
+
+    cas = LocalArtifactStore(workspace / "cas")
+    document = evaluate(threshold=0.45, mode="threshold").detail_document()
+    document["metrics"]["accuracy"] = "0.000000"
+    forged = cas.put_bytes(json.dumps(document).encode())
+    valid = _run(
+        client, workspace, "cmd.eval.valid", {"kind": "evaluation.run", "mode": "candidate"}
+    )
+    from llm_research_os.application.errors import ApplicationError
+    from llm_research_os.application.models import ApplicationCommand
+    from llm_research_os.application.service import ApplicationService
+
+    command = ApplicationCommand.model_validate(
+        {
+            "apiVersion": "researchos.dev/application/v0alpha1",
+            "kind": "ApplicationCommand",
+            "commandId": "cmd.eval.forged",
+            "actorId": "researcher.alice",
+            "submittedAt": "2026-10-04T12:00:00+08:00",
+            "operation": {
+                "kind": "evaluation.compare",
+                "baseline": forged.digest,
+                "candidate": valid["detailArtifact"],
+            },
+        }
+    )
+    with pytest.raises(ApplicationError, match="detail artifact is invalid") as fault:
+        ApplicationService.open(workspace).execute(command)
+    assert fault.value.code == "evaluation-invalid"

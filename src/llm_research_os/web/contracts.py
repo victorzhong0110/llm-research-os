@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
+from llm_research_os.web.errors import ApiErrorCode
 
 LOCAL_API_VERSION = "researchos.dev/local-api/v0alpha1"
 LOCAL_API_CONTRACT_VERSION = "v0alpha1"
@@ -55,7 +56,7 @@ class Contract(BaseModel):
 class ErrorDocument(Contract):
     api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
     kind: Literal["LocalApiError"]
-    code: str
+    code: ApiErrorCode
     message: str
 
 
@@ -65,12 +66,15 @@ class HealthDocument(Contract):
     status: Literal["ready"]
 
 
-class SessionDocument(Contract):
-    api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
-    kind: Literal["BrowserSession"]
+class SessionDetails(Contract):
     csrf_token: str = Field(alias="csrfToken")
     csrf_header: str = Field(alias="csrfHeader")
     idle_timeout_seconds: int = Field(alias="idleTimeoutSeconds", ge=1)
+
+
+class SessionDocument(SessionDetails):
+    api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["BrowserSession"]
 
 
 class LimitsDocument(Contract):
@@ -89,7 +93,7 @@ class CapabilitiesDocument(Contract):
     kind: Literal["Capabilities"]
     read_only: bool = Field(alias="readOnly")
     limits: LimitsDocument
-    session: SessionDocument
+    session: SessionDetails
     poll_fallback_seconds: float = Field(alias="pollFallbackSeconds", gt=0)
 
 
@@ -134,6 +138,7 @@ class ArtifactDocument(Contract):
     digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)]
     byte_length: int = Field(alias="byteLength", ge=0)
     inline: bool
+    verification: Literal["verified", "not-inlined"] = "not-inlined"
     text: str | None = None
 
     @model_validator(mode="after")
@@ -141,6 +146,22 @@ class ArtifactDocument(Contract):
         if self.inline and self.text is None:
             raise ValueError("an inlined artifact must carry its text")
         return self
+
+
+class LineageLink(Contract):
+    kind: Literal["event", "artifact", "revision"]
+    target: str
+    label: str
+    via: tuple[str, ...] = Field(default=(), max_length=9)
+
+
+class InspectionDocument(Contract):
+    api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["InspectionView"]
+    identity: str
+    document: dict[str, Any]
+    links: tuple[LineageLink, ...]
+    immutable: Literal[True]
 
 
 class DocumentPreviewDocument(Contract):
@@ -279,6 +300,8 @@ CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "EventPage": EventPageDocument,
     "EventItem": EventItem,
     "Health": HealthDocument,
+    "InspectionView": InspectionDocument,
+    "LineageLink": LineageLink,
     "Limits": LimitsDocument,
     "LocalApiError": ErrorDocument,
     "RevisionItem": RevisionItem,

@@ -6,7 +6,8 @@ Requirements: [M3 plan R13](../plans/m3-development-plan.md#r13-real-evaluation-
 
 ## What "real" means here
 
-The evaluation is **actually computed from real data**, not simulated. A
+The evaluation is actually computed from a committed, synthetic 12-example
+CPU fixture. It is labelled `computed-fixture` and is not trained-model or live-run evidence. A
 deterministic evaluator scores a fixed, committed held-out set of labelled
 examples, and the per-example detail is stored alongside the aggregate. Nothing
 is drawn at random and no number is asserted that was not computed.
@@ -86,3 +87,8 @@ content, and the test asserts exactly that.
 - **Checkpoint C's end-to-end browser demonstration is not claimed.** The loop is
   exercised through the shared command path — evaluate, compare, conclude — in
   tests, but the R12 browser toolchain limit recorded in COMM-0009 still applies.
+
+MAE is the mean absolute difference between the binary prediction and the label.
+Comparison deltas use decimal arithmetic. Stored details must reproduce their
+aggregate and have consistent IDs, binary labels and prediction errors. Human
+conclusions bind the complete comparison digest, including both evidence artifacts.

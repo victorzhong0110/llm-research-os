@@ -6,7 +6,7 @@
  * the reason a proposal was refused.
  */
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { api, type Paged } from "../api";
 import { Badge, BoundedList, Empty, Failure, Loading } from "./Primitives";
 import { usePage } from "./usePage";
@@ -18,12 +18,14 @@ interface Row {
   readonly entry: LedgerEntry;
 }
 
-const LIST_CAP = 100;
+const LIST_CAP = 200;
 
 export function ResearchView() {
+  const [withheld, setWithheld] = useState(0);
   const load = useCallback(
     async (): Promise<Paged<Row>> => {
       const ledger: ResearchLedgerView = await api.research();
+      setWithheld(Object.values(ledger.withheld).reduce<number>((total, count) => total + (typeof count === "number" ? count : 0), 0));
       return {
         items: [
           ...ledger.proposals.map((entry) => ({ kind: "proposal" as const, entry })),
@@ -57,6 +59,7 @@ export function ResearchView() {
   return (
     <section aria-labelledby="research-heading">
       <h2 id="research-heading">Research</h2>
+      {withheld > 0 ? <p role="status">{withheld} additional research facts are withheld by the API limit.</p> : null}
       <p className="note">
         Every entry is a verified fact from this project's event store, read against high-water mark{" "}
         {page.highWaterMark}. A decision that overrides a dissent is shown next to the dissent, not instead

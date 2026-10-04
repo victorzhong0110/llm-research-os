@@ -9,6 +9,7 @@ mismatch instead of reporting a delta.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Final, Literal
 
 from llm_research_os.evaluation.evaluator import EvaluationError, EvaluationResult
@@ -127,7 +128,18 @@ def compare(baseline: EvaluationResult, candidate: EvaluationResult) -> Comparis
             continue
         # accuracy and macro_f1 are higher-is-better; the error is lower-is-better.
         higher_is_better = metric != "mean_absolute_error"
-        change = float(right) - float(left)
+        try:
+            left_number, right_number = Decimal(left), Decimal(right)
+            if (
+                not left_number.is_finite()
+                or not right_number.is_finite()
+                or not 0 <= left_number <= 1
+                or not 0 <= right_number <= 1
+            ):
+                raise ValueError("metric outside [0, 1]")
+            change = right_number - left_number
+        except (InvalidOperation, ValueError) as exc:
+            raise ComparisonError("metric-invalid", "metrics must be finite ratios") from exc
         gained = change > 0 if higher_is_better else change < 0
         lost = change < 0 if higher_is_better else change > 0
         direction: Direction = "better" if gained else ("worse" if lost else "same")
@@ -152,7 +164,7 @@ def compare(baseline: EvaluationResult, candidate: EvaluationResult) -> Comparis
     elif improved == 0 and regressed == 0:
         outcome = "unchanged"
     else:
-        outcome = "unchanged"
+        outcome = "incomparable"
 
     return Comparison(
         outcome=outcome,
@@ -164,6 +176,7 @@ def compare(baseline: EvaluationResult, candidate: EvaluationResult) -> Comparis
             for metric in REQUIRED_METRICS
             if metric not in baseline.metrics or metric not in candidate.metrics
         ),
+        refusal="metrics have conflicting directions" if improved and regressed else None,
         limitations=(
             "A single held-out set carries no repeat-variance estimate; a difference "
             "at this sample size is not a significance claim.",

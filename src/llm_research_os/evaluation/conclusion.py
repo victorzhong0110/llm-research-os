@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final, Literal
 
+from llm_research_os.canonical import content_digest
 from llm_research_os.evaluation.compare import Comparison
 
 CONCLUSION_API_VERSION: Final = "researchos.dev/conclusion/v0alpha1"
@@ -79,7 +80,13 @@ def record(
     evidence is insufficient is itself a finding, and a valid one.
     """
 
-    if not conclusion_id:
+    if verdict not in {"insufficient-evidence", "supported", "unsupported"}:
+        raise ConclusionError("conclusion-verdict-invalid", "unknown human verdict")
+    if not project_id.strip() or any(not ref.strip() for ref in evidence_refs):
+        raise ConclusionError(
+            "conclusion-reference-invalid", "project and evidence references must be nonempty"
+        )
+    if not conclusion_id.strip():
         raise ConclusionError("conclusion-id-invalid", "a conclusion needs an identifier")
     if not rationale.strip():
         raise ConclusionError("conclusion-rationale-empty", "a conclusion needs a rationale")
@@ -88,7 +95,7 @@ def record(
             "conclusion-rationale-too-long",
             f"a conclusion rationale is capped at {MAX_RATIONALE_CHARACTERS} characters",
         )
-    if not actor_id:
+    if not actor_id.strip():
         raise ConclusionError("conclusion-actor-missing", "a conclusion needs a human actor")
     if len(evidence_refs) > MAX_EVIDENCE_REFS:
         raise ConclusionError(
@@ -118,7 +125,7 @@ def record(
         experiment_revision=experiment_revision,
         verdict=verdict,
         rationale=rationale,
-        comparison_detail_digest=comparison.candidate_detail_digest,
+        comparison_detail_digest=content_digest(comparison.document()),
         evidence_refs=evidence_refs,
         actor_id=actor_id,
     )
