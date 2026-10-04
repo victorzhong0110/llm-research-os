@@ -38,14 +38,14 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #131 R09 is fixed and merged at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`; final-head CI 37209190785 passed. #132 R10 repairs are in progress. Another implementer owns the next package; synchronize with merged main. R08 selected-host/GPU evidence and B acceptance remain open. |
+| Current package | #131 R09 is fixed and merged at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`; final-head CI 37209190785 passed. R10 final reviewed source is `9ffeb6cb0d30493458c458cc8ed17f04aca0ee82`; final integration state/SHA and checks are recorded by [#132](https://github.com/victorzhong0110/llm-research-os/pull/132). Another implementer owns the next package; synchronize with merged main. R08 selected-host/GPU evidence and B acceptance remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
 | Responsibility | The maintainer reassigned Codex to fix and merge #131/#132; another implementer completes the next package. Codex starts no additional package. |
-| Next gate | Codex validates and merges #132; downstream implementer rebases onto merged main. R08 connection/GPU inputs remain separate, see COMM-0004. |
+| Downstream gate | After #132 reports merged and its required final-head checks passed, the next implementer fetches main and preserves these fixes before integrating their package. R08 connection/GPU inputs remain separate, see COMM-0004. |
 
 ## Open handoffs
 
@@ -273,6 +273,38 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - Next action / owner: Codex finishes final-head checks and merges #132. The
   downstream implementer synchronizes with the subsequent merged main and preserves
   the schema, bounded read, state and lineage corrections before integration.
+
+### COMM-0010 — Final review record and integration handoff
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0009.
+- From: Codex, review/repair/integration.
+- To: Maintainer and next-package implementer.
+- Reply to: COMM-0009.
+- State: Review completed; exact final CI/integration status is maintained by #132.
+- Message / decision: All original findings are repaired. The last correction
+  disambiguates numeric event IDs from numeric sequence references, so lineage
+  cannot open a different fact. Scoped code review is complete; merge proceeds
+  after required final-head CI. Integration is separate from full phase acceptance.
+- Branch / head / base / PR: `r10-workbench`, reviewed source
+  `9ffeb6cb0d30493458c458cc8ed17f04aca0ee82`, based on merged R09 main
+  `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`. The final documentation commit,
+  final CI runs and actual squash SHA are recorded in [#132](https://github.com/victorzhong0110/llm-research-os/pull/132);
+  downstream collaborators must fetch that merge rather than infer it from this message.
+- Evidence / checks: 150 focused API/socket/contract/CLI tests passed, including
+  27 inspection regressions. Ruff/format, mypy, generated schemas, frontend
+  type/build, wheel build and installed-wheel smoke passed. Chromium smoke passed
+  on repair `1134080875b82463d34fd48662ada1f9b5d3c5ea` in job 111491276081
+  (run 37221045080); its unfinished Python jobs were cancelled by the subsequent
+  source fix, so this is browser evidence, not a full-suite pass. Final-head CI
+  remains the integration gate and is linked in #132.
+- Gaps / required inputs: No selected-host/GPU evidence or B acceptance is
+  supplied. Stored numeric values require recorded measurement provenance;
+  missing, synthetic and unsupported data remain explicit. No downstream
+  acknowledgement is claimed.
+- Next action / owner: Codex completes the authorized merge after final CI. The
+  next-package implementer reads #132's actual merged state/SHA, fetches main,
+  reconciles their existing branch and runs its checks before their integration.
+  Codex does not start or replace that implementer's next package.
 
 ## Message template
 
