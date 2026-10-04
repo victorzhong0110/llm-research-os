@@ -66,11 +66,16 @@ document body, a host path, a stack trace, or a credential.
 | Concurrent requests | 8, refused with `503` rather than queued |
 | Decoded depth / nodes | 128 / 100 000, shared with the existing document loader |
 | Evidence size / extracted chars / PDF pages | 8 MiB / 400 000 / 64 |
+| SQLite query work | 2 s per dedicated read connection |
+| Socket idle / absolute request deadline | 10 s / 30 s, including incomplete headers |
 | SSE idle | 20 s, then a closing `idle` event |
 
 Body bounds are not treated as parser bounds. JSON and YAML go through the
 existing duplicate-key, alias-rejecting loader; PDF goes through the existing
-bounded extractor. A `Content-Length` that understates the body is cut off at
+isolated PDF worker (5 s wall, 4 s CPU, 256 MiB address space). The service
+limits socket handler threads before creation, retains an application concurrency
+slot for the entire SSE lifetime, and opens SQLite in read-only mode.
+A `Content-Length` that understates the body is cut off at
 the cap rather than trusted.
 
 ## Project scoping
@@ -80,6 +85,8 @@ proven from linked events: a digest is visible only when a verified event of
 *this* project references it. Event, revision and run pages are filtered by
 `projectId`, and every page reports the `highWaterMark` it was frozen against.
 
+Cursors bind the project, filters, and frozen high-water mark. Filtering occurs
+in SQL before limiting, and continuation excludes facts appended after that mark.
 Cursors are opaque and issued by the server. A run index is newest-first, so
 its cursor means "strictly older than this"; event and revision cursors mean
 "after this sequence".
@@ -95,6 +102,9 @@ its cursor means "strictly older than this"; event and revision cursors mean
 | GET | `/api/v0alpha1/events` | Bounded, project-scoped event page |
 | GET | `/api/v0alpha1/revisions` | Bounded spec-revision page |
 | GET | `/api/v0alpha1/runs` | Bounded run index, newest first |
+| GET | `/api/v0alpha1/inspect/events/{id-or-sequence}` | Immutable project event payload and typed evidence links |
+| GET | `/api/v0alpha1/inspect/revisions/{digest}` | Recorded revision source facts |
+| GET | `/api/v0alpha1/inspect/artifacts/{digest}` | Bounded content and validated graph inspection; optional bounded `via` proof |
 | GET | `/api/v0alpha1/artifacts/{digest}` | Project-scoped artifact, inlined below 256 KiB |
 | POST | `/api/v0alpha1/preview/document` | Bounded JSON/YAML/PDF decode preview; writes nothing |
 | GET | `/api/v0alpha1/stream` | Resumable SSE with a polling fallback |
@@ -110,8 +120,9 @@ carrying the frozen mark, and a closing `idle` event. A reconnect sends
 `Last-Event-ID` (or `?cursor=`) and resumes strictly after that sequence, so a
 dropped connection replays nothing. Each poll opens its own verified read,
 because the request's store connection is already closed when the first byte is
-written. A client that cannot hold SSE polls `/events` with the same cursor
-semantics.
+written. The emitted SSE IDs are decimal sequences and are accepted verbatim in
+`Last-Event-ID`; the 200-event cap holds across partial polling batches. A client
+that cannot hold SSE polls `/events` with that endpoint's opaque page cursor.
 
 ## Out of scope for R09
 
@@ -124,3 +135,18 @@ surface cannot launch a task, consume a grant, or record a fact.
 - [M3 plan R09](../plans/m3-development-plan.md)
 - [Threat model](../security/threat-model.md) TM-079 – TM-083
 - [Guide: local API](../guides/m3-local-api.md)
+
+## R10 inspection bounds
+
+`/events?runId=...` filters before LIMIT and binds the cursor to that Run.
+Rebuildable indexes never grant project visibility: artifact scope is proved
+from verified original events. Nested artifact inspection accepts a JSON array
+of at most eight ancestor digests in `via`, verifies the project-linked root,
+and checks every subsequent reference against bounded, hash-verified parent
+bytes. Repeated paths and unrelated children are refused.
+
+Inline CAS reads stop at 256 KiB and hash the exact bytes served. Larger objects
+report `verification: not-inlined`; binary objects can be verified without being
+rendered as text. Stored inspection identity remains immutable, but an unavailable
+or unverified body is never claimed as measured evidence. The full response union
+is published at `schemas/local-api-response/v0alpha1.schema.json`.

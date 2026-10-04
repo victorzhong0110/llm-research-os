@@ -635,7 +635,15 @@ bounded extractor, so nesting, node count, page count and extraction seconds are
 capped during the work rather than after it. Every limit is reported by
 `/capabilities` so a client cannot silently assume a larger allowance.
 
-Gate: `tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
+The listener bounds socket handlers before thread creation and applies both an
+idle timeout and an absolute request deadline, including headers. SSE keeps its
+application slot until exhaustion or close. Dedicated SQLite read-only connections
+have a progress-handler deadline; SQL applies project/type filters before LIMIT.
+PDF previews use the isolated evidence worker, rather than parsing in-process.
+
+Gate: `tests/test_web_regressions.py` real SSE concurrency, scoped snapshot paging,
+10k-store query evidence, PDF worker tripwire, query interruption and header deadline;
+`tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
 concurrency and declared-length cases. Residual trust: a local user can still
 read their own project through the filesystem, and `wsgiref` is not hardened
 against a hostile network peer.
@@ -741,3 +749,22 @@ Gate: `tests/test_web_assets.py` traversal, symlink, directory, content-type,
 bundle-without-session and API-still-gated tests; `uv build` verified to ship
 `web/static` and no `node_modules`. Residual trust: a same-user local process can
 read the installed package files directly, as it could before.
+
+### TM-087: Stale or poisoned read indexes and nested result links expand visibility
+
+A rebuildable artifact/spec index is not an authorization source. The workbench
+proves project scope from verified original events even when query caches are
+empty or poisoned. Inspecting a nested result link requires a project-linked
+root and a bounded chain of hash-verified parent bytes; client-supplied ancestor
+names do not grant access. Paths are capped at eight ancestors, references at
+100 and inline bytes at 256 KiB. Large objects are explicitly not verified by
+this bounded read. Typed spec/plan graph validation precedes topology display;
+nested/over-limit graphs stay unsupported. Secret keys and absolute path values
+are hidden in structured inspection, and HTML is rendered as React text.
+
+Gate: `tests/test_web_inspection.py` source-fact scope, cache poisoning, fresh
+revisions, transitive proof/refusal, redaction, digest and graph contracts;
+`web/scripts/smoke.mjs` actual browser navigation over SQLite/CAS fixtures.
+Residual trust: project authors control free-form artifact/log content; structured
+redaction cannot identify every secret embedded in arbitrary prose. The browser
+session remains a read boundary and creates no Worker authority.

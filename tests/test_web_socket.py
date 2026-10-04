@@ -26,6 +26,7 @@ from llm_research_os.application.workspace import init_workspace, load_workspace
 from llm_research_os.storage import EventStore
 from llm_research_os.web.app import LocalApi
 from llm_research_os.web.limits import read_bounded_body
+from llm_research_os.web.serve import BoundedWSGIServer
 from llm_research_os.web.sessions import SessionStore
 
 BOOTSTRAP = "socket-bootstrap-secret"
@@ -58,7 +59,13 @@ class Server:
             stream_idle_seconds=0.2,
             stream_poll_seconds=0.01,
         )
-        self._server = make_server("127.0.0.1", self.port, self.api.wsgi, handler_class=_Quiet)
+        self._server = make_server(
+            "127.0.0.1",
+            self.port,
+            self.api.wsgi,
+            handler_class=_Quiet,
+            server_class=BoundedWSGIServer,
+        )
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
 

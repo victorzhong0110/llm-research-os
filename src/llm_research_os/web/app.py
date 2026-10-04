@@ -13,6 +13,7 @@ Mutating browser commands are R11 and reuse the same shared services.
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Iterable
 from typing import Any, Final
@@ -21,6 +22,7 @@ from urllib.parse import parse_qs
 from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
 from llm_research_os.web.assets import AssetError
 from llm_research_os.web.assets import load as load_asset
@@ -106,8 +108,16 @@ class LocalApi:
         """The WSGI entrypoint. Never raises; every fault becomes a safe body."""
 
         try:
-            with self._gate:
-                status, headers, body = self._dispatch(environ)
+            self._gate.__enter__()
+        except LocalApiError as exc:
+            error_status, error_headers, error_body = self._error(exc)
+            start_response(
+                f"{error_status} {_REASON.get(error_status, 'Status')}",
+                [*error_headers, ("Content-Length", str(len(error_body)))],
+            )
+            return [error_body]
+        try:
+            status, headers, body = self._dispatch(environ)
         except LocalApiError as exc:
             status, headers, body = self._error(exc)
         except ApplicationError:
@@ -123,14 +133,19 @@ class LocalApi:
                 LocalApiError("internal-error", "The request could not be completed.", status=500)
             )
         if isinstance(body, bytes):
+            self._gate.__exit__(None, None, None)
             start_response(
                 f"{status} {_REASON.get(status, 'Status')}",
                 [*headers, ("Content-Length", str(len(body)))],
             )
             return [body]
         # SSE streams yield bytes chunks; the total length is unknown up front.
-        start_response(f"{status} {_REASON.get(status, 'Status')}", headers)
-        return body
+        try:
+            start_response(f"{status} {_REASON.get(status, 'Status')}", headers)
+        except Exception:
+            self._gate.__exit__(None, None, None)
+            raise
+        return _GatedStream(body, self._gate)
 
     def _error(self, exc: LocalApiError) -> Response:
         return exc.status, _json_headers(), json_bytes(exc.document())
@@ -256,7 +271,7 @@ class LocalApi:
                     "pollFallbackSeconds": self._stream_poll_seconds,
                 }
             )
-        with self._open_store() as store:
+        with self._open_store() as store, store.query_budget():
             views = ReadProjections(
                 store, LocalArtifactStore(self._workspace.cas_root), self._workspace.project_id
             )
@@ -273,6 +288,7 @@ class LocalApi:
                     cursor=query.get("cursor"),
                     limit=parse_limit(query.get("limit")),
                     event_types=_event_types(query.get("type")),
+                    run_id=query.get("runId"),
                 )
                 return self._json(page.document("EventPage"))
             if route == "/revisions":
@@ -285,6 +301,32 @@ class LocalApi:
                     cursor=query.get("cursor"), limit=parse_limit(query.get("limit"))
                 )
                 return self._json(page.document("RunPage"))
+            if route.startswith("/inspect/artifacts/"):
+                try:
+                    via = json.loads(query.get("via", "[]"))
+                except (ValueError, RecursionError) as exc:
+                    raise bad_request("parameter-invalid", "The lineage path is invalid.") from exc
+                if (
+                    not isinstance(via, list)
+                    or len(via) > 8
+                    or any(type(v) is not str for v in via)
+                ):
+                    raise bad_request("parameter-invalid", "The lineage path is invalid.")
+                return self._json(
+                    {
+                        "kind": "InspectionView",
+                        **views.artifact_inspection(
+                            route[len("/inspect/artifacts/") :],
+                            tuple(via),
+                        ),
+                    }
+                )
+            for prefix, inspect in (
+                ("/inspect/events/", views.event_document),
+                ("/inspect/revisions/", views.revision_document),
+            ):
+                if route.startswith(prefix):
+                    return self._json({"kind": "InspectionView", **inspect(route[len(prefix) :])})
             if route == "/artifacts/" or route.startswith("/artifacts/"):
                 digest = route[len("/artifacts/") :]
                 if not digest or "/" in digest:
@@ -299,7 +341,7 @@ class LocalApi:
             raise LocalApiError(
                 "workspace-invalid", "The workspace event store does not exist.", status=503
             )
-        return EventStore(self._workspace.control_db, require_existing=True)
+        return EventStore(self._workspace.control_db, create=False)
 
     def _preview(self, environ: dict[str, Any], query: dict[str, str]) -> Response:
         payload = read_bounded_body(
@@ -339,7 +381,7 @@ class LocalApi:
             deadline = time.monotonic() + self._stream_idle_seconds
             yield b": open\n\n"
             while emitted < MAX_STREAM_EVENTS and time.monotonic() < deadline:
-                with self._open_store() as store:
+                with self._open_store() as store, store.query_budget():
                     page = ReadProjections(
                         store,
                         LocalArtifactStore(workspace.cas_root),
@@ -347,6 +389,8 @@ class LocalApi:
                     ).event_page(cursor=encode_cursor(cursor), limit=100)
                 if page.items:
                     for item in page.items:
+                        if emitted >= MAX_STREAM_EVENTS:
+                            break
                         sequence = int(item["sequence"])
                         yield b"id: " + str(sequence).encode("ascii") + b"\n"
                         yield b"data: " + json_bytes(item) + b"\n\n"
@@ -373,6 +417,41 @@ class LocalApi:
         )
 
 
+class _GatedStream:
+    """Retain a concurrency slot until exhausted or closed, even before first next."""
+
+    def __init__(self, body: Iterable[bytes], gate: ConcurrencyGate) -> None:
+        self._body = iter(body)
+        self._gate = gate
+        self._closed = False
+
+    def __iter__(self) -> _GatedStream:
+        return self
+
+    def __next__(self) -> bytes:
+        if self._closed:
+            raise StopIteration
+        try:
+            return next(self._body)
+        except StopIteration:
+            self.close()
+            raise
+        except Exception:
+            self.close()
+            # Headers are already committed; send only a fixed stream error.
+            return b'event: error\ndata: {"code":"event-store-unavailable"}\n\n'
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            try:
+                close = getattr(self._body, "close", None)
+                if callable(close):
+                    close()
+            finally:
+                self._gate.__exit__(None, None, None)
+
+
 def _header_key(name: str) -> str:
     """Derive the WSGI environ key from the header name so the two cannot drift."""
 
@@ -386,8 +465,17 @@ def _json_headers() -> Headers:
 def _resume(environ: dict[str, Any], query: dict[str, str]) -> int:
     header = environ.get("HTTP_LAST_EVENT_ID")
     if isinstance(header, str) and header.strip():
-        return decode_cursor(header.strip())
-    return decode_cursor(query.get("cursor"))
+        return _stream_cursor(header.strip())
+    return _stream_cursor(query.get("cursor"))
+
+
+def _stream_cursor(raw: str | None) -> int:
+    # EventSource echoes the decimal id emitted on the wire, not a page token.
+    if raw and raw.isascii() and raw.isdigit():
+        if len(raw) > 10 or int(raw) > CLOUD_EVENTS_INTEGER_MAX:
+            raise bad_request("parameter-invalid", "The stream sequence is out of bounds.")
+        return int(raw)
+    return decode_cursor(raw)
 
 
 def _event_types(raw: str | None) -> frozenset[str] | None:
@@ -400,5 +488,10 @@ def _event_types(raw: str | None) -> frozenset[str] | None:
 
 
 def _query(environ: dict[str, Any]) -> dict[str, str]:
-    parsed = parse_qs(environ.get("QUERY_STRING") or "", keep_blank_values=True, max_num_fields=32)
+    try:
+        parsed = parse_qs(
+            environ.get("QUERY_STRING") or "", keep_blank_values=True, max_num_fields=32
+        )
+    except ValueError as exc:
+        raise bad_request("parameter-invalid", "The query has too many fields.") from exc
     return {key: values[0] for key, values in parsed.items() if values}
