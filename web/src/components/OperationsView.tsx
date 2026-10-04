@@ -6,8 +6,8 @@
  * committed is never rendered as a stopped process or a successful launch.
  */
 
-import { useCallback, useState } from "react";
-import { ApiRequestError, api, SessionExpiredError } from "../api";
+import { useCallback, useRef, useState } from "react";
+import { ApiRequestError, api, OfflineError, SessionExpiredError } from "../api";
 import { Badge, Empty, KeyValue, Loading } from "./Primitives";
 import type { CommandReceipt, RunItem } from "../generated/local-api";
 import { presentObservation } from "../format";
@@ -37,16 +37,26 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
   const [requestPath, setRequestPath] = useState("");
   const [specPath, setSpecPath] = useState("");
   const [busy, setBusy] = useState(false);
+  const pending = useRef<{id:string; body:string} | null>(null);
+  const sending = useRef(false);
+  const [revision, setRevision] = useState(1);
+  const [grantId, setGrantId] = useState("");
 
   const send = useCallback((commandId: string, document: unknown, label: string) => {
+    if (sending.current) return;
+    sending.current = true;
+    const body = JSON.stringify(document);
+    pending.current = {id:commandId,body};
     setBusy(true);
     setState({ status: "sending", commandId });
-    post(JSON.stringify(document)).then(
+    post(body).then(
       (receipt) => {
+        sending.current = false;
         setBusy(false);
         setState({ status: "settled", receipt });
       },
       (error: unknown) => {
+        sending.current = false;
         setBusy(false);
         if (error instanceof SessionExpiredError) {
           setState({
@@ -55,7 +65,7 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
           });
           return;
         }
-        if (error instanceof ApiRequestError && error.status >= 500) {
+        if (error instanceof OfflineError || (error instanceof ApiRequestError && error.status >= 500)) {
           // The command may or may not have committed. The identity is kept so
           // a retry replays rather than duplicating.
           setState({
@@ -115,7 +125,7 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
             const commandId = newCommandId("preflight");
             send(
               commandId,
-              envelope(commandId, { kind: "plan.preflight", document: specPath }, undefined, 1),
+              envelope(commandId, { kind: "plan.preflight", document: specPath }, undefined, revision),
               "preflight",
             );
           }}
@@ -127,7 +137,10 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
             placeholder="path to a spec.yaml file"
             onChange={(event) => setSpecPath(event.target.value)}
           />
-          <button type="submit" disabled={busy || specPath.trim() === ""}>
+          <label htmlFor="revision">Expected revision</label>
+          <input id="revision" type="number" min="1" value={revision}
+            onChange={event => setRevision(Number(event.target.value))} />
+          <button type="submit" disabled={busy || state.status === "uncertain" || specPath.trim() === ""}>
             Preflight
           </button>
         </form>
@@ -161,7 +174,7 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
             placeholder="path to a cancellation request JSON"
             onChange={(event) => setRequestPath(event.target.value)}
           />
-          <button type="submit" disabled={busy || requestPath.trim() === ""}>
+          <button type="submit" disabled={busy || state.status === "uncertain" || requestPath.trim() === ""}>
             Request cancellation
           </button>
         </form>
@@ -173,9 +186,22 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
           Revocation is a control-plane record. It is not a Worker action, and this surface holds no Worker
           credential. It never completes or launches work.
         </p>
+        <form onSubmit={event => {
+          event.preventDefault();
+          const id = newCommandId("revoke");
+          send(id, envelope(id, {kind:"authorization.revoke", grantId,
+            eventId:`${id}.event`}, expectedHead), "revocation");
+        }}>
+          <label htmlFor="grant">Unused grant ID</label>
+          <input id="grant" value={grantId} onChange={event=>setGrantId(event.target.value)} />
+          <button type="submit" disabled={busy || state.status === "uncertain" || !grantId.trim()}>Revoke unused grant</button>
+        </form>
       </article>
 
-      <Outcome state={state} onRetry={() => undefined} />
+      <Outcome state={state} onRetry={() => {
+        const request = pending.current;
+        if (request) send(request.id, JSON.parse(request.body), "retry");
+      }} />
     </section>
   );
 }
@@ -191,7 +217,7 @@ function Outcome({
     return (
       <Empty
         title="No command sent"
-        detail="Run a preflight to inspect a plan, or request a cancellation. Every action is recorded as a fact."
+        detail="Run a preflight to inspect a plan, or request a cancellation. Preflight records a receipt; cancellation and revocation record domain facts."
       />
     );
   }
@@ -205,10 +231,10 @@ function Outcome({
         <p>{state.detail}</p>
         <p className="note">
           Command identity <code>{state.commandId}</code> is retained. Sending it again replays the prior
-          receipt if it committed, and appends nothing new either way.
+          receipt if it committed, and does not repeat an already committed fact.
         </p>
-        <button type="button" onClick={onRetry} disabled>
-          Retry from the form above
+        <button type="button" onClick={onRetry}>
+          Retry same command
         </button>
       </div>
     );
@@ -231,6 +257,7 @@ function Outcome({
   return (
     <div className="detail">
       <h3>Receipt</h3>
+      <pre>{JSON.stringify(receipt.result, null, 2).slice(0, 65536)}</pre>
       <KeyValue
         items={[
           ["Command", <code key="c">{receipt.commandId}</code>],

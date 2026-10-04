@@ -104,9 +104,10 @@ def test_every_never_granted_permission_is_refused() -> None:
 def test_grantable_permissions_survive_and_are_reported() -> None:
     grantable = tuple(sorted(KNOWN_PERMISSIONS))
     manifest = parse_manifest(_manifest(permissions=grantable))
-    assert manifest.granted_permissions() == grantable
+    assert manifest.granted_permissions() == ()
     document = manifest.public_document()
-    assert document["grantedPermissions"] == list(grantable)
+    assert document["compatiblePermissions"] == list(grantable)
+    assert document["grantedPermissions"] == []
     assert document["refusedPermissions"] == []
 
 
@@ -192,8 +193,9 @@ def test_adapter_output_is_bounded_and_reported() -> None:
     entry = "print('y' * 400000)"
     manifest = parse_manifest(_manifest(entry_module=entry))
     result = run_adapter(manifest, {})
-    assert result.outcome == "ok"
+    assert result.outcome == "error"
     document = result.public_document()
+    assert document["outputLimitExceeded"] is True
     # Clipping is visible in the byte count, so a truncated stream is not silent.
     assert document["stdoutBytes"] <= 262_144
     assert document["stdout"] != "y" * 400000
@@ -257,7 +259,7 @@ def test_install_resolve_disable_and_uninstall(tmp_path: Path) -> None:
     registry = ExtensionRegistry()
     path = _write(tmp_path, _manifest(permissions=("events.read",)))
     installed = registry.install(path, trust="inert")
-    assert installed.manifest.granted_permissions() == ("events.read",)
+    assert installed.manifest.granted_permissions() == ()
     assert registry.resolve("ext.readout", "1.0.0").enabled is True
 
     disabled = registry.disable("ext.readout", "1.0.0")
@@ -353,3 +355,154 @@ def test_a_crashing_extension_does_not_disturb_the_registry(tmp_path: Path) -> N
     assert registry.resolve("ext.good", "1.0.0").enabled is True
     assert len(registry.installed()) == 2
     assert sys.executable  # the parent process is still the same interpreter
+
+
+def test_manifest_snapshots_do_not_alias_input_or_public_views() -> None:
+    original = _manifest(permissions=("events.read",), diagnostics={"status": "reviewed"})
+    manifest = parse_manifest(original)
+    digest = manifest.digest
+    original["permissions"].append("control.write")
+    original["diagnostics"]["status"] = "changed"
+    view = manifest.raw
+    view["permissions"].append("execution.launch")
+    manifest.diagnostics["status"] = "also changed"
+    assert manifest.digest == digest
+    assert manifest.permissions == ("events.read",)
+    assert manifest.diagnostics == {"status": "reviewed"}
+
+
+def test_fifo_manifest_is_refused_without_open_blocking(tmp_path: Path) -> None:
+    import time
+
+    path = tmp_path / "manifest.fifo"
+    os.mkfifo(path)
+    start = time.monotonic()
+    with pytest.raises(ExtensionError, match="regular file"):
+        load_manifest(path)
+    assert time.monotonic() - start < 1
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_nonfinite_manifest_and_message_are_refused(value: float) -> None:
+    with pytest.raises(ExtensionError, match="finite JSON"):
+        parse_manifest({**_manifest(), "unknown": value})
+    manifest = parse_manifest(_manifest(entry_module="print('ok')"))
+    with pytest.raises(ExtensionError, match="finite bounded JSON"):
+        run_adapter(manifest, {"value": value})
+
+
+@pytest.mark.parametrize("timeout", [float("nan"), float("inf"), True, -1, 11])
+def test_nonfinite_or_invalid_timeout_is_refused(timeout: float) -> None:
+    with pytest.raises(ExtensionError) as caught:
+        run_adapter(parse_manifest(_manifest(entry_module="print('ok')")), {}, timeout=timeout)
+    assert caught.value.code == "timeout-invalid"
+
+
+def test_unknown_trust_and_boolean_maximum_are_refused(tmp_path: Path) -> None:
+    path = _write(tmp_path, _manifest())
+    with pytest.raises(RegistryError, match="no verified isolation"):
+        ExtensionRegistry().install(path, trust="anything")  # type: ignore[arg-type]
+    with pytest.raises(RegistryError, match="out of range"):
+        ExtensionRegistry(maximum=True)
+
+
+def test_registry_counts_and_digest_bind_trust(tmp_path: Path) -> None:
+    path = _write(tmp_path, _manifest())
+    inert, reviewed = ExtensionRegistry(), ExtensionRegistry()
+    inert.install(path)
+    reviewed.install(path, trust="reviewed-same-user")
+    assert inert.digest() != reviewed.digest()
+    inert.disable("ext.readout", "1.0.0")
+    assert inert.capability_surface()["enabledCount"] == 0
+    assert inert.capability_surface()["installedCount"] == 1
+
+
+def test_endless_output_is_stopped_while_reading() -> None:
+    import time
+
+    entry = "import os\nwhile True: os.write(1, b'x' * 8192)"
+    start = time.monotonic()
+    result = run_adapter(parse_manifest(_manifest(entry_module=entry)), {}, timeout=5)
+    assert result.outcome == "error" and result.output_limited and not result.timed_out
+    assert len(result.stdout.encode()) <= 262144
+    assert time.monotonic() - start < 3
+
+
+def test_non_utf8_stderr_is_bounded_and_explicit() -> None:
+    entry = "import os; os.write(2, b'\\xff' * 100000)"
+    result = run_adapter(parse_manifest(_manifest(entry_module=entry)), {})
+    assert result.output_limited and result.outcome == "error"
+    assert result.public_document()["stderrBytes"] <= 65536
+
+
+def test_descendant_holding_pipes_is_killed_with_owned_group(tmp_path: Path) -> None:
+    import time
+
+    marker = tmp_path / "descendant-survived"
+    descendant = f"import time; time.sleep(0.8); open({str(marker)!r}, 'w').write('bad')"
+    entry = (
+        f"import subprocess,sys; subprocess.Popen([sys.executable, '-c', {descendant!r}]); "
+        "print('parent', flush=True)"
+    )
+    result = run_adapter(parse_manifest(_manifest(entry_module=entry)), {}, timeout=0.2)
+    assert result.timed_out and result.outcome == "timeout"
+    time.sleep(0.9)
+    assert not marker.exists()
+
+
+def test_adapter_limits_are_measured_in_invoked_child() -> None:
+    result = run_adapter(parse_manifest(_manifest(entry_module="print('ok')")), {})
+    assert result.outcome == "ok"
+    assert "cpuSeconds" in result.effective_resource_limits
+    assert "openFiles" in result.effective_resource_limits
+
+
+def test_spawn_error_is_structured() -> None:
+    with pytest.raises(ExtensionError, match="could not be started") as caught:
+        run_adapter(
+            parse_manifest(_manifest(entry_module="print('ok')")), {}, python="/nonexistent-python"
+        )
+    assert caught.value.code == "adapter-unavailable"
+
+
+def test_deep_manifest_is_refused_with_closed_error() -> None:
+    value: Any = None
+    for _ in range(70):
+        value = [value]
+    with pytest.raises(ExtensionError, match="bounded finite JSON"):
+        parse_manifest({**_manifest(), "extra": value})
+
+
+def test_registry_dispatch_requires_review_and_respects_disable(tmp_path: Path) -> None:
+    path = _write(tmp_path, _manifest(entry_module="print('reviewed')"))
+    registry = ExtensionRegistry()
+    registry.install(path)
+    with pytest.raises(RegistryError, match="inert declarations"):
+        registry.run("ext.readout", "1.0.0", {})
+    registry.uninstall("ext.readout", "1.0.0")
+    registry.install(path, trust="reviewed-same-user")
+    assert registry.run("ext.readout", "1.0.0", {}).outcome == "ok"
+    registry.disable("ext.readout", "1.0.0")
+    with pytest.raises(RegistryError, match="disabled"):
+        registry.run("ext.readout", "1.0.0", {})
+
+
+def test_all_extension_documents_match_registered_schema(tmp_path: Path) -> None:
+    from jsonschema import Draft202012Validator
+
+    from llm_research_os.extensions.schema import build_schema
+
+    raw = _manifest(entry_module="print('schema')", permissions=("events.read",))
+    manifest = parse_manifest(raw)
+    registry = ExtensionRegistry()
+    installed = registry.install(_write(tmp_path, raw), trust="reviewed-same-user")
+    result = registry.run("ext.readout", "1.0.0", {})
+    validator = Draft202012Validator(build_schema())
+    for document in (
+        raw,
+        manifest.public_document(),
+        installed.public_document(),
+        result.public_document(),
+        registry.capability_surface(),
+    ):
+        validator.validate(document)

@@ -9,11 +9,13 @@ nothing here reports a result it did not actually compute.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.evaluation.contracts import EvaluationDetailDocument
 
 EVALUATOR_NAME: Final = "heldout-majority-and-threshold"
 EVALUATOR_VERSION: Final = "v0alpha1"
@@ -165,7 +167,7 @@ def majority_baseline(examples: tuple[Example, ...] | None = None) -> int:
 
 def predict(example: Example, *, threshold: float, mode: Literal["majority", "threshold"]) -> int:
     if mode == "majority":
-        return 1 if threshold >= 0.5 else 0
+        return majority_baseline()
     mean = sum(example.features) / len(example.features)
     return 1 if mean >= threshold else 0
 
@@ -184,13 +186,26 @@ def evaluate(
         raise EvaluationError("dataset-empty", "the held-out set is empty")
     if not 0.0 < threshold < 1.0:
         raise EvaluationError("threshold-invalid", "threshold must be strictly between 0 and 1")
+    if mode not in {"majority", "threshold"} or type(seed) is not int or seed < 0:
+        raise EvaluationError("setup-invalid", "unknown predictor or invalid seed")
+    if len({item.example_id for item in rows}) != len(rows) or any(
+        not item.example_id
+        or type(item.label) is not int
+        or item.label not in (0, 1)
+        or not item.features
+        or any(not math.isfinite(value) for value in item.features)
+        for item in rows
+    ):
+        raise EvaluationError(
+            "dataset-invalid", "examples must have unique IDs, finite features and binary labels"
+        )
     details = tuple(
         Detail(
             example_id=item.example_id,
             predicted=predict(item, threshold=threshold, mode=mode),
             expected=item.label,
             correct=predict(item, threshold=threshold, mode=mode) == item.label,
-            absolute_error=abs((sum(item.features) / len(item.features)) - float(item.label)),
+            absolute_error=float(abs(predict(item, threshold=threshold, mode=mode) - item.label)),
         )
         for item in rows
     )
@@ -222,15 +237,18 @@ def recompute(result: EvaluationResult, examples: tuple[Example, ...]) -> Evalua
 
     if len(examples) != len(result.details):
         raise EvaluationError("detail-length-mismatch", "detail and dataset lengths differ")
+    if result.provenance.dataset_digest != dataset_digest(examples) or any(
+        item.example_id != example.example_id or item.expected != example.label
+        for item, example in zip(result.details, examples, strict=True)
+    ):
+        raise EvaluationError("detail-dataset-mismatch", "detail does not identify this dataset")
     replayed = tuple(
         Detail(
             example_id=item.example_id,
             predicted=item.predicted,
             expected=item.expected,
             correct=item.predicted == item.expected,
-            absolute_error=abs(
-                (sum(example.features) / len(example.features)) - float(example.label)
-            ),
+            absolute_error=float(abs(item.predicted - example.label)),
         )
         for item, example in zip(result.details, examples, strict=True)
     )
@@ -285,3 +303,76 @@ def detail_payload(result: EvaluationResult) -> bytes:
     """Canonical bytes for the detail artifact."""
 
     return canonical_json(result.detail_document()).encode("utf-8")
+
+
+def parse_detail(document: Any) -> EvaluationResult:
+    """Refuse malformed or internally inconsistent detail before comparison."""
+    try:
+        EvaluationDetailDocument.model_validate(document)
+        if (
+            type(document) is not dict
+            or document["kind"] != "EvaluationDetail"
+            or document["apiVersion"] != "researchos.dev/evaluation/v0alpha1"
+        ):
+            raise ValueError("unknown detail contract")
+        fields = ("datasetDigest", "evaluatorName", "evaluatorVersion", "split")
+        if any(type(document[key]) is not str or not document[key] for key in fields):
+            raise ValueError("invalid provenance")
+        if re.fullmatch(r"jcs-sha256:[0-9a-f]{64}", document["datasetDigest"]) is None:
+            raise ValueError("invalid dataset digest")
+        seed, count = document["seed"], document["exampleCount"]
+        if type(seed) is not int or seed < 0 or type(count) is not int or not 1 <= count <= 10000:
+            raise ValueError("invalid counts")
+        examples = document["examples"]
+        if type(examples) is not list or len(examples) != count:
+            raise ValueError("invalid examples")
+        details = []
+        for item in examples:
+            if (
+                type(item) is not dict
+                or type(item["exampleId"]) is not str
+                or not item["exampleId"]
+            ):
+                raise ValueError("invalid example identity")
+            prediction, expected = item["predicted"], item["expected"]
+            if (
+                type(prediction) is not int
+                or prediction not in (0, 1)
+                or type(expected) is not int
+                or expected not in (0, 1)
+            ):
+                raise ValueError("invalid binary classification")
+            if type(item["correct"]) is not bool or item["correct"] != (prediction == expected):
+                raise ValueError("inconsistent correctness")
+            error = item["absoluteError"]
+            if type(error) is not str or error != f"{abs(prediction - expected):.6f}":
+                raise ValueError("inconsistent prediction error")
+            details.append(
+                Detail(item["exampleId"], prediction, expected, item["correct"], float(error))
+            )
+        rows = tuple(details)
+        if len({item.example_id for item in rows}) != count:
+            raise ValueError("duplicate examples")
+        metrics = {
+            "accuracy": _ratio(_accuracy(rows)),
+            "macro_f1": _ratio(_macro_f1(rows)),
+            "mean_absolute_error": _ratio(_mean_absolute_error(rows)),
+        }
+        if document["metrics"] != metrics:
+            raise ValueError("aggregate does not match examples")
+        return EvaluationResult(
+            Provenance(
+                document["datasetDigest"],
+                document["evaluatorName"],
+                document["evaluatorVersion"],
+                document["split"],
+                seed,
+                count,
+            ),
+            metrics,
+            rows,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise EvaluationError(
+            "detail-invalid", "evaluation detail is malformed or inconsistent"
+        ) from exc

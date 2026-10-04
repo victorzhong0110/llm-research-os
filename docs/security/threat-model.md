@@ -635,7 +635,15 @@ bounded extractor, so nesting, node count, page count and extraction seconds are
 capped during the work rather than after it. Every limit is reported by
 `/capabilities` so a client cannot silently assume a larger allowance.
 
-Gate: `tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
+The listener bounds socket handlers before thread creation and applies both an
+idle timeout and an absolute request deadline, including headers. SSE keeps its
+application slot until exhaustion or close. Dedicated SQLite read-only connections
+have a progress-handler deadline; SQL applies project/type filters before LIMIT.
+PDF previews use the isolated evidence worker, rather than parsing in-process.
+
+Gate: `tests/test_web_regressions.py` real SSE concurrency, scoped snapshot paging,
+10k-store query evidence, PDF worker tripwire, query interruption and header deadline;
+`tests/test_web_api.py` body, depth, alias, duplicate-key, PDF,
 concurrency and declared-length cases. Residual trust: a local user can still
 read their own project through the filesystem, and `wsgiref` is not hardened
 against a hostile network peer.
@@ -742,6 +750,24 @@ bundle-without-session and API-still-gated tests; `uv build` verified to ship
 `web/static` and no `node_modules`. Residual trust: a same-user local process can
 read the installed package files directly, as it could before.
 
+### TM-087: Stale or poisoned read indexes and nested result links expand visibility
+
+A rebuildable artifact/spec index is not an authorization source. The workbench
+proves project scope from verified original events even when query caches are
+empty or poisoned. Inspecting a nested result link requires a project-linked
+root and a bounded chain of hash-verified parent bytes; client-supplied ancestor
+names do not grant access. Paths are capped at eight ancestors, references at
+100 and inline bytes at 256 KiB. Large objects are explicitly not verified by
+this bounded read. Typed spec/plan graph validation precedes topology display;
+nested/over-limit graphs stay unsupported. Secret keys and absolute path values
+are hidden in structured inspection, and HTML is rendered as React text.
+
+Gate: `tests/test_web_inspection.py` source-fact scope, cache poisoning, fresh
+revisions, transitive proof/refusal, redaction, digest and graph contracts;
+`web/scripts/smoke.mjs` actual browser navigation over SQLite/CAS fixtures.
+Residual trust: project authors control free-form artifact/log content; structured
+redaction cannot identify every secret embedded in arbitrary prose. The browser
+session remains a read boundary and creates no Worker authority.
 
 ### TM-086: A browser command duplicates work or reports a request as an outcome
 
@@ -863,8 +889,8 @@ A reviewed same-user adapter is still code that can fail, so its message,
 duration, output and resource use are bounded, and it receives a minimal
 environment rather than the caller's. The child is proven not to inherit
 `HOME`, `SSH_AUTH_SOCK` or provider keys, and a crash, a non-zero exit, a
-wall-clock timeout and oversized output each leave the registry intact. Output
-clipping is reported in byte counts so truncation is visible. Critically, the
+wall-clock timeout and oversized output each leave the registry intact. Output is read into fixed-size buffers; overflow terminates the owned group and
+returns an explicit outputLimitExceeded error. Non-UTF-8 replacement stays capped. Critically, the
 enforced resource-limit set is probed rather than assumed — macOS rejects
 `RLIMIT_AS` — and the capability surface reports what the platform actually
 applies, because a limit that cannot be set is not a limit. The surface states
@@ -873,3 +899,13 @@ in plain text that these bounds are not a sandbox.
 Gate: `tests/test_extensions.py` crash, timeout, output-bound, environment-isolation
 and effective-limit-probe tests, plus a crashing extension leaving a healthy one
 resolvable.
+
+R14 review strengthens TM-091/TM-092: regular files only (nonblocking open refuses
+FIFOs), finite bounded immutable manifest snapshots, closed trust admission and
+trust-bound registry identity. Current enabled/reviewed state is checked at
+registry dispatch. Child limits run after exec rather than Python preexec_fn;
+the timeout includes blocked stdin/inherited pipes, and cleanup kills only the
+owned process group. Per-invocation applied limits are reported via a bounded
+private pipe. Permissions are inert requests, not OS grants; same-user file and
+network access are explicitly not isolated. Disabled state does not cancel
+in-flight work. Tests reproduce each repaired boundary.

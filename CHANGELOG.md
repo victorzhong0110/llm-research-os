@@ -10,28 +10,14 @@ authorized release.
 ## Unreleased
 
 ### Added
-- R14 minimal extension mechanism and permission boundary: a versioned manifest
-  contract with a closed permission set, a compatibility refusal, a bounded
-  subprocess host for one reviewed same-user adapter, and explicit
-  enable/disable/uninstall. Loading a manifest is inert — read with `O_NOFOLLOW`
-  under a size bound, parsed as JSON, validated, with nothing imported, evaluated
-  or fetched.
+- R14 partial Python extension boundary: inert immutable manifests, registered
+  JSON schemas, explicit reviewed dispatch, bounded subprocess streams/deadlines
+  and owned-group cleanup. This is not a malicious-code sandbox or full R14/D
+  acceptance; typed external integrations and an extensions CLI remain open.
 
-- R14 a declared permission is a request, not a grant. An unrecognised permission
-  refuses the manifest rather than being silently narrowed, and
-  `NEVER_GRANTED` names what this host will never provide whatever a manifest
-  asks: `execution.launch`, `control.write`, `events.write`, `artifacts.write`,
-  `authority.create`, `secrets.read`, `network.outbound`. `trust="untrusted"` is
-  refused outright because no verified isolation profile exists here.
-
-- R14 the enforced resource-limit set is probed, not assumed. macOS rejects
-  `RLIMIT_AS`, and a limit that cannot be applied is not a limit, so
-  `effective_limits()` probes the platform once and the capability surface
-  reports the set actually enforced. A limit is a bound, not a sandbox, and the
-  surface says so.
-
-- R13 real evaluation, comparison and human conclusions: a deterministic
-  evaluator over a fixed, committed held-out set. Every evaluation records the
+- R13 partial evaluation mechanics and human conclusions: a deterministic
+  evaluator over a fixed, synthetic 12-example CPU fixture, labelled
+  `computed-fixture`; no real-model or Checkpoint C acceptance is claimed. Every evaluation records the
   dataset digest, evaluator version, split, seed and example count, stores the
   full per-example detail as one CAS artifact, and appends no per-sample event.
   Metrics are fixed-precision decimal strings and the aggregate is re-derivable

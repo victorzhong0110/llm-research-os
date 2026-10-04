@@ -19,17 +19,23 @@ A manifest is data. Loading one is inert, and a permission it declares is a
 from __future__ import annotations
 
 import json
+import math
 import os
-import resource
+import selectors
+import signal
+import stat
 import subprocess
 import sys
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Final, Literal
 
-from llm_research_os.canonical import content_digest
+from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.extensions.contracts import ExtensionDeclaration
+from llm_research_os.internal.jsonclone import JsonCloneError, snapshot_json_document
 
 EXTENSION_API_VERSION: Final = "researchos.dev/extension/v0alpha1"
 EXTENSION_CONTRACT_VERSION: Final = "v0alpha1"
@@ -95,8 +101,16 @@ class ExtensionManifest:
     contract_version: str
     permissions: tuple[str, ...]
     entry_module: str | None
-    diagnostics: dict[str, str]
-    raw: dict[str, Any]
+    _diagnostics: tuple[tuple[str, str], ...]
+    _raw_json: str
+
+    @property
+    def diagnostics(self) -> dict[str, str]:
+        return dict(self._diagnostics)
+
+    @property
+    def raw(self) -> dict[str, Any]:
+        return dict(json.loads(self._raw_json))
 
     @property
     def key(self) -> tuple[str, str]:
@@ -107,13 +121,9 @@ class ExtensionManifest:
         return content_digest(self.raw)
 
     def granted_permissions(self) -> tuple[str, ...]:
-        """Only permissions inside the grantable set survive a load.
+        """No capability handles are granted by parsing inert declarations."""
 
-        A declared permission outside the closed set is refused at load time, so
-        anything returned here was actually grantable.
-        """
-
-        return tuple(item for item in self.permissions if item in KNOWN_PERMISSIONS)
+        return ()
 
     def public_document(self) -> dict[str, Any]:
         return {
@@ -125,7 +135,8 @@ class ExtensionManifest:
             "extensionContractVersion": self.contract_version,
             "manifestDigest": self.digest,
             "requestedPermissions": list(self.permissions),
-            "grantedPermissions": list(self.granted_permissions()),
+            "compatiblePermissions": list(self.permissions),
+            "grantedPermissions": [],
             "refusedPermissions": [
                 item for item in self.permissions if item not in KNOWN_PERMISSIONS
             ],
@@ -141,13 +152,15 @@ def load_manifest(path: Path) -> ExtensionManifest:
     A manifest is data; refusing it must not run anything either.
     """
 
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
         descriptor = os.open(path, flags)
     except OSError as exc:
         raise ExtensionError("manifest-unreadable", "the manifest could not be opened") from exc
     try:
         details = os.fstat(descriptor)
+        if not stat.S_ISREG(details.st_mode):
+            raise ExtensionError("manifest-unreadable", "the manifest must be a regular file")
         if details.st_size > MAX_MANIFEST_BYTES:
             raise ExtensionError("manifest-too-large", "the manifest exceeds the size limit")
         chunks: list[bytes] = []
@@ -159,11 +172,13 @@ def load_manifest(path: Path) -> ExtensionManifest:
             if sum(len(item) for item in chunks) > MAX_MANIFEST_BYTES:
                 raise ExtensionError("manifest-too-large", "the manifest exceeds the size limit")
         raw_bytes = b"".join(chunks)
+    except OSError as exc:
+        raise ExtensionError("manifest-unreadable", "the manifest could not be read") from exc
     finally:
         os.close(descriptor)
     try:
         document = json.loads(raw_bytes.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+    except (UnicodeError, ValueError, RecursionError) as exc:
         raise ExtensionError("manifest-invalid", "the manifest is not valid JSON") from exc
     if not isinstance(document, dict):
         raise ExtensionError("manifest-invalid", "the manifest is not an object")
@@ -173,6 +188,26 @@ def load_manifest(path: Path) -> ExtensionManifest:
 def parse_manifest(document: dict[str, Any]) -> ExtensionManifest:
     """Validate one manifest object without touching the filesystem."""
 
+    try:
+        stack = [(document, 0)]
+        nodes = 0
+        while stack:
+            value, depth = stack.pop()
+            nodes += 1
+            if depth > 64 or nodes > 10000:
+                raise ValueError("manifest nesting exceeds bounds")
+            if isinstance(value, dict):
+                stack.extend((child, depth + 1) for child in value.values())
+            elif isinstance(value, list):
+                stack.extend((child, depth + 1) for child in value)
+        document = snapshot_json_document(document)
+        raw_json = canonical_json(document)
+        if len(raw_json.encode("utf-8")) > MAX_MANIFEST_BYTES:
+            raise ExtensionError("manifest-too-large", "the manifest exceeds the size limit")
+    except (JsonCloneError, ValueError, TypeError, RecursionError) as exc:
+        if isinstance(exc, ExtensionError):
+            raise
+        raise ExtensionError("manifest-invalid", "the manifest is not bounded finite JSON") from exc
     api_version = document.get("apiVersion")
     if api_version != EXTENSION_API_VERSION:
         raise ExtensionError("manifest-api-unknown", "the manifest apiVersion is not supported")
@@ -199,8 +234,8 @@ def parse_manifest(document: dict[str, Any]) -> ExtensionManifest:
     ):
         raise ExtensionError("manifest-invalid", "entryModule must be a non-empty string")
     diagnostics = _diagnostics(document.get("diagnostics"))
-    for name, value in list(diagnostics.items()):
-        if len(value) > 200:
+    for name, diagnostic_value in list(diagnostics.items()):
+        if len(diagnostic_value) > 200:
             raise ExtensionError("diagnostic-too-long", f"diagnostic {name} is too long")
     unknown = sorted(item for item in permissions if item not in KNOWN_PERMISSIONS)
     if unknown:
@@ -209,14 +244,20 @@ def parse_manifest(document: dict[str, Any]) -> ExtensionManifest:
             "permission-never-granted" if refused else "permission-unknown",
             "the manifest requests permissions this host does not grant: " + ", ".join(unknown),
         )
+    try:
+        ExtensionDeclaration.model_validate(document)
+    except ValueError as exc:
+        raise ExtensionError(
+            "manifest-invalid", "manifest fields do not match the published contract"
+        ) from exc
     return ExtensionManifest(
         extension_id=extension_id,
         version=version,
         contract_version=contract_version,
         permissions=permissions,
         entry_module=entry_module,
-        diagnostics=diagnostics,
-        raw=document,
+        _diagnostics=tuple(sorted(diagnostics.items())),
+        _raw_json=raw_json,
     )
 
 
@@ -236,6 +277,8 @@ class AdapterResult:
     stdout: str
     stderr: str
     timed_out: bool = False
+    output_limited: bool = False
+    effective_resource_limits: tuple[str, ...] = ()
 
     def public_document(self) -> dict[str, Any]:
         return {
@@ -246,6 +289,8 @@ class AdapterResult:
             "exitCode": self.exit_code,
             "durationSeconds": f"{self.duration_seconds:.3f}",
             "timedOut": self.timed_out,
+            "outputLimitExceeded": self.output_limited,
+            "effectiveResourceLimits": list(self.effective_resource_limits),
             "stdoutBytes": len(self.stdout.encode("utf-8")),
             "stderrBytes": len(self.stderr.encode("utf-8")),
             "stdout": self.stdout,
@@ -268,14 +313,23 @@ def run_adapter(
     boundary is what it may be *told*, not a sandbox claim.
     """
 
+    # Revalidate the immutable data, including direct dataclass construction.
+    manifest = parse_manifest(manifest.raw)
     if manifest.entry_module is None:
         raise ExtensionError("no-entry-module", "this extension declares no entry module")
-    if timeout <= 0 or timeout > MAX_DURATION_SECONDS:
+    if (
+        type(timeout) not in (float, int)
+        or not math.isfinite(timeout)
+        or not 0 < timeout <= MAX_DURATION_SECONDS
+    ):
         raise ExtensionError("timeout-invalid", f"timeout must be within 0..{MAX_DURATION_SECONDS}")
-    payload = json.dumps(request, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    try:
+        payload = canonical_json(snapshot_json_document(request)).encode("utf-8")
+    except (ValueError, TypeError, RecursionError) as exc:
+        raise ExtensionError("message-invalid", "the request must be finite bounded JSON") from exc
     if len(payload) > MAX_MESSAGE_BYTES:
         raise ExtensionError("message-too-large", "the adapter message exceeds the size limit")
-
+    metadata_read, metadata_write = os.pipe()
     environment = {
         "PATH": os.environ.get("PATH", ""),
         "LANG": "C.UTF-8",
@@ -285,41 +339,114 @@ def run_adapter(
         "RESEARCHOS_EXTENSION_VERSION": manifest.version,
         "RESEARCHOS_EXTENSION_CONTRACT": manifest.contract_version,
     }
-    command = [python or sys.executable, "-I", "-c", manifest.entry_module]
+    # Limits are applied after exec in the fresh interpreter. No preexec_fn runs
+    # Python in a possibly multithreaded parent's forked process.
+    bootstrap = _PROBE_SOURCE.replace("print(json.dumps(applied))", "") + (
+        f"\nimport os\nos.write({metadata_write}, json.dumps(applied).encode())"
+        f"\nos.close({metadata_write})"
+        f"\nexec(compile({manifest.entry_module!r}, '<reviewed-adapter>', 'exec'))"
+    )
     started = time.monotonic()
-    timed_out = False
+    timed_out = output_limited = False
+    buffers = {"stdout": bytearray(), "stderr": bytearray(), "limits": bytearray()}
+    caps = {"stdout": MAX_STDOUT_BYTES, "stderr": MAX_STDERR_BYTES, "limits": 4096}
+    child = None
     try:
-        completed = subprocess.run(  # noqa: S603 - fixed argv, reviewed same-user code
-            command,
-            input=payload,
-            capture_output=True,
-            check=False,
+        child = subprocess.Popen(  # noqa: S603 - explicit reviewed same-user code
+            [python or sys.executable, "-I", "-c", bootstrap],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             env=environment,
-            timeout=timeout,
-            preexec_fn=_limit_child,
+            start_new_session=True,
+            pass_fds=(metadata_write,),
         )
-        code: int | None = completed.returncode
-        stdout = _bounded(completed.stdout, MAX_STDOUT_BYTES)
-        stderr = _bounded(completed.stderr, MAX_STDERR_BYTES)
-    except subprocess.TimeoutExpired as exc:
-        timed_out = True
-        code = None
-        stdout = _bounded(exc.stdout or b"", MAX_STDOUT_BYTES)
-        stderr = _bounded(exc.stderr or b"", MAX_STDERR_BYTES)
-    duration = time.monotonic() - started
-    if timed_out:
-        outcome: AdapterOutcome = "timeout"
-    elif code == 0:
-        outcome = "ok"
-    else:
-        outcome = "error"
+        os.close(metadata_write)
+        metadata_write = -1
+        if child.stdin is None or child.stdout is None or child.stderr is None:
+            raise ExtensionError("adapter-unavailable", "the adapter pipes are missing")
+        with selectors.DefaultSelector() as selector:
+            for stream, channel, event in (
+                (child.stdin, "stdin", selectors.EVENT_WRITE),
+                (child.stdout, "stdout", selectors.EVENT_READ),
+                (child.stderr, "stderr", selectors.EVENT_READ),
+            ):
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, event, channel)
+            os.set_blocking(metadata_read, False)
+            selector.register(metadata_read, selectors.EVENT_READ, "limits")
+            sent = 0
+            deadline = started + timeout
+            while selector.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    break
+                for key, _event in selector.select(min(remaining, 0.05)):
+                    channel = key.data
+                    if channel == "stdin":
+                        try:
+                            sent += os.write(key.fd, payload[sent : sent + 8192])
+                        except BrokenPipeError:
+                            sent = len(payload)
+                        if sent == len(payload):
+                            selector.unregister(key.fileobj)
+                            child.stdin.close()
+                        continue
+                    chunk = os.read(key.fd, 8192)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    buffer = buffers[channel]
+                    if len(buffer) + len(chunk) > caps[channel]:
+                        buffer.extend(chunk[: caps[channel] - len(buffer)])
+                        output_limited = True
+                        break
+                    buffer.extend(chunk)
+                if output_limited:
+                    break
+            # A child may close all pipes yet remain alive. The same deadline
+            # covers that state; descendants holding pipes are covered above.
+            if not timed_out and not output_limited:
+                try:
+                    child.wait(timeout=max(0.001, deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+    except OSError as exc:
+        raise ExtensionError(
+            "adapter-unavailable", "the adapter could not be started or supervised"
+        ) from exc
+    finally:
+        if child is not None:
+            with suppress(ProcessLookupError):
+                os.killpg(child.pid, signal.SIGKILL)
+            child.wait(timeout=2)
+            for pipe in (child.stdin, child.stdout, child.stderr):
+                if pipe is not None:
+                    pipe.close()
+        os.close(metadata_read)
+        if metadata_write >= 0:
+            os.close(metadata_write)
+    try:
+        applied = json.loads(buffers["limits"])
+        limits = tuple(sorted(name for name in applied if name in {item[0] for item in _LIMITS}))
+    except (ValueError, TypeError):
+        limits = ()
+    if child is None:
+        raise ExtensionError("adapter-unavailable", "the adapter was not started")
+    code = child.returncode
+    outcome: AdapterOutcome = (
+        "timeout" if timed_out else ("error" if output_limited or code != 0 else "ok")
+    )
     return AdapterResult(
         outcome=outcome,
         exit_code=code,
-        duration_seconds=duration,
-        stdout=stdout,
-        stderr=stderr,
+        duration_seconds=time.monotonic() - started,
+        stdout=_bounded(bytes(buffers["stdout"]), MAX_STDOUT_BYTES),
+        stderr=_bounded(bytes(buffers["stderr"]), MAX_STDERR_BYTES),
         timed_out=timed_out,
+        output_limited=output_limited,
+        effective_resource_limits=limits,
     )
 
 
@@ -346,6 +473,7 @@ _PROBE_SOURCE = chr(10).join(
         "        _soft, _hard = resource.getrlimit(_limit)",
         "        _ceiling = _value if _hard == resource.RLIM_INFINITY else min(_value, _hard)",
         "        if _soft != resource.RLIM_INFINITY and _soft < _ceiling:",
+        "            applied.append(_name)",
         "            continue",
         "        resource.setrlimit(_limit, (_ceiling, _hard))",
         "        applied.append(_name)",
@@ -378,36 +506,10 @@ def effective_limits() -> frozenset[str]:
     return frozenset(item for item in applied if isinstance(item, str))
 
 
-def _limit_child() -> None:  # pragma: no cover - runs in the forked child
-    """Apply the probed limits to the child.
-
-    A limit is a bound, not a sandbox: the child is reviewed same-user code, and
-    a limit does not make untrusted code safe. Untrusted code needs a verified
-    isolation profile, which this host does not provide.
-    """
-
-    for _name, attribute, value in _LIMITS:
-        limit = getattr(resource, attribute, None)
-        if limit is None:
-            continue
-        try:
-            soft, hard = resource.getrlimit(limit)
-            if soft != resource.RLIM_INFINITY and soft < value:
-                continue
-            ceiling = value if hard == resource.RLIM_INFINITY else min(value, hard)
-            resource.setrlimit(limit, (ceiling, hard))
-        except (ValueError, OSError):
-            # The platform refused this bound; effective_limits() reports that.
-            continue
-
-
 def _bounded(raw: bytes | str, limit: int) -> str:
     data = raw if isinstance(raw, bytes) else raw.encode("utf-8", errors="replace")
-    if len(data) > limit:
-        # Truncation is reported by the byte counts in the public document, so a
-        # clipped stream is visible rather than silently short.
-        return data[:limit].decode("utf-8", errors="replace")
-    return data.decode("utf-8", errors="replace")
+    text = data[:limit].decode("utf-8", errors="replace")
+    return text.encode("utf-8")[:limit].decode("utf-8", errors="ignore")
 
 
 def _identifier(value: Any, label: str) -> str:

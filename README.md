@@ -24,7 +24,7 @@ uv run researchos m1 prove examples/m1-checkpoint demo.db
 uv run researchos events verify demo.db
 ```
 
-Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open. The maintainer authorized sequential completion through R16 on 2026-10-04. Begin with the remaining [R08 live acceptance](docs/guides/r08-live-acceptance.md). The R09 read-only [local API](docs/guides/m3-local-api.md), the R10 [research workbench](docs/guides/m3-workbench.md), the R11 [browser operations](docs/guides/m3-browser-operations.md) the R12 [research workflow](docs/protocols/research-workflow-v0alpha1.md) the R13 [evaluation and conclusions](docs/protocols/evaluation-conclusion-v0alpha1.md) and the R14 [extension boundary](docs/protocols/extension-boundary-v0alpha1.md) have candidate implementations that are not merged and not accepted.
+Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open. The maintainer authorized sequential completion through R16 on 2026-10-04. Begin with the remaining [R08 live acceptance](docs/guides/r08-live-acceptance.md). The R09 read-only [local API](docs/guides/m3-local-api.md) and the R10 [research workbench](docs/guides/m3-workbench.md) are tracked in #131 (R09 merged) and #132 (R10 review repairs). Integration does not close the outstanding live acceptance gate.
 
 > Canonical English README. Chinese translation: [README.zh-CN.md](README.zh-CN.md)
 > (keep both in the same pull request; [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)).
@@ -90,6 +90,8 @@ acceptance checklist of that milestone.
 
 ## Project documents
 
+- [Partial reviewed Python extension API](docs/guides/extensions.md)
+- [Fixture evaluation and human conclusion mechanics](docs/protocols/evaluation-conclusion-v0alpha1.md)
 - [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
 - [M3 development plan (R01–R16)](docs/plans/m3-development-plan.md)
 - [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)

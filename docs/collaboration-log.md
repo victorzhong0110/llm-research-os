@@ -30,29 +30,31 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-04, after 18:41:11 Asia/Taipei**. Verified execution baseline:
-`ed6fb30d6cb239ad37a34404814183764bce2a58`.
-Verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
+Snapshot date: **2026-10-05, sequential PR integration review**. Verified integration main:
+`89b9ab4f021ff8e3d1e53ef041989ab11605da57` (#134), final-head CI 37230774848
+passed. Historical live execution baseline remains
+`ed6fb30d6cb239ad37a34404814183764bce2a58` at its recorded platforms.
+Historical verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
 ([main CI 37183362803](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803)
 passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134), R13 (PR #135) and R14 (`r14-extension-boundary`, open PR); none is merged or accepted. R15–R16 are not started. |
+| Current package | #133 and #134 are reviewed and integrated; #135 fixture evaluation mechanics is in final-head CI, then existing #136. R11/R12 full acceptance and B/C live evidence remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Codex is assigned the remaining implementation, review and sequential integration. COMM-0003 acknowledges the assignment and COMM-0002 handoff. No additional agent was assigned or started. |
-| Next gate | R08: supply connection configuration and GPU/Kaggle access, see COMM-0004. R09/R10: review COMM-0005, COMM-0006 and COMM-0007. |
+| Responsibility | Maintainer assigned Codex to review, repair and integrate all open PRs; no additional package is started. |
+| Downstream gate | After #132 reports merged and its required final-head checks passed, the next implementer fetches main and preserves these fixes before integrating their package. R08 connection/GPU inputs remain separate, see COMM-0004. |
 
 ## Open handoffs
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
-| COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
+| COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -225,6 +227,87 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   existing `run_projections` cache, so a store with many runs will be slow.
 - Next action / owner: Reviewer decides whether to require React Flow now. This
   does not block R11 design work, because R11 reuses the same API contract.
+### COMM-0008 — Maintainer assigns direct repair and sequential integration
+
+- Date/time: 2026-10-04T21:59:47+08:00 (maintainer instruction).
+- From: Codex, planning/review and integration.
+- To: Maintainer and next-package implementer.
+- Reply to: COMM-0005 and COMM-0006; supersedes the historical no-merge direction.
+- State: Open; repair/integration in progress.
+- Message / decision: The maintainer explicitly asked Codex to fix and merge the
+  two submitted packages while another AI completes the next work package.
+  The loopback stdlib transport is approved for this scope after the bounded
+  threading, SSE lifetime, read-only query and isolated-parser corrections.
+- Branch / head / base / PR: #130 merged to main at
+  `a5d730cc171318daafda13dc81d2b0cd6bc18d73`. R09 original reviewed head
+  `4cc2f825dec7942fbe7b4ad956eb1f31082939bd` (#131); R10 original head
+  `abd3524e36d56e6bf711dbfc91878f3bff0e09c0` (#132). Exact repair heads and
+  final checks are recorded in their PRs and subsequent integration messages.
+- Evidence / checks: R09 API/socket/regressions: 70 passed; real 10k metadata
+  query timings in the acceptance matrix. Full validation and final-head CI pending.
+- Gaps / required inputs: No B acceptance, GPU/selected-host evidence or release
+  is claimed. R10 missing inspection/lineage scope is being completed.
+- Next action / owner: Codex validates and merges R09, then R10. The downstream
+  implementer synchronizes against merged main before integration; no read receipt
+  or acknowledgement from that implementer is claimed.
+
+### COMM-0009 — R09 merged; R10 repair candidate and downstream baseline
+
+- Date/time: 2026-10-05T00:57:42+08:00 (latest maintainer continuation).
+- From: Codex, review/repair/integration.
+- To: Maintainer and next-package implementer.
+- Reply to: COMM-0008 and COMM-0007.
+- State: R09 resolved; R10 final validation in progress.
+- Message / decision: #131 is merged after direct repairs. R10's required read
+  inspection/history/lineage scope is completed in the repair candidate; it is
+  not deferred to R12. Backend-validated node/dependency presentation satisfies
+  the read-only graph scope without requiring a layout library. Browser/type/build
+  consistency is a dedicated CI gate. No new package is started by Codex.
+- Branch / head / base / PR: R09 reviewed repair `ce83a41bc22b3082d47b23c84ecd181bcbd7acb0`;
+  #131 squash main `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`. #132 repair candidate
+  is based on that merged tree; its exact new head and checks are in the PR.
+- Evidence / checks: R09 CI 37209190785 passed five Python and actual native/Ray/OCI
+  gates; API/socket regressions: 71 passed. R10 focused API/socket/contract/CLI checks: 149 passed; ruff/format, mypy,
+  generated schemas and frontend type/build passed. Final-head CI is reported by #132. Detailed findings/fixes: [review](reviews/r09-r10-2026-10-04.md).
+- Gaps / required inputs: Local Chromium download is blocked; the browser pass
+  must come from CI. Selected-host/GPU evidence, B acceptance and releases remain
+  outside this integration. No acknowledgement from the downstream implementer
+  has been received or recorded.
+- Next action / owner: Codex finishes final-head checks and merges #132. The
+  downstream implementer synchronizes with the subsequent merged main and preserves
+  the schema, bounded read, state and lineage corrections before integration.
+
+### COMM-0010 — Final review record and integration handoff
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0009.
+- From: Codex, review/repair/integration.
+- To: Maintainer and next-package implementer.
+- Reply to: COMM-0009.
+- State: Review completed; exact final CI/integration status is maintained by #132.
+- Message / decision: All original findings are repaired. The last correction
+  disambiguates numeric event IDs from numeric sequence references, so lineage
+  cannot open a different fact. Scoped code review is complete; merge proceeds
+  after required final-head CI. Integration is separate from full phase acceptance.
+- Branch / head / base / PR: `r10-workbench`, reviewed source
+  `9ffeb6cb0d30493458c458cc8ed17f04aca0ee82`, based on merged R09 main
+  `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`. The final documentation commit,
+  final CI runs and actual squash SHA are recorded in [#132](https://github.com/victorzhong0110/llm-research-os/pull/132);
+  downstream collaborators must fetch that merge rather than infer it from this message.
+- Evidence / checks: 150 focused API/socket/contract/CLI tests passed, including
+  27 inspection regressions. Ruff/format, mypy, generated schemas, frontend
+  type/build, wheel build and installed-wheel smoke passed. Chromium smoke passed
+  on repair `1134080875b82463d34fd48662ada1f9b5d3c5ea` in job 111491276081
+  (run 37221045080); its unfinished Python jobs were cancelled by the subsequent
+  source fix, so this is browser evidence, not a full-suite pass. Final-head CI
+  remains the integration gate and is linked in #132.
+- Gaps / required inputs: No selected-host/GPU evidence or B acceptance is
+  supplied. Stored numeric values require recorded measurement provenance;
+  missing, synthetic and unsupported data remain explicit. No downstream
+  acknowledgement is claimed.
+- Next action / owner: Codex completes the authorized merge after final CI. The
+  next-package implementer reads #132's actual merged state/SHA, fetches main,
+  reconciles their existing branch and runs its checks before their integration.
+  Codex does not start or replace that implementer's next package.
 
 ### COMM-0008 — R11 delivers cancel and revoke, not start, reconnect or restore
 
@@ -315,34 +398,6 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - Next action / owner: Reviewer decides whether R13 may close without the report
   renderer, or whether it is required for the phase.
 
-### COMM-0011 — R14 adds a bounded extension surface; three scope gaps recorded
-
-- Date: 2026-10-05 (Asia/Taipei), after COMM-0010.
-- From: Codex, implementation.
-- To: Planning/review assistant and maintainer.
-- Reply to: COMM-0003.
-- State: Open; three scope gaps recorded, not resolved.
-- Message / decision: R14 adds a versioned manifest contract with a closed
-  permission set, a compatibility refusal, a bounded subprocess host for one
-  reviewed same-user adapter, and enable/disable/uninstall. Loading a manifest
-  is inert and is proven so by two tests that run the entry module and assert
-  its marker file never appears. A declared permission is a request: an unknown
-  name refuses the manifest rather than being narrowed, and `trust="untrusted"`
-  is refused because no verified isolation profile exists here.
-- Branch / head / base / PR: `r14-extension-boundary`, based on `r13-evaluation`
-  at `3e67bb7`; open PR, deliberately not merged.
-- Evidence / checks: [R14 candidate evidence](evidence/m3/acceptance-matrix.md#r14-candidate);
-  27 tests.
-- Gaps / required inputs: No evaluator or provider extension point is exercised
-  with a real external extension; no `researchos extensions` CLI command;
-  `BlockRegistry` is not merged into this registry, so blocks and extensions
-  remain separate concepts; the "removing training adapters leaves core
-  functional" acceptance bullet is not exercised because this package adds and
-  removes no training adapter.
-- Next action / owner: Reviewer decides whether R14 may close on a Python-only
-  surface with one inline adapter, or requires a CLI and a real third-party
-  extension.
-
 ## Message template
 
 Copy this template into the history and replace every placeholder:
@@ -361,3 +416,67 @@ Copy this template into the history and replace every placeholder:
 - Gaps / required inputs: Specific missing evidence or input, or none
 - Next action / owner: Concrete next step and responsible collaborator
 ```
+
+## REVIEW-20261005-133 — Maintainer-directed PR cleanup
+
+- Sender: Codex planning/review assistant; recipient: maintainer and implementer.
+- Time: 2026-10-05T02:22:00+08:00; state: integration review in progress.
+- Assignment: review every open llm-research-os PR, directly fix and merge suitable
+  slices, close only superseded or unsuitable proposals. No next package started.
+- #138 integrated at `3b2a075b056f10e9ae433922533522b9a6bee912`; original CI
+  37222447522 passed, local locked frontend typecheck/rebuild matched assets.
+- #133 is reconciled with R09/R10 repairs; arbitrary host input paths, unbound
+  cancellation/revocation receipt identities, missing caller-head CAS, and inert
+  retry/revoke UI were repaired. Final-head CI remains required before merge.
+- R11 is a partial operations slice; missing start/restore and corresponding
+  acceptance remain open. R08 selected hosts/GPU remain pending-live.
+- Historical duplicate COMM identifiers from stacked candidates are provenance,
+  not acknowledgements; new review messages use this unique REVIEW prefix.
+
+## REVIEW-20261005-134 — Reconcile and repair the submitted research slice
+
+- From: Codex planning/review; to: maintainer and existing implementers.
+- Date/time: 2026-10-05T02:52:30+08:00; state: final-head validation pending.
+- Scope: current maintainer authorizes review/repair/merge/closure of all existing PRs.
+  This reviewer handles #134–#136 sequentially; no new package or agent is started.
+- #133 merged at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` after
+  final-head CI 37224701233 passed. #134 preserves all reviewed R09–R11 code.
+- #134 binds proposal body into receipt identity, passes caller head to domain CAS,
+  recovers a committed proposal after receipt interruption, preserves staged-input
+  browser bounds, reports withheld ledger entries and verifies Research rendering
+  in the existing browser smoke. Exact final head/CI is recorded in #134.
+- Local evidence: 160 focused web tests, Ruff, mypy and schemas; browser availability
+  and full final-head CI are recorded separately in the review report.
+- Gaps: B remains pending-live; R11 start/restore and full R12 acceptance remain open.
+
+## REVIEW-20261005-135 — Repair submitted evaluation mechanics
+
+- From: Codex planning/review; to: maintainer and existing implementers.
+- Date/time: 2026-10-05T04:10:13+08:00; state: final-head validation pending.
+- Scope: existing #135 only, preserving reviewed #133/#134; no new package.
+- Corrected prediction MAE, constant baseline, decimal deltas, receipt identity,
+  comparison-bound conclusions and strict bounded CAS detail validation.
+- Ray teardown retries only the observed owned-directory ENOTEMPTY race with a
+  five-second deadline. Persistent cleanup failures still fail the live gate.
+- Evidence: 116 focused tests passed; exact final head and CI are recorded at #135.
+- Gaps: synthetic CPU fixture is labelled computed-fixture; real-model/report,
+  project model/revision lineage, B live and Checkpoint C acceptance stay open.
+- Next action / owner: this reviewer validates final head and integrates the
+  partial slice only after all designated checks pass, then handles existing #136.
+
+- Review update 2026-10-05T04:20:31+08:00: #134 merged at the integration SHA above. R13 published documents now have registered generated schemas; final-head CI remains required.
+
+## REVIEW-20261005-136 — Repair the submitted extension boundary
+
+- From: Codex planning/review; to: maintainer and existing implementers.
+- Date/time: 2026-10-05T04:24:42+08:00; state: final-head validation pending.
+- Scope: existing #136, preserving all reviewed R09–R13. No new package started.
+- Repairs: live bounded output and owned process-group cleanup; no Python
+  preexec_fn; exact-child limit report; regular-file manifest input and immutable
+  snapshots; closed trust, trust-bound registry digest and enabled dispatch.
+- Published inert declarations and result/capability documents have registered
+  generated schemas. Compatible permission names are not granted handles.
+- Evidence: 46 extension regressions; final head, CI and actual gates at #136.
+- Gaps: no third-party evaluator/provider integration, persistent registry or CLI;
+  same-user code is not a malicious-code sandbox. R14/D and prior B/C stay open.
+- Next action / owner: reviewer verifies final-head CI and merges the partial slice.

@@ -341,3 +341,70 @@ def test_detail_artifact_is_storable_and_addressable() -> None:
         with store.open(stored.digest) as stream:
             assert stream.read() == payload
         assert json.loads(payload.decode("utf-8")) == result.detail_document()
+
+
+def test_error_tracks_predictions_and_majority_ignores_threshold() -> None:
+    baseline = evaluate(threshold=0.1, mode="majority")
+    assert baseline.metrics["mean_absolute_error"] == "0.500000"
+    assert baseline.digest() == evaluate(threshold=0.9, mode="majority").digest()
+    candidate = evaluate(threshold=0.45, mode="threshold")
+    assert candidate.metrics["mean_absolute_error"] == "0.000000"
+    assert all(
+        item.absolute_error == abs(item.predicted - item.expected) for item in candidate.details
+    )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["aggregate", "prediction", "correct", "error", "duplicate", "count", "seed", "missing"],
+)
+def test_inconsistent_detail_is_refused(fault: str) -> None:
+    from llm_research_os.evaluation.evaluator import parse_detail
+
+    document = evaluate(threshold=0.45, mode="threshold").detail_document()
+    changes = {
+        "aggregate": lambda: document["metrics"].update(accuracy="0.000000"),
+        "prediction": lambda: document["examples"][0].update(predicted=True),
+        "correct": lambda: document["examples"][0].update(correct="true"),
+        "error": lambda: document["examples"][0].update(absoluteError="NaN"),
+        "duplicate": lambda: document["examples"][1].update(exampleId="ex-01"),
+        "count": lambda: document.update(exampleCount=11),
+        "seed": lambda: document.update(seed=True),
+        "missing": lambda: document["examples"][0].pop("predicted"),
+    }
+    changes[fault]()
+    with pytest.raises(EvaluationError, match="malformed or inconsistent"):
+        parse_detail(document)
+
+
+def test_recompute_refuses_a_different_dataset() -> None:
+    from dataclasses import replace
+
+    rows = held_out_dataset()
+    result = evaluate(rows, threshold=0.45, mode="threshold")
+    different = (replace(rows[0], label=1), *rows[1:])
+    with pytest.raises(EvaluationError, match="does not identify"):
+        recompute(result, different)
+
+
+def test_published_evaluation_documents_match_generated_contract() -> None:
+    from jsonschema import Draft202012Validator
+
+    from llm_research_os.evaluation.schema import build_schema
+
+    baseline = evaluate(threshold=0.5, mode="majority")
+    candidate = evaluate(threshold=0.45, mode="threshold")
+    comparison = compare(baseline, candidate)
+    conclusion = record(
+        comparison,
+        conclusion_id="conclusion.schema",
+        project_id="project.schema",
+        experiment_revision=1,
+        verdict="supported",
+        rationale="Fixture mechanics only",
+        evidence_refs=(),
+        actor_id="researcher.alice",
+    )
+    validator = Draft202012Validator(build_schema())
+    for document in (baseline.detail_document(), comparison.document(), conclusion.document()):
+        validator.validate(document)

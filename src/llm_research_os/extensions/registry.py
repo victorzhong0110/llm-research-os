@@ -16,10 +16,12 @@ from llm_research_os.extensions.manifest import (
     EXTENSION_CONTRACT_VERSION,
     KNOWN_PERMISSIONS,
     NEVER_GRANTED,
+    AdapterResult,
     ExtensionError,
     ExtensionManifest,
     effective_limits,
     load_manifest,
+    run_adapter,
 )
 
 MAX_ENABLED_EXTENSIONS = 32
@@ -56,12 +58,12 @@ class ExtensionRegistry:
     """A bounded, explicit set of enabled extensions.
 
     The registry grants nothing on load. A manifest's permissions are a request;
-    `granted_permissions` is the intersection with the host's grantable set,
-    which was already enforced at parse time.
+    supported permission names are checked at parse time; no capability handles
+    are granted by installation.
     """
 
     def __init__(self, *, maximum: int = MAX_ENABLED_EXTENSIONS) -> None:
-        if maximum < 1 or maximum > MAX_ENABLED_EXTENSIONS:
+        if type(maximum) is not int or maximum < 1 or maximum > MAX_ENABLED_EXTENSIONS:
             raise RegistryError("maximum-invalid", "the extension limit is out of range")
         self._maximum = maximum
         self._installed: dict[tuple[str, str], InstalledExtension] = {}
@@ -74,7 +76,7 @@ class ExtensionRegistry:
         ever run later, explicitly, through `run_adapter`.
         """
 
-        if trust == "untrusted":
+        if trust not in {"inert", "reviewed-same-user"}:
             # Untrusted code requires a verified isolation profile this host
             # does not implement. Saying so is better than a false sandbox.
             raise RegistryError(
@@ -101,6 +103,15 @@ class ExtensionRegistry:
         if not installed.enabled:
             raise RegistryError("extension-disabled", "this extension is disabled")
         return installed
+
+    def run(
+        self, extension_id: str, version: str, request: dict[str, Any], *, timeout: float = 10.0
+    ) -> AdapterResult:
+        """Dispatch only a currently enabled, explicitly reviewed registration."""
+        installed = self.resolve(extension_id, version)
+        if installed.trust != "reviewed-same-user":
+            raise RegistryError("trust-unsupported", "inert declarations cannot dispatch code")
+        return run_adapter(installed.manifest, request, timeout=timeout)
 
     def disable(self, extension_id: str, version: str) -> InstalledExtension:
         key = (extension_id, version)
@@ -156,6 +167,7 @@ class ExtensionRegistry:
                     "version": item.manifest.version,
                     "manifestDigest": item.manifest.digest,
                     "enabled": item.enabled,
+                    "trust": item.trust,
                 }
                 for item in self.installed()
             ]
@@ -171,7 +183,9 @@ class ExtensionRegistry:
             "grantablePermissions": sorted(KNOWN_PERMISSIONS),
             "neverGrantedPermissions": sorted(NEVER_GRANTED),
             "maximumEnabled": self._maximum,
-            "enabledCount": len(self._installed),
+            "enabledCount": sum(item.enabled for item in self._installed.values()),
+            "installedCount": len(self._installed),
+            "maximumInstalled": self._maximum,
             "effectiveResourceLimits": sorted(effective_limits()),
             "isolationProfile": "none; reviewed same-user code runs under resource limits only",
             "note": (

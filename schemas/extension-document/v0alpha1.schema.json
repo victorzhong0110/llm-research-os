@@ -1,0 +1,637 @@
+{
+  "$defs": {
+    "AdapterResultDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "durationSeconds": {
+          "pattern": "^[0-9]+\\.[0-9]{3}$",
+          "title": "Durationseconds",
+          "type": "string"
+        },
+        "effectiveResourceLimits": {
+          "items": {
+            "enum": [
+              "addressSpace",
+              "cpuSeconds",
+              "openFiles"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Effectiveresourcelimits",
+          "type": "array"
+        },
+        "exitCode": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Exitcode"
+        },
+        "kind": {
+          "const": "AdapterResult",
+          "title": "Kind",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "error",
+            "ok",
+            "timeout"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "outputLimitExceeded": {
+          "title": "Outputlimitexceeded",
+          "type": "boolean"
+        },
+        "stderr": {
+          "maxLength": 65536,
+          "title": "Stderr",
+          "type": "string"
+        },
+        "stderrBytes": {
+          "maximum": 65536,
+          "minimum": 0,
+          "title": "Stderrbytes",
+          "type": "integer"
+        },
+        "stdout": {
+          "maxLength": 262144,
+          "title": "Stdout",
+          "type": "string"
+        },
+        "stdoutBytes": {
+          "maximum": 262144,
+          "minimum": 0,
+          "title": "Stdoutbytes",
+          "type": "integer"
+        },
+        "timedOut": {
+          "title": "Timedout",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "contractVersion",
+        "outcome",
+        "exitCode",
+        "durationSeconds",
+        "timedOut",
+        "outputLimitExceeded",
+        "effectiveResourceLimits",
+        "stdoutBytes",
+        "stderrBytes",
+        "stdout",
+        "stderr"
+      ],
+      "title": "AdapterResultDocument",
+      "type": "object"
+    },
+    "CapabilitySurfaceDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "effectiveResourceLimits": {
+          "items": {
+            "enum": [
+              "addressSpace",
+              "cpuSeconds",
+              "openFiles"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Effectiveresourcelimits",
+          "type": "array"
+        },
+        "enabledCount": {
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Enabledcount",
+          "type": "integer"
+        },
+        "grantablePermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Grantablepermissions",
+          "type": "array"
+        },
+        "installedCount": {
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Installedcount",
+          "type": "integer"
+        },
+        "isolationProfile": {
+          "maxLength": 262144,
+          "title": "Isolationprofile",
+          "type": "string"
+        },
+        "kind": {
+          "const": "ExtensionCapabilitySurface",
+          "title": "Kind",
+          "type": "string"
+        },
+        "maximumEnabled": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Maximumenabled",
+          "type": "integer"
+        },
+        "maximumInstalled": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Maximuminstalled",
+          "type": "integer"
+        },
+        "neverGrantedPermissions": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Nevergrantedpermissions",
+          "type": "array"
+        },
+        "note": {
+          "maxLength": 262144,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "contractVersion",
+        "grantablePermissions",
+        "neverGrantedPermissions",
+        "maximumEnabled",
+        "maximumInstalled",
+        "enabledCount",
+        "installedCount",
+        "effectiveResourceLimits",
+        "isolationProfile",
+        "note"
+      ],
+      "title": "CapabilitySurfaceDocument",
+      "type": "object"
+    },
+    "ExtensionDeclaration": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "entryModule": {
+          "anyOf": [
+            {
+              "maxLength": 262144,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entrymodule"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "Extension",
+          "title": "Kind",
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Permissions",
+          "type": "array"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "id",
+        "version",
+        "contractVersion"
+      ],
+      "title": "ExtensionDeclaration",
+      "type": "object"
+    },
+    "InstalledView": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "compatiblePermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Compatiblepermissions",
+          "type": "array"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "entryModule": {
+          "anyOf": [
+            {
+              "maxLength": 262144,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Entrymodule"
+        },
+        "extensionContractVersion": {
+          "const": "v0alpha1",
+          "title": "Extensioncontractversion",
+          "type": "string"
+        },
+        "grantedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 0,
+          "title": "Grantedpermissions",
+          "type": "array"
+        },
+        "hasEntryModule": {
+          "title": "Hasentrymodule",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "InstalledExtension",
+          "title": "Kind",
+          "type": "string"
+        },
+        "manifestDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "originName": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Originname",
+          "type": "string"
+        },
+        "refusedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 0,
+          "title": "Refusedpermissions",
+          "type": "array"
+        },
+        "requestedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Requestedpermissions",
+          "type": "array"
+        },
+        "trust": {
+          "enum": [
+            "inert",
+            "reviewed-same-user"
+          ],
+          "title": "Trust",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "contractVersion",
+        "id",
+        "version",
+        "extensionContractVersion",
+        "manifestDigest",
+        "requestedPermissions",
+        "compatiblePermissions",
+        "grantedPermissions",
+        "refusedPermissions",
+        "entryModule",
+        "hasEntryModule",
+        "diagnostics",
+        "trust",
+        "enabled",
+        "originName"
+      ],
+      "title": "InstalledView",
+      "type": "object"
+    },
+    "ManifestView": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "compatiblePermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Compatiblepermissions",
+          "type": "array"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "entryModule": {
+          "anyOf": [
+            {
+              "maxLength": 262144,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Entrymodule"
+        },
+        "extensionContractVersion": {
+          "const": "v0alpha1",
+          "title": "Extensioncontractversion",
+          "type": "string"
+        },
+        "grantedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 0,
+          "title": "Grantedpermissions",
+          "type": "array"
+        },
+        "hasEntryModule": {
+          "title": "Hasentrymodule",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "ExtensionManifest",
+          "title": "Kind",
+          "type": "string"
+        },
+        "manifestDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Manifestdigest",
+          "type": "string"
+        },
+        "refusedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 0,
+          "title": "Refusedpermissions",
+          "type": "array"
+        },
+        "requestedPermissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Requestedpermissions",
+          "type": "array"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "contractVersion",
+        "id",
+        "version",
+        "extensionContractVersion",
+        "manifestDigest",
+        "requestedPermissions",
+        "compatiblePermissions",
+        "grantedPermissions",
+        "refusedPermissions",
+        "entryModule",
+        "hasEntryModule",
+        "diagnostics"
+      ],
+      "title": "ManifestView",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/extension-document/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/ExtensionDeclaration"
+    },
+    {
+      "$ref": "#/$defs/ManifestView"
+    },
+    {
+      "$ref": "#/$defs/InstalledView"
+    },
+    {
+      "$ref": "#/$defs/AdapterResultDocument"
+    },
+    {
+      "$ref": "#/$defs/CapabilitySurfaceDocument"
+    }
+  ]
+}

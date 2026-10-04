@@ -30,8 +30,10 @@ manifest asks: `execution.launch`, `control.write`, `events.write`,
 manifest asking for one is refused with `permission-never-granted`, which is
 more useful than a timeout.
 
-What *is* grantable is read-only: `artifacts.read`, `events.read`,
-`evidence.read`, `ledger.read`, `metrics.read`.
+Compatible permission names are read-only: `artifacts.read`, `events.read`,
+`evidence.read`, `ledger.read`, `metrics.read`. Parsing grants no capability
+handles: public grantedPermissions is empty. The OS file/network permissions of
+reviewed same-user code are not confined by these declarations.
 
 ## Compatibility is refused, not assumed
 
@@ -64,12 +66,15 @@ Adapter crash, exit-code failure, wall-clock timeout, and oversized output are
 each bounded and each leave the registry intact; a test runs a crashing
 extension and then resolves a healthy one.
 
-Output clipping is reported in byte counts, so a truncated stream is visible
-rather than quietly short.
+Output is capped while reading. Overflow stops the owned process group and
+returns error with outputLimitExceeded=true; byte counts describe retained text.
+No Python preexec_fn runs in a forked multithreaded host. A dedicated bounded
+pipe records each invocation's actually applied limits.
 
 ## Disable and uninstall
 
-Disable makes `resolve` refuse the extension. Uninstall removes the registry
+Disable makes `resolve` and registry `run` refuse the extension. Registry `run`
+requires reviewed-same-user trust; inert installation does not authorize dispatch. Uninstall removes the registry
 entry and **does not delete the manifest file**: that file is the operator's,
 and this surface does not delete what it did not create.
 
@@ -92,3 +97,8 @@ digest, so a plan can bind to exactly which extensions were present.
 
 No marketplace, no automatic third-party installs, and subprocess separation is
 never described as a malicious-code sandbox.
+
+The versioned input and all public output documents are registered as
+`extension-document` under `researchos schema`. Manifests must be regular files,
+bounded finite JSON, and immutable snapshots. Registry identity also binds trust.
+Disable affects future dispatch only; it does not cancel an in-flight adapter.

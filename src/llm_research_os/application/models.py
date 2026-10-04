@@ -40,15 +40,16 @@ _MUTATING = frozenset(
 )
 _REVISION_BOUND = frozenset(
     {
-        "conclusion.record",
-        "evaluation.run",
+        "spec.validate",
+        "spec.diff",
         "plan.dry-run",
-        "proposal.submit",
-        "proposal.validate",
         "research.decision",
         "run.simulate",
-        "spec.diff",
-        "spec.validate",
+        "plan.preflight",
+        "proposal.validate",
+        "proposal.submit",
+        "evaluation.run",
+        "conclusion.record",
     }
 )
 _HEAD_BOUND = frozenset(
@@ -59,6 +60,8 @@ _HEAD_BOUND = frozenset(
         "run.show",
         "run.simulate",
         "run.cancel",
+        "proposal.submit",
+        "proposal.validate",
     }
 )
 _PATH_PATTERN = r"^[^\x00-\x1F\x7F]+$"

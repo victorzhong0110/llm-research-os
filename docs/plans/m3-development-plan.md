@@ -33,42 +33,7 @@ integration, and predecessor acceptance remain distinct gates. Start each next
 package from verified main only after its predecessor is merged and accepted;
 do not stack package branches or infer acceptance from a merge alone.
 
-### Recorded partial delivery: R11 scope, 2026-10-04
-
-R11 delivered `plan.preflight`, `run.cancel` and `authorization.revoke` through
-the shared application services, so the browser, the CLI and event replay cannot
-disagree. **Start, reconnect/observe and restore were not delivered.** They
-depend on the R08 reviewed native launch path and its live two-host evidence, and
-restore prerequisites cannot be met without a real Attempt. No stub was left in
-their place, and the R11 acceptance bullets covering disconnect/reconnect and
-restore prerequisites are recorded as not met rather than claimed.
-
-This is a scope decision, not a self-resolution. Whether R11 may close with cancel
-and revoke only, deferring start and restore until R08's live evidence exists, is
-for the maintainer and the planning/review assistant to decide. See COMM-0008.
-
-### Recorded partial delivery: R14 scope, 2026-10-05
-
-R14 delivered a versioned manifest contract with a closed permission set, a
-compatibility refusal, a bounded subprocess host for one reviewed same-user
-adapter, and enable/disable/uninstall. **No evaluator or provider extension
-point is exercised with a real external extension, there is no
-`researchos extensions` CLI command, and `BlockRegistry` is not merged into the
-extension registry.** The boundary is proven with one inline reviewed adapter
-rather than a third-party one.
-
-One finding is worth recording normatively: the resource limits a reviewed
-adapter runs under are **probed, not assumed**. macOS rejects `RLIMIT_AS`, and
-an unbounded-looking limit that the platform silently ignores is worse than an
-honest narrower set. The capability surface therefore reports the limits
-actually enforced. A limit is a bound, not a sandbox, and `trust="untrusted"`
-is refused because no verified isolation profile exists here.
-
-Whether R14 may close on a Python-only surface with one inline adapter, or
-requires a CLI and a real third-party extension, is for the maintainer and the
-planning/review assistant to decide. See COMM-0011.
-
-### Recorded deviation: delivery is currently a stacked, unmerged sequence
+### Historical deviation: initial delivery used a stacked, unmerged sequence
 
 A later maintainer instruction on 2026-10-04 asked for the remaining packages to
 be completed with no pull request merged yet. That is incompatible with the two
@@ -92,6 +57,11 @@ This deviation is recorded for maintainer review rather than resolved silently.
 If the maintainer prefers sequential unmerged work without stacking, the
 alternative is to pause at the first unmerged package; that decision belongs to
 the maintainer, not to the implementer.
+
+The maintainer superseded the no-merge direction on 2026-10-04 at 21:59:47
+Asia/Taipei: Codex fixes and merges R09/R10 while the other implementer completes
+the next assigned package. Integrate the existing stack sequentially; downstream
+work must synchronize with each merged baseline. This does not close Checkpoint B.
 
 Missing evidence remains pending-live. This instruction authorizes the remaining
 implementation, review, and sequential merges; it does not waive acceptance
