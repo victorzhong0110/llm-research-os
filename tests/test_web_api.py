@@ -43,7 +43,9 @@ class _ExplodingReader(io.BytesIO):
         raise AssertionError("the body must not be read")
 
 
-def _draft(index: int, *, project_id: str, run_id: str) -> dict[str, Any]:
+def _draft(
+    index: int, *, project_id: str, run_id: str, event_type: str | None = None
+) -> dict[str, Any]:
     document = load_document(EXAMPLES / "valid" / "minimal.json")
     for field in ("sequence", "sequencetype", "streamversion"):
         document.pop(field, None)
@@ -51,11 +53,29 @@ def _draft(index: int, *, project_id: str, run_id: str) -> dict[str, Any]:
     document["streamid"] = f"project.{project_id}"
     document["subject"] = f"projects/{project_id}"
     document["time"] = f"2026-10-04T10:00:{index:02d}Z"
+    if event_type is not None:
+        document["type"] = event_type
+        document["data"]["payload"] = _payload_for(event_type)
     data = document["data"]
     assert isinstance(data, dict)
     data["projectId"] = project_id
     data["runId"] = run_id
     return document
+
+
+def _payload_for(event_type: str) -> dict[str, Any]:
+    """A minimal payload the Run fold accepts for each lifecycle event."""
+
+    if event_type == "run.queued":
+        return {
+            "kind": "run.queued",
+            "workflowId": "wf.1",
+            "specDigest": "sha256:" + "1" * 64,
+            "registryDigest": "sha256:" + "2" * 64,
+            "planDigest": "sha256:" + "3" * 64,
+            "maxAttempts": 1,
+        }
+    return {"kind": event_type}
 
 
 @pytest.fixture

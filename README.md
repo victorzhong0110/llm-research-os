@@ -24,7 +24,7 @@ uv run researchos m1 prove examples/m1-checkpoint demo.db
 uv run researchos events verify demo.db
 ```
 
-Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open. The maintainer authorized sequential completion through R16 on 2026-10-04. Begin with the remaining [R08 live acceptance](docs/guides/r08-live-acceptance.md). The R09 read-only [local API](docs/guides/m3-local-api.md) has a candidate implementation that is not merged and not accepted.
+Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open. The maintainer authorized sequential completion through R16 on 2026-10-04. Begin with the remaining [R08 live acceptance](docs/guides/r08-live-acceptance.md). The R09 read-only [local API](docs/guides/m3-local-api.md) and the R10 [research workbench](docs/guides/m3-workbench.md) have candidate implementations that are not merged and not accepted.
 
 > Canonical English README. Chinese translation: [README.zh-CN.md](README.zh-CN.md)
 > (keep both in the same pull request; [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)).

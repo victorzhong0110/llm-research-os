@@ -685,3 +685,59 @@ offset.
 
 Gate: `tests/test_web_api.py` cross-project denial, own-project success, forged
 cursor and cursor-walk coverage.
+
+
+### TM-083: The workbench reports an unobserved or synthetic outcome as success
+
+A read view that guesses lifecycle state from event names will eventually render
+a run that was never observed, or one that only ever ran a simulated lifecycle,
+as a green success — the precise claim this project exists to prevent. State is
+therefore derived from the authoritative `RunControl` fold and mapped onto a
+closed set, where `cancelled` becomes an observed stop rather than a success and
+a fold refusal becomes `absent` instead of an invented status. Provenance is read
+from the authorization event the run's `run.queued` fact actually cites, so
+`audit-only` or `not-executed` is labelled synthetic; anything the workbench
+cannot source stays `absent` and is never called real. Only an observed
+successful outcome receives success styling, and `isReportableOutcome` gates
+anything that compares results so `unknown` and `lost` cannot enter a comparison
+as results.
+
+Gate: `tests/test_web_assets.py` fold-derived state, fold-refusal-absent and
+closed-observation-set tests; verified in a real browser against
+`example-minimal`, where the run index rendered `Succeeded` with
+`Synthetic (not a measurement)`. Residual trust: the view can only be as honest
+as the facts it reads; a store whose own facts are wrong is not corrected here.
+
+### TM-084: Client types drift from the server contract
+
+A hand-written client type that silently diverges from the server makes a
+contract change look like a working view with empty fields. The wire contract is
+owned by frozen Pydantic models, the browser types are generated from them, and a
+drift test fails when the committed file no longer matches, so a shape change
+breaks `tsc --noEmit` and pytest together. The generated file is checked in and
+the generator is named in its header; the check refuses an `any` field and a
+malformed optional marker.
+
+Gate: `tests/test_web_assets.py` contract-drift, generated-header and
+loose-field tests. Residual trust: the committed JavaScript bundle itself is a
+build product and is not rebuilt or diffed by CI, which installs Python only. A
+stale bundle is possible; the Python-owned contract types are what CI enforces.
+
+### TM-085: A static asset request escapes the bundle or is mis-typed
+
+Serving the workbench from the installed package adds a file-serving surface to
+a loopback service. Each path is resolved by directory descriptor with
+`O_NOFOLLOW` on every component, so neither `..` nor a symlink can leave the
+asset root, and a symlink's `ELOOP` is mapped to a closed error instead of
+escaping as an `OSError` that would surface as a 500. Content types come from a
+closed suffix table with `X-Content-Type-Options: nosniff`, so a hostile upload
+cannot be re-interpreted. The bundle itself loads without a session, because the
+operator must be able to load the page in order to obtain one; every versioned
+API route remains behind the session check, which a test asserts explicitly.
+`web/node_modules` is excluded from both build targets, so the toolchain cannot
+enter the sdist or the wheel.
+
+Gate: `tests/test_web_assets.py` traversal, symlink, directory, content-type,
+bundle-without-session and API-still-gated tests; `uv build` verified to ship
+`web/static` and no `node_modules`. Residual trust: a same-user local process can
+read the installed package files directly, as it could before.

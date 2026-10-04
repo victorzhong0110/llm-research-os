@@ -1,0 +1,344 @@
+/* Workbench styling.
+ *
+ * Tone is load-bearing here: `success` is reserved for an observed successful
+ * outcome, and no other state may borrow it. Unknown and lost are deliberately
+ * visually distinct from both danger and success, because neither is a failure.
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #14171a;
+  --muted: #5a6570;
+  --line: #d7dde3;
+  --panel: #f6f8fa;
+  --accent: #1f4f8f;
+  --success: #14663c;
+  --success-bg: #e6f4ec;
+  --warning: #8a5a00;
+  --warning-bg: #fdf3e0;
+  --danger: #a11d1d;
+  --danger-bg: #fbeaea;
+  --unknown: #4a3f8f;
+  --unknown-bg: #eeecfa;
+  --neutral-bg: #eef1f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1215;
+    --fg: #e6eaee;
+    --muted: #9aa6b2;
+    --line: #2a3138;
+    --panel: #161b20;
+    --accent: #7fb0e8;
+    --success: #7fd6a5;
+    --success-bg: #10281c;
+    --warning: #e8c07f;
+    --warning-bg: #2a2113;
+    --danger: #f09a9a;
+    --danger-bg: #2c1616;
+    --unknown: #b8b0ef;
+    --unknown-bg: #1c1a2e;
+    --neutral-bg: #1b2127;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+.shell--center {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.shell__head h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.shell__sub {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.625rem;
+  margin-bottom: 1.25rem;
+}
+
+.tab {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tab:hover {
+  border-color: var(--accent);
+}
+
+.tab--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 0 0 0.375rem;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.375rem 0 0.875rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.row--selected {
+  background: var(--panel);
+}
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.8rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge--success {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.badge--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.badge--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.badge--unknown {
+  background: var(--unknown-bg);
+  color: var(--unknown);
+  border-color: var(--unknown);
+}
+
+.badge--neutral,
+.badge--progress {
+  background: var(--neutral-bg);
+  color: var(--fg);
+  border-color: var(--line);
+}
+
+.state {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--panel);
+  margin: 0.75rem 0;
+}
+
+.state--error {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--fg);
+}
+
+.state--loading {
+  color: var(--muted);
+}
+
+.kv {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.kv__row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 18rem) 1fr;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.kv dt {
+  color: var(--muted);
+}
+
+.kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.code {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  max-height: 24rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.graph {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.graph__node {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel);
+  display: grid;
+  gap: 0.125rem;
+}
+
+.graph__label {
+  font-weight: 600;
+}
+
+.graph__meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.detail {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.875rem;
+  margin: 0.875rem 0;
+  background: var(--panel);
+}
+
+.detail__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.linkish {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.5rem 0 0.75rem;
+}
+
+input {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  min-width: 18rem;
+}

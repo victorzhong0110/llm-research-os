@@ -180,6 +180,10 @@ class ReadProjections:
     def run_page(self, *, cursor: str | None, limit: int | None = None) -> Page:
         """Bounded run index derived from verified Run facts, newest first.
 
+        The observation state comes from the authoritative ``RunControl`` fold,
+        not from guessing at event type names. A run with no snapshot stays
+        ``absent``; the view then says so instead of implying a lifecycle.
+
         The fold is scanned once against the frozen high-water mark, so a page
         is bounded in the response but the derivation cost is the project run
         count. The cursor resumes strictly below the last returned sequence.
@@ -190,10 +194,13 @@ class ReadProjections:
         high_water = self._guarded(self._store.last_sequence)
         rows = self._events(after_sequence=0, limit=high_water or 1)
         latest: dict[str, dict[str, Any]] = {}
+        queued: dict[str, dict[str, Any]] = {}
         for row in rows:
             if row.event.data.project_id != self._project_id or row.event.data.run_id is None:
                 continue
             run_id = str(row.event.data.run_id)
+            if str(row.event.type) == "run.queued":
+                queued.setdefault(run_id, dict(row.event.data.payload))
             entry = latest.get(run_id)
             if entry is not None and row.sequence <= int(entry["lastSequence"]):
                 continue
@@ -205,15 +212,96 @@ class ReadProjections:
                 if row.event.data.attempt_id is None
                 else str(row.event.data.attempt_id),
             }
+        for run_id, entry in latest.items():
+            entry["observation"] = self._observation(run_id)
+            entry["origin"] = self._origin(queued.get(run_id))
         ordered = sorted(latest.values(), key=lambda item: int(item["lastSequence"]), reverse=True)
         # The index is newest-first, so a cursor means "strictly older than this".
         remaining = [item for item in ordered if after == 0 or int(item["lastSequence"]) < after]
         selected = remaining[:size]
         return Page(
-            items=tuple(selected),
+            items=tuple(
+                {
+                    "runId": item["runId"],
+                    "lastSequence": item["lastSequence"],
+                    "lastEventType": item["lastEventType"],
+                    "attemptId": item["attemptId"],
+                    "observation": item["observation"],
+                    "origin": item["origin"],
+                }
+                for item in selected
+            ),
             next_cursor=encode_cursor(int(selected[-1]["lastSequence"])) if selected else None,
             high_water_mark=high_water,
         )
+
+    def _observation(self, run_id: str) -> str:
+        """Fold one Run and map its status to the closed observation set.
+
+        ``cancelled`` and ``lost`` are kept apart on purpose: a recorded
+        cancellation request is not an observed process stop, and a lost result
+        is neither success nor failure.
+        """
+
+        from llm_research_os.runs.control import RunControl
+        from llm_research_os.runs.errors import RunStateError
+        from llm_research_os.runs.models import RunStatus
+
+        try:
+            head = RunControl(self._store, project_id=self._project_id, run_id=run_id).rebuild()
+        except RunStateError:
+            # A lifecycle the fold refuses proves no state. Claiming `absent` is
+            # honest; inventing a status from raw event names would not be.
+            return "absent"
+        snapshot = head.snapshot
+        if snapshot is None:
+            return "absent"
+        mapping = {
+            RunStatus.QUEUED: "queued",
+            RunStatus.RUNNING: "running",
+            RunStatus.RETRY_PENDING: "running",
+            RunStatus.LOST: "lost",
+            RunStatus.UNKNOWN: "unknown",
+            RunStatus.COMPLETED: "succeeded",
+            RunStatus.FAILED: "failed",
+            RunStatus.CANCELLED: "observed-stop",
+        }
+        return mapping.get(snapshot.status, "absent")
+
+    def _origin(self, queued: dict[str, Any] | None) -> str:
+        """Label a run's data provenance from the authorization it actually cites.
+
+        The signal is a recorded fact, not a naming convention: the run's
+        ``run.queued`` fact cites an authorization event, and that event states
+        its own ``authority`` and ``execution``. A run authorized only for audit
+        is synthetic. Anything else is reported ``absent`` rather than
+        ``real``: claiming a measurement the workbench cannot source is the
+        misleading direction, and R10 requires synthetic, absent and real to stay
+        distinguishable.
+        """
+
+        if queued is None:
+            return "absent"
+        # CloudEvents carries sequence fields as decimal strings; accept both
+        # forms rather than assuming one and silently reporting "absent".
+        raw = queued.get("authorizationSequence")
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            sequence = raw
+        elif isinstance(raw, str) and raw.isdigit():
+            sequence = int(raw)
+        else:
+            return "absent"
+        if sequence < 1:
+            return "absent"
+        events = self._events(after_sequence=sequence - 1, limit=1)
+        if not events:
+            return "absent"
+        payload = events[0].event.data.payload
+        authority = payload.get("authority")
+        execution = payload.get("execution")
+        if authority == "audit-only" or execution == "not-executed":
+            return "synthetic"
+        return "absent"
 
     def resolve_artifact_project(self, digest: str, *, link_limit: int = 200) -> bool:
         """True when at least one verified event of this project references ``digest``.

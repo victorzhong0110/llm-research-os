@@ -22,6 +22,8 @@ from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.storage import EventStore
+from llm_research_os.web.assets import AssetError
+from llm_research_os.web.assets import load as load_asset
 from llm_research_os.web.errors import LOCAL_API_VERSION, LocalApiError, bad_request, not_found
 from llm_research_os.web.limits import (
     ConcurrencyGate,
@@ -150,7 +152,7 @@ class LocalApi:
         if path == "/api/health" and method == "GET":
             return self._json({"kind": "Health", "status": "ready"})
         if not path.startswith(API_PREFIX):
-            raise not_found("No such local API resource.")
+            return self._asset(environ, path, method)
 
         check_origin(environ, method=method, allowed_origin=self._allowed_origin)
         route = path[len(API_PREFIX) :]
@@ -181,6 +183,41 @@ class LocalApi:
                 status=405,
             )
         return self._read(environ, route, session)
+
+    def _asset(self, environ: dict[str, Any], path: str, method: str) -> Response | Stream:
+        """Serve the built workbench bundle.
+
+        The session check stays in front of every API route but not in front of
+        the bundle itself: the operator has to be able to load the page in order
+        to exchange the bootstrap secret for a session.
+        """
+
+        if method not in {"GET", "HEAD"}:
+            raise LocalApiError(
+                "method-not-allowed", "The workbench bundle is read-only.", status=405
+            )
+        try:
+            asset = load_asset(path)
+        except AssetError as exc:
+            if exc.code == "asset-missing":
+                raise not_found("No such workbench resource.") from exc
+            raise bad_request(
+                "parameter-invalid", "The requested asset path is not valid."
+            ) from exc
+        headers: Headers = [
+            ("Content-Type", asset.content_type),
+            ("ETag", asset.etag),
+            ("X-Content-Type-Options", "nosniff"),
+        ]
+        if asset.immutable:
+            headers.append(("Cache-Control", "public, max-age=31536000, immutable"))
+        else:
+            # The index must not be cached, or a rebuilt bundle stays invisible.
+            headers.append(("Cache-Control", "no-store"))
+        if_none = environ.get("HTTP_IF_NONE_MATCH")
+        if if_none is not None and if_none == asset.etag:
+            return 304, headers, b""
+        return 200, headers, asset.body
 
     def _session(self, environ: dict[str, Any], method: str, cookies: dict[str, str]) -> Response:
         if method == "POST":

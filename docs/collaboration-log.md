@@ -38,14 +38,14 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. R09 has a candidate implementation on branch `r09-local-api` (open PR, deliberately unmerged) and is not accepted. R10–R16 are not started. The previous B freeze is superseded by the 2026-10-04 direction. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. R09 has a candidate on `r09-local-api` (PR #131, unmerged). R10 has a candidate on `r10-workbench` (open PR, unmerged). R11–R16 are not started. The previous B freeze is superseded by the 2026-10-04 direction. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
 | Responsibility | Codex is assigned the remaining implementation, review and sequential integration. COMM-0003 acknowledges the assignment and COMM-0002 handoff. No additional agent was assigned or started. |
-| Next gate | R08: supply connection configuration and GPU/Kaggle access, see COMM-0004. R09: review the transport deviation (COMM-0005) and the stacking deviation (COMM-0006) before R10 is built on it. |
+| Next gate | R08: supply connection configuration and GPU/Kaggle access, see COMM-0004. R09/R10: review COMM-0005, COMM-0006 and COMM-0007. |
 
 ## Open handoffs
 
@@ -53,6 +53,7 @@ passed). Documentation changes do not advance the execution baseline.
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
 | COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
+| COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 
 COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
 the acknowledgement does not establish acceptance. COMM-0005 and COMM-0006 are
@@ -194,6 +195,35 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   the alternative is to pause at the first unmerged package. That is a maintainer
   decision, not an implementer one.
 - Next action / owner: Maintainer confirms the stacking deviation or directs a pause.
+
+### COMM-0007 — R10 locked React/TypeScript/Vite and deferred the graph library
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0006.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; proposed normative change awaiting review.
+- Message / decision: R10 locked the concrete dependencies the plan deferred:
+  React 19, TypeScript 5.9 and Vite 7, with no component library and no
+  client-side state library. The plan's architecture paragraph named "read-only
+  React Flow"; the execution graph is instead a read-only ordered list of run
+  nodes, and no layout library is added. Node placement is presentation only and
+  feeds no digest, so the acceptance requirement is unaffected, and rendering a
+  guessed graph shape would be worse than an honest list. A layout library should
+  be introduced only when a real multi-node DAG needs one.
+- Branch / head / base / PR: `r10-workbench`, based on `r09-local-api` at
+  `4cc2f82`; open PR, deliberately not merged.
+- Evidence / checks: [R10 candidate evidence](evidence/m3/acceptance-matrix.md#r10-candidate);
+  `npm run typecheck` clean under `strict` plus `exactOptionalPropertyTypes` and
+  `noUncheckedIndexedAccess`; 2067 passed with coverage 85.76%; a real Chrome run
+  over `example-minimal` with zero console errors.
+- Gaps / required inputs: No automated browser E2E exists in CI, and the committed
+  JavaScript bundle is not rebuilt or diffed there; only the Python-owned
+  contract types are drift-checked. The decision/dissent/authorization lineage
+  view is deferred to R12. The run index folds events rather than using the
+  existing `run_projections` cache, so a store with many runs will be slow.
+- Next action / owner: Reviewer decides whether to require React Flow now. This
+  does not block R11 design work, because R11 reuses the same API contract.
 
 ## Message template
 
