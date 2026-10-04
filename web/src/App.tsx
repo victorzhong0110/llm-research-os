@@ -5,6 +5,7 @@ import { api, exchangeBootstrap, SessionExpiredError, takeBootstrapSecret } from
 import type { WorkspaceView } from "./generated/local-api";
 import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
 import { OperationsView } from "./components/OperationsView";
+import { ResearchView } from "./components/ResearchView";
 import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
 import { Failure, Loading } from "./components/Primitives";
 
@@ -17,6 +18,7 @@ type ViewId =
   | "operations"
   | "project"
   | "revisions"
+  | "research"
   | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
@@ -25,6 +27,7 @@ const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "graph", label: "Execution graph" },
   { id: "runs", label: "Runs" },
   { id: "operations", label: "Operations" },
+  { id: "research", label: "Research" },
   { id: "events", label: "Events and logs" },
   { id: "artifacts", label: "Artifacts" },
   { id: "environment", label: "Environment" },
@@ -136,6 +139,7 @@ export function App() {
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}
+        {view === "research" ? <ResearchView /> : null}
         {view === "operations" && expectedHead !== undefined ? (
           <OperationsView expectedHead={expectedHead} />
         ) : null}

@@ -39,7 +39,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R09 | Local API and browser authority boundaries | Candidate on this branch; not merged | Not accepted; R08 live evidence still pending-live | [R09 candidate](#r09-candidate-evidence) |
 | R10 | Read-only research workbench | Candidate on this branch; not merged | Not accepted; no automated browser E2E in CI | [R10 candidate](#r10-candidate-evidence) |
 | R11 | Browser approval, execution, cancellation, restore | Candidate on this branch; not merged | Not accepted; start/reconnect/restore not delivered | [R11 candidate](#r11-candidate-evidence) |
-| R12 | AI proposals, citations, and researcher decisions | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R12 |
+| R12 | AI proposals, citations, researcher decisions | Candidate on this branch; not merged | Not accepted; browser evidence-import form not delivered | [R12 candidate](#r12-candidate-evidence) |
 | R13 | Real evaluation, comparison, and conclusions | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R13 |
 | R14 | Minimal extension mechanism and permission boundary | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R14 |
 | R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |

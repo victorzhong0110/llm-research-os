@@ -13,6 +13,7 @@ import type {
   Error as ApiError,
   EventPage,
   Health,
+  ResearchLedgerView,
   RevisionPage,
   RunPage,
   Session,
@@ -175,6 +176,9 @@ export const api = {
       nextCursor: page.nextCursor ?? null,
       highWaterMark: page.highWaterMark,
     }));
+  },
+  async research(): Promise<ResearchLedgerView> {
+    return request<ResearchLedgerView>("/research");
   },
   artifact(digest: string): Promise<ArtifactView> {
     return request<ArtifactView>(`/artifacts/${encodeURIComponent(digest)}`);

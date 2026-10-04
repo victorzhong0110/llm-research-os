@@ -151,6 +151,60 @@ class DocumentPreviewDocument(Contract):
     decoded: dict[str, Any]
 
 
+class LedgerEntry(BaseModel):
+    """One ledger row: a fixed spine plus the per-kind fields the fold supplies.
+
+    The per-kind payloads are the repository's own research ledger documents and
+    stay closed there. Here only the spine is fixed, because re-declaring four
+    payload models to describe a read-only view would add maintenance without
+    adding a check. ``extra="allow"`` is deliberate here and nowhere else; the
+    contract models in this module are otherwise closed.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=False,
+        validate_by_alias=True,
+        extra="allow",
+    )
+
+    event_id: Annotated[str, Field(alias="eventId")]
+    sequence: int = Field(ge=1)
+
+
+class ResearchLedgerView(Contract):
+    api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(
+        default="researchos.dev/local-api/v0alpha1", alias="apiVersion"
+    )
+    kind: Literal["ResearchLedgerView"]
+    project_id: str = Field(alias="projectId")
+    last_sequence: int = Field(alias="lastSequence", ge=0)
+    decision_count: int = Field(alias="decisionCount", ge=0)
+    open_question_count: int = Field(alias="openQuestionCount", ge=0)
+    answered_question_count: int = Field(alias="answeredQuestionCount", ge=0)
+    rationale_characters: int = Field(alias="rationaleCharacters", ge=0)
+    overridden_dissent_count: int = Field(alias="overriddenDissentCount", ge=0)
+    proposals: tuple[LedgerEntry, ...]
+    dissents: tuple[LedgerEntry, ...]
+    decisions: tuple[LedgerEntry, ...]
+    questions: tuple[LedgerEntry, ...]
+    withheld: dict[str, int]
+
+    @field_validator(
+        "proposals",
+        "dissents",
+        "decisions",
+        "questions",
+        mode="before",
+    )
+    @classmethod
+    def json_lists_are_tuples(cls, value: object) -> object:
+        if type(value) is list:
+            return tuple(value)
+        if type(value) is tuple:
+            return value
+        raise ValueError("ledger lists must be JSON arrays")
+
+
 class CommandReceipt(Contract):
     """Result of one browser-dispatched shared command.
 
@@ -214,10 +268,12 @@ class RunPageDocument(_Page):
     items: tuple[RunItem, ...]
 
 
-CONTRACT_MODELS: dict[str, type[Contract]] = {
+CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "ArtifactView": ArtifactDocument,
     "Capabilities": CapabilitiesDocument,
     "CommandReceipt": CommandReceipt,
+    "LedgerEntry": LedgerEntry,
+    "ResearchLedgerView": ResearchLedgerView,
     "DocumentPreview": DocumentPreviewDocument,
     "Error": ErrorDocument,
     "EventPage": EventPageDocument,

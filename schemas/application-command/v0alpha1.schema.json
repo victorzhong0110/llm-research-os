@@ -137,6 +137,54 @@
       "title": "PlanPreflightOperation",
       "type": "object"
     },
+    "ProposalSubmitOperation": {
+      "additionalProperties": false,
+      "description": "Append one proposal bound to a base revision and a server-derived diff.\n\nThe document supplies its own ``experimentRevision``; a proposal whose\nrevision is not the current head is refused, so a stale proposal cannot\noverwrite a newer revision.",
+      "properties": {
+        "kind": {
+          "const": "proposal.submit",
+          "title": "Kind",
+          "type": "string"
+        },
+        "request": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "request"
+      ],
+      "title": "ProposalSubmitOperation",
+      "type": "object"
+    },
+    "ProposalValidateOperation": {
+      "additionalProperties": false,
+      "description": "Validate one proposal document and resolve its citations. Appends nothing.\n\nGenerated or hand-written proposal text becomes a draft only after it has\npassed this check, so an unresolved citation is refused before a proposal can\nexist, rather than being discovered later.",
+      "properties": {
+        "kind": {
+          "const": "proposal.validate",
+          "title": "Kind",
+          "type": "string"
+        },
+        "request": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "title": "Request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "request"
+      ],
+      "title": "ProposalValidateOperation",
+      "type": "object"
+    },
     "ResearchDecisionOperation": {
       "additionalProperties": false,
       "properties": {
@@ -411,6 +459,8 @@
           "authorization.revoke": "#/$defs/AuthorizationRevokeOperation",
           "plan.dry-run": "#/$defs/PlanDryRunOperation",
           "plan.preflight": "#/$defs/PlanPreflightOperation",
+          "proposal.submit": "#/$defs/ProposalSubmitOperation",
+          "proposal.validate": "#/$defs/ProposalValidateOperation",
           "research.decision": "#/$defs/ResearchDecisionOperation",
           "research.ledger": "#/$defs/ResearchLedgerOperation",
           "revision.list": "#/$defs/RevisionListOperation",
@@ -453,6 +503,12 @@
         },
         {
           "$ref": "#/$defs/PlanPreflightOperation"
+        },
+        {
+          "$ref": "#/$defs/ProposalSubmitOperation"
+        },
+        {
+          "$ref": "#/$defs/ProposalValidateOperation"
         },
         {
           "$ref": "#/$defs/RunCancelOperation"

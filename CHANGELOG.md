@@ -10,6 +10,19 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R12 research workflow in the browser: a read-only, bounded research ledger
+  plus proposal validation and decision recording through the CLI's own shared
+  services. A proposal may cite only evidence this project has actually
+  recorded; an unresolved citation refuses the proposal on both the read-only
+  validate path and the mutating submit path. A validated proposal is a draft
+  that queues no Run and grants no permission, and `expectedRevision` binds it to
+  the revision the caller read so a stale proposal cannot overwrite a newer one.
+
+- R12 preserved disagreement: a decision records which dissent it overrides and
+  the dissent remains in the ledger, rendered beside the decision with the
+  rationale intact across refreshes. The ledger separately refuses to re-decide a
+  closed proposal, so a rejection cannot be manufactured after the fact.
+
 - R11 browser operations: `POST /api/v0alpha1/commands` dispatches caller-owned
   application commands through the same shared services the CLI uses, so browser,
   CLI and event replay cannot disagree. Three operations are exposed:
