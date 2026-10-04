@@ -6,18 +6,10 @@ import type { WorkspaceView } from "./generated/local-api";
 import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
 import { OperationsView } from "./components/OperationsView";
 import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
+import { ObjectInspectionView } from "./components/Inspection";
 import { Failure, Loading } from "./components/Primitives";
 
-type ViewId =
-  | "artifacts"
-  | "environment"
-  | "events"
-  | "graph"
-  | "legend"
-  | "operations"
-  | "project"
-  | "revisions"
-  | "runs";
+type ViewId = "operations" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "project", label: "Project" },
@@ -26,6 +18,9 @@ const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "runs", label: "Runs" },
   { id: "operations", label: "Operations" },
   { id: "events", label: "Events and logs" },
+  { id: "history", label: "Decisions and authority" },
+  { id: "logs", label: "Logs" },
+  { id: "metrics", label: "Metrics" },
   { id: "artifacts", label: "Artifacts" },
   { id: "environment", label: "Environment" },
   { id: "legend", label: "How to read this" },
@@ -133,6 +128,9 @@ export function App() {
         {view === "graph" ? <GraphView /> : null}
         {view === "runs" ? <RunsView /> : null}
         {view === "events" ? <EventsView /> : null}
+        {view === "history" ? <EventsView title="Decision, dissent and authorization history" types="proposal.submitted,dissent.recorded,decision.recorded,question.asked,question.answered,plan.authorization.evaluated,authorization.grant.recorded,authorization.grant.revoked" /> : null}
+        {view === "logs" ? <><EventsView title="Attempt log references" types="attempt.started,attempt.failed,attempt.succeeded,run.failed" /><ObjectInspectionView title="Recorded log content" /></> : null}
+        {view === "metrics" ? <><EventsView title="Recorded metric / result references" types="attempt.succeeded,run.completed" /><ObjectInspectionView title="Recorded metric values" /></> : null}
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}

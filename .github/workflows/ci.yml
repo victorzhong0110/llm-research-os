@@ -88,6 +88,44 @@ jobs:
           uv pip install --python .wheel-smoke/bin/python dist/*.whl
           .wheel-smoke/bin/python -I scripts/wheel_smoke.py examples/m1-checkpoint
 
+  workbench:
+    name: Workbench contract and bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+      - name: Install locked Python test dependencies
+        run: uv sync --locked --all-groups
+      - name: Install pinned Node major
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+      - name: Install locked frontend dependencies without lifecycle scripts
+        working-directory: web
+        run: npm ci --ignore-scripts
+      - name: Check frontend contracts and types
+        working-directory: web
+        run: npm run typecheck
+      - name: Rebuild and verify committed assets
+        run: |
+          npm --prefix web run build
+          git diff --exit-code -- src/llm_research_os/web/static
+          test -z "$(git ls-files --others --exclude-standard src/llm_research_os/web/static)"
+      - name: Install pinned browser and OS dependencies
+        working-directory: web
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Browser inspection against real EventStore and CAS
+        working-directory: web
+        run: npm run test:browser
+
+
   oci-linux:
     # Designated Linux OCI integration (ADR-0049). Missing docker, a failed
     # image build, or a skip of oci_live MUST fail this job. Ordinary pytest

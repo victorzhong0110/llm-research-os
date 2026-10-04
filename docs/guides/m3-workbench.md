@@ -22,12 +22,14 @@ starting it again prints a new secret.
 | Tab | Shows |
 | --- | --- |
 | Project | Project id, event high-water mark, manifest-relative paths |
-| Spec revisions | Immutable first-seen spec digests |
-| Execution graph | One node per run with lifecycle facts |
+| Spec revisions | Verified first-seen spec digests, with fact/object inspection |
+| Execution graph | Stored immutable ResearchSpec / ExecutionPlan nodes and dependency edges; loops remain visibly unsupported |
 | Runs | Fold-derived state, provenance badge, expandable run facts |
-| Events and logs | Verified facts, paged by cursor |
+| Events and logs | Verified facts and payloads, paged against a frozen snapshot |
+| Decisions and authority | Proposal, decision, dissent, questions and authorization facts with evidence links |
+| Logs / Metrics | Recorded attempt/result references and bounded object contents; no inferred measurements |
 | Artifacts | Content-addressed objects this project references |
-| Environment | The limits the server actually enforces |
+| Environment | Recorded Worker/Attempt facts, environment/dependency objects and enforced API limits |
 | How to read this | The state and provenance legend |
 
 ## Read the badges honestly
@@ -101,3 +103,23 @@ forget.
 It cannot start, cancel, approve, restore or record anything. Browser-driven
 execution control is R11 and reuses the same shared services. A browser session
 is not a Worker credential.
+
+## Inspect a fact or follow lineage
+
+Select a fact's sequence in Events or Run details. The inspector shows its
+verified payload and buttons for recorded digest, event ID and sequence
+references. Spec revisions open their source facts; stored spec bytes and plan
+objects can be inspected by their recorded CAS digest. The graph shows validated
+workflow/task nodes and dependency edges, independently of any Run timeline.
+
+Artifact references inside result objects can be followed to code, data, config
+and other evidence. Each hop is verified from the original project event and
+bounded, hash-verified parent bytes; arbitrary or cross-project objects are
+refused. Paths are limited to eight ancestors. Missing objects are explicit
+errors, not substituted content. Binary and over-256-KiB objects are not inlined;
+large objects report that their bytes were not verified by this bounded read.
+JSON secret keys and absolute path values are hidden. Numeric values are stored
+facts, not proof of real measurement; consult their recorded provenance.
+
+Run details have their own Run-scoped cursor and high-water mark. Switching or
+refreshing a view does not read only a fixed prefix of the global store.

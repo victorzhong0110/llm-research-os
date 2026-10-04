@@ -27,7 +27,14 @@ APPLICATION_RECEIPT_SCHEMA_ID = (
 
 _MUTATING = frozenset({"research.decision", "run.simulate", "run.cancel", "authorization.revoke"})
 _REVISION_BOUND = frozenset(
-    {"spec.validate", "spec.diff", "plan.dry-run", "research.decision", "run.simulate"}
+    {
+        "spec.validate",
+        "spec.diff",
+        "plan.dry-run",
+        "research.decision",
+        "run.simulate",
+        "plan.preflight",
+    }
 )
 _HEAD_BOUND = frozenset(
     {

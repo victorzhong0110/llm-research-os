@@ -24,18 +24,18 @@ operator needs neither a source checkout nor Node.
 | Framework | React 19 | The plan named React/TypeScript/Vite |
 | Language | TypeScript 5.9, `strict` plus `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` | A read surface that silently treats a missing field as present is exactly the failure this project must not have |
 | Build | Vite 7 | Plan direction; one hashed bundle keeps the wheel small |
-| Graph | Plain ordered list | The plan named read-only React Flow. A layout library is added only when a real DAG needs a layout; rendering a guessed graph shape would be worse than an honest list |
+| Graph | Validated immutable spec/plan nodes plus dependency table | Layout changes no semantic identity; nested or over-limit graphs remain explicitly unsupported |
 | Routing | Internal view state | One read-only surface; a router would add a dependency without a second route to serve |
 | Tests | Python contract/asset gates plus a real-browser run | See *Verification* |
 
-### Proposed normative change for review
+### Review disposition
 
-The plan's R10 architecture paragraph named "read-only React Flow". This
-implementation renders the execution graph as a read-only ordered list of run
-nodes rather than a force-directed canvas. Node placement is presentation only
-and is not part of any digest, so the acceptance requirement is unaffected;
-a layout library is deferred until a real multi-node DAG needs one. **Review
-decision:** accept the list, or require the graph library now.
+The planning/review assistant accepts the locked React/TypeScript/Vite choice.
+The initial ordered Run list did not fulfill workflow topology. Review repairs
+replace it with backend-validated stored ResearchSpec / ExecutionPlan inspection,
+including nodes and edges. A graph layout dependency is not required for this
+bounded read-only representation. Decision/dissent/authorization history belongs
+in R10's read scope; only mutation remains in later packages.
 
 ## Types are generated, not hand-written
 
@@ -57,11 +57,13 @@ uv run python scripts/generate_web_types.py
 | --- | --- | --- |
 | Project | `/workspace` | Manifest-relative paths only; no absolute host path |
 | Spec revisions | `/revisions` | Immutable first-seen spec digests |
-| Execution graph | `/runs` | One node per run, read-only, layout not a digest input |
+| Execution graph | `/inspect/artifacts/{digest}` | Validated stored spec/plan nodes and dependency edges |
 | Runs | `/runs` | Fold-derived state plus a provenance badge |
-| Events and logs | `/events` | Cursor paging against a frozen high-water mark |
+| Events and logs | `/events` and `/inspect/events/{id-or-sequence}` | Run-scoped paging and immutable payload / evidence inspection |
+| Decisions and authority | Type-filtered `/events` | Recorded decision, dissent, proposal and authorization history |
+| Logs / Metrics | Recorded event and artifact references | Inspect actual stored contents; measurements require recorded provenance |
 | Artifacts | `/artifacts/{digest}` | Project-scoped; inlined only below 256 KiB |
-| Environment | `/capabilities` | The limits the server actually enforces |
+| Environment | Worker / Attempt facts and linked inventory objects, plus `/capabilities` | Execution facts remain separate from API limits |
 | How to read this | static | The state and provenance legend |
 
 ## Outcome honesty
@@ -69,7 +71,7 @@ uv run python scripts/generate_web_types.py
 This is the substance of R10, so it is enforced rather than described.
 
 **Observation state is folded, not guessed.** `ReadProjections._observation`
-runs the authoritative `RunControl` fold and maps `RunStatus` to a closed set.
+applies the authoritative `RunStateProjection` reducer to verified Run-scoped facts and maps `RunStatus` to a closed set.
 `cancelled` maps to `observed-stop`, not to success. A run the fold refuses is
 reported `absent`; inventing a status from raw event type names would be a lie.
 
@@ -146,13 +148,22 @@ The contract/asset gates do not replace a browser. The browser run above is
 recorded as manual evidence; it is not automated in CI, and no CI job drives a
 browser. That is an explicit gap, not a claim of E2E coverage.
 
-## Build inputs not in CI
+## Automated verification added during review
 
-`web/node_modules` is excluded from both build targets, so the toolchain never
-enters the sdist or the wheel. CI installs Python only and does not run `npm`;
-the committed bundle is what ships. Regenerating it needs Node 22 and
-`npm ci && npm run build` in `web/`. A stale bundle is therefore possible and is
-not detected by CI — only the Python-owned contract types are drift-checked.
+The `Workbench contract and bundle` CI job installs locked Node/Python test
+inputs, checks TypeScript, rebuilds and diffs the committed assets, and drives
+Chromium against the actual local API, SQLite and CAS. The browser fixture is
+explicitly synthetic and launches no training. It covers bootstrap fragment
+removal, a Run after 251 foreign events, cancellation-request presentation,
+workflow dependencies, nested result/config lineage, all eleven tabs, keyboard
+activation, offline state, refresh and restart against the same persisted store.
+Local browser download is blocked in the managed review environment, so final
+CI evidence must establish this gate; no local browser pass is claimed.
+
+The published `local-api-response` schema is registered in `researchos schema
+--check-all`. Tests validate actual wire responses (including nested session
+capabilities) and fail on generated TypeScript drift. Node/Playwright are test
+inputs only; the installed wheel needs neither.
 
 ## Out of scope for R10
 

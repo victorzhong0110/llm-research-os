@@ -5,6 +5,8 @@ import { api } from "../api";
 import { formatBytes, formatTime, shortDigest } from "../format";
 import { Badge, BoundedList, Empty, Failure, KeyValue, Loading } from "./Primitives";
 import { usePage } from "./usePage";
+import { Inspector, ObjectInspectionView } from "./Inspection";
+import { EventsView } from "./DataViews";
 import type { RevisionItem, WorkspaceView } from "../generated/local-api";
 
 const PAGE_LIMIT = 50;
@@ -61,6 +63,7 @@ export function ProjectView({ onError }: { readonly onError: (error: unknown) =>
 }
 
 export function RevisionsView() {
+  const [selected, setSelected] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const load = useCallback(
     (next: string | null) => api.revisions(next, PAGE_LIMIT),
@@ -97,7 +100,7 @@ export function RevisionsView() {
           <tr key={`${item.revision}-${item.specDigest}`}>
             <td>{item.revision}</td>
             <td>
-              <code title={item.specDigest}>{shortDigest(item.specDigest, 16)}</code>
+              <button type="button" className="linkish" onClick={() => setSelected(item.specDigest)}>{shortDigest(item.specDigest, 16)}</button>
             </td>
             <td>{item.firstSeenSequence}</td>
           </tr>
@@ -108,6 +111,7 @@ export function RevisionsView() {
           Next page
         </button>
       ) : null}
+      {selected === null ? null : <Inspector kind="revision" identity={selected} />}
     </section>
   );
 }
@@ -118,43 +122,7 @@ export function RevisionsView() {
  * feeds back into a digest, so moving a node cannot change a semantic identity.
  */
 export function GraphView() {
-  const load = useCallback((cursor: string | null) => api.runs(cursor, PAGE_LIMIT), []);
-  const { page, error, reload } = usePage(load, null);
-
-  if (error !== null) {
-    return <Failure error={error} onRetry={reload} />;
-  }
-  if (page === null) {
-    return <Loading label="Loading execution graph" />;
-  }
-  if (page.items.length === 0) {
-    return (
-      <Empty
-        title="No runs to graph"
-        detail="The graph draws one node per run that has lifecycle facts in this project. Nothing is inferred."
-      />
-    );
-  }
-  return (
-    <section aria-labelledby="graph-heading">
-      <h2 id="graph-heading">Execution graph</h2>
-      <p className="note">
-        Read-only and derived from verified facts. Node placement is layout only and is not part of any digest.
-        Execution graphs this workbench cannot represent are left unsupported rather than approximated.
-      </p>
-      <ol className="graph">
-        {page.items.slice(0, LIST_CAP).map((item) => (
-          <li key={item.runId} className="graph__node">
-            <span className="graph__label">{item.runId}</span>
-            <span className="graph__meta">
-              {item.lastEventType} · seq {item.lastSequence}
-              {item.attemptId === null || item.attemptId === undefined ? "" : ` · ${item.attemptId}`}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
+  return <ObjectInspectionView title="Immutable spec / plan and workflow graph" />;
 }
 
 /** Environment and enforced-limit view, straight from `/capabilities`. */
@@ -195,6 +163,8 @@ export function EnvironmentView() {
   return (
     <section aria-labelledby="environment-heading">
       <h2 id="environment-heading">Environment and limits</h2>
+      <EventsView title="Recorded execution environment" types="worker.registered,worker.capabilities.reported,attempt.queued,attempt.started,attempt.succeeded" />
+      <ObjectInspectionView title="Recorded environment / dependency inventory" />
       <p className="note">
         These are the limits the server actually enforces, read from the API rather than assumed by the client.
       </p>

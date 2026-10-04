@@ -8,6 +8,7 @@ request is never presented as an observed process outcome.
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +100,14 @@ def _head(client: Client) -> int:
 
 
 def _submit(client: Client, document: dict[str, Any]) -> tuple[int, Any]:
+    document = json.loads(json.dumps(document))
+    operation = document.get("operation", {})
+    for key in ("request", "document"):
+        name = operation.get(key)
+        if name and len(name) < 4096 and Path(name).is_file():
+            target = client._api._workspace.root / (key + "-" + Path(name).name)
+            shutil.copyfile(name, target)
+            operation[key] = str(target)
     status, _headers, payload = client.request(
         "POST",
         f"{PREFIX}/commands",
@@ -356,3 +365,62 @@ def _write_cancel_request(
     # Fail early with the real validator rather than inside the request.
     load_run_cancellation_request(path)
     return path
+
+
+def test_same_command_and_head_cannot_replay_changed_cancel(client: Client, tmp_path: Path) -> None:
+    request = _write_cancel_request(tmp_path)
+    document = _command(
+        command_id="bound.cancel",
+        operation={"kind": "run.cancel", "request": str(request)},
+        expected_head=_head(client),
+    )
+    assert _submit(client, document)[0] == 200
+    changed = json.loads(request.read_text())
+    changed["reasonCode"] = "different.reason"
+    request.write_text(json.dumps(changed))
+    status, payload = _submit(client, document)
+    assert status == 409
+    assert payload["code"] == "command-refused"
+
+
+def test_cancel_recovers_fact_committed_before_receipt(
+    client: Client, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.application.errors import ApplicationError
+    from llm_research_os.application.receipts import ReceiptLog
+
+    original = ReceiptLog.append
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise ApplicationError("receipt-unwritable", "injected crash after fact")
+
+    request = _write_cancel_request(tmp_path)
+    document = _command(
+        command_id="recover.cancel",
+        operation={"kind": "run.cancel", "request": str(request)},
+        expected_head=_head(client),
+    )
+    monkeypatch.setattr(ReceiptLog, "append", fail)
+    assert _submit(client, document)[0] == 409
+    committed_head = _head(client)
+    monkeypatch.setattr(ReceiptLog, "append", original)
+    assert _submit(client, document)[0] == 200
+    assert _head(client) == committed_head
+
+
+def test_arbitrary_host_path_is_refused(client: Client, tmp_path: Path) -> None:
+    spec = Path(__file__).parents[1] / "examples/m1-checkpoint/spec.yaml"
+    document = _command(
+        command_id="host.path",
+        operation={"kind": "plan.preflight", "document": str(spec)},
+        expected_revision=1,
+    )
+    status, _, payload = client.request(
+        "POST",
+        f"{PREFIX}/commands",
+        body=json.dumps(document).encode(),
+        content_type="application/json",
+        origin=ORIGIN,
+    )
+    assert status == 409
+    assert payload["code"] == "command-refused"

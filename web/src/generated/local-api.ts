@@ -15,6 +15,7 @@ export interface ArtifactView {
   readonly digest: string;
   readonly byteLength: number;
   readonly inline: boolean;
+  readonly verification?: "verified" | "not-inlined";
   readonly text?: string | null;
 }
 
@@ -23,7 +24,7 @@ export interface Capabilities {
   readonly kind: "Capabilities";
   readonly readOnly: boolean;
   readonly limits: LimitsDocument;
-  readonly session: SessionDocument;
+  readonly session: SessionDetails;
   readonly pollFallbackSeconds: number;
 }
 
@@ -38,9 +39,7 @@ export interface LimitsDocument {
   readonly readTimeoutSeconds: number;
 }
 
-export interface SessionDocument {
-  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
-  readonly kind: "BrowserSession";
+export interface SessionDetails {
   readonly csrfToken: string;
   readonly csrfHeader: string;
   readonly idleTimeoutSeconds: number;
@@ -75,7 +74,7 @@ export interface DocumentPreview {
 export interface Error {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "LocalApiError";
-  readonly code: string;
+  readonly code: "body-too-large" | "concurrency-exhausted" | "command-refused" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
   readonly message: string;
 }
 
@@ -103,6 +102,22 @@ export interface Health {
   readonly status: "ready";
 }
 
+export interface InspectionView {
+  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
+  readonly kind: "InspectionView";
+  readonly identity: string;
+  readonly document: Readonly<Record<string, unknown>>;
+  readonly links: ReadonlyArray<LineageLink>;
+  readonly immutable: true;
+}
+
+export interface LineageLink {
+  readonly kind: "event" | "artifact" | "revision";
+  readonly target: string;
+  readonly label: string;
+  readonly via?: ReadonlyArray<string>;
+}
+
 export interface Limits {
   readonly maxBodyBytes: number;
   readonly maxConcurrentRequests: number;
@@ -117,7 +132,7 @@ export interface Limits {
 export interface LocalApiError {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "LocalApiError";
-  readonly code: string;
+  readonly code: "body-too-large" | "concurrency-exhausted" | "command-refused" | "content-type-unsupported" | "csrf-invalid" | "document-hostile" | "document-invalid" | "event-store-unavailable" | "host-forbidden" | "internal-error" | "method-not-allowed" | "not-found" | "origin-forbidden" | "parameter-invalid" | "query-timeout" | "session-expired" | "session-required" | "bootstrap-invalid" | "bootstrap-consumed" | "workspace-invalid";
   readonly message: string;
 }
 
@@ -153,11 +168,11 @@ export interface RunPage {
 }
 
 export interface Session {
-  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
-  readonly kind: "BrowserSession";
   readonly csrfToken: string;
   readonly csrfHeader: string;
   readonly idleTimeoutSeconds: number;
+  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
+  readonly kind: "BrowserSession";
 }
 
 export interface WorkspaceView {
