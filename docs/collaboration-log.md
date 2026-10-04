@@ -30,15 +30,17 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-05, after 00:57:42 Asia/Taipei**. Verified execution baseline:
-`ed6fb30d6cb239ad37a34404814183764bce2a58`.
+Snapshot date: **2026-10-05, sequential PR integration review**. Verified integration main:
+`89b9ab4f021ff8e3d1e53ef041989ab11605da57` (#134), final-head CI 37230774848
+passed. Historical live execution baseline remains
+`ed6fb30d6cb239ad37a34404814183764bce2a58` at its recorded platforms.
 Historical verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
 ([main CI 37183362803](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803)
 passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #131 R09 is fixed and merged at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`; final-head CI 37209190785 passed. R10 final reviewed source is `9ffeb6cb0d30493458c458cc8ed17f04aca0ee82`; final integration state/SHA and checks are recorded by [#132](https://github.com/victorzhong0110/llm-research-os/pull/132). Another implementer owns the next package; synchronize with merged main. R08 selected-host/GPU evidence and B acceptance remain open. |
+| Current package | #133 and #134 are reviewed and integrated; #135 fixture evaluation mechanics is in final-head CI, then existing #136. R11/R12 full acceptance and B/C live evidence remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -367,6 +369,35 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   rendering check, given the environment limit is a tooling one rather than a
   product one.
 
+### COMM-0010 — R13 adds a real evaluation path; the editable report is not delivered
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0009.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; two scope gaps recorded, not resolved.
+- Message / decision: R13 adds a deterministic evaluator over a fixed, committed
+  held-out set. The evaluation is really computed from real labelled data on
+  CPU — it is not a trained-model evaluation, and the baseline is asserted to be
+  imperfect so the comparison means something. Every evaluation records dataset
+  digest, evaluator version, split, seed and example count, stores the full
+  per-example detail as one CAS artifact, appends no per-sample event, and is
+  re-derivable from that detail. Incompatible comparisons are refused with the
+  differing field named. Conclusions are a versioned three-verdict human
+  contract with `systemDerived: false`.
+- Branch / head / base / PR: `r13-evaluation`, based on `r12-research-workflow`
+  at `80812ff`; open PR, deliberately not merged.
+- Evidence / checks: [R13 candidate evidence](evidence/m3/acceptance-matrix.md#r13-candidate);
+  31 tests across the evaluation module and the shared command path.
+- Gaps / required inputs: **The editable evidence-linked report is not
+  delivered** — the comparison and conclusion documents are served but no
+  renderer produces a human-editable report file. No repeat-variance estimate
+  is computed; every comparison states that limitation. Only two predictors
+  are registered. Checkpoint C's browser half is not demonstrated, for the
+  tooling reason in COMM-0009.
+- Next action / owner: Reviewer decides whether R13 may close without the report
+  renderer, or whether it is required for the phase.
+
 ## Message template
 
 Copy this template into the history and replace every placeholder:
@@ -417,3 +448,20 @@ Copy this template into the history and replace every placeholder:
 - Local evidence: 160 focused web tests, Ruff, mypy and schemas; browser availability
   and full final-head CI are recorded separately in the review report.
 - Gaps: B remains pending-live; R11 start/restore and full R12 acceptance remain open.
+
+## REVIEW-20261005-135 — Repair submitted evaluation mechanics
+
+- From: Codex planning/review; to: maintainer and existing implementers.
+- Date/time: 2026-10-05T04:10:13+08:00; state: final-head validation pending.
+- Scope: existing #135 only, preserving reviewed #133/#134; no new package.
+- Corrected prediction MAE, constant baseline, decimal deltas, receipt identity,
+  comparison-bound conclusions and strict bounded CAS detail validation.
+- Ray teardown retries only the observed owned-directory ENOTEMPTY race with a
+  five-second deadline. Persistent cleanup failures still fail the live gate.
+- Evidence: 116 focused tests passed; exact final head and CI are recorded at #135.
+- Gaps: synthetic CPU fixture is labelled computed-fixture; real-model/report,
+  project model/revision lineage, B live and Checkpoint C acceptance stay open.
+- Next action / owner: this reviewer validates final head and integrates the
+  partial slice only after all designated checks pass, then handles existing #136.
+
+- Review update 2026-10-05T04:20:31+08:00: #134 merged at the integration SHA above. R13 published documents now have registered generated schemas; final-head CI remains required.

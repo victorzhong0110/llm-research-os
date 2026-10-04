@@ -77,6 +77,13 @@ def _command(
     expected_revision: int,
     expected_head: int | None = None,
 ) -> dict[str, Any]:
+    """Build one command.
+
+    ``proposal.submit`` appends a fact, so it is head-bound as well as
+    revision-bound; the tests pass the real head rather than relying on the
+    model to infer it.
+    """
+
     document: dict[str, Any] = {
         "apiVersion": "researchos.dev/application/v0alpha1",
         "kind": "ApplicationCommand",
@@ -163,7 +170,9 @@ def test_ledger_reading_appends_nothing(client: Client, workspace: Path) -> None
 # --- Proposal validation and citations ----------------------------------------
 
 
-def test_proposal_with_unresolved_citation_is_refused(client: Client, tmp_path: Path) -> None:
+def test_proposal_with_unresolved_citation_is_refused(
+    client: Client, workspace: Path, tmp_path: Path
+) -> None:
     """A citation the project has not recorded is not a citation."""
 
     request = _proposal_document(tmp_path / "research", evidence_ids=("evidence.does-not-exist",))
@@ -173,6 +182,7 @@ def test_proposal_with_unresolved_citation_is_refused(client: Client, tmp_path: 
             "cmd.citation.unresolved",
             {"kind": "proposal.submit", "request": str(request)},
             expected_revision=1,
+            expected_head=_head(workspace),
         ),
     )
     assert status == 409
@@ -193,7 +203,9 @@ def test_proposal_validation_reports_unresolved_citations(client: Client, tmp_pa
     assert payload["code"] == "command-refused"
 
 
-def test_stale_proposal_cannot_overwrite_a_revision(client: Client, tmp_path: Path) -> None:
+def test_stale_proposal_cannot_overwrite_a_revision(
+    client: Client, workspace: Path, tmp_path: Path
+) -> None:
     """A proposal naming a revision the caller did not read is refused."""
 
     request = _proposal_document(tmp_path / "research", proposal_id="proposal.stale")
@@ -203,6 +215,7 @@ def test_stale_proposal_cannot_overwrite_a_revision(client: Client, tmp_path: Pa
             "cmd.proposal.stale",
             {"kind": "proposal.submit", "request": str(request)},
             expected_revision=99,
+            expected_head=_head(workspace),
         ),
     )
     assert status == 409

@@ -8,6 +8,7 @@ schema v2 rows.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import stat
 from dataclasses import dataclass
@@ -23,6 +24,9 @@ from llm_research_os.application.models import (
     ApplicationOperation,
     ApplicationReceipt,
     AuthorizationRevokeOperation,
+    ConclusionRecordOperation,
+    EvaluationCompareOperation,
+    EvaluationRunOperation,
     PlanDryRunOperation,
     PlanPreflightOperation,
     ProposalSubmitOperation,
@@ -36,7 +40,11 @@ from llm_research_os.application.models import (
 )
 from llm_research_os.application.receipts import ReceiptLog
 from llm_research_os.application.workspace import Workspace, load_workspace
-from llm_research_os.artifacts.errors import ArtifactNotFoundError, ArtifactStoreError
+from llm_research_os.artifacts.errors import (
+    ArtifactNotFoundError,
+    ArtifactPathError,
+    ArtifactStoreError,
+)
 from llm_research_os.artifacts.store import DIGEST_PATTERN, LocalArtifactStore
 from llm_research_os.blocks.builtins import builtin_manifests
 from llm_research_os.blocks.io import ManifestLoadError
@@ -50,6 +58,16 @@ from llm_research_os.blocks.registry import (
     RegistryError,
 )
 from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.evaluation.compare import compare
+from llm_research_os.evaluation.conclusion import ConclusionError, record
+from llm_research_os.evaluation.evaluator import (
+    EvaluationError,
+    EvaluationResult,
+    detail_payload,
+    evaluate,
+    held_out_dataset,
+    parse_detail,
+)
 from llm_research_os.evidence.control import EvidenceControl
 from llm_research_os.evidence.errors import EvidenceError
 from llm_research_os.execution.errors import SimulationError
@@ -102,6 +120,11 @@ from llm_research_os.workers.control import WorkerControl
 from llm_research_os.workers.drafts import grant_revoked_draft
 
 _MAX_DIGEST_BYTES = 1_048_576
+# A detail artifact is the evidence behind a reported number; it is read whole
+# and must stay small enough to re-derive in memory.
+MAX_EVALUATION_DETAIL_BYTES = 4_194_304
+# The registered candidate's decision threshold on the held-out set.
+DEFAULT_CANDIDATE_THRESHOLD = 0.45
 
 
 # A control-plane source for Worker grant facts. The browser revokes authority as
@@ -196,6 +219,12 @@ class ApplicationService:
             return self._cancel(command, frozen)
         if kind == "authorization.revoke":
             return self._revoke(command)
+        if kind == "evaluation.run":
+            return self._evaluation_run(command)
+        if kind == "evaluation.compare":
+            return self._evaluation_compare(command)
+        if kind == "conclusion.record":
+            return self._conclusion_record(command)
         if kind == "proposal.validate":
             return self._proposal_validate(command, frozen)
         if kind == "proposal.submit":
@@ -379,6 +408,127 @@ class ApplicationService:
         except (ResearchControlError, ResearchLedgerError) as exc:
             raise ApplicationError("research-ledger", "the ledger could not be read") from exc
         return document
+
+    def _evaluation(self, path: Path) -> EvaluationResult:
+        """Load one stored detail artifact back into a comparable result."""
+
+        try:
+            return parse_detail(json.loads(self._read_artifact(path).decode("utf-8")))
+        except (OSError, TypeError, ValueError, RecursionError) as exc:
+            raise ApplicationError(
+                "evaluation-invalid", "the evaluation detail artifact is invalid"
+            ) from exc
+
+    def _read_artifact(self, path: Path) -> bytes:
+        try:
+            with LocalArtifactStore(self._workspace.cas_root).open(str(path)) as stream:
+                payload = stream.read(MAX_EVALUATION_DETAIL_BYTES + 1)
+                if len(payload) > MAX_EVALUATION_DETAIL_BYTES or "sha256:" + hashlib.sha256(
+                    payload
+                ).hexdigest() != str(path):
+                    raise ValueError("oversized or corrupt evaluation detail")
+                return payload
+        except (
+            ArtifactNotFoundError,
+            ArtifactPathError,
+            ArtifactStoreError,
+            OSError,
+            ValueError,
+        ) as exc:
+            raise ApplicationError(
+                "evaluation-invalid", "the evaluation detail artifact is unreadable"
+            ) from exc
+
+    def _evaluation_run(self, command: ApplicationCommand) -> _Outcome:
+        """Compute a real evaluation and store its detail artifact.
+
+        Nothing is sampled and nothing is simulated: the dataset is committed,
+        the evaluator is deterministic, and the per-example detail is stored so
+        the aggregate can be recomputed from it.
+        """
+
+        operation = command.operation
+        if not isinstance(operation, EvaluationRunOperation):
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        _require_revision(command.expected_revision or 0, command.expected_revision)
+        # "candidate" is the registered threshold predictor; "majority" is the
+        # deliberately weak baseline. The caller may override the threshold.
+        threshold = operation.threshold
+        if threshold is None:
+            threshold = 0.5 if operation.mode == "majority" else DEFAULT_CANDIDATE_THRESHOLD
+        try:
+            result = evaluate(
+                held_out_dataset(),
+                threshold=float(threshold),
+                mode="majority" if operation.mode == "majority" else "threshold",
+                seed=int(operation.seed or 0),
+            )
+        except EvaluationError as exc:
+            raise ApplicationError("evaluation-refused", str(exc)) from exc
+        try:
+            stored = LocalArtifactStore(self._workspace.cas_root).put_bytes(detail_payload(result))
+        except (OSError, ValueError) as exc:
+            raise ApplicationError("evaluation-refused", "the detail could not be stored") from exc
+        return _Outcome(
+            result={
+                "mode": operation.mode,
+                "threshold": f"{float(threshold):.6f}",
+                "provenance": result.provenance.document(),
+                "metrics": dict(sorted(result.metrics.items())),
+                "detailArtifact": stored.digest,
+                "detailDigest": result.digest(),
+                "reproducible": True,
+                "label": "computed-fixture",
+                "limitations": [
+                    "Synthetic fixed 12-example CPU fixture; no trained-model or live-run evidence."
+                ],
+            },
+            artifact_digests=(stored.digest,),
+        )
+
+    def _evaluation_compare(self, command: ApplicationCommand) -> _Outcome:
+        """Compare two stored results, refusing an incompatible pair."""
+
+        operation = command.operation
+        if not isinstance(operation, EvaluationCompareOperation):
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        comparison = compare(
+            self._evaluation(Path(operation.baseline)),
+            self._evaluation(Path(operation.candidate)),
+        )
+        return _Outcome(result=comparison.document())
+
+    def _conclusion_record(self, command: ApplicationCommand) -> _Outcome:
+        """Record a human conclusion against a comparison.
+
+        The system supplies no judgement: the verdict and rationale are the
+        caller's, and an unsupported verdict over weak evidence is refused.
+        """
+
+        operation = command.operation
+        if not isinstance(operation, ConclusionRecordOperation):
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        comparison = compare(
+            self._evaluation(Path(operation.baseline)),
+            self._evaluation(Path(operation.candidate)),
+        )
+        try:
+            conclusion = record(
+                comparison,
+                conclusion_id=operation.conclusion_id,
+                project_id=self._workspace.project_id,
+                experiment_revision=int(command.expected_revision or 1),
+                verdict=operation.verdict,
+                rationale=operation.rationale,
+                evidence_refs=(),
+                actor_id=command.actor_id,
+            )
+        except ConclusionError as exc:
+            raise ApplicationError("conclusion-refused", str(exc)) from exc
+        # The disposition is the caller's verdict, carried in the result rather
+        # than in the receipt, so a conclusion can never be mistaken for a fact
+        # the control plane derived.
+        return _Outcome(result={**conclusion.document(), "systemDerived": False})
 
     def _proposal_preview(self, proposal: ProposalSubmitRequestDocument) -> dict[str, Any]:
         """Resolve a proposal's citations against the recorded evidence.
@@ -918,7 +1068,7 @@ def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) ->
             "requestDigest": frozen.simulation_request.digest(),
             "specDigest": frozen.spec.digest(),
         }
-    return {"kind": kind}
+    return operation.model_dump(mode="json", by_alias=True)
 
 
 def _append_or_recover_decision(

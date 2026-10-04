@@ -413,6 +413,9 @@ class LocalApi:
             "proposal.validate",
             "proposal.submit",
             "research.decision",
+            "evaluation.run",
+            "evaluation.compare",
+            "conclusion.record",
         }:
             raise LocalApiError(
                 "command-refused", "This command is not exposed to the browser.", status=409
