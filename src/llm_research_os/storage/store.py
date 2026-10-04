@@ -660,6 +660,7 @@ class EventStore:
         event_types: frozenset[str] | None = None,
         project_id: str | None = None,
         run_id: str | None = None,
+        event_id: str | None = None,
     ) -> list[StoredEvent]:
         """Read a bounded page in global append order, verifying every row.
 
@@ -681,7 +682,7 @@ class EventStore:
         types = _validate_event_types(event_types)
         clauses = ["sequence > ?"]
         params: list[object] = [after_sequence]
-        for name, value in (("project_id", project_id), ("run_id", run_id)):
+        for name, value in (("project_id", project_id), ("run_id", run_id), ("event_id", event_id)):
             if value is not None:
                 if type(value) is not str or not 1 <= len(value) <= 255:
                     raise ValueError(f"{name} must be a bounded identifier")
@@ -746,13 +747,47 @@ class EventStore:
         """Read a bounded project revision page against an explicit prefix."""
         if not 1 <= limit <= MAX_READ_PAGE_SIZE or after < 0 or until < 0:
             raise ValueError("invalid revision page bounds")
+        # Rebuildable query tables may be stale or poisoned. Read source facts.
         rows = self._connection.execute(
-            "SELECT project_id, revision, spec_digest, first_seen_sequence "
-            "FROM spec_revisions WHERE project_id = ? AND first_seen_sequence > ? "
-            "AND first_seen_sequence <= ? ORDER BY first_seen_sequence LIMIT ?",
-            (project_id, after, until, limit),
+            "SELECT json_extract(event_json, '$.data.experimentRevision') AS revision, "
+            "MIN(sequence) AS first_seen "
+            "FROM events WHERE project_id = ? AND sequence <= ? "
+            "AND event_type = 'run.queued' "
+            "AND json_type(event_json, '$.data.payload.specDigest') = 'text' "
+            "GROUP BY revision HAVING first_seen > ? "
+            "ORDER BY first_seen LIMIT ?",
+            (project_id, until, after, limit),
         ).fetchall()
-        return tuple(SpecRevisionRecord(str(r[0]), int(r[1]), str(r[2]), int(r[3])) for r in rows)
+        result: list[SpecRevisionRecord] = []
+        for row in rows:
+            sequence = int(row[1])
+            facts = self.read_events(
+                after_sequence=sequence - 1,
+                until_sequence=sequence,
+                project_id=project_id,
+                limit=1,
+            )
+            if facts:
+                digest = facts[0].event.data.payload.get("specDigest")
+                if type(digest) is str and re.fullmatch(SEMANTIC_DIGEST_PATTERN, digest):
+                    result.append(SpecRevisionRecord(project_id, int(row[0]), digest, sequence))
+        return tuple(result)
+
+    def read_artifact_reference_events(
+        self, project_id: str, digest: str, *, limit: int = 100
+    ) -> list[StoredEvent]:
+        """Select verified source facts, never trust rebuildable artifact links."""
+        if not 1 <= limit <= MAX_READ_PAGE_SIZE:
+            raise ValueError("invalid reference page limit")
+        rows = self._connection.execute(
+            f"{_SELECT_EVENT_COLUMNS} WHERE project_id = ? AND ("  # noqa: S608 - constant SELECT; values bound
+            "EXISTS (SELECT 1 FROM json_tree(events.event_json, '$.data.payload') "
+            "WHERE atom = ?) OR EXISTS (SELECT 1 FROM "
+            "json_each(events.event_json, '$.data.evidenceRefs') WHERE value = ?)) "
+            "ORDER BY sequence LIMIT ?",
+            (project_id, digest, digest, limit),
+        ).fetchall()
+        return [self._stored_event_from_row(row) for row in rows]
 
     def verify_integrity(self) -> int:
         """Verify SQLite, schema, ordering, indexes, canonical JSON and every event digest."""

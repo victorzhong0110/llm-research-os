@@ -235,6 +235,9 @@ from llm_research_os.training.schema import (
     write_wsl_cuda_training_plan_schema,
     wsl_cuda_training_plan_schema_matches,
 )
+from llm_research_os.web.schema import canonical_schema as canonical_local_api_response_schema
+from llm_research_os.web.schema import schema_matches as local_api_response_schema_matches
+from llm_research_os.web.schema import write_schema as write_local_api_response_schema
 from llm_research_os.workers.native_material_schema import (
     canonical_schema as canonical_native_material_index_schema,
 )
@@ -305,6 +308,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "local-api-response": _contract(
+        canonical_local_api_response_schema,
+        local_api_response_schema_matches,
+        write_local_api_response_schema,
+        "schemas/local-api-response/v0alpha1.schema.json",
+    ),
     "application-command": _contract(
         canonical_application_command_schema,
         application_command_schema_matches,

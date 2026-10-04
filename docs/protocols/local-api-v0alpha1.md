@@ -102,6 +102,9 @@ its cursor means "strictly older than this"; event and revision cursors mean
 | GET | `/api/v0alpha1/events` | Bounded, project-scoped event page |
 | GET | `/api/v0alpha1/revisions` | Bounded spec-revision page |
 | GET | `/api/v0alpha1/runs` | Bounded run index, newest first |
+| GET | `/api/v0alpha1/inspect/events/{id-or-sequence}` | Immutable project event payload and typed evidence links |
+| GET | `/api/v0alpha1/inspect/revisions/{digest}` | Recorded revision source facts |
+| GET | `/api/v0alpha1/inspect/artifacts/{digest}` | Bounded content and validated graph inspection; optional bounded `via` proof |
 | GET | `/api/v0alpha1/artifacts/{digest}` | Project-scoped artifact, inlined below 256 KiB |
 | POST | `/api/v0alpha1/preview/document` | Bounded JSON/YAML/PDF decode preview; writes nothing |
 | GET | `/api/v0alpha1/stream` | Resumable SSE with a polling fallback |
@@ -117,8 +120,9 @@ carrying the frozen mark, and a closing `idle` event. A reconnect sends
 `Last-Event-ID` (or `?cursor=`) and resumes strictly after that sequence, so a
 dropped connection replays nothing. Each poll opens its own verified read,
 because the request's store connection is already closed when the first byte is
-written. A client that cannot hold SSE polls `/events` with the same cursor
-semantics.
+written. The emitted SSE IDs are decimal sequences and are accepted verbatim in
+`Last-Event-ID`; the 200-event cap holds across partial polling batches. A client
+that cannot hold SSE polls `/events` with that endpoint's opaque page cursor.
 
 ## Out of scope for R09
 
@@ -131,3 +135,18 @@ surface cannot launch a task, consume a grant, or record a fact.
 - [M3 plan R09](../plans/m3-development-plan.md)
 - [Threat model](../security/threat-model.md) TM-079 – TM-083
 - [Guide: local API](../guides/m3-local-api.md)
+
+## R10 inspection bounds
+
+`/events?runId=...` filters before LIMIT and binds the cursor to that Run.
+Rebuildable indexes never grant project visibility: artifact scope is proved
+from verified original events. Nested artifact inspection accepts a JSON array
+of at most eight ancestor digests in `via`, verifies the project-linked root,
+and checks every subsequent reference against bounded, hash-verified parent
+bytes. Repeated paths and unrelated children are refused.
+
+Inline CAS reads stop at 256 KiB and hash the exact bytes served. Larger objects
+report `verification: not-inlined`; binary objects can be verified without being
+rendered as text. Stored inspection identity remains immutable, but an unavailable
+or unverified body is never claimed as measured evidence. The full response union
+is published at `schemas/local-api-response/v0alpha1.schema.json`.

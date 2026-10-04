@@ -38,6 +38,12 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_research_os"]
+# The frontend toolchain is a build input, not a shipped artifact. Only the
+# built bundle under llm_research_os/web/static belongs in the wheel.
+exclude = ["web/node_modules", "web/node_modules/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["web/node_modules", "web/node_modules/**"]
 
 [tool.ruff]
 line-length = 100

@@ -11,6 +11,33 @@ authorized release.
 
 ### Added
 
+- R10 read-only research workbench: a React 19 + TypeScript + Vite surface over
+  the verified EventStore folds and the CAS, with the built bundle committed and
+  shipped in the wheel so no checkout or Node is needed. Eight views cover the
+  project, immutable spec revisions, a read-only execution graph, the run index
+  with expandable facts, paged events, project-scoped artifacts, the enforced
+  server limits, and a state/provenance legend.
+
+- R10 `llm_research_os.web.contracts`: the wire contract as frozen, alias-keyed
+  Pydantic models, with `scripts/generate_web_types.py` rendering
+  `web/src/generated/local-api.ts` from them. A drift test fails when the
+  committed types stop matching the server, so a shape change breaks the type
+  check instead of silently disagreeing with the client.
+
+- R10 outcome honesty. A run's observation state is derived from the
+  authoritative `RunControl` fold, not from event-type names: `cancelled` maps
+  to an observed stop, a fold refusal reports `absent`, and only an observed
+  successful outcome is styled as success. A run's provenance is read from the
+  authorization event its `run.queued` fact cites, so an audit-only or
+  not-executed authorization is labelled synthetic; anything the workbench cannot
+  source stays `absent` and is never called a measurement.
+
+- R10 `llm_research_os.web.assets`: descriptor-anchored static serving with
+  `O_NOFOLLOW` on every path component, a closed content-type table, `nosniff`,
+  hashed assets marked immutable, a non-cached index, and `304` on a matching
+  `If-None-Match`. The bundle loads without a session so the operator can obtain
+  one; every versioned API route stays behind the session check.
+
 - R09 local workbench API: a read-only, loopback-bound surface over verified
   EventStore folds and the CAS, implemented as a standard-library WSGI
   application. Versioned JSON with a closed structured error set, one-time

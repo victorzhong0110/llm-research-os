@@ -18,3 +18,9 @@ htmlcov/
 /artifacts/
 /runs/
 *.log
+
+# Frontend toolchain and build output
+web/node_modules/
+web/dist/
+.wheel-smoke/
+coverage.json
