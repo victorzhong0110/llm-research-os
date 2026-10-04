@@ -77,3 +77,4 @@ class ResearchConclusionDocument(Document):
     comparison_detail_digest: Digest = Field(alias="comparisonDetailDigest")
     evidence_refs: list[Text] = Field(alias="evidenceRefs", max_length=32)
     actor_id: Text = Field(alias="actorId")
+    system_derived: Literal[False] = Field(default=False, alias="systemDerived")
