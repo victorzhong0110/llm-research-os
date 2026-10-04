@@ -197,6 +197,20 @@ from llm_research_os.providers.schema import (
     write_model_generate_request_schema,
     write_openai_compat_generate_request_schema,
 )
+from llm_research_os.recovery.schema import (
+    backup_manifest_schema_matches,
+    backup_report_schema_matches,
+    canonical_backup_manifest_schema,
+    canonical_backup_report_schema,
+    canonical_restore_report_schema,
+    canonical_workspace_diagnostic_schema,
+    restore_report_schema_matches,
+    workspace_diagnostic_schema_matches,
+    write_backup_manifest_schema,
+    write_backup_report_schema,
+    write_restore_report_schema,
+    write_workspace_diagnostic_schema,
+)
 from llm_research_os.research.schema import (
     canonical_decision_record_request_schema,
     canonical_dissent_record_request_schema,
@@ -355,6 +369,30 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         application_receipt_schema_matches,
         write_application_receipt_schema,
         "schemas/application-receipt/v0alpha1.schema.json",
+    ),
+    "backup-manifest": _contract(
+        canonical_backup_manifest_schema,
+        backup_manifest_schema_matches,
+        write_backup_manifest_schema,
+        "schemas/backup-manifest/v0alpha1.schema.json",
+    ),
+    "backup-report": _contract(
+        canonical_backup_report_schema,
+        backup_report_schema_matches,
+        write_backup_report_schema,
+        "schemas/backup-report/v0alpha1.schema.json",
+    ),
+    "restore-report": _contract(
+        canonical_restore_report_schema,
+        restore_report_schema_matches,
+        write_restore_report_schema,
+        "schemas/restore-report/v0alpha1.schema.json",
+    ),
+    "workspace-diagnostic": _contract(
+        canonical_workspace_diagnostic_schema,
+        workspace_diagnostic_schema_matches,
+        write_workspace_diagnostic_schema,
+        "schemas/workspace-diagnostic/v0alpha1.schema.json",
     ),
     "research-spec": _contract(
         canonical_research_schema,

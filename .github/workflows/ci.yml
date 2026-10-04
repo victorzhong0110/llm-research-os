@@ -86,7 +86,7 @@ jobs:
         run: |
           uv venv .wheel-smoke
           uv pip install --python .wheel-smoke/bin/python dist/*.whl
-          .wheel-smoke/bin/python -I scripts/wheel_smoke.py examples/m1-checkpoint
+          .wheel-smoke/bin/python -I scripts/wheel_smoke.py
 
   workbench:
     name: Workbench contract and bundle

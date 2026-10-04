@@ -10,6 +10,72 @@ authorized release.
 ## Unreleased
 
 ### Added
+- R15 installation, startup, backup, and recovery. `researchos backup create |
+  verify | restore` produce a self-describing backup image of a **verified
+  high-water prefix** of the EventStore plus the immutable CAS objects that
+  prefix references. Four new published contracts
+  (`backup-manifest`, `backup-report`, `restore-report`, `workspace-diagnostic`,
+  all `researchos.dev/recovery/v0alpha1`) are generated from Pydantic and checked
+  by `researchos schema --check-all`.
+
+- R15 the SQLite copy is taken with the online backup API and then collapsed to
+  one standalone file. `EventStore` opens every database in WAL mode, so
+  reading a snapshot leaves committed pages in a `-wal` sidecar that the manifest
+  digest does not cover — an image would have verified and then lost events on
+  restore. The image is re-verified from a copy before it is published, and
+  `backup verify` re-derives the snapshot digest, every object digest and size,
+  and the event count from the image itself.
+
+- R15 a restore copies facts and nothing else. It appends no event
+  (`appendedEvents` is `0`), starts no Worker, dispatches no Run, and resumes no
+  Attempt. A Run that was not terminal when the image was taken is returned in
+  `reconciledRuns` as `unknown` with `reconcile-manually` (ADR-0054). A
+  referenced object missing from the workspace aborts the backup rather than
+  producing an image that restores to a broken project.
+
+- R15 `researchos workspace doctor [--deep]` reports a redacted diagnostic:
+  manifest, root isolation, control store, migration header, referenced-object
+  coverage, packaged asset bundle, and platform runtime. Every value is a count,
+  a boolean, or a caller-supplied identifier; nothing is a host path, a document
+  body, or a credential, so a report is safe to paste into an issue. A missing
+  workspace is a report, not a crash. `researchos workspace migrate` reports the
+  supported version range; **downgrade is refused, not emulated**.
+
+- R15 `researchos workspace demo` builds a working workspace in one command
+  from a minimal research corpus packaged **inside the wheel**, then diagnoses
+  it and prints the next backup and serve commands. The corpus is copied to a
+  temporary directory first, so running the demonstration cannot mutate the
+  installed artifact. This closes the "minimal examples and an offline
+  demonstration" deliverable: the clean-install journey no longer borrows a
+  corpus from a source checkout.
+
+- R15 an interrupted restore no longer leaves a half-workspace. The restore is
+  assembled in a sibling `.partial` directory and renamed into place, matching
+  the backup path, so a failure is retryable instead of being refused as
+  `workspace-exists`.
+
+- R15 `verify` re-derives the image's object set from the events and requires it
+  to equal the manifest's, compares the snapshot size, the last event digest, the
+  schema version and digest, and the object size total, and requires every
+  `storageKey` to equal the key derived from its digest. An earlier version
+  re-hashed only the objects the manifest listed and trusted eight fields
+  verbatim, so deleting one `objects[]` entry produced a `verified: true` image
+  that restored a project referencing an object it did not hold.
+- R15 the SQLite snapshot path is percent-encoded before it becomes a URI. `#`
+  terminates a URI fragment and `?` a query, and both are legal POSIX filename
+  characters, so a workspace under `ws#frag/` was previously backed up from a
+  different database into an internally self-consistent image.
+- R15 `backup restore` uses the exact manifest object its verification checked
+  rather than re-reading the file, and refuses a `--project` rename that no event
+  in the image carries instead of folding an empty ledger on both sides and
+  reporting a match. A rename that leaves the manifest disagreeing with every
+  stored event is now a closed `restore-ledger-mismatch`.
+- R14 minimal extension mechanism and permission boundary: a versioned manifest
+  contract with a closed permission set, a compatibility refusal, a bounded
+  subprocess host for one reviewed same-user adapter, and explicit
+  enable/disable/uninstall. Loading a manifest is inert — read with `O_NOFOLLOW`
+  under a size bound, parsed as JSON, validated, with nothing imported, evaluated
+  or fetched.
 - R14 partial Python extension boundary: inert immutable manifests, registered
   JSON schemas, explicit reviewed dispatch, bounded subprocess streams/deadlines
   and owned-group cleanup. This is not a malicious-code sandbox or full R14/D
@@ -150,6 +216,17 @@ authorized release.
   remote executor/recovery and new authorized two-host/GPU acceptance remain open.
 
 ### Fixed
+
+- The local API server raised an unhandled `OSError` when its port was already
+  bound, so an operator with a port conflict got a traceback instead of a cause.
+  It now exits `2` with `{"code":"port-unavailable", ...}` naming the port, which
+  is one of the R15 clean-install acceptance cases.
+
+- A backup snapshot was not self-contained. `EventStore` enables WAL on every
+  open, so reading the snapshot left committed events in an `-wal` sidecar that
+  the manifest digest did not cover; the image would have verified and then lost
+  those events on a restore that copied the single file. The snapshot is now
+  collapsed to one standalone file before its digest is taken.
 
 - The local workbench client never sent the double-submit CSRF token, so every
   browser write was refused. Found by running the real page; the unit tests set

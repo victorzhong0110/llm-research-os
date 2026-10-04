@@ -43,6 +43,13 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
+| R09 | Local API and browser authority boundaries | Candidate on this branch; not merged | Not accepted; R08 live evidence still pending-live | [R09 candidate](#r09-candidate-evidence) |
+| R10 | Read-only research workbench | Candidate on this branch; not merged | Not accepted; no automated browser E2E in CI | [R10 candidate](#r10-candidate-evidence) |
+| R11 | Browser approval, execution, cancellation, restore | Candidate on this branch; not merged | Not accepted; start/reconnect/restore not delivered | [R11 candidate](#r11-candidate-evidence) |
+| R12 | AI proposals, citations, researcher decisions | Candidate on this branch; not merged | Not accepted; browser evidence-import form not delivered | [R12 candidate](#r12-candidate-evidence) |
+| R13 | Real evaluation, comparison, conclusions | Candidate on this branch; not merged | Not accepted; no editable report renderer | [R13 candidate](#r13-candidate-evidence) |
+| R14 | Minimal extension mechanism and permission boundary | Candidate on this branch; not merged | Not accepted; no CLI, BlockRegistry not merged | [R14 candidate](#r14-candidate-evidence) |
+| R15 | Installation, startup, backup, and recovery | Candidate on this branch; not merged | Not accepted; no replication, encryption, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
 | R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
 
 ## R10 candidate evidence
@@ -905,6 +912,173 @@ claim regression (one claimant returned `transfer-journal-invalid`). The next
 fix pairs an in-process mutex with the inter-process flock and creates the
 stable lock inode exclusively before reopening it. A separate-process claim
 regression complements the thread test. No failed CI is recorded as passing.
+
+## R15 candidate evidence
+
+Status: **candidate on the R15 branch; not merged, not accepted.** Checkpoint B
+is still open and R08 live two-host/GPU evidence is still pending-live; R15 was
+authorized sequentially and does not close that gate.
+
+### Delivered
+
+| Area | What exists | Where |
+| --- | --- | --- |
+| Install | Wheel carries the built workbench bundle and a minimal research corpus; `researchos workspace demo` builds a working workspace from packaged data in one command, with no key, no GPU, no Node and no training extras | [`wheel_smoke.py`](../../scripts/wheel_smoke.py), `src/llm_research_os/recovery/demo.py` |
+| Initialize | `app init` plus `workspace doctor`, `workspace migrate` | [`r15-installation-and-recovery.md`](../../guides/r15-installation-and-recovery.md) |
+| Startup | `web serve` reports a taken port as a closed `port-unavailable` code instead of a traceback; a missing bundle is a startup failure | `src/llm_research_os/web/serve.py` |
+| Backup | Verified high-water prefix plus referenced immutable objects, online-backup snapshot, closed codes | [`backup-restore-v0alpha1.md`](../../protocols/backup-restore-v0alpha1.md) |
+| Restore | Verified before any write, assembled in a `.partial` directory and renamed, no relaunch, non-terminal Runs reported `unknown` | same |
+| Diagnostics | Redacted report: counts, booleans and caller-supplied identifiers only; no host path or credential | `src/llm_research_os/recovery/doctor.py` |
+
+New published contracts: `backup-manifest`, `backup-report`, `restore-report`,
+`workspace-diagnostic`, all `researchos.dev/recovery/v0alpha1`, generated from
+Pydantic and checked by `researchos schema --check-all`. New threat-model rows
+TM-093 (live-file copy or trusted manifest) and TM-094 (restore treated as
+resumable, or diagnostics shared before inspection).
+
+### Nine defects found before submission, and the correction
+
+Four were found by self-review. Five more were found by an independent
+adversarial review run against this branch; all five reproduced, and the two
+critical ones are the reason the "verify trusts nothing in the manifest" claim
+below had to be rewritten rather than merely restated.
+
+1. **A persisted document could not round-trip.** `BackupManifest.objects`,
+   `RestoreReport.reconciledRuns` and `DiagnosticReport.checks` were declared
+   `tuple[...]`. The external documents inherit the strict event-document config,
+   so `model_validate_json` rejected a JSON array for a tuple field: every
+   manifest this package wrote failed its own `verify`. They are now `list[...]`,
+   because these are serialized documents and JSON has arrays.
+2. **The snapshot was not self-contained.** `EventStore` opens every database in
+   WAL mode, so reading the snapshot left committed pages in a `-wal` sidecar
+   that `snapshotDigest` did not cover. An image would have verified and then
+   lost events on a restore that copied the single file. The snapshot is now
+   collapsed to one standalone file before the digest is taken, and the image is
+   re-verified from a copy. Collapsing to `journal_mode=DELETE` also exposed that
+   `EventStore` can only open such a file read-write, so verification and
+   restore open the store accordingly.
+
+3. **An interrupted restore left a half-workspace.** The restore wrote directly
+   into the destination, so a failure partway through left a directory that a
+   retry refused as `workspace-exists`. It is now assembled in a sibling
+   `.partial` directory and renamed into place, matching the backup path.
+
+4. **The demonstration labelled its workspace with a project id its events did
+   not carry.** The new restore ledger check refused the result, which is the
+   check working. The demo now uses the id the packaged corpus already contains.
+
+5. **Critical — `verify` trusted the manifest's object set.** It re-hashed each
+   object the manifest *listed* and never re-derived which objects the event
+   prefix references, so deleting one `objects[]` entry produced
+   `verified: true` and a restore of a project referencing an object it did not
+   hold. `verify` now re-derives the set from the events and requires equality.
+   Eight further manifest fields were likewise trusted verbatim; the snapshot
+   size, the last event digest, the schema version and digest, and the object
+   size total are now compared.
+
+6. **Critical — the SQLite snapshot URI was unquoted.** `#` terminates a URI
+   fragment and `?` a query, and both are legal POSIX filename characters, so a
+   workspace under `ws#frag/` was backed up from a *different* database and the
+   resulting image was internally self-consistent. The path is now
+   percent-encoded. A test backs up and restores a workspace whose path
+   contains both characters.
+
+7. **Restore verified the manifest and then re-read it.** The verified parse and
+   the applied parse were different objects, a time-of-check/time-of-use gap on
+   exactly the artifact an operator restores from a mounted archive. Restore now
+   uses the manifest object the verification checked.
+
+8. **A `storageKey` not derived from its digest passed verification** and then
+   broke restore with an untyped `ArtifactNotFoundError`, outside the closed-code
+   table. Each key must now equal `storage_key_for(digest)`. This also closes
+   the NUL, backslash, and `.` keys the earlier traversal check allowed through,
+   which surfaced a bare `ValueError` from the kernel.
+
+9. **`ledgerMatches` was vacuous under a project rename and gated nothing.** The
+   ledger fold filtered by project, so a rename to a project no event carried
+   folded an empty ledger on both sides and reported a match. It now also
+   compares how many events carried the project, and a difference is a
+   `restore-ledger-mismatch` refusal rather than a reported boolean.
+
+Also corrected: an untrusted manifest read is size-bounded; the snapshot no
+longer reports the object-missing code when the snapshot itself is absent; the
+doctor's migration branches were dead because `EventStore.__init__` refused a
+too-new header first, so the header is now read through a plain connection and a
+too-new store is reported as a downgrade; the backup path was changed to 16 GiB
+before release; and the backup no longer replays the prefix three times.
+
+Two pieces of dead code were removed rather than left as padding:
+`EventStore.list_referenced_digests_page` and `EventStore.header_version`, each
+added for this package and then superseded — the authoritative object set comes
+from replaying the events, and the header is read without an `EventStore`. Both
+had ended up referenced only by a test.
+
+Three tests were also rewritten because they passed without testing their claim:
+the redaction test proved `redact_object` works while saying nothing about
+whether `doctor` calls it, the API-version assertion had a dead `or` disjunct,
+and one was named for traversal while only exercising a regex mismatch.
+
+### Local verification
+
+Executed on the R15 branch from a clean `uv sync` (Python 3.12.14, Linux
+container), marker selection `not oci_live and not slow and not ray_native_live
+and not native_remote_live`:
+
+- R15 suites: 98 tests collected across `tests/test_recovery_backup.py`,
+  `tests/test_recovery_doctor.py` and `tests/test_recovery_contracts.py`; 96
+  passed and 2 skipped locally because this container runs as root and a
+  privileged reader ignores mode bits. Those two run in ordinary CI.
+- Whole selected suite: **2,227 passed, 4 failed, 2 skipped, 30 deselected.** All four failures
+  are pre-existing and were verified as such, not assumed:
+  - `tests/test_native_ssh_live.py` (4) fail identically on an untouched
+    worktree at `r14-extension-boundary`; the fake-SSH probe reports
+    `python-too-old` in this container.
+  - The two `tests/test_evidence.py` wall-clock bound tests that also failed in
+    an earlier run of this branch pass in isolation and in combination with the
+    R15 suites; they assert `elapsed < MAX_PDF_EXTRACT_SECONDS + 3.0` and exceed
+    it only under full-suite load on a shared container. They are not counted as
+    failures in this run.
+- Coverage: **85.211842%** (29,243/34,318 statement and branch counts), above the
+  unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
+  integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
+- `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 258
+  files, `researchos schema --check-all` current, `scripts/event_catalog.py
+  --check` and `scripts/project_status.py --check` pass, and
+  `node conformance/digest/verify.mjs` passed 13 RFC 8785 vectors.
+- Clean install outside source: `uv build` then the wheel installed into a fresh
+  venv and `wheel_smoke.py` run with `-I` outside the checkout reported
+  `doctorHealthy: true`, `packagedBundle: true`, and a backup/verify/restore
+  round trip with `ledgerMatches: true` and `appendedEvents: 0`.
+- Ruff, format and mypy are local results. **No CI run exists for this branch
+  yet**, and the 85% coverage floor has not been measured on this branch.
+
+### Gaps and required inputs
+
+- No replication, encryption, scheduling, retention, or artifact garbage
+  collection for images. Copying an image off the machine is an operator action.
+- **Downgrade is refused, not supported.** A store whose header is newer than
+  this build reports `control.migration: failed`.
+- Worker identity is not part of an image. A restored Worker root is empty and
+  re-onboarding goes through the existing R07 flow; no live two-host restore was
+  exercised because that access is still missing (COMM-0004).
+- An earlier change to `init_workspace` that created the control store was
+  reverted: `ApplicationService.open` reporting `store-missing` on a fresh
+  workspace is the accepted R02 contract. The doctor reports that state instead.
+  A fresh workspace consequently has no EventStore until the first append, and
+  `evidence import` on a brand-new workspace fails until some other command
+  creates the store. Recorded as a review item rather than changed unilaterally.
+- The R10–R14 ledger rows link to `#r1x-candidate-evidence` anchors that no
+  section defines. This section defines the R15 anchor; the earlier ones remain
+  broken and are not repaired here because that rewrites another package's
+  record.
+- Independent trial evidence is R16 and is not present. See
+  [`r16-independent-trials.md`](../../evidence/m3/r16-independent-trials.md).
+
+### Next action / owner
+
+Reviewer decides whether R15 may close on a local verified prefix backup with no
+replication or encryption, or requires more. Checkpoint D additionally needs the
+R16 trials, which need the maintainer's invitations.
 
 ## Issue #53 evidence checklist
 

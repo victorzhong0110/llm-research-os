@@ -42,6 +42,7 @@ passed). Documentation changes do not advance the execution baseline.
 | Item | State and evidence |
 | --- | --- |
 | Current package | #133–#135 are integrated; #136 is a reviewed and repaired partial slice. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
+| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134), R13 (PR #135), R14 (PR #136), R15 (`r15-installation-recovery`) and R16 (`r16-independent-trials`); none is merged or accepted. R15 and R16 are implemented on stacked, deliberately unmerged branches. Checkpoint D cannot close: the R16 independent trials are unperformed. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -56,6 +57,8 @@ passed). Documentation changes do not advance the execution baseline.
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
+| COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
+| COMM-0012 | Planning/review assistant and maintainer | Open; awaiting review | Review the R15 scope gaps and decide whether R15 may close without replication, encryption, or downgrade support. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -398,6 +401,91 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   tooling reason in COMM-0009.
 - Next action / owner: Reviewer decides whether R13 may close without the report
   renderer, or whether it is required for the phase.
+
+### COMM-0011 — R14 adds a bounded extension surface; three scope gaps recorded
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0010.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; three scope gaps recorded, not resolved.
+- Message / decision: R14 adds a versioned manifest contract with a closed
+  permission set, a compatibility refusal, a bounded subprocess host for one
+  reviewed same-user adapter, and enable/disable/uninstall. Loading a manifest
+  is inert and is proven so by two tests that run the entry module and assert
+  its marker file never appears. A declared permission is a request: an unknown
+  name refuses the manifest rather than being narrowed, and `trust="untrusted"`
+  is refused because no verified isolation profile exists here.
+- Branch / head / base / PR: `r14-extension-boundary`, based on `r13-evaluation`
+  at `3e67bb7`; open PR, deliberately not merged.
+- Evidence / checks: [R14 candidate evidence](evidence/m3/acceptance-matrix.md#r14-candidate);
+  27 tests.
+- Gaps / required inputs: No evaluator or provider extension point is exercised
+  with a real external extension; no `researchos extensions` CLI command;
+  `BlockRegistry` is not merged into this registry, so blocks and extensions
+  remain separate concepts; the "removing training adapters leaves core
+  functional" acceptance bullet is not exercised because this package adds and
+  removes no training adapter.
+- Next action / owner: Reviewer decides whether R14 may close on a Python-only
+  surface with one inline adapter, or requires a CLI and a real third-party
+  extension.
+
+### COMM-0012 — R15 delivers verified prefix backup, redacted diagnostics, and offline install
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0011.
+- From: Assigned implementer, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; scope gaps recorded, not resolved.
+- Message / decision: R15 adds `researchos backup create | verify | restore`,
+  `researchos workspace doctor | migrate | demo`, plus a protocol and guide. A backup is
+  a verified high-water prefix of the EventStore plus the immutable CAS objects
+  that prefix references. The SQLite copy uses the online backup API and is then
+  collapsed to one standalone file; the image is re-verified from a copy before
+  it is published. A restore verifies the image completely before writing
+  anything, appends no event, starts no Worker, and returns every non-terminal
+  Run as `unknown` with `reconcile-manually` (ADR-0054). Diagnostics carry
+  counts, booleans and caller-supplied identifiers only, so a report is safe to
+  paste into an issue. `workspace demo` builds a working workspace in one command
+  from a minimal corpus packaged inside the wheel, so the clean-install journey
+  no longer borrows a corpus from a source checkout.
+- Branch / head / base / PR: `r15-installation-recovery`, based on
+  `r14-extension-boundary` at `45456c4`; open PR, deliberately not merged, base
+  stated on the PR. The push and PR creation are blocked in this environment by
+  absent GitHub credentials; see "Required input" below.
+- Evidence / checks: [R15 candidate evidence](evidence/m3/acceptance-matrix.md#r15-candidate-evidence);
+  R15 tests across three files; clean install outside
+  source reported `doctorHealthy: true`, `packagedBundle: true`, and a
+  backup/verify/restore round trip with `ledgerMatches: true` and
+  `appendedEvents: 0`. Whole selected suite 2,129 passed / 6 failed, every
+  failure checked as pre-existing or environmental. Ruff, format, mypy, schema,
+  catalog and status checks pass locally. **No CI run exists for this branch and
+  the 85% coverage floor is not yet measured on it.**
+- Gaps / required inputs: No replication, encryption, scheduling, retention, or
+  artifact garbage collection; copying an image off the machine is an operator
+  action. `workspace demo` is a bounded single-workspace demonstration, not a
+  guided tutorial, and it does not exercise the browser surface. An independent
+  adversarial review of this branch found two critical and several major
+  defects before submission, all reproduced and all corrected; they are recorded
+  in full in the R15 candidate section, and the protocol document's "verify
+  trusts nothing in the manifest" claim was rewritten rather than restated. Downgrade is refused rather than supported. Worker identity is not part
+  of an image, and no live two-host restore was exercised because that access is
+  still missing (COMM-0004). An earlier change making `init_workspace` create the
+  control store was **reverted**: `ApplicationService.open` reporting
+  `store-missing` on a fresh workspace is the accepted R02 contract, so the
+  doctor reports that state instead. The residual consequence — `evidence import`
+  fails on a brand-new workspace until some other command creates the store — is
+  recorded as BACKLOG-06 for a decision rather than changed unilaterally. This
+  implementer has **no GitHub credentials in this environment** and could not
+  push a branch or open a pull request; the commits are prepared locally and the
+  PR still needs a maintainer push or a token.
+- Next action / owner: Reviewer decides whether R15 may close on a local verified
+  prefix backup with no replication or encryption, and whether BACKLOG-06 should
+  change the R02 fresh-workspace contract. The two corrected criticals are worth
+  a reviewer's own attention first: a manifest that dropped one object entry
+  verified, and a `#` in the workspace path made the backup read a different
+  database. Maintainer pushes the branches or
+  supplies a token so the two open PRs exist.
 
 ## Message template
 

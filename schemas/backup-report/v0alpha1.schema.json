@@ -1,0 +1,66 @@
+{
+  "$id": "https://researchos.dev/schemas/backup-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Outcome of creating or verifying one backup image.",
+  "properties": {
+    "apiVersion": {
+      "default": "researchos.dev/recovery/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "eventCount": {
+      "minimum": 0,
+      "title": "Eventcount",
+      "type": "integer"
+    },
+    "highWater": {
+      "minimum": 0,
+      "title": "Highwater",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "BackupReport",
+      "default": "BackupReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "objectCount": {
+      "minimum": 0,
+      "title": "Objectcount",
+      "type": "integer"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "snapshotBytes": {
+      "minimum": 1,
+      "title": "Snapshotbytes",
+      "type": "integer"
+    },
+    "totalObjectBytes": {
+      "minimum": 0,
+      "title": "Totalobjectbytes",
+      "type": "integer"
+    },
+    "verified": {
+      "title": "Verified",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "projectId",
+    "verified",
+    "highWater",
+    "eventCount",
+    "objectCount",
+    "totalObjectBytes",
+    "snapshotBytes"
+  ],
+  "title": "BackupReport",
+  "type": "object"
+}
