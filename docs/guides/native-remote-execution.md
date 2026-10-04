@@ -85,5 +85,7 @@ unavailable, so those local live skips are not evidence of execution.
 
 This slice does not host project jobs through Ray or validate CUDA/Kaggle. The
 finite Ray probe remains a separate resource check. The actual two-host faults,
-supported GPU profile and Checkpoint B acceptance remain pending-live. No new
-phase begins; freeze follows B acceptance.
+supported GPU profile and Checkpoint B acceptance remain pending-live. The
+maintainer authorized sequential completion through R16 on 2026-10-04;
+R09 starts only after R08 integration and acceptance. Follow the
+[live acceptance runbook](r08-live-acceptance.md) for the missing evidence.

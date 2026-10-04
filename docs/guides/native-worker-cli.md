@@ -65,4 +65,6 @@ replays the identical receipt without new facts. Unsafe credential/context and
 parser-secret tests are ordinary control-boundary fixtures, not two-host/GPU
 acceptance. The designated native gate fails rather than skips if real OS
 identity is absent. Ray project-job hosting, actual selected hosts, CUDA/Kaggle
-and Checkpoint B remain open; freeze follows B acceptance, no R09.
+and Checkpoint B remain open. The 2026-10-04 direction authorizes sequential work
+through R16 after each predecessor is merged and accepted; see the
+[live acceptance runbook](r08-live-acceptance.md). R09 has not started.
