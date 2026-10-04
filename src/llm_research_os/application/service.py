@@ -25,6 +25,8 @@ from llm_research_os.application.models import (
     AuthorizationRevokeOperation,
     PlanDryRunOperation,
     PlanPreflightOperation,
+    ProposalSubmitOperation,
+    ProposalValidateOperation,
     ResearchDecisionOperation,
     RunCancelOperation,
     RunShowOperation,
@@ -48,6 +50,8 @@ from llm_research_os.blocks.registry import (
     RegistryError,
 )
 from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.evidence.control import EvidenceControl
+from llm_research_os.evidence.errors import EvidenceError
 from llm_research_os.execution.errors import SimulationError
 from llm_research_os.execution.kernel import TrustedKernel
 from llm_research_os.execution.planner import PlanningInputError
@@ -66,6 +70,8 @@ from llm_research_os.research.errors import (
 from llm_research_os.research.models import research_ledger_document
 from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
+    ProposalSubmitRequestDocument,
+    load_proposal_submit_request,
     validate_decision_record_request,
 )
 from llm_research_os.runs.cancellation import (
@@ -190,6 +196,10 @@ class ApplicationService:
             return self._cancel(command, frozen)
         if kind == "authorization.revoke":
             return self._revoke(command)
+        if kind == "proposal.validate":
+            return self._proposal_validate(command, frozen)
+        if kind == "proposal.submit":
+            return self._proposal_submit(command, frozen)
         raise ApplicationError("operation-unsupported", "operation is not implemented")
 
     def _preflight(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
@@ -358,6 +368,119 @@ class ApplicationService:
                 "launchAllowed": False,
             },
             fact_event_ids=(str(stored.event.id),),
+        )
+
+    def read_research_ledger(self, store: EventStore) -> dict[str, Any]:
+        """Read this project's research ledger document. Appends nothing."""
+
+        try:
+            head = ResearchControl(store, project_id=self._workspace.project_id).rebuild()
+            document = research_ledger_document(head.snapshot)
+        except (ResearchControlError, ResearchLedgerError) as exc:
+            raise ApplicationError("research-ledger", "the ledger could not be read") from exc
+        return document
+
+    def _proposal_preview(self, proposal: ProposalSubmitRequestDocument) -> dict[str, Any]:
+        """Resolve a proposal's citations against the recorded evidence.
+
+        Imported text is evidence, never an instruction, and a citation the
+        project has not recorded is not a citation. Unresolved references are
+        reported rather than silently accepted, and the caller must refuse the
+        proposal while any remain.
+        """
+
+        try:
+            with self._open_store(create=False) as store:
+                recorded = (
+                    EvidenceControl(store, project_id=self._workspace.project_id)
+                    .rebuild()
+                    .fold.evidence_ids
+                )
+        except (EventStoreError, EvidenceError) as exc:
+            raise ApplicationError(
+                "evidence-unavailable", "recorded evidence is unreadable"
+            ) from exc
+        cited = tuple(str(item) for item in proposal.evidence_refs)
+        resolved = tuple(item for item in cited if item in recorded)
+        unresolved = tuple(item for item in cited if item not in recorded)
+        return {
+            "proposalId": str(proposal.proposal_id),
+            "experimentRevision": proposal.experiment_revision,
+            "proposedSpecDigest": proposal.proposed_spec_digest,
+            "specDiffDigest": proposal.spec_diff_digest,
+            "predictions": [
+                item.model_dump(mode="json", by_alias=True) for item in proposal.predictions
+            ],
+            "falsificationConditions": [str(item) for item in proposal.falsification_conditions],
+            "riskAssessment": proposal.risk_assessment.model_dump(mode="json", by_alias=True),
+            "rationaleCharacters": len(str(proposal.rationale)),
+            "citations": list(resolved),
+            "unresolvedCitations": list(unresolved),
+            "citationsResolved": not unresolved,
+        }
+
+    def _proposal_validate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        """Validate a proposal as a draft. Reads only and appends nothing."""
+
+        if frozen.proposal is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
+        _require_revision(frozen.proposal.experiment_revision, command.expected_revision)
+        preview = self._proposal_preview(frozen.proposal)
+        if preview["unresolvedCitations"]:
+            raise ApplicationError(
+                "citation-unresolved",
+                "one or more citations are not recorded evidence in this project",
+            )
+        return _Outcome(
+            result={
+                **preview,
+                "valid": True,
+                "runQueued": False,
+                "grantedPermissions": [],
+                "note": (
+                    "A validated proposal is a draft. It queues no Run and grants no "
+                    "permission; a human decision is required before anything executes."
+                ),
+            }
+        )
+
+    def _proposal_submit(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        """Append one proposal whose citations all resolve.
+
+        The revision check here is what stops a stale proposal from overwriting a
+        newer one: the document's own revision must equal the expected revision
+        the caller read.
+        """
+
+        if frozen.proposal is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
+        _require_revision(frozen.proposal.experiment_revision, command.expected_revision)
+        if self._proposal_preview(frozen.proposal)["unresolvedCitations"]:
+            raise ApplicationError(
+                "citation-unresolved",
+                "one or more citations are not recorded evidence in this project",
+            )
+        try:
+            with self._open_store(create=False) as store:
+                event_id, _sequence, _type = _append_or_recover_decision(
+                    store,
+                    project_id=self._workspace.project_id,
+                    draft=frozen.proposal.event_draft(),
+                    event_id=str(frozen.proposal.event.id),
+                    expected_head=command.expected_head if command.expected_head is not None else 0,
+                )
+        except (ResearchControlError, ResearchLedgerError, EventStoreError) as exc:
+            raise ApplicationError("proposal-refused", "the proposal was refused") from exc
+        return _Outcome(
+            result={
+                "proposalId": str(frozen.proposal.proposal_id),
+                "disposition": "recorded",
+                "runQueued": False,
+                "grantedPermissions": [],
+            },
+            fact_event_ids=(event_id,),
         )
 
     def _validate(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
@@ -651,6 +774,13 @@ class ApplicationService:
         """True when this decision fact is already stored, so a stale head can recover it."""
 
         operation = command.operation
+        if isinstance(operation, ProposalSubmitOperation) and frozen.proposal is not None:
+            _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
+            with self._open_store(create=False) as store:
+                existing = store.get_event(frozen.proposal.event.id)
+            return existing is not None and _same_committed_fact(
+                frozen.proposal.event_draft(), existing
+            )
         if isinstance(operation, RunCancelOperation) and frozen.cancellation is not None:
             _require_project(frozen.cancellation.project_id, self._workspace.project_id)
             with self._open_store(create=False) as store:
@@ -733,6 +863,10 @@ def _replay_document(document: dict[str, object]) -> dict[str, Any]:
 def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) -> dict[str, Any]:
     operation = command.operation
     kind = operation.kind
+    if isinstance(operation, (ProposalValidateOperation, ProposalSubmitOperation)):
+        if frozen.proposal is None:
+            raise ApplicationError("operation-unsupported", "operation kind does not match")
+        return {"kind": kind, "request": frozen.proposal.model_dump(mode="json", by_alias=True)}
     if isinstance(operation, SpecValidateOperation):
         if frozen.spec is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
@@ -881,6 +1015,8 @@ def _freeze_operation(operation: ApplicationOperation) -> _FrozenOperation:
             )
         if isinstance(operation, RunCancelOperation):
             return _FrozenOperation(cancellation=_freeze_cancellation(Path(operation.request)))
+        if isinstance(operation, (ProposalValidateOperation, ProposalSubmitOperation)):
+            return _FrozenOperation(proposal=_freeze_proposal(Path(operation.request)))
     except RegistryError as exc:
         if isinstance(operation, PlanDryRunOperation):
             raise ApplicationError("dry-run-refused", "dry-run did not produce a report") from exc
@@ -1030,8 +1166,19 @@ class _FrozenOperation:
     decision: _Snapshot | None = None
     simulation_request: _Snapshot | None = None
     cancellation: RunCancellationRequestDocument | None = None
+    proposal: ProposalSubmitRequestDocument | None = None
     registry_digests: tuple[str, ...] = ()
     registry_manifests: tuple[_Snapshot, ...] = ()
+
+
+def _freeze_proposal(path: Path) -> ProposalSubmitRequestDocument:
+    """Load and freeze one proposal document before it is validated or appended."""
+
+    try:
+        document: ProposalSubmitRequestDocument = load_proposal_submit_request(path)
+    except (OSError, ValueError, ValidationError) as exc:
+        raise ApplicationError("proposal-invalid", "proposal request failed validation") from exc
+    return document
 
 
 def _freeze_cancellation(path: Path) -> RunCancellationRequestDocument:

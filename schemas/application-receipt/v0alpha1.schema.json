@@ -97,9 +97,11 @@
         "run.show",
         "run.simulate",
         "workspace.show",
+        "authorization.revoke",
         "plan.preflight",
-        "run.cancel",
-        "authorization.revoke"
+        "proposal.submit",
+        "proposal.validate",
+        "run.cancel"
       ],
       "title": "Operation",
       "type": "string"

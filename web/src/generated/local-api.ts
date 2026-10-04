@@ -63,6 +63,28 @@ export interface CommandReceipt {
   readonly result: Readonly<Record<string, unknown>>;
 }
 
+export interface LedgerEntry {
+  readonly eventId: string;
+  readonly sequence: number;
+}
+
+export interface ResearchLedgerView {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly kind: "ResearchLedgerView";
+  readonly projectId: string;
+  readonly lastSequence: number;
+  readonly decisionCount: number;
+  readonly openQuestionCount: number;
+  readonly answeredQuestionCount: number;
+  readonly rationaleCharacters: number;
+  readonly overriddenDissentCount: number;
+  readonly proposals: ReadonlyArray<LedgerEntry>;
+  readonly dissents: ReadonlyArray<LedgerEntry>;
+  readonly decisions: ReadonlyArray<LedgerEntry>;
+  readonly questions: ReadonlyArray<LedgerEntry>;
+  readonly withheld: Readonly<Record<string, unknown>>;
+}
+
 export interface DocumentPreview {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "DocumentPreview";

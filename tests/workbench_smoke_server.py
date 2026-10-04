@@ -13,6 +13,11 @@ from test_web_regressions import _append, _root
 
 from llm_research_os.application.workspace import load_workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.research.control import ResearchControl
+from llm_research_os.research.requests import (
+    DecisionRecordRequestDocument,
+    ProposalSubmitRequestDocument,
+)
 from llm_research_os.runs.control import RunControl
 from llm_research_os.spec.io import load_spec
 from llm_research_os.storage import EventStore
@@ -53,7 +58,10 @@ if not (root / "workspace.json").exists():
         for i in range(1, 252):
             _append(store, i, project="proj-foreign")
         control = RunControl(store, project_id="proj-alpha", run_id="run-late")
-        control.append(_queued_draft(project="proj-alpha", run="run-late"))
+        queued = _queued_draft(project="proj-alpha", run="run-late")
+        queued["data"]["payload"]["specDigest"] = spec_obj.digest
+        queued["data"]["evidenceRefs"] = [result_obj.digest]
+        control.append(queued)
         control.append(_started_draft(project="proj-alpha", run="run-late"))
         control.append(
             _draft(
@@ -64,20 +72,21 @@ if not (root / "workspace.json").exists():
                 run="run-late",
             )
         )
-        store.append(
-            _draft(
-                "decision.recorded",
-                {
-                    "synthetic": True,
-                    "specDigest": spec_obj.digest,
-                    "resultDigest": result_obj.digest,
-                    "rationale": "browser smoke fixture only",
-                },
-                event_id="decision.smoke",
-                project="proj-alpha",
-                run="run-late",
-            )
+        examples = Path(__file__).parents[1] / "examples/research-decisions/valid"
+        proposal = json.loads((examples / "proposal-submit.json").read_text())
+        proposal.update(projectId="proj-alpha", rationale="browser smoke fixture only")
+        proposal["event"]["id"] = "proposal.smoke"
+        research = ResearchControl(store, project_id="proj-alpha")
+        research.append(ProposalSubmitRequestDocument.model_validate(proposal).event_draft())
+        decision = json.loads((examples / "decision-record.json").read_text())
+        decision.update(
+            projectId="proj-alpha",
+            rationale="browser smoke fixture only",
+            overriddenDissentIds=[],
+            outcome="reject",
         )
+        decision["event"]["id"] = "decision.smoke"
+        research.append(DecisionRecordRequestDocument.model_validate(decision).event_draft())
     (base / "fixture.json").write_text(
         json.dumps({"spec": spec_obj.digest, "result": result_obj.digest})
     )

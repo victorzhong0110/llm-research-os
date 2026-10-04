@@ -14,6 +14,7 @@ import type {
   Error as ApiError,
   EventPage,
   Health,
+  ResearchLedgerView,
   RevisionPage,
   RunPage,
   Session,
@@ -176,6 +177,9 @@ export const api = {
       nextCursor: page.nextCursor ?? null,
       highWaterMark: page.highWaterMark,
     }));
+  },
+  async research(): Promise<ResearchLedgerView> {
+    return request<ResearchLedgerView>("/research");
   },
   inspect(kind: LineageLink["kind"], identity: string, via: ReadonlyArray<string> = []): Promise<InspectionView> {
     const group = kind === "event" ? "events" : kind === "revision" ? "revisions" : "artifacts";

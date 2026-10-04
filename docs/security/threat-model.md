@@ -806,3 +806,36 @@ Gate: `tests/test_web_commands.py` unknown-grant refusal, preflight
 `launchAllowed` would be flagged. Residual trust: any local process running as the
 same user can append facts directly to the store; this boundary is about the
 browser surface, not about the filesystem.
+
+
+### TM-088: A proposal cites evidence that does not exist, or evidence speaks for itself
+
+A citation the project never recorded is not a citation, and a proposal that
+cites one would launder an unverified claim into the ledger. Citations are
+resolved against the `EvidenceControl` fold on both the read-only validate path
+and the mutating submit path, and any unresolved reference refuses the proposal
+while naming it. Imported text is data, never an instruction: a rationale that
+reads like a tool request is stored verbatim and grants nothing, with
+`grantedPermissions` empty and `runQueued` false regardless of its content. A
+validated proposal is a draft that queues no Run, and `expectedRevision` binds
+it to the revision the caller actually read so a stale proposal cannot land on a
+newer revision.
+
+Gate: `tests/test_web_research.py` unresolved-citation refusal, stale-revision
+refusal, draft-queues-no-run, and a hostile rationale asserting empty granted
+permissions and no queued Run. Residual trust: a project can still import hostile
+text; the boundary is that importing it grants nothing.
+
+### TM-089: Overriding a dissent erases the disagreement
+
+A decision that overrides an AI or human objection is a legitimate outcome, but
+silently dropping the objection would make the ledger misrepresent the
+disagreement that occurred. Overriding therefore records which dissent was
+overridden, the dissent itself remains in the ledger, and the browser renders
+the decision beside the dissent it overrode with the rationale intact across
+refreshes. The ledger separately refuses to re-decide a closed proposal, so a
+rejection cannot be manufactured after the fact.
+
+Gate: `tests/test_web_research.py` preserved-disagreement and
+rationale-survives-refresh tests, plus the closed-proposal refusal the rejection
+test depends on.

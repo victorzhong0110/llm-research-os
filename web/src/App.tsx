@@ -5,11 +5,12 @@ import { api, exchangeBootstrap, SessionExpiredError, takeBootstrapSecret } from
 import type { WorkspaceView } from "./generated/local-api";
 import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
 import { OperationsView } from "./components/OperationsView";
+import { ResearchView } from "./components/ResearchView";
 import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
 import { ObjectInspectionView } from "./components/Inspection";
 import { Failure, Loading } from "./components/Primitives";
 
-type ViewId = "operations" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
+type ViewId = "operations" | "research" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "project", label: "Project" },
@@ -17,6 +18,7 @@ const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "graph", label: "Execution graph" },
   { id: "runs", label: "Runs" },
   { id: "operations", label: "Operations" },
+  { id: "research", label: "Research" },
   { id: "events", label: "Events and logs" },
   { id: "history", label: "Decisions and authority" },
   { id: "logs", label: "Logs" },
@@ -105,8 +107,8 @@ export function App() {
       <header className="shell__head">
         <h1>Research workbench</h1>
         <p className="shell__sub">
-          Read-only view of <code>{phase.projectId}</code>. This surface cannot launch, cancel or record
-          anything.
+          Workspace <code>{phase.projectId}</code>. Inspect recorded evidence and submit explicit research
+          commands. A cancellation request does not prove a process stopped.
         </p>
       </header>
       <nav className="tabs" aria-label="Workbench views">
@@ -134,6 +136,7 @@ export function App() {
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}
+        {view === "research" ? <ResearchView /> : null}
         {view === "operations" && expectedHead !== undefined ? (
           <OperationsView expectedHead={expectedHead} />
         ) : null}

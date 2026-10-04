@@ -338,6 +338,35 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   CSRF token, a reload lost it, and the server was single-threaded so the R09
   concurrency gate could not fire in the deployed service.
 
+### COMM-0009 — R12 delivers the ledger, proposal validation and citation resolution
+
+- Date: 2026-10-04 (Asia/Taipei), after COMM-0008.
+- From: Codex, implementation.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0003.
+- State: Open; one verification gap recorded, not resolved.
+- Message / decision: R12 adds a bounded read-only research ledger, `proposal.validate`
+  and `proposal.submit`, and browser decision recording, all through the CLI's
+  shared services. Citations resolve against the `EvidenceControl` fold on both
+  paths, so a proposal citing evidence the project never recorded is refused. A
+  validated proposal queues no Run and grants no permission, and a hostile
+  rationale is stored verbatim as text. Overriding a dissent records which one
+  and leaves it visible.
+- Branch / head / base / PR: `r12-research-workflow`, based on `r11-browser-operations`
+  at `2a24ce0`; open PR, deliberately not merged.
+- Evidence / checks: [R12 candidate evidence](evidence/m3/acceptance-matrix.md#r12-candidate);
+  11 dedicated tests; a socket run in which `/research` returned the real ledger.
+- Gaps / required inputs: **No browser run of the Research view is claimed.** The
+  in-app Browser's connection pool saturated after many test tabs, leaving
+  `GET /workspace` pending in the client while the same endpoint answered curl
+  immediately and the database was confirmed unlocked. The API is verified; the
+  rendering is not. Evidence import is not exposed in the browser, budget
+  reservations are not surfaced, and this package adds no new local
+  compatible-server integration test.
+- Next action / owner: Reviewer decides whether R12 may close without a browser
+  rendering check, given the environment limit is a tooling one rather than a
+  product one.
+
 ## Message template
 
 Copy this template into the history and replace every placeholder:
@@ -372,3 +401,19 @@ Copy this template into the history and replace every placeholder:
   acceptance remain open. R08 selected hosts/GPU remain pending-live.
 - Historical duplicate COMM identifiers from stacked candidates are provenance,
   not acknowledgements; new review messages use this unique REVIEW prefix.
+
+## REVIEW-20261005-134 — Reconcile and repair the submitted research slice
+
+- From: Codex planning/review; to: maintainer and existing implementers.
+- Date/time: 2026-10-05T02:52:30+08:00; state: final-head validation pending.
+- Scope: current maintainer authorizes review/repair/merge/closure of all existing PRs.
+  This reviewer handles #134–#136 sequentially; no new package or agent is started.
+- #133 merged at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` after
+  final-head CI 37224701233 passed. #134 preserves all reviewed R09–R11 code.
+- #134 binds proposal body into receipt identity, passes caller head to domain CAS,
+  recovers a committed proposal after receipt interruption, preserves staged-input
+  browser bounds, reports withheld ledger entries and verifies Research rendering
+  in the existing browser smoke. Exact final head/CI is recorded in #134.
+- Local evidence: 160 focused web tests, Ruff, mypy and schemas; browser availability
+  and full final-head CI are recorded separately in the review report.
+- Gaps: B remains pending-live; R11 start/restore and full R12 acceptance remain open.

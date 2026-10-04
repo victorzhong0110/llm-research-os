@@ -63,6 +63,12 @@ try {
   await page.keyboard.press("Enter");
   await page.getByRole("button", {name:"255",exact:true}).click();
   await page.getByText(/browser smoke fixture only/).waitFor();
+  await page.getByRole("button", {name:"Research",exact:true}).click();
+  await page.getByRole("heading", {name:"Research",exact:true}).waitFor();
+  await page.getByText("reject", {exact:true}).waitFor();
+  await page.reload();
+  await page.getByRole("button", {name:"Research",exact:true}).click();
+  await page.getByText("reject", {exact:true}).waitFor();
   for (const tab of ["Project","Spec revisions","Logs","Artifacts","Environment","How to read this"]) {
     await page.getByRole("button", {name:tab,exact:true}).click();
     await page.locator("main section").first().waitFor();

@@ -44,6 +44,8 @@ _HEAD_BOUND = frozenset(
         "run.show",
         "run.simulate",
         "run.cancel",
+        "proposal.submit",
+        "proposal.validate",
     }
 )
 _PATH_PATTERN = r"^[^\x00-\x1F\x7F]+$"
@@ -162,6 +164,30 @@ class RunCancelOperation(ApplicationModel):
     request: CommandPath
 
 
+class ProposalValidateOperation(ApplicationModel):
+    """Validate one proposal document and resolve its citations. Appends nothing.
+
+    Generated or hand-written proposal text becomes a draft only after it has
+    passed this check, so an unresolved citation is refused before a proposal can
+    exist, rather than being discovered later.
+    """
+
+    kind: Literal["proposal.validate"]
+    request: CommandPath
+
+
+class ProposalSubmitOperation(ApplicationModel):
+    """Append one proposal bound to a base revision and a server-derived diff.
+
+    The document supplies its own ``experimentRevision``; a proposal whose
+    revision is not the current head is refused, so a stale proposal cannot
+    overwrite a newer revision.
+    """
+
+    kind: Literal["proposal.submit"]
+    request: CommandPath
+
+
 class AuthorizationRevokeOperation(ApplicationModel):
     """Revoke an unused Worker grant. Revocation never launches or completes work."""
 
@@ -182,6 +208,8 @@ ApplicationOperation = Annotated[
     | RunSimulateOperation
     | WorkspaceShowOperation
     | PlanPreflightOperation
+    | ProposalSubmitOperation
+    | ProposalValidateOperation
     | RunCancelOperation
     | AuthorizationRevokeOperation,
     Field(discriminator="kind"),
@@ -240,9 +268,11 @@ class ApplicationReceipt(ApplicationModel):
         "run.show",
         "run.simulate",
         "workspace.show",
-        "plan.preflight",
-        "run.cancel",
         "authorization.revoke",
+        "plan.preflight",
+        "proposal.submit",
+        "proposal.validate",
+        "run.cancel",
     ]
     request_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
         alias="requestDigest"

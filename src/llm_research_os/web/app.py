@@ -32,7 +32,7 @@ from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
 from llm_research_os.web.assets import AssetError
 from llm_research_os.web.assets import load as load_asset
-from llm_research_os.web.contracts import CommandReceipt
+from llm_research_os.web.contracts import CommandReceipt, ResearchLedgerView
 from llm_research_os.web.errors import LOCAL_API_VERSION, LocalApiError, bad_request, not_found
 from llm_research_os.web.inspection import safe_document
 from llm_research_os.web.limits import (
@@ -296,6 +296,8 @@ class LocalApi:
                         "highWaterMark": store.last_sequence(),
                     }
                 )
+            if route == "/research":
+                return self._research()
             if route == "/events":
                 page = views.event_page(
                     cursor=query.get("cursor"),
@@ -404,7 +406,14 @@ class LocalApi:
 
     def _check_command_paths(self, command: ApplicationCommand) -> None:
         """Browser inputs are operator-staged workspace files, never arbitrary host reads."""
-        if command.operation.kind not in {"plan.preflight", "run.cancel", "authorization.revoke"}:
+        if command.operation.kind not in {
+            "plan.preflight",
+            "run.cancel",
+            "authorization.revoke",
+            "proposal.validate",
+            "proposal.submit",
+            "research.decision",
+        }:
             raise LocalApiError(
                 "command-refused", "This command is not exposed to the browser.", status=409
             )
@@ -453,6 +462,52 @@ class LocalApi:
                 "decoded": decoded,
             }
         )
+
+    def _research(self) -> Response:
+        """Bounded research ledger for this project.
+
+        Read-only. The ledger is a fold of proposal, dissent, decision and
+        question facts, so the browser sees the same disagreements a CLI replay
+        would, and records nothing by rendering it.
+        """
+
+        service = ApplicationService.open(self._workspace.root)
+        try:
+            with self._open_store() as store:
+                ledger: dict[str, Any] = service.read_research_ledger(store)
+        except ApplicationError as exc:
+            raise LocalApiError(
+                "command-refused", "The research ledger could not be read.", status=409
+            ) from exc
+        limit = 50
+        document = {
+            "kind": "ResearchLedgerView",
+            "projectId": str(ledger["projectId"]),
+            "lastSequence": int(ledger["lastSequence"]),
+            "decisionCount": int(ledger["decisionCount"]),
+            "openQuestionCount": int(ledger["openQuestionCount"]),
+            "answeredQuestionCount": int(ledger["answeredQuestionCount"]),
+            "rationaleCharacters": int(ledger["rationaleCharacters"]),
+            "overriddenDissentCount": int(ledger["overriddenDissentCount"]),
+            "proposals": list(ledger["proposals"])[:limit],
+            "dissents": list(ledger["dissents"])[:limit],
+            "decisions": list(ledger["decisions"])[:limit],
+            "questions": list(ledger["questions"])[:limit],
+            "withheld": {
+                key: max(0, len(ledger[key]) - limit)
+                for key in ("proposals", "dissents", "decisions", "questions")
+            },
+        }
+        # Validated against the same contract the browser types come from.
+        try:
+            body = ResearchLedgerView.model_validate(document).model_dump(
+                mode="json", by_alias=True
+            )
+        except ValidationError as exc:
+            raise LocalApiError(
+                "internal-error", "The research ledger did not match its contract.", status=500
+            ) from exc
+        return self._json(body)
 
     def _stream(self, *, resume: int) -> Stream:
         """Resumable SSE. ``Last-Event-ID`` or ``?cursor=`` resumes without a gap.
