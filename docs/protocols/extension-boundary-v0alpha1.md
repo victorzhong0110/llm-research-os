@@ -1,7 +1,8 @@
 # Extension mechanism and permission boundary (R14)
 
-Status: **Implemented on branch `r14-extension-boundary`; candidate evidence only. Not
-merged, not accepted.** Checkpoint D is not accepted.
+Status: Partial reviewed Python boundary. Exact integration and final checks are
+recorded at [#136](https://github.com/victorzhong0110/llm-research-os/pull/136).
+Full R14 and Checkpoint D are not accepted.
 Requirements: [M3 plan R14](../plans/m3-development-plan.md#r14-minimal-extension-mechanism-and-permission-boundary).
 
 ## What this is

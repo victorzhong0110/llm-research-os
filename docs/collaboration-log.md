@@ -30,9 +30,10 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-05, sequential PR integration review**. Verified reviewed R12 integration:
-`89b9ab4f021ff8e3d1e53ef041989ab11605da57` (#134), final-head CI 37230774848
-passed. Historical live execution baseline remains
+Snapshot date: **2026-10-05, sequential PR integration review**. Verified reviewed integration:
+`bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
+passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
+final-head CI 37230774848 passed. Historical live execution baseline remains
 `ed6fb30d6cb239ad37a34404814183764bce2a58` at its recorded platforms.
 Historical verified documentation main: `0acb62bad5dd0a54cb305bf89b2bc9deebb0427b`
 ([main CI 37183362803](https://github.com/victorzhong0110/llm-research-os/actions/runs/37183362803)
@@ -40,7 +41,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133/#134 are integrated; #135/#136 are reviewed and repaired partial slices. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
+| Current package | #133–#135 are integrated; #136 is a reviewed and repaired partial slice. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -480,3 +481,17 @@ Copy this template into the history and replace every placeholder:
 - Gaps: no third-party evaluator/provider integration, persistent registry or CLI;
   same-user code is not a malicious-code sandbox. R14/D and prior B/C stay open.
 - Next action / owner: reviewer verifies final-head CI and merges the partial slice.
+
+## REVIEW-20261005-136-INTEGRATION — Final stack reconciliation
+
+- Date/time: 2026-10-05T04:45:12+08:00; from: Codex reviewer; to: maintainer.
+- #135 merged at `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` after final-head
+  CI 37232561416 passed all required Python, browser, actual Ray/native/OCI jobs.
+- #136 reviewed head `7b9b2eb2238dbf4911ecf66ee908428acc33cf7f`, tree
+  `b4ca79de86b8e97f144494c651a3e044b797ca60`, passed CI 37232603436.
+  Linux 3.12: 2225 passed, 15 deselected; unrounded coverage 85.942%.
+- Squash integration replaces stack ancestry. Reconcile #136 against the actual
+  integrated #135 main without changing source, tests, schema or browser assets.
+  Only integration documentation changes; final reconciliation head/checks and
+  integration disposition are recorded at #136.
+- Prior B/C/D and full-package acceptance gaps remain open; no R15 is started.
