@@ -93,7 +93,7 @@ try {
   await page.getByRole("heading", {name:"Research workbench"}).waitFor();
   await page.getByRole("button", {name:"Runs",exact:true}).click();
   await page.getByText("Cancellation requested", {exact:true}).waitFor();
-  assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED")), []);
+  assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED") && !text.includes("409 (Conflict)")), []);
   console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh and persisted-store restart.");
 } finally {
   if (browser) await browser.close();

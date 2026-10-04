@@ -247,7 +247,9 @@ class ApplicationService:
                         "kind": str(resource.kind),
                         "count": resource.count,
                         "paid": resource.paid,
-                        "maxCost": resource.max_cost,
+                        "maxCost": str(resource.max_cost)
+                        if resource.max_cost is not None
+                        else None,
                         "currency": resource.currency,
                         "maxWallTimeSeconds": resource.max_wall_time_seconds,
                     }
