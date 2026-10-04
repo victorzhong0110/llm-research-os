@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from llm_research_os.canonical import canonical_json, content_digest
+from llm_research_os.evaluation.contracts import EvaluationDetailDocument
 
 EVALUATOR_NAME: Final = "heldout-majority-and-threshold"
 EVALUATOR_VERSION: Final = "v0alpha1"
@@ -307,6 +308,7 @@ def detail_payload(result: EvaluationResult) -> bytes:
 def parse_detail(document: Any) -> EvaluationResult:
     """Refuse malformed or internally inconsistent detail before comparison."""
     try:
+        EvaluationDetailDocument.model_validate(document)
         if (
             type(document) is not dict
             or document["kind"] != "EvaluationDetail"

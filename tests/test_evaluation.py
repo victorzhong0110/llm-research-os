@@ -385,3 +385,26 @@ def test_recompute_refuses_a_different_dataset() -> None:
     different = (replace(rows[0], label=1), *rows[1:])
     with pytest.raises(EvaluationError, match="does not identify"):
         recompute(result, different)
+
+
+def test_published_evaluation_documents_match_generated_contract() -> None:
+    from jsonschema import Draft202012Validator
+
+    from llm_research_os.evaluation.schema import build_schema
+
+    baseline = evaluate(threshold=0.5, mode="majority")
+    candidate = evaluate(threshold=0.45, mode="threshold")
+    comparison = compare(baseline, candidate)
+    conclusion = record(
+        comparison,
+        conclusion_id="conclusion.schema",
+        project_id="project.schema",
+        experiment_revision=1,
+        verdict="supported",
+        rationale="Fixture mechanics only",
+        evidence_refs=(),
+        actor_id="researcher.alice",
+    )
+    validator = Draft202012Validator(build_schema())
+    for document in (baseline.detail_document(), comparison.document(), conclusion.document()):
+        validator.validate(document)

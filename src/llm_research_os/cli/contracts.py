@@ -39,6 +39,15 @@ from llm_research_os.budget.schema import (
     canonical_budget_limit_request_schema,
     write_budget_limit_request_schema,
 )
+from llm_research_os.evaluation.schema import (
+    canonical_schema as canonical_evaluation_schema,
+)
+from llm_research_os.evaluation.schema import (
+    schema_matches as evaluation_schema_matches,
+)
+from llm_research_os.evaluation.schema import (
+    write_schema as write_evaluation_schema,
+)
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
@@ -308,6 +317,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "evaluation-document": _contract(
+        canonical_evaluation_schema,
+        evaluation_schema_matches,
+        write_evaluation_schema,
+        "schemas/evaluation-document/v0alpha1.schema.json",
+    ),
     "local-api-response": _contract(
         canonical_local_api_response_schema,
         local_api_response_schema_matches,
