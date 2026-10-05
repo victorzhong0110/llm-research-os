@@ -211,6 +211,14 @@ from llm_research_os.recovery.schema import (
     write_restore_report_schema,
     write_workspace_diagnostic_schema,
 )
+from llm_research_os.recovery.trial_schema import (
+    canonical_trial_kit_schema,
+    canonical_trial_record_schema,
+    trial_kit_schema_matches,
+    trial_record_schema_matches,
+    write_trial_kit_schema,
+    write_trial_record_schema,
+)
 from llm_research_os.research.schema import (
     canonical_decision_record_request_schema,
     canonical_dissent_record_request_schema,
@@ -393,6 +401,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         workspace_diagnostic_schema_matches,
         write_workspace_diagnostic_schema,
         "schemas/workspace-diagnostic/v0alpha1.schema.json",
+    ),
+    "trial-record": _contract(
+        canonical_trial_record_schema,
+        trial_record_schema_matches,
+        write_trial_record_schema,
+        "schemas/trial-record/v0alpha1.schema.json",
+    ),
+    "trial-kit": _contract(
+        canonical_trial_kit_schema,
+        trial_kit_schema_matches,
+        write_trial_kit_schema,
+        "schemas/trial-kit/v0alpha1.schema.json",
     ),
     "research-spec": _contract(
         canonical_research_schema,

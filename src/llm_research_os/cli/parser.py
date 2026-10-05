@@ -9,6 +9,7 @@ from llm_research_os.cli.application_commands import add_app_parser
 from llm_research_os.cli.contracts import DEFAULT_SCHEMA_CONTRACT, SCHEMA_CONTRACTS
 from llm_research_os.cli.recovery_commands import add_recovery_parser
 from llm_research_os.cli.signature_commands import add_signature_parsers
+from llm_research_os.cli.trial_commands import add_trial_parser
 from llm_research_os.cli.web_commands import add_web_parser
 from llm_research_os.storage.store import MAX_READ_PAGE_SIZE
 
@@ -1075,6 +1076,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_app_parser(subparsers)
     add_web_parser(subparsers)
     add_recovery_parser(subparsers)
+    add_trial_parser(subparsers)
     return parser
 
 

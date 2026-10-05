@@ -152,7 +152,15 @@ def _connect_sqlite(
 ) -> sqlite3.Connection:
     if require_existing:
         if is_new:
-            raise EventStoreSchemaError(f"database does not exist: {path}")
+            # No host path: this text reaches CLI output and issue reports. A
+            # fresh workspace deliberately has no EventStore until the first
+            # append, so the message says what to do rather than where it looked.
+            raise EventStoreSchemaError(
+                "the control store does not exist; a fresh workspace has no "
+                "EventStore until a command appends a fact, or restore one from "
+                "a backup image",
+                code="event-store-absent",
+            )
         try:
             return sqlite3.connect(
                 f"{path.as_uri()}?mode=rw",
@@ -161,7 +169,10 @@ def _connect_sqlite(
                 uri=True,
             )
         except sqlite3.OperationalError as exc:
-            raise EventStoreSchemaError(f"could not open database for writing: {path}") from exc
+            raise EventStoreSchemaError(
+                "the control store could not be opened for writing",
+                code="event-store-unwritable",
+            ) from exc
     if create:
         return sqlite3.connect(path, timeout=timeout_seconds, autocommit=True)
     try:
@@ -173,8 +184,15 @@ def _connect_sqlite(
         )
     except sqlite3.OperationalError as exc:
         if is_new:
-            raise EventStoreSchemaError(f"database does not exist: {path}") from exc
-        raise EventStoreSchemaError(f"could not open database: {path}") from exc
+            raise EventStoreSchemaError(
+                "the control store does not exist; a fresh workspace has no "
+                "EventStore until a command appends a fact, or restore one from "
+                "a backup image",
+                code="event-store-absent",
+            ) from exc
+        raise EventStoreSchemaError(
+            "the control store could not be opened for reading", code="event-store-unreadable"
+        ) from exc
 
 
 class EventStore:
