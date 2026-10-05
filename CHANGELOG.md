@@ -85,6 +85,31 @@ authorized release.
   participants, tasks covered, recorded remote journeys, unresolved blockers, and
   `checkpointD`. Two new published contracts, `trial-record` and `trial-kit`.
 
+- R16 a trial record is **pending until the participant themself confirms it**.
+  `participantConfirmed` defaults to false, `confirmedAt` is required when it is
+  set and refused when it is not, and an implementer may not set it at all. The
+  participant roll-up, the completed-task count and the remote-journey tally are
+  all confirmed-only; `aggregate` reports `participants`,
+  `observedParticipants` and `pendingConfirmation` separately. Without this an
+  observer could file every record on a participant's behalf and the kit would
+  report a completed trial programme.
+
+- R16 `ProblemReport.type` is now a code. `EventStoreSchemaError` joins the
+  coded errors, so a missing control store reports `event-store-absent` instead
+  of the class name, and the protocol states the rule: `type` is a stable machine
+  identifier, never a class name, with a class-name fallback only for errors
+  that define no codes. Adopted on maintainer instruction; the three CLI tests
+  that pinned the class name were updated and
+  `tests/test_problem_report_type_vocabulary.py` pins the vocabulary and the
+  fallback.
+
+- **Four more host-path leaks fixed.** `_validate_database_path` interpolated
+  the path into its missing-parent, inspect-failure, symlink and not-a-regular-
+  file messages, and none had a test. Writing the type-vocabulary test is what
+  found them: its first version used a path with a missing parent, hit a
+  different branch, and passed without covering them. All control-store messages
+  are now path-free.
+
 - R16 the missing-control-store error no longer renders a host path. A fresh
   workspace still has no EventStore until the first append — that accepted R02
   contract is unchanged — but the error now says so and names the next step
@@ -239,6 +264,15 @@ authorized release.
   remote executor/recovery and new authorized two-host/GPU acceptance remain open.
 
 ### Fixed
+
+- Four `tests/test_native_ssh_live.py` tests failed in any environment whose
+  system `python3` predates 3.12. The local transport runs the real remote
+  command `python3 -I -c ...`, so the simulated worker host inherited the
+  container's Python 3.11 and the probe correctly refused it — four tests
+  asserting `ready` were failing for a reason unrelated to what they test. The
+  harness now pins `PATH` to the interpreter running the suite, a guard test
+  fails loudly if that stops working, and the old-host rejection is still tested
+  directly. The selected suite is now **2,348 passed, 0 failed**.
 
 - The local API server raised an unhandled `OSError` when its port was already
   bound, so an operator with a port conflict got a traceback instead of a cause.

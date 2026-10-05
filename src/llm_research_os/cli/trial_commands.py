@@ -106,9 +106,18 @@ def _scaffold(args: argparse.Namespace) -> int:
         path = record / RECORD_NAME
         # The scaffold is deliberately incomplete: `validate` rejects it until a
         # participant's outcome is actually recorded, so an unrun trial can
-        # never look like a clean one.
+        # never look like a clean one. participantConfirmed is written explicitly
+        # and false, so "not yet confirmed by the person" is a recorded state
+        # rather than an absent field someone could read as an oversight.
         path.write_text(
-            json.dumps({"apiVersion": "researchos.dev/trial/v0alpha1", "task": task}, indent=2),
+            json.dumps(
+                {
+                    "apiVersion": "researchos.dev/trial/v0alpha1",
+                    "task": task,
+                    "participantConfirmed": False,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         written.append(str(path.relative_to(root)))
@@ -142,6 +151,8 @@ def _validate(args: argparse.Namespace) -> int:
                 "participantAlias": record.participant_alias,
                 "verdict": record.verdict,
                 "measureable": record.is_measureable(),
+                "confirmed": record.is_confirmed(),
+                "pendingConfirmation": not record.is_confirmed(),
                 "valid": True,
             }
         )
@@ -151,7 +162,10 @@ def _validate(args: argparse.Namespace) -> int:
 
 def _aggregate(args: argparse.Namespace) -> int:
     kit = load_trial_kit(args.root / KIT_NAME)
-    participants = kit.participants()
+    # Checkpoint D counts people who took part, not records that exist. A record
+    # an observer filed stays pending until the participant themself confirms
+    # it, so both the count and the remote-journey tally are confirmed-only.
+    participants = kit.confirmed_participants()
     missing = [blocker for blocker in TRIAL_BLOCKERS if blocker in kit.unresolved_blocks()]
     checkpoint_d = len(participants) >= 2 and kit.remote_journeys_recorded() >= 1 and not missing
     print(
@@ -159,6 +173,8 @@ def _aggregate(args: argparse.Namespace) -> int:
             {
                 "records": len(kit.records),
                 "participants": list(participants),
+                "observedParticipants": list(kit.participants()),
+                "pendingConfirmation": list(kit.pending_confirmation()),
                 "tasksCovered": list(kit.tasks_covered()),
                 "completedTasks": kit.completed_tasks(),
                 "remoteJourneys": kit.remote_journeys_recorded(),

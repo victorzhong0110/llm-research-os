@@ -8,7 +8,10 @@ import io
 import json
 import os
 import platform
+import re
 import socket
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -41,10 +44,20 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     identity.chmod(0o600)
     # This local transport executes the exact remote shell command and stdin.
     # It exercises the production wire protocol without claiming a second host.
+    #
+    # The remote command is `python3 -I -c <source>`, so `python3` is resolved
+    # from PATH *inside* this container. `_probe` requires 3.12+ on the worker
+    # host and correctly refuses anything older, which is why these tests used
+    # to fail on a host whose system python3 predates the minimum: the transport
+    # was simulating a non-compliant host while the tests asserted `ready`.
+    # Pin PATH to the interpreter running the suite so the simulated host meets
+    # the documented minimum, whatever the ambient system python happens to be.
     fake_ssh = tmp_path / "ssh"
     fake_ssh.write_text(
         "#!/usr/bin/env python3\n"
-        "import subprocess, sys\n"
+        "import os, subprocess, sys\n"
+        f"os.environ['PATH'] = {str(Path(sys.executable).resolve().parent)!r} + os.pathsep"
+        " + os.environ['PATH']\n"
         "p = subprocess.run(sys.argv[-1], input=sys.stdin.buffer.read(), "
         "shell=True, capture_output=True)\n"
         "sys.stdout.buffer.write(p.stdout); sys.stderr.buffer.write(p.stderr)\n"
@@ -52,6 +65,35 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     )
     fake_ssh.chmod(0o700)
     return pack, identity, fake_ssh
+
+
+def test_the_simulated_host_meets_the_python_minimum(tmp_path: Path) -> None:
+    """The local transport must not depend on the ambient system python3.
+
+    The remote command is `python3 -I -c ...`, resolved from PATH inside this
+    container. If the host interpreter is older than the minimum the probe
+    refuses it, and every test above fails for a reason that has nothing to do
+    with what it is testing. Asserting the simulated host is compliant turns
+    that environment coupling into an immediate, local failure.
+    """
+    _, _, fake_ssh = _setup(tmp_path)
+
+    pinned = re.search(r"PATH'\] = '([^']+)'", fake_ssh.read_text())
+    assert pinned, "_setup must pin PATH for the simulated host"
+    interpreter = Path(pinned.group(1)) / "python3"
+    assert interpreter.is_file(), f"pinned interpreter does not exist: {interpreter}"
+
+    resolved = subprocess.run(
+        [str(interpreter), "-c", "import sys;print(*sys.version_info[:2])"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    major, minor = (int(part) for part in resolved.stdout.split())
+    assert (major, minor) >= (3, 12), (
+        f"the simulated worker host runs Python {major}.{minor}, below the 3.12 "
+        "minimum the probe enforces; _setup did not pin PATH correctly"
+    )
 
 
 def test_pinned_probe_and_repairs_do_not_mutate_worker(tmp_path: Path) -> None:

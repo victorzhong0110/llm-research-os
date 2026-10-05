@@ -104,6 +104,12 @@ researchos trial validate ./trial-kit/T1/trial-record.json                # refu
 researchos trial aggregate --root ./trial-kit                              # reports checkpointD: false
 ```
 
+An empty kit reports `records: 0`, `participants: []`, and all three blockers
+unresolved. A kit with only unconfirmed records reports `records: n` with
+`observedParticipants` populated, `participants: []`, and every id in
+`pendingConfirmation` — so a half-finished programme cannot read as a finished
+one.
+
 `scaffold` writes deliberately invalid record slots so that an unrun trial reads
 as unrun. A record becomes valid only when a participant's outcome is actually
 recorded, and it stays invalid if no evidence is attached or if the implementer
@@ -149,6 +155,25 @@ later, and `task` is restricted to the agreed list so a report from outside this
 kit cannot be aggregated with the rest of R16's evidence.
 `researchos trial validate` is what a third party runs before believing a
 record.
+
+### Pending the participant's own confirmation
+
+A record is **not evidence of a trial until the participant themself confirms
+it.** An observer may write down faithfully what a person did, but that is
+evidence that someone watched, not that the person took part — and the
+difference is the whole measurement R16 exists to make.
+
+- `participantConfirmed` defaults to `false`; `confirmedAt` is required when it
+  is set and refused when it is not.
+- An implementer may not set it. Only the participant, or an observer holding the
+  participant's confirmation, may.
+- `aggregate` counts **confirmed** records only. It reports `participants`
+  (confirmed), `observedParticipants` (anyone with a record), and
+  `pendingConfirmation` (record ids awaiting the person), so a kit full of
+  unconfirmed records shows both numbers instead of reading as complete.
+- A confirmed `REMOTE` record is the only thing that satisfies the
+  authorized-remote requirement, because that requirement is about access a
+  person was actually given.
 
 ## Aggregate requirements before Checkpoint D
 

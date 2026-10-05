@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
+from pydantic import ValidationError
 
 from llm_research_os.cli.contracts import SCHEMA_CONTRACTS
 from llm_research_os.recovery.errors import RecoveryError
@@ -28,6 +29,7 @@ from llm_research_os.recovery.trial import (
 
 ROOT = Path(__file__).parents[1]
 BASE_TIME = "2026-10-06T09:00:00Z"
+CONFIRMED_TIME = "2026-10-06T17:30:00Z"
 
 
 def _record(**overrides: Any) -> dict[str, Any]:
@@ -139,9 +141,11 @@ def test_a_record_refuses_values_outside_the_contract(
 def test_kit_aggregates_participants_tasks_and_blockers() -> None:
     kit = TrialKit(
         records=[
-            TrialRecord.model_validate(_record()),
+            # Confirmed records: an unconfirmed account is a claim, and the
+            # roll-up is meant to count people who took part.
+            TrialRecord.model_validate(_confirmed()),
             TrialRecord.model_validate(
-                _record(
+                _confirmed(
                     trialId="TRIAL-01/B/2026-10-06", task="T2", participantAlias="participant-b"
                 )
             ),
@@ -166,7 +170,7 @@ def test_kit_reports_a_recorded_remote_journey() -> None:
     kit = TrialKit(
         records=[
             TrialRecord.model_validate(
-                _record(
+                _confirmed(
                     trialId="TRIAL-03/A/2026-10-06",
                     task="REMOTE",
                     completed=False,
@@ -271,3 +275,79 @@ def test_the_kit_is_prepared_and_no_trial_is_recorded() -> None:
     assert described["records"] == []
     assert described["blockers"] == ["TRIAL-01: pending"]
     assert kit.participants() == ()
+
+
+def _confirmed(**overrides: Any) -> dict[str, Any]:
+    overrides.setdefault("participantConfirmed", True)
+    overrides.setdefault("confirmedAt", CONFIRMED_TIME)
+    return _record(**overrides)
+
+
+def test_a_new_record_is_pending_the_participants_own_confirmation() -> None:
+    """An observer's faithful account is still not the participant's own.
+
+    Without this the whole R16 evidence rule collapses: an observer, or the
+    implementer, could write every record themselves and the kit would report a
+    completed trial programme.
+    """
+
+    record = TrialRecord.model_validate(_record())
+
+    assert record.participant_confirmed is False
+    assert record.is_confirmed() is False
+
+
+def test_a_participant_or_observer_may_record_the_confirmation() -> None:
+    for author in ("participant", "observer"):
+        record = TrialRecord.model_validate(_confirmed(recordedBy=author))
+        assert record.is_confirmed() is True
+
+
+def test_an_implementer_may_not_confirm_on_a_participants_behalf() -> None:
+    with pytest.raises(ValidationError, match="cannot confirm on a participant"):
+        TrialRecord.model_validate(_confirmed(recordedBy="implementer"))
+
+
+def test_a_confirmation_without_a_time_is_refused() -> None:
+    with pytest.raises(ValidationError, match="must carry confirmedAt"):
+        TrialRecord.model_validate(_record(participantConfirmed=True))
+
+
+def test_a_time_without_a_confirmation_is_refused() -> None:
+    with pytest.raises(ValidationError, match="confirmedAt requires participantConfirmed"):
+        TrialRecord.model_validate(_record(confirmedAt=CONFIRMED_TIME))
+
+
+def test_only_confirmed_records_count_toward_the_participant_roll_up() -> None:
+    """Two observed records are not two people who took part."""
+
+    confirmed = TrialRecord.model_validate(_confirmed(trialId="TRIAL-01/A/1"))
+    pending = TrialRecord.model_validate(_record(trialId="TRIAL-01/B/1", participantAlias="b"))
+
+    kit = TrialKit(records=[confirmed, pending], blockers=[])
+
+    assert kit.participants() == ("b", "participant-a")
+    assert kit.confirmed_participants() == ("participant-a",)
+    assert kit.pending_confirmation() == ("TRIAL-01/B/1",)
+
+
+def test_an_unconfirmed_completion_does_not_count_as_a_completed_task() -> None:
+    """A verdict nobody confirmed is a claim, not a completed core journey."""
+
+    pending = TrialRecord.model_validate(_record())
+
+    kit = TrialKit(records=[pending], blockers=[])
+    assert kit.completed_tasks() == 0
+
+    confirmed = TrialRecord.model_validate(_confirmed())
+    assert TrialKit(records=[confirmed], blockers=[]).completed_tasks() == 1
+
+
+def test_an_unconfirmed_remote_journey_does_not_satisfy_the_remote_requirement() -> None:
+    """REMOTE is the requirement that access has been granted, so it matters most."""
+
+    pending = TrialRecord.model_validate(_record(task="REMOTE"))
+    assert TrialKit(records=[pending], blockers=[]).remote_journeys_recorded() == 0
+
+    confirmed = TrialRecord.model_validate(_confirmed(task="REMOTE"))
+    assert TrialKit(records=[confirmed], blockers=[]).remote_journeys_recorded() == 1

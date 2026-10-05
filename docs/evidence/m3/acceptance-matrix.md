@@ -1022,17 +1022,23 @@ and not native_remote_live`:
   `tests/test_recovery_trials.py`; 118 passed and 2 skipped locally because this
   container runs as root and a privileged reader ignores mode bits. Those two run
   in ordinary CI.
-- Whole selected suite: **2,324 passed, 4 failed, 2 skipped, 30 deselected.** All four failures
-  are pre-existing and were verified as such, not assumed:
-  - `tests/test_native_ssh_live.py` (4) fail identically on an untouched
-    worktree at merged `main` (`bf8a45a`); the fake-SSH probe reports
-    `python-too-old` in this container.
-  - The two `tests/test_evidence.py` wall-clock bound tests that also failed in
-    an earlier run of this branch pass in isolation and in combination with the
-    R15 suites; they assert `elapsed < MAX_PDF_EXTRACT_SECONDS + 3.0` and exceed
-    it only under full-suite load on a shared container. They are not counted as
-    failures in this run.
-- Coverage: **85.208269%** (30,214/35,459 statement and branch counts), above the
+- Whole selected suite: **2,348 passed, 0 failed, 2 skipped, 30 deselected.**
+  This suite previously reported 4 failures in `tests/test_native_ssh_live.py`
+  and recorded them as pre-existing environment failures, verified as such on an
+  untouched worktree at `main`. That explanation was correct but the failures
+  were **not** in fact unavoidable, and the honest reading of "pre-existing"
+  should have been "not mine" rather than "not fixable". The cause was the test
+  harness, not the container: the local transport runs the real remote command
+  `python3 -I -c ...`, resolving `python3` from `PATH` inside this container,
+  which is 3.11.2 while the probe requires 3.12+ on a worker host. The probe was
+  correct to refuse the simulated host; the harness was simulating the wrong one.
+  `_setup` now pins `PATH` to the interpreter running the suite, a guard test
+  fails loudly if that pinning stops working, and the old-host rejection is
+  still tested directly. All 39 tests in that file pass. CI runs 3.12/3.13, where
+  they had passed all along.
+- The two skipped `test_recovery_*` tests are skipped only because this container
+  runs as root and a privileged reader ignores mode bits. They run in ordinary CI.
+- Coverage: **85.413907%** (30,304/35,479 statement and branch counts), above the
   unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
   integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
 - `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 267
@@ -1121,8 +1127,10 @@ The 38 SSH tests and static checks passed locally before publication.
 
 ## R16 candidate evidence
 
-Status: **trial kit prepared on the R16 branch; no trial performed; not merged,
-not accepted.** Checkpoint D is open and cannot close from this branch.
+Status: **trial kit prepared and machine-checkable on the R16 branch; no trial
+performed; not merged, not accepted.** Checkpoint D is open and cannot close from
+this branch. Each record additionally awaits the participant's own confirmation,
+which no implementer or observer can supply for them.
 
 R16 is the one package whose deliverable is human work by people who did not
 implement the system. What this branch can honestly contribute is the kit that
@@ -1175,20 +1183,48 @@ restore one from a backup image. The R02 contract is unchanged; only the message
 changed. This does **not** close TRIAL-04, which is scoped to defects found in
 TRIAL-01/02.
 
-### Proposed normative change for review: the `type` of a store error
+### `ProblemReport.type` is now a code, adopted
 
-(R16 slice; the R09 proposal above is separate and still open.)
+The proposal below was taken on maintainer instruction. `EventStoreSchemaError`
+joins the coded errors, so `type` carries `event-store-absent` rather than the
+class name, and `docs/protocols/problem-report-v0alpha1.md` now states the rule:
+`type` is a stable machine identifier, a caller may branch on it, it is never a
+class name, and an error with a closed code set surfaces its code while one
+without falls back to its class name. The three CLI tests that pinned
+`EventStoreSchemaError` were updated, and `tests/test_problem_report_type_vocabulary.py`
+pins the vocabulary and the one-directional fallback.
 
-Routing the new `code` into the `ProblemReport` `type` field, as every other
-coded error in the project does, would replace `EventStoreSchemaError` with
-`event-store-absent` in CLI output. Three existing tests assert the class name,
-so this is a change to a published error surface rather than a bug fix, and it is
-**not** taken here. The path leak is fixed without it.
+**Writing the test found a second leak the first fix had missed.**
+`_validate_database_path` had four rejections that still interpolated the host
+path — missing parent directory, inspect failure, symlink, and not-a-regular-file
+— and none of them had a test. The first version of the new test only covered
+the missing-database case and passed, because the path it used had a missing
+*parent*, which is a different branch. All four now carry no path, and the
+parameterised test covers each. Every control-store message is now path-free;
+`evidenceAttached` and the absent-database message keep their actionable halves.
 
-Whether `EventStoreSchemaError` should become a coded error in the
-`ProblemReport` surface, for consistency with `BudgetError`, `WorkerError` and
-the rest, is a normative question for the planning/review assistant. The `code`
-attribute now exists, so adopting it later is a routing change only.
+### A trial record is pending until the person confirms it
+
+The contract already refused an implementer-authored measurement. It did not stop
+an **observer** from filing every record on a participant's behalf, and an
+observer-authored roll-up is not evidence that anyone took part — it is evidence
+that someone watched. So confirmation is now a field with rules:
+
+- `participantConfirmed` defaults to `false`, and `confirmedAt` must be present
+  when it is set and absent when it is not.
+- An implementer may not set it at all. Only the participant, or an observer who
+  has the participant's confirmation, may.
+- `confirmedParticipants`, `completedTasks` and `remoteJourneys` are all
+  **confirmed-only**. `aggregate` reports `participants` and
+  `observedParticipants` separately, plus `pendingConfirmation`, so a kit full of
+  unconfirmed records shows both numbers rather than quietly counting as complete.
+- `scaffold` writes `participantConfirmed: false` explicitly, so "not yet
+  confirmed" is a recorded state rather than an absent field readable as an
+  oversight.
+
+A confirmed `REMOTE` record is the only thing that satisfies the authorized-remote
+requirement, which is the one requirement that most clearly has to come from a
+person rather than from the project's own records.
 
 ### Three decisions taken under maintainer delegation
 

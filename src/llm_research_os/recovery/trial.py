@@ -51,6 +51,12 @@ class TrialRecord(_RecoveryModel):
     recorded_by: Literal["participant", "observer", "implementer"] = Field(
         default="observer", alias="recordedBy"
     )
+    #: Whether the participant themself confirmed this account. An observer may
+    #: write a faithful record of what a participant did, but the account is
+    #: still pending until the participant says it is theirs. Only a confirmed
+    #: record moves Checkpoint D.
+    participant_confirmed: bool = Field(default=False, alias="participantConfirmed")
+    confirmed_at: Rfc3339Timestamp | None = Field(default=None, alias="confirmedAt")
 
     build_under_test: str = Field(alias="buildUnderTest", min_length=1, max_length=256)
     platform: str = Field(min_length=1, max_length=256)
@@ -96,12 +102,35 @@ class TrialRecord(_RecoveryModel):
                 "an implementer-recorded trial may not author interventions or "
                 "confusionObserved; those are the participant's account"
             )
+        # Confirmation is the participant's own act. An implementer cannot
+        # confirm on someone's behalf, and a confirmation without a time cannot
+        # be audited later, so both are refused rather than defaulted.
+        if self.participant_confirmed and self.recorded_by == "implementer":
+            raise ValueError(
+                "participantConfirmed may only be set by the participant or an "
+                "observer who has the participant's confirmation; an implementer "
+                "cannot confirm on a participant's behalf"
+            )
+        if self.participant_confirmed and self.confirmed_at is None:
+            raise ValueError("a confirmed record must carry confirmedAt")
+        if self.confirmed_at is not None and not self.participant_confirmed:
+            raise ValueError("confirmedAt requires participantConfirmed")
         return self
 
     def is_measureable(self) -> bool:
         """Report whether the record carries a participant-authored measurement."""
 
         return self.recorded_by != "implementer" or bool(self.interventions)
+
+    def is_confirmed(self) -> bool:
+        """Report whether the participant themself stands behind this account.
+
+        An unconfirmed record is not evidence of a trial, however faithfully it
+        was written down. This is the difference between "an observer saw
+        something" and "a person confirms this happened to them".
+        """
+
+        return self.participant_confirmed and self.confirmed_at is not None
 
 
 class TrialKit(_RecoveryModel):
@@ -115,14 +144,38 @@ class TrialKit(_RecoveryModel):
     def participants(self) -> tuple[str, ...]:
         return tuple(sorted({record.participant_alias for record in self.records}))
 
+    def confirmed_participants(self) -> tuple[str, ...]:
+        """Participants who have themself confirmed at least one record.
+
+        This is the set the plan's acceptance language refers to. A record an
+        observer filed on someone's behalf is not that person having taken part.
+        """
+
+        return tuple(
+            sorted({record.participant_alias for record in self.records if record.is_confirmed()})
+        )
+
+    def pending_confirmation(self) -> tuple[str, ...]:
+        """Record ids written but not yet confirmed by the participant."""
+
+        return tuple(
+            sorted(record.trial_id for record in self.records if not record.is_confirmed())
+        )
+
     def tasks_covered(self) -> tuple[str, ...]:
         return tuple(sorted({record.task for record in self.records}))
 
     def completed_tasks(self) -> int:
-        return sum(1 for record in self.records if record.verdict == "core-journey-completed")
+        return sum(
+            1
+            for record in self.records
+            if record.verdict == "core-journey-completed" and record.is_confirmed()
+        )
 
     def remote_journeys_recorded(self) -> int:
-        return sum(1 for record in self.records if record.task == "REMOTE")
+        return sum(
+            1 for record in self.records if record.task == "REMOTE" and record.is_confirmed()
+        )
 
     def unresolved_blocks(self) -> tuple[str, ...]:
         """Blockers the kit names that no record has cleared."""

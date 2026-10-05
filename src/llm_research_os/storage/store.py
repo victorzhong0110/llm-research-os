@@ -119,6 +119,9 @@ def _validate_event_types(value: frozenset[str] | None) -> frozenset[str] | None
 
 
 def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
+    # No host path in any message below. These reach CLI output, logs, and issue
+    # reports; the caller already holds the path it passed in, so repeating it
+    # adds nothing but a disclosure.
     source = Path(path).absolute()
     if str(path) == ":memory:":
         raise EventStoreSchemaError("the M0 event store requires a local filesystem path")
@@ -126,19 +129,16 @@ def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
     try:
         metadata = os.lstat(source)
     except FileNotFoundError:
-        parent = source.parent
-        if not parent.is_dir():
-            raise EventStoreSchemaError(
-                f"database parent directory does not exist: {parent}"
-            ) from None
+        if not source.parent.is_dir():
+            raise EventStoreSchemaError("database parent directory does not exist") from None
         return source, True
     except OSError as exc:
-        raise EventStoreSchemaError(f"could not inspect database path: {source}") from exc
+        raise EventStoreSchemaError("could not inspect the database path") from exc
 
     if stat.S_ISLNK(metadata.st_mode):
-        raise EventStoreSchemaError(f"database path must not be a symbolic link: {source}")
+        raise EventStoreSchemaError("database path must not be a symbolic link")
     if not stat.S_ISREG(metadata.st_mode):
-        raise EventStoreSchemaError(f"database path must be a regular file: {source}")
+        raise EventStoreSchemaError("database path must be a regular file")
     return source, False
 
 

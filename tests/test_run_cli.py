@@ -287,7 +287,7 @@ def test_corrupt_database_is_problem_report_not_traceback(
     problem = json.loads(output.err)
     assert output.out == ""
     assert problem["kind"] == "ProblemReport"
-    assert problem["errors"][0]["type"] == "EventStoreSchemaError"
+    assert problem["errors"][0]["type"] == "event-store-schema-invalid"
     assert database.read_bytes() == before
 
 

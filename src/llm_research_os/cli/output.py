@@ -23,6 +23,7 @@ from llm_research_os.providers.errors import ModelProviderError, ModelRequestErr
 from llm_research_os.report.errors import ReportError
 from llm_research_os.research.errors import ResearchDecisionError, ResearchRequestError
 from llm_research_os.runs import RunCancellationRequestError
+from llm_research_os.storage.errors import EventStoreSchemaError
 from llm_research_os.training.errors import TrainingBackendError, TrainingBackendRequestError
 from llm_research_os.workers.errors import WorkerError, WorkerRequestError
 
@@ -75,6 +76,7 @@ def problem_report(exc: Exception) -> ProblemReport:
     )
     coded_errors = (
         BudgetError,
+        EventStoreSchemaError,
         EvidenceError,
         ModelProviderError,
         NativeProcessRuntimeError,

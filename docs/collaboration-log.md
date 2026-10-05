@@ -62,6 +62,7 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0013 | Planning/review assistant and maintainer | Open; awaiting review | Review the R16 trial kit and closure record. The five fixed tasks and the REMOTE journey are defined; no trial has been performed and none is simulated, so Checkpoint D cannot close. |
 | COMM-0014 | Planning/review assistant and maintainer | Open; awaiting review | Review the machine-checkable trial kit and the three decisions recorded under maintainer delegation. The trials themselves are unperformed and TRIAL-03 still needs the access described in COMM-0004. |
 | COMM-0015 | Planning/review assistant and maintainer | Open; awaiting review | Review R15 and R16 rebased onto merged R10–R14. The port fix is dropped as already delivered, the merged error codes are kept over this branch's, and the COMM-0006 stacking deviation no longer applies to these two packages. |
+| COMM-0016 | Planning/review assistant and maintainer | Open; awaiting review | Review the adopted `ProblemReport.type` code rule, the four additional path-leak fixes, the participant-confirmation gate, and the root cause of the four SSH test failures. Not pushed; no trial performed. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -584,6 +585,73 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   journey that COMM-0004 still records as missing.
 - Next action / owner: Maintainer reviews the rebased R15, then R16. Whether
   `listener-unavailable` should name the port is a maintainer call.
+
+### COMM-0016 — Store errors surface codes; trial records need the person's own confirmation; four SSH failures explained
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0015.
+- From: Assigned implementer.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0014, COMM-0015, and the R16 evidence proposal in the acceptance matrix.
+- State: Open; awaiting review.
+- Message / decision: Three items, all carried out on maintainer instruction. Local
+  only: no merge, no deployment, no message sent outside this repository.
+
+  **`ProblemReport.type` is a code, adopted.** The proposal recorded in the R16
+  evidence is taken. `EventStoreSchemaError` joins the coded errors, so a missing
+  control store reports `event-store-absent` rather than `EventStoreSchemaError`.
+  The protocol now states the rule rather than leaving it to be inferred from the
+  code: `type` is a stable machine identifier, a caller may branch on it, it is
+  never a class name, and the class name survives only as the fallback for errors
+  that define no codes. Three CLI tests that pinned the class name were updated
+  rather than worked around, and `tests/test_problem_report_type_vocabulary.py`
+  pins the vocabulary and the one-directional fallback.
+
+  **Writing that test found four more host-path leaks.** `_validate_database_path`
+  interpolated the path into its missing-parent, inspect-failure, symbolic-link
+  and not-a-regular-file messages, and none of the four had a test. The first
+  version of the new test passed without covering them, because the path it used
+  had a missing *parent* and therefore reached a different branch than the
+  missing-database case it was written for. All four messages are now path-free
+  and the test is parameterised across the whole family. The control-store
+  surface is now path-free end to end, which is the claim the project already made
+  about these errors and had not earned.
+
+  **A trial record is pending until the person confirms it.** The contract already
+  refused an implementer-authored measurement, but nothing stopped an **observer**
+  from filing every record on a participant's behalf. An observer-authored roll-up
+  is evidence that someone watched, not that a person took part, and that is the
+  distinction R16 exists to make. `participantConfirmed` now defaults to false,
+  `confirmedAt` is required when it is set and refused when it is not, and an
+  implementer may not set it at all. `confirmedParticipants`, `completedTasks` and
+  `remoteJourneys` are confirmed-only, and `aggregate` reports `participants`,
+  `observedParticipants` and `pendingConfirmation` as three separate numbers so a
+  half-finished programme cannot read as a finished one. A confirmed `REMOTE`
+  record is the only thing that satisfies the authorized-remote requirement,
+  because that requirement is about access a person was actually given.
+
+  **The four `test_native_ssh_live.py` failures were not a product defect.** They
+  were the harness simulating a non-compliant host. The local transport runs the
+  real remote command, which is `python3 -I -c ...`, so `python3` was resolved
+  from `PATH` **inside this container**; that is Python 3.11.2, while the probe
+  requires 3.12 or newer on a worker host. The probe was correct to refuse it, and
+  four tests asserting `ready` were failing for a reason unrelated to what they
+  test. `_setup` now pins `PATH` to the interpreter running the suite, so the
+  simulated host meets the documented minimum whatever the ambient system python
+  is, and a new guard test fails loudly if that pinning ever stops working. The
+  old-host rejection is untouched and still tested directly by
+  monkeypatching `version_info` to `(3, 11)`. All 39 tests in the file pass. CI
+  runs 3.12/3.13, where these tests passed all along.
+- Branch / head / base / PR: `r16-independent-trials`, based on
+  `r15-installation-recovery`; open PR, deliberately unmerged. **Not pushed.**
+- Evidence / checks: [R16 candidate evidence](evidence/m3/acceptance-matrix.md#r16-candidate-evidence),
+  [`problem-report-v0alpha1.md`](protocols/problem-report-v0alpha1.md).
+- Gaps / required inputs: Still no trial performed. TRIAL-01/02 need two people
+  who did not build the system; each record now additionally needs **that person's
+  own confirmation**, which no implementer or observer can supply on their behalf.
+  TRIAL-03 remains blocked on the two-host and GPU access in COMM-0004. Checkpoint D
+  cannot be claimed complete.
+- Next action / owner: Maintainer reviews the three changes. Invitations for
+  TRIAL-01/02 and the access for TRIAL-03 remain the only unblocking inputs.
 
 ## Message template
 
