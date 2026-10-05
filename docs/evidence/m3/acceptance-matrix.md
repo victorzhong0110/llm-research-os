@@ -42,14 +42,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice merged in #134 at `89b9ab4`; final-head CI 37230774848 passed | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R15 | Installation, startup, backup, and recovery | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R15 |
-| R09 | Local API and browser authority boundaries | Candidate on this branch; not merged | Not accepted; R08 live evidence still pending-live | [R09 candidate](#r09-candidate-evidence) |
-| R10 | Read-only research workbench | Candidate on this branch; not merged | Not accepted; no automated browser E2E in CI | [R10 candidate](#r10-candidate-evidence) |
-| R11 | Browser approval, execution, cancellation, restore | Candidate on this branch; not merged | Not accepted; start/reconnect/restore not delivered | [R11 candidate](#r11-candidate-evidence) |
-| R12 | AI proposals, citations, researcher decisions | Candidate on this branch; not merged | Not accepted; browser evidence-import form not delivered | [R12 candidate](#r12-candidate-evidence) |
-| R13 | Real evaluation, comparison, conclusions | Candidate on this branch; not merged | Not accepted; no editable report renderer | [R13 candidate](#r13-candidate-evidence) |
-| R14 | Minimal extension mechanism and permission boundary | Candidate on this branch; not merged | Not accepted; no CLI, BlockRegistry not merged | [R14 candidate](#r14-candidate-evidence) |
-| R15 | Installation, startup, backup, and recovery | Candidate on this branch; not merged | Not accepted; no replication, encryption, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
+| R15 | Installation, startup, backup, and recovery | Candidate on `r15-installation-recovery`, rebased onto merged R14 (`bf8a45a`); open PR, not merged | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
 | R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
 
 ## R10 candidate evidence
@@ -925,7 +918,7 @@ authorized sequentially and does not close that gate.
 | --- | --- | --- |
 | Install | Wheel carries the built workbench bundle and a minimal research corpus; `researchos workspace demo` builds a working workspace from packaged data in one command, with no key, no GPU, no Node and no training extras | [`wheel_smoke.py`](../../scripts/wheel_smoke.py), `src/llm_research_os/recovery/demo.py` |
 | Initialize | `app init` plus `workspace doctor`, `workspace migrate` | [`r15-installation-and-recovery.md`](../../guides/r15-installation-and-recovery.md) |
-| Startup | `web serve` reports a taken port as a closed `port-unavailable` code instead of a traceback; a missing bundle is a startup failure | `src/llm_research_os/web/serve.py` |
+| Startup | `web serve` reports a taken port as a closed `listener-unavailable` code and exits `2` instead of raising a traceback — **already delivered by merged R14**, so R15 proposes no change here; a missing bundle is a startup failure | `src/llm_research_os/web/serve.py` (merged) |
 | Backup | Verified high-water prefix plus referenced immutable objects, online-backup snapshot, closed codes | [`backup-restore-v0alpha1.md`](../../protocols/backup-restore-v0alpha1.md) |
 | Restore | Verified before any write, assembled in a `.partial` directory and renamed, no relaunch, non-terminal Runs reported `unknown` | same |
 | Diagnostics | Redacted report: counts, booleans and caller-supplied identifiers only; no host path or credential | `src/llm_research_os/recovery/doctor.py` |

@@ -312,10 +312,14 @@ def test_serve_refuses_a_taken_port_with_a_closed_code(tmp_path: Path) -> None:
 
         result = _cli("web", "serve", "--root", str(workspace.root), "--port", str(port))
 
+    # The closed code and the no-traceback guarantee come from merged R14, which
+    # already guards make_server. This test pins that contract as consumed here;
+    # R15 deliberately does not change the code, and the port is not named.
     assert result.returncode == 2
-    assert result.stderr.strip() == (
-        f'{{"code":"port-unavailable","message":"the local API port {port} is already in use"}}'
-    )
+    assert json.loads(result.stderr.strip()) == {
+        "code": "listener-unavailable",
+        "message": "the local listener could not start",
+    }
     assert "Traceback" not in result.stderr
 
 

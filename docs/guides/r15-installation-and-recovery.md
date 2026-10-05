@@ -104,8 +104,8 @@ researchos web serve --root ./workspace --port 8787
 
 Loopback only. The bootstrap secret is printed once and is spent on first use.
 If the port is taken, the server exits `2` with
-`{"code":"port-unavailable", ...}` naming the port instead of raising a
-traceback. `workspace doctor` and `researchos.web.serve.port_is_free` can check
+`{"code":"listener-unavailable", ...}` instead of raising a traceback. This is
+merged R14 behaviour and is unchanged here. `workspace doctor` and `researchos.web.serve.port_is_free` can check
 first.
 
 A missing asset bundle is a startup failure, not an empty project; the

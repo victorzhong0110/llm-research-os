@@ -219,8 +219,9 @@ authorized release.
 
 - The local API server raised an unhandled `OSError` when its port was already
   bound, so an operator with a port conflict got a traceback instead of a cause.
-  It now exits `2` with `{"code":"port-unavailable", ...}` naming the port, which
-  is one of the R15 clean-install acceptance cases.
+  It now exits `2` with `{"code":"listener-unavailable", ...}`, which is one of
+  the R15 clean-install acceptance cases. **Delivered by merged R14**, not by
+  this branch.
 
 - A backup snapshot was not self-contained. `EventStore` enables WAL on every
   open, so reading the snapshot left committed events in an `-wal` sidecar that

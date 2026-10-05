@@ -487,6 +487,67 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   database. Maintainer pushes the branches or
   supplies a token so the two open PRs exist.
 
+### COMM-0015 — R15 and R16 rebased onto merged R10–R14; the stacking deviation no longer applies
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0014.
+- From: Assigned implementer.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0014, and the merge of #132–#136.
+- State: Open; awaiting review of the rebased candidates.
+- Message / decision: R10, R11, R12, R13 and R14 were merged into `main` while R15
+  and R16 were being written (`bf8a45a`, with `b3a351c` through `bf8a45a` as the
+  integration commits). The candidate stack those two packages were built on was
+  deleted, and merged R14 is **not** the candidate R14 — the review repairs landed
+  in between. R15 and R16 have been rebased onto merged `main` rather than
+  submitted against a branch that no longer exists.
+
+  Three consequences are worth stating plainly, because each is a case where the
+  merge invalidated something I had already written:
+
+  **The port-conflict fix was already delivered.** R15 fixed
+  `web serve` raising an unhandled `OSError` on a taken port. Merged R14 already
+  guards `make_server` and returns `listener-unavailable`. The R15 change is
+  **dropped**, and the matrix, guide and changelog now credit merged R14 instead.
+  The R15 acceptance case is met by the merged implementation, not by this branch.
+
+  **My change to `web/serve.py` would have regressed R14.** It named the port and
+  used the code `port-unavailable`, where the merged code says
+  `listener-unavailable` and does not. The merged behaviour is accepted, so
+  changing it here would be overriding a review decision for a cosmetic gain. The
+  port-naming improvement is left as a review suggestion, not taken.
+
+  **A wholesale file copy would have silently reverted reviewed work.** Files
+  R15 and R16 both touch — `cli/contracts.py`, `cli/parser.py`,
+  `application/workspace.py`, `projections/sqlite.py`, the CI workflow, and the
+  documentation tables — were all changed by the merged packages. Copying R15's
+  version of `cli/contracts.py` over main's removed the evaluation and extension
+  schema registrations added by merged R13 and R14. The rebase was redone as a
+  cherry-pick so those conflicts surfaced. The merged rows for R09–R14 in the
+  acceptance matrix are authoritative; the stale pre-merge "candidate on this
+  branch" rows are deleted rather than left to contradict them.
+
+  The **stacking deviation recorded in COMM-0006 no longer applies to R15 and
+  R16**: with R09–R14 merged, R15 is proposed against `main` and R16 against
+  `r15-installation-recovery`, which is the sequential shape the maintainer has
+  been using since #131. Both remain deliberately unmerged.
+
+  The COMM-0014 decisions are unchanged: R15 closes as a scoped candidate with
+  replication, encryption, scheduling, retention and downgrade named as
+  limitations; the R10–R14 anchors get a routing table rather than retroactive
+  edits; and a fresh workspace still does not materialize its EventStore at init.
+
+  R16's trials remain unperformed and Checkpoint D remains closed.
+- Branch / head / base / PR: `r15-installation-recovery` against `main`;
+  `r16-independent-trials` against `r15-installation-recovery`. Both open, both
+  deliberately unmerged.
+- Evidence / checks: [R15 candidate evidence](evidence/m3/acceptance-matrix.md#r15-candidate-evidence),
+  [R16 candidate evidence](evidence/m3/acceptance-matrix.md#r16-candidate-evidence).
+- Gaps / required inputs: No trial has been performed. TRIAL-01/02 need two
+  people who did not build the system; TRIAL-03 needs the authorized remote
+  journey that COMM-0004 still records as missing.
+- Next action / owner: Maintainer reviews the rebased R15, then R16. Whether
+  `listener-unavailable` should name the port is a maintainer call.
+
 ## Message template
 
 Copy this template into the history and replace every placeholder:
