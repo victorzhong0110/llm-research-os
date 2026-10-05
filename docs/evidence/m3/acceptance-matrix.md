@@ -1017,24 +1017,25 @@ Executed on the R15 branch from a clean `uv sync` (Python 3.12.14, Linux
 container), marker selection `not oci_live and not slow and not ray_native_live
 and not native_remote_live`:
 
-- R15 suites: 98 tests collected across `tests/test_recovery_backup.py`,
-  `tests/test_recovery_doctor.py` and `tests/test_recovery_contracts.py`; 96
-  passed and 2 skipped locally because this container runs as root and a
-  privileged reader ignores mode bits. Those two run in ordinary CI.
-- Whole selected suite: **2,227 passed, 4 failed, 2 skipped, 30 deselected.** All four failures
+- Recovery suites: 120 tests collected across `tests/test_recovery_backup.py`,
+  `tests/test_recovery_doctor.py`, `tests/test_recovery_contracts.py` and
+  `tests/test_recovery_trials.py`; 118 passed and 2 skipped locally because this
+  container runs as root and a privileged reader ignores mode bits. Those two run
+  in ordinary CI.
+- Whole selected suite: **2,324 passed, 4 failed, 2 skipped, 30 deselected.** All four failures
   are pre-existing and were verified as such, not assumed:
   - `tests/test_native_ssh_live.py` (4) fail identically on an untouched
-    worktree at `r14-extension-boundary`; the fake-SSH probe reports
+    worktree at merged `main` (`bf8a45a`); the fake-SSH probe reports
     `python-too-old` in this container.
   - The two `tests/test_evidence.py` wall-clock bound tests that also failed in
     an earlier run of this branch pass in isolation and in combination with the
     R15 suites; they assert `elapsed < MAX_PDF_EXTRACT_SECONDS + 3.0` and exceed
     it only under full-suite load on a shared container. They are not counted as
     failures in this run.
-- Coverage: **85.211842%** (29,243/34,318 statement and branch counts), above the
+- Coverage: **85.208269%** (30,214/35,459 statement and branch counts), above the
   unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
   integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
-- `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 258
+- `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 267
   files, `researchos schema --check-all` current, `scripts/event_catalog.py
   --check` and `scripts/project_status.py --check` pass, and
   `node conformance/digest/verify.mjs` passed 13 RFC 8785 vectors.
