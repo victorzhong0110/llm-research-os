@@ -132,11 +132,21 @@ def run_backup(args: argparse.Namespace) -> int:
             print(dumps_json(verified.model_dump(mode="json", by_alias=True, exclude_none=True)))
             return 0
         if args.backup_command == "restore":
+            # A RecoveryError, not SystemExit: every other failure in this
+            # command renders as a closed code and a message on stderr with exit
+            # 2, and an argument mistake is no different. A bare SystemExit would
+            # print a sentence and exit 1, which no caller can branch on.
             destination = args.root or args.out
             if args.root is not None and args.out is not None and args.root != args.out:
-                raise SystemExit("backup restore: --root and --out name the same directory")
+                raise RecoveryError(
+                    "backup-restore-ambiguous",
+                    "--root and --out name different directories; pass one of them",
+                )
             if destination is None:
-                raise SystemExit("backup restore: one of --out or --root is required")
+                raise RecoveryError(
+                    "backup-restore-destination-missing",
+                    "a destination directory is required; pass --out or --root",
+                )
             restored = restore_backup(args.image, destination, project_id=args.project)
             print(dumps_json(restored.model_dump(mode="json", by_alias=True, exclude_none=True)))
             return 0

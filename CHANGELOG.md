@@ -272,6 +272,24 @@ authorized release.
 
 ### Fixed
 
+- **`workspace doctor` could not tell a fresh workspace from one that had lost
+  its data.** `init` deliberately does not create a control store, so "no store"
+  is a normal state — and deleting a store left exactly the same evidence, so a
+  gutted workspace was reported as merely unpopulated. A lifecycle marker,
+  `.control-store.json`, is now written beside the control database when a store
+  is created, and `restore` writes it too. A second signal covers the case the
+  marker cannot: `init` always creates the control directory, so its absence is
+  itself proof of removal. All three states are now distinct —
+  `not-yet-populated` (skipped) versus `removed` (failed) — and the marker holds
+  no path, no project id, and nothing needing redaction.
+
+- `researchos backup restore` rejected a missing or duplicated destination with
+  a bare `SystemExit`, which printed a sentence and exited 1, where every other
+  failure in the command renders a closed code and message on stderr with exit
+  2. It now raises `backup-restore-ambiguous` and
+  `backup-restore-destination-missing` through the same path.
+
+
 - **A correctly initialized workspace reported itself unhealthy.**
   `researchos workspace doctor` marked `control.store`, `control.migration` and
   `objects.referenced` as `failed` with `reason: absent` whenever the control

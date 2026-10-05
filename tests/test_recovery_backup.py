@@ -29,6 +29,10 @@ from llm_research_os.recovery import backup as backup_module
 from llm_research_os.recovery.models import EVENTS_SNAPSHOT_NAME, MANIFEST_NAME
 from llm_research_os.spec.io import load_spec
 from llm_research_os.storage import EventStore
+from llm_research_os.storage.store import (
+    control_store_marker_path,
+    control_store_was_removed,
+)
 
 ROOT = Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples"
@@ -333,6 +337,30 @@ def test_restore_reproduces_event_digests_and_research_ledger(tmp_path: Path) ->
     assert restored.project_id == PROJECT
     assert restored.worker_root.is_dir()
     assert restored.worker_root != restored.control_db.parent
+
+
+def test_restore_marks_the_control_store_as_present(tmp_path: Path) -> None:
+    """A restored workspace must be able to tell its store was removed later.
+
+    The restore path does not go through EventStore's create branch, so without
+    this the marker would be missing and a restored workspace whose store was
+    later deleted would read as never-populated -- the precise ambiguity the
+    marker exists to remove.
+    """
+    workspace = _workspace(tmp_path)
+    _seed_checkpoint(workspace)
+    image = tmp_path / "image"
+    create_backup(workspace, image, now=NOW)
+
+    target = tmp_path / "restored"
+    restore_backup(image, target)
+
+    restored = load_workspace(target)
+    assert control_store_marker_path(restored.control_db).exists()
+    assert control_store_was_removed(restored.control_db) is False
+
+    restored.control_db.unlink()
+    assert control_store_was_removed(restored.control_db) is True
 
 
 def test_restore_copies_referenced_objects_into_the_workspace_cas(tmp_path: Path) -> None:

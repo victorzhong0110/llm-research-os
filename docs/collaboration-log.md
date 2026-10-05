@@ -64,6 +64,7 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0015 | Planning/review assistant and maintainer | Open; awaiting review | Review R15 and R16 rebased onto merged R10–R14. The port fix is dropped as already delivered, the merged error codes are kept over this branch's, and the COMM-0006 stacking deviation no longer applies to these two packages. |
 | COMM-0016 | Planning/review assistant and maintainer | Open; awaiting review | Review the adopted `ProblemReport.type` code rule, the four additional path-leak fixes, the participant-confirmation gate, and the root cause of the four SSH test failures. Not pushed; no trial performed. |
 | COMM-0017 | Planning/review assistant and maintainer | Open; awaiting review | Review four main-path defects found by an implementer self-run of T1–T5, and the corrected closure record. The self-run is explicitly not a trial. TRIAL-01/02 human confirmation and the COMM-0004 GPU access both remain pending the maintainer. |
+| COMM-0018 | Planning/review assistant and maintainer | Open; awaiting review | Review the control-store lifecycle marker that lets the doctor distinguish a fresh workspace from a gutted one, and the CLI test suite that closed the weakest coverage in the project. TRIAL-01/02 confirmation and COMM-0004 access remain pending the maintainer. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -725,6 +726,67 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - Next action / owner: Maintainer performs the TRIAL-01/02 invitations and
   supplies the TRIAL-03 access. The planning/review assistant reconciles the
   closure record against real outcomes once trials exist.
+
+### COMM-0018 — The doctor now distinguishes a fresh workspace from a gutted one; CLI coverage closed
+
+- Date: 2026-10-06 (Asia/Taipei), after COMM-0017.
+- From: Assigned implementer.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0017, which named this as a limitation.
+- State: Open; awaiting review. Checkpoint D remains closed.
+- Message / decision: COMM-0017 recorded a weakness rather than hiding it, and
+  this closes it.
+
+  **A control store that existed and is now gone is data loss, and the report now
+  says so.** The ambiguity was real: `init_workspace` does not create a control
+  store, so "no store" is a normal state, and deleting a store produced identical
+  evidence. Two signals, because either alone has a blind spot. A lifecycle
+  marker, `.control-store.json`, is written beside the control database the first
+  time a store is created, which catches a deleted database; and
+  `init_workspace` always creates the control directory, so a missing directory
+  catches a wholesale `rm -rf control`, which takes the marker with it.
+  `restore_backup` writes the marker too, because the restore path bypasses
+  `EventStore`'s create branch and would otherwise leave a restored workspace
+  unable to tell that its store was later deleted — verified by deleting the
+  store out of a restored workspace and confirming the report.
+
+  The marker is a local lifecycle artifact on the same footing as
+  `workspace.json`, not a published contract: a kind, a version and a timestamp,
+  with no path and no project id, so there is nothing in it to redact. It is
+  written best-effort on purpose. A store that cannot also write a sibling marker
+  has already failed for a reason the caller will see, and refusing to open it
+  would turn a diagnostic aid into a hard dependency.
+
+  **An argument mistake is now a coded error rather than a bare exit.** Writing
+  the CLI tests surfaced a defect in my own earlier change: a missing or
+  duplicated `backup restore` destination raised `SystemExit` with a string, so
+  the CLI printed a sentence and exited 1 where every other failure in the same
+  command prints a closed code on stderr and exits 2. It now raises
+  `backup-restore-ambiguous` and `backup-restore-destination-missing` through the
+  existing path.
+
+  **The CLI layer was the least covered code I had added.** `trial_commands` was
+  at 35.5%, `recovery_commands` at 39.0%, and `application_commands` at 52.3% —
+  the whole dispatch layer, because the other suites test the library functions
+  underneath and never the commands. `tests/test_recovery_cli.py` now drives
+  `main(argv)` directly: the same parser, the same handlers, the same exit codes,
+  and measurable. Those three are now 93.4%, 90.0% and 81.8%. In-process rather
+  than `subprocess` is deliberate — a child process reports coverage to a
+  different file, so a suite that spawns the CLI cannot be measured at all. The
+  two things it cannot show, a bad interpreter and an uncaught crash's exit
+  status, are covered by the installed-wheel smoke, which does run the real
+  entrypoint.
+- Branch / head / base / PR: `r16-independent-trials`; PR #140, deliberately
+  unmerged. `main` untouched.
+- Evidence / checks: [R16 candidate evidence](evidence/m3/acceptance-matrix.md#r16-candidate-evidence).
+- Gaps / required inputs: **待本人确认 — TRIAL-01 and TRIAL-02** need two people
+  who did not build the system, invited by the maintainer, and each record needs
+  that person's own confirmation. **待本人确认 — COMM-0004**: TRIAL-03 needs
+  two-host connection configuration and selected-GPU access. None of it is
+  fabricable, and none of it was simulated. TRIAL-04 stays open until the trials
+  produce findings. Checkpoint D cannot be claimed complete.
+- Next action / owner: Maintainer reviews the marker and the CLI suite;
+  invitations and access remain the only unblocking inputs.
 
 ## Message template
 

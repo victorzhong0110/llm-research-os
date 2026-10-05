@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -26,6 +27,10 @@ from llm_research_os.recovery import doctor as doctor_module
 from llm_research_os.secrets.redaction import REDACTED
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.schema import SCHEMA_VERSION
+from llm_research_os.storage.store import (
+    CONTROL_STORE_MARKER_VERSION,
+    control_store_marker_path,
+)
 from llm_research_os.web import serve as serve_module
 
 ROOT = Path(__file__).parents[1]
@@ -86,6 +91,13 @@ def _cli(*arguments: str) -> subprocess.CompletedProcess[str]:
         text=True,
         timeout=180,
     )
+
+
+def _control_status(workspace: Any) -> str:
+    """The reason the control.store check reports, or '' if it is present."""
+
+    check = _by_id(diagnose(workspace.root, now=NOW))["control.store"]
+    return str(check.detail.get("reason", ""))
 
 
 def _by_id(report: Any) -> dict[str, Any]:
@@ -417,13 +429,12 @@ def test_fresh_workspace_reports_its_absent_control_store_as_skipped(
         assert check.detail["expected"] is True
 
 
-def test_the_skipped_state_still_names_the_lost_store_case(tmp_path: Path) -> None:
-    """The doctor cannot tell "never had one" from "had one and it went away".
+def test_a_removed_control_store_is_reported_as_a_failure(tmp_path: Path) -> None:
+    """Deleting a control store is data loss, and the report now says so.
 
-    Nothing survives deleting the control store, so the two are indistinguishable
-    from the workspace alone. The report therefore states the question rather
-    than guessing: an operator who knows they had a store reads the note and
-    knows what happened, and an operator on a fresh workspace is not alarmed.
+    The lifecycle marker survives when the database does not, so this is
+    distinguishable from a fresh workspace rather than reported as merely
+    unpopulated. The earlier version had to guess, and guessed 'fine'.
     """
     workspace = _workspace(tmp_path)
     _materialize(workspace)
@@ -431,9 +442,89 @@ def test_the_skipped_state_still_names_the_lost_store_case(tmp_path: Path) -> No
 
     report = diagnose(workspace.root, now=NOW)
 
-    assert report.healthy is True
-    note = _by_id(report)["control.store"].detail["note"]
-    assert "removed" in note
+    assert report.healthy is False
+    for check_id in ("control.store", "control.migration", "objects.referenced"):
+        check = _by_id(report)[check_id]
+        assert check.status == "failed"
+        assert check.detail["reason"] == "removed"
+        assert check.detail["expected"] is False
+    assert "backup" in _by_id(report)["control.store"].detail["note"]
+
+
+def test_removing_the_whole_control_directory_is_also_detected(tmp_path: Path) -> None:
+    """The second signal: `init_workspace` always creates the control directory.
+
+    A wholesale `rm -rf control` takes the marker with it, so the directory's
+    absence is the only evidence left -- and it is reliable, because a workspace
+    this tool created always has one.
+    """
+    workspace = _workspace(tmp_path)
+    _materialize(workspace)
+    shutil.rmtree(workspace.control_db.parent)
+
+    report = diagnose(workspace.root, now=NOW)
+
+    assert report.healthy is False
+    assert _by_id(report)["control.store"].detail["reason"] == "removed"
+
+
+def test_the_marker_is_written_when_a_store_is_created(tmp_path: Path) -> None:
+    """The signal only works if something writes it, and writes it once."""
+    workspace = _workspace(tmp_path)
+    marker = control_store_marker_path(workspace.control_db)
+    assert not marker.exists()
+
+    _materialize(workspace)
+    assert marker.exists()
+
+    payload = json.loads(marker.read_text())
+    assert payload["kind"] == "ControlStoreLifecycle"
+    assert payload["markerVersion"] == CONTROL_STORE_MARKER_VERSION
+
+    # A second open must not rewrite it: the marker records first creation, and
+    # a rewritten timestamp would misreport when the store first came about.
+    before = marker.read_text()
+    with EventStore(workspace.control_db, require_existing=True):
+        pass
+    assert marker.read_text() == before
+
+
+def test_the_marker_carries_nothing_that_needs_redacting(tmp_path: Path) -> None:
+    """It sits inside a shareable workspace, so it must hold nothing sensitive."""
+    workspace = _workspace(tmp_path)
+    _materialize(workspace)
+
+    rendered = control_store_marker_path(workspace.control_db).read_text()
+
+    assert str(workspace.root) not in rendered
+    assert str(tmp_path) not in rendered
+    assert workspace.project_id not in rendered
+
+
+def test_the_doctor_distinguishes_the_three_states(tmp_path: Path) -> None:
+    """The point of the marker, asserted as a single comparison.
+
+    Written as three workspaces in one test because the interesting claim is the
+    difference between them, not any one of them.
+    """
+    states: dict[str, tuple[bool, str]] = {}
+    for name, damage in (
+        ("fresh", None),
+        ("db-removed", "db"),
+        ("dir-removed", "dir"),
+    ):
+        ws = _workspace(tmp_path / name)
+        if damage is not None:
+            _materialize(ws)
+            if damage == "db":
+                ws.control_db.unlink()
+            else:
+                shutil.rmtree(ws.control_db.parent)
+        states[name] = (diagnose(ws.root, now=NOW).healthy, _control_status(ws))
+
+    assert states["fresh"] == (True, "not-yet-populated")
+    assert states["db-removed"] == (False, "removed")
+    assert states["dir-removed"] == (False, "removed")
 
 
 def test_migrate_refuses_a_workspace_without_a_control_store(tmp_path: Path) -> None:

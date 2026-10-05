@@ -1022,7 +1022,7 @@ and not native_remote_live`:
   `tests/test_recovery_trials.py` and `tests/test_problem_report_type_vocabulary.py`;
   138 passed and 2 skipped locally because this container runs as root and a
   privileged reader ignores mode bits. Those two run in ordinary CI.
-- Whole selected suite: **2,349 passed, 0 failed, 2 skipped, 30 deselected.**
+- Whole selected suite: **2,385 passed, 0 failed, 2 skipped, 30 deselected.**
   This suite previously reported 4 failures in `tests/test_native_ssh_live.py`
   and recorded them as pre-existing environment failures, verified as such on an
   untouched worktree at `main`. That explanation was correct but the failures
@@ -1038,7 +1038,7 @@ and not native_remote_live`:
   they had passed all along.
 - The two skipped `test_recovery_*` tests are skipped only because this container
   runs as root and a privileged reader ignores mode bits. They run in ordinary CI.
-- Coverage: **85.376574%** (30,301/35,491 statement and branch counts), above the
+- Coverage: **85.686539%** (30,441/35,526 statement and branch counts), above the
   unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
   integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
 - `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 267
@@ -1234,14 +1234,60 @@ packaged inside the wheel beside the rest of the offline corpus, and
 hint, so the journey is runnable by copy-paste with no checkout. That makes T3
 executable; it does not make it observed.
 
-Two limitations of the self-run, stated rather than smoothed over:
+### The CLI layer was the weakest code in the package
 
-- The doctor still cannot distinguish "this workspace never had a control store"
-  from "this workspace had one and it was removed". Nothing survives deleting the
-  store — there is no marker, and the receipt store is not created on this path.
-  The report therefore names the question in the `skipped` note rather than
-  guessing. The trade is deliberate: a fresh workspace is no longer alarmed, and
-  an operator who knows they had a store is told what to look at.
+The recovery suites tested the library functions underneath the new commands and
+never the commands, so the dispatch layer went in almost uncovered. It was the
+three lowest-covered modules in the project, and all three were added by this
+work:
+
+| Module | Before | After |
+| --- | --- | --- |
+| `cli/trial_commands.py` | 35.53% | **93.42%** |
+| `cli/recovery_commands.py` | 39.00% | **90.00%** |
+| `cli/application_commands.py` | 52.27% | **81.82%** |
+
+`tests/test_recovery_cli.py` drives `main(argv)` directly — the same
+`build_parser`, the same handlers, the same exit codes — rather than spawning
+`python -m llm_research_os`. In-process is deliberate: a child process reports
+coverage to a different file, so a suite that spawns the CLI is not measurable
+at all, and the original version of this file passed 31 tests while moving
+`trial_commands` from 35% to **0%** as far as the report was concerned.
+
+What an in-process harness cannot show: a broken interpreter, a missing console
+script, or an uncaught crash's exit status. Those stay with the installed-wheel
+smoke, which does run the real entrypoint.
+
+### The doctor can now tell a fresh workspace from a gutted one
+
+The self-run left one honest weakness, and it was closed rather than documented
+as a limitation. The problem: `init_workspace` does not create a control store,
+so "no store" is a normal state — and deleting a store leaves exactly the same
+evidence. A workspace that lost its data was reported as merely unpopulated.
+
+The fix is a lifecycle marker, `.control-store.json`, written beside the control
+database the first time a store is created, plus a second signal covering the
+case the marker cannot: `init_workspace` **always** creates the control
+directory, so its absence is itself proof of removal. `restore` writes the marker
+too, because the restore path bypasses `EventStore`'s create branch and would
+otherwise leave a restored workspace unable to tell that its store was deleted
+later.
+
+| Workspace state | `control.store` | `healthy` |
+| --- | --- | --- |
+| Initialized, never appended | `skipped` / `not-yet-populated` | `true` |
+| Database deleted, marker survives | `failed` / `removed` | `false` |
+| Whole control directory removed | `failed` / `removed` | `false` |
+| Restored, then database deleted | `failed` / `removed` | `false` |
+
+The marker holds a kind, a version and a timestamp — no path, no project id,
+nothing to redact. It is a local lifecycle artifact rather than a published
+contract, on the same footing as `workspace.json`, and it is written
+best-effort: a store that cannot also write a sibling marker has already failed
+for a reason the caller will see, and refusing to open it would turn a
+diagnostic aid into a hard dependency.
+
+One limitation of the self-run remains, stated rather than smoothed over:
 - The self-run confirms the product works when the commands are known. Whether
   the commands are *discoverable* is exactly what T1–T5 measure, and defects 1,
   3 and 4 were all discoverability failures that only a person following the task

@@ -195,6 +195,74 @@ def _connect_sqlite(
         ) from exc
 
 
+#: Sibling of the control database, written the first time a store is created.
+#:
+#: Without it, a workspace whose control store was deleted is indistinguishable
+#: from a workspace that never had one: the R02 contract leaves a fresh workspace
+#: without a store, so "no store" is a normal state, and deleting one produces
+#: exactly the same evidence. A workspace whose control store is destroyed is
+#: data loss and must not be reported as merely unpopulated.
+CONTROL_STORE_MARKER_NAME = ".control-store.json"
+
+#: Bumped when the marker's shape changes. It is a local lifecycle artifact, not
+#: a published contract: no path, no project id, and nothing a reader would need
+#: redaction for.
+CONTROL_STORE_MARKER_VERSION = 1
+
+
+def control_store_marker_path(database: str | Path) -> Path:
+    """Return the lifecycle marker that sits beside a control database."""
+
+    return Path(database).absolute().parent / CONTROL_STORE_MARKER_NAME
+
+
+def write_control_store_marker(database: str | Path, *, now: datetime) -> None:
+    """Record that a control store exists here, if it is not recorded already.
+
+    Best effort by design. A store that cannot also write a sibling marker has
+    already failed for a reason the caller will see; refusing to open it because
+    the marker could not be written would turn a diagnostic aid into a hard
+    dependency.
+    """
+
+    path = control_store_marker_path(database)
+    if path.exists():
+        return
+    payload = {
+        "apiVersion": "researchos.dev/recovery/v0alpha1",
+        "kind": "ControlStoreLifecycle",
+        "markerVersion": CONTROL_STORE_MARKER_VERSION,
+        "createdAt": now.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+    }
+    try:
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        return
+
+
+def control_store_was_removed(database: str | Path) -> bool:
+    """Report whether a control store existed here and is now gone.
+
+    Two signals, because either alone has a blind spot:
+
+    - the marker surviving means the database itself was removed;
+    - the control *directory* being absent means it was removed wholesale, and
+      ``init_workspace`` always creates that directory, so it cannot be missing
+      from a workspace this tool created.
+    """
+
+    database_path = Path(database).absolute()
+    if database_path.exists():
+        return False
+    if control_store_marker_path(database_path).exists():
+        return True
+    return not database_path.parent.is_dir()
+
+
 class EventStore:
     """A single-connection local event store.
 
@@ -240,6 +308,7 @@ class EventStore:
             self._connection.row_factory = sqlite3.Row
             if create and is_new:
                 os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
+                write_control_store_marker(self._path, now=self._clock())
             if require_existing:
                 self._configure_connection_guards(timeout_seconds)
                 self._initialize_or_verify_schema(allow_create=False)
