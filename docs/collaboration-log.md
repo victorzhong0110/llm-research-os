@@ -63,6 +63,7 @@ passed). Documentation changes do not advance the execution baseline.
 | COMM-0014 | Planning/review assistant and maintainer | Open; awaiting review | Review the machine-checkable trial kit and the three decisions recorded under maintainer delegation. The trials themselves are unperformed and TRIAL-03 still needs the access described in COMM-0004. |
 | COMM-0015 | Planning/review assistant and maintainer | Open; awaiting review | Review R15 and R16 rebased onto merged R10–R14. The port fix is dropped as already delivered, the merged error codes are kept over this branch's, and the COMM-0006 stacking deviation no longer applies to these two packages. |
 | COMM-0016 | Planning/review assistant and maintainer | Open; awaiting review | Review the adopted `ProblemReport.type` code rule, the four additional path-leak fixes, the participant-confirmation gate, and the root cause of the four SSH test failures. Not pushed; no trial performed. |
+| COMM-0017 | Planning/review assistant and maintainer | Open; awaiting review | Review four main-path defects found by an implementer self-run of T1–T5, and the corrected closure record. The self-run is explicitly not a trial. TRIAL-01/02 human confirmation and the COMM-0004 GPU access both remain pending the maintainer. |
 | COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
 | COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
 
@@ -652,6 +653,78 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   cannot be claimed complete.
 - Next action / owner: Maintainer reviews the three changes. Invitations for
   TRIAL-01/02 and the access for TRIAL-03 remain the only unblocking inputs.
+
+### COMM-0017 — Implementer self-run of T1–T5; four main-path defects fixed; closure record corrected
+
+- Date: 2026-10-05 (Asia/Taipei), after COMM-0016.
+- From: Assigned implementer.
+- To: Planning/review assistant and maintainer.
+- Reply to: COMM-0016, and the R16 "fix main-path defects" deliverable.
+- State: Open; awaiting review. Checkpoint D remains closed.
+- Message / decision: The plan's defect deliverable needs defects, and the only
+  defects that count come from TRIAL-01/02, which have not run. So I ran T1–T5
+  myself from a clean wheel outside any checkout, to find what a person who did
+  not build this would hit first.
+
+  **What this is not.** Not TRIAL-01, not TRIAL-02, no `TrialRecord`, no
+  participant, and nothing that can be self-confirmed under the rule added in
+  COMM-0016. It contributes implementation findings only. A rehearsal by the
+  implementer is evidence about the product and never about its usability for
+  someone else, and the acceptance language is unchanged.
+
+  **Four defects, all fixed.** A freshly initialized workspace reported
+  `healthy: false` with three `failed` checks, because "no control store yet" is
+  the *expected* R02 state and was being reported as a fault — and T2 tells a
+  user to init a workspace and read exactly that output. `app init` required four
+  layout arguments with no defaults and no help text, and T1 forbids cloning the
+  repository, so `--help` was the only documentation a participant would have.
+  `backup restore` took `--root` where `backup create` took `--out`, so the flag
+  meant source on one subcommand and destination on the other; the self-run
+  copied the wrong one, which is how a participant would have found it. And
+  `objects.referenced` reported `verified: false` on a shallow run that had
+  re-hashed nothing, which reads as "these objects are not fine" on an `ok`
+  check. Detail in the R16 evidence.
+
+  **T3 was not executable and now is.** "Import the example evidence" pointed at
+  a file that lived only in the repository T1 forbids cloning. The evidence
+  request and its Markdown source are now packaged inside the wheel, and
+  `workspace demo` prints the exact import command as its first next hint. That
+  makes the journey runnable by copy-paste. It does not make it observed.
+
+  **One limitation I am not going to smooth over.** The doctor cannot distinguish
+  a workspace that never had a control store from one that had one removed:
+  nothing survives deleting the store, and the receipt store is not created on
+  this path. Rather than invent a signal, the `skipped` check names the question
+  in its note. The trade is deliberate — a fresh workspace is no longer alarmed,
+  and an operator who knows they had a store is told what to look at — but a
+  removed store will read as `skipped`, not `failed`.
+
+  **The closure record was wrong and is corrected.** Its R09–R14 rows still said
+  "candidate, unmerged" for packages that were merged while I was working, and
+  one row claimed `BlockRegistry` remained unmerged in R14 when the integration
+  commit had merged it. Those rows now carry the real merge SHAs and the
+  acceptance status the matrix records. A closure record that misstates what
+  merged is worse than no record.
+
+  Added a triage section separating what is blocked on code, on people, and on
+  access. Everything still open is blocked on a person, an authorization, or
+  hardware. Release naming, versioning, tagging and publication remain maintainer
+  decisions and were not pre-taken; no new paid activity was required or
+  attempted; nothing was deployed.
+- Branch / head / base / PR: `r16-independent-trials` at `a2f00ee` plus this
+  work; PR #140, deliberately unmerged. Pushed to the branch only. `main` and
+  `r15-installation-recovery` untouched.
+- Evidence / checks: [R16 candidate evidence](evidence/m3/acceptance-matrix.md#r16-candidate-evidence),
+  [closure record and triage](evidence/m3/m3-closure-record.md).
+- Gaps / required inputs: **待本人确认 — TRIAL-01 and TRIAL-02** need two people
+  who did not build the system, invited by the maintainer, and each record now
+  needs that person's own confirmation. **待本人确认 — COMM-0004**: TRIAL-03
+  still needs two-host connection configuration and selected-GPU access. Neither
+  can be manufactured locally. TRIAL-04 stays open until the trials produce
+  findings. Checkpoint D cannot be claimed complete.
+- Next action / owner: Maintainer performs the TRIAL-01/02 invitations and
+  supplies the TRIAL-03 access. The planning/review assistant reconciles the
+  closure record against real outcomes once trials exist.
 
 ## Message template
 

@@ -21,12 +21,41 @@ def add_app_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParse
         help="shared workspace commands for CLI and Python callers",
     )
     commands = app.add_subparsers(dest="app_command", required=True)
-    init = commands.add_parser("init", help="bind a project workspace")
-    init.add_argument("--root", type=Path, required=True)
-    init.add_argument("--project", required=True)
-    init.add_argument("--control-db", type=Path, required=True)
-    init.add_argument("--cas-root", type=Path, required=True)
-    init.add_argument("--worker-root", type=Path, required=True)
+    init = commands.add_parser(
+        "init",
+        help="bind a project workspace",
+        description=(
+            "Bind a project workspace. The three layout arguments default to the "
+            "conventional arrangement this project uses (a control/ directory, a "
+            "cas/ directory, and a worker/ directory, all relative to --root), so "
+            "the common case is: researchos app init --root ./workspace "
+            "--project my-project"
+        ),
+    )
+    init.add_argument("--root", type=Path, required=True, help="workspace root")
+    init.add_argument(
+        "--project",
+        default="my-project",
+        help="project id recorded in workspace.json (default: %(default)s)",
+    )
+    init.add_argument(
+        "--control-db",
+        type=Path,
+        default=Path("control/events.sqlite"),
+        help="control-store path, relative to --root (default: %(default)s)",
+    )
+    init.add_argument(
+        "--cas-root",
+        type=Path,
+        default=Path("cas"),
+        help="content-addressed store path (default: %(default)s)",
+    )
+    init.add_argument(
+        "--worker-root",
+        type=Path,
+        default=Path("worker"),
+        help="worker root path (default: %(default)s)",
+    )
     execute = commands.add_parser("execute", help="execute or replay one application command")
     execute.add_argument("--root", type=Path, required=True)
     execute.add_argument("command_path", type=Path)

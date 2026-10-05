@@ -108,7 +108,10 @@ def test_healthy_workspace_reports_every_check_as_ok(tmp_path: Path) -> None:
         "referenced": 1,
         "missing": 0,
         "corrupt": 0,
-        "verified": True,
+        # `bytesVerified` rather than `verified`: the old key read as "these
+        # objects are fine" even on a shallow run that re-hashed nothing.
+        "bytesVerified": True,
+        "presenceChecked": True,
     }
     assert checks["web.assets"].detail["bundlePresent"] is True
     assert checks["workspace.roots"].detail["workerRootIsolated"] is True
@@ -169,7 +172,9 @@ def test_missing_referenced_object_is_reported_with_counts(tmp_path: Path) -> No
     assert report.healthy is False
     detail = _by_id(report)["objects.referenced"].detail
     assert detail["missing"] == 1
-    assert detail["verified"] is False
+    # Shallow run: presence was checked, bytes were not.
+    assert detail["bytesVerified"] is False
+    assert detail["presenceChecked"] is True
 
 
 def test_overlapping_worker_root_is_refused_at_init(tmp_path: Path) -> None:
@@ -376,25 +381,59 @@ def test_cli_migrate_uses_a_closed_code_for_a_missing_workspace(tmp_path: Path) 
 
 
 def test_absent_control_store_is_reported_by_the_doctor(tmp_path: Path) -> None:
-    """The R02 contract leaves the store absent until the first append."""
+    """The R02 contract leaves the store absent until the first append.
 
+    Covered together with the removed-store case in
+    `test_the_skipped_state_still_names_the_lost_store_case`; both are the same
+    observation as far as the workspace is concerned.
+    """
+
+    workspace = _workspace(tmp_path)
+
+    report = diagnose(workspace.root, now=NOW)
+
+    assert _by_id(report)["control.store"].status == "skipped"
+
+
+def test_fresh_workspace_reports_its_absent_control_store_as_skipped(
+    tmp_path: Path,
+) -> None:
+    """A workspace that never appended a fact is not unhealthy.
+
+    `init` deliberately does not create the control store, so the checks that
+    need it cannot run. Reporting that as `failed` made a correctly-initialized
+    workspace read as broken, which is the first thing the T2 task asks an
+    independent user to look at.
+    """
+    workspace = _workspace(tmp_path)
+
+    report = diagnose(workspace.root, now=NOW)
+
+    assert report.healthy is True
+    for check_id in ("control.store", "control.migration", "objects.referenced"):
+        check = _by_id(report)[check_id]
+        assert check.status == "skipped"
+        assert check.detail["reason"] == "not-yet-populated"
+        assert check.detail["expected"] is True
+
+
+def test_the_skipped_state_still_names_the_lost_store_case(tmp_path: Path) -> None:
+    """The doctor cannot tell "never had one" from "had one and it went away".
+
+    Nothing survives deleting the control store, so the two are indistinguishable
+    from the workspace alone. The report therefore states the question rather
+    than guessing: an operator who knows they had a store reads the note and
+    knows what happened, and an operator on a fresh workspace is not alarmed.
+    """
     workspace = _workspace(tmp_path)
     _materialize(workspace)
     workspace.control_db.unlink()
 
     report = diagnose(workspace.root, now=NOW)
 
-    assert report.healthy is False
-    assert _by_id(report)["control.store"].detail == {"reason": "absent"}
-
-
-def test_fresh_workspace_reports_its_absent_control_store(tmp_path: Path) -> None:
-    workspace = _workspace(tmp_path)
-
-    report = diagnose(workspace.root, now=NOW)
-
-    assert report.healthy is False
-    assert _by_id(report)["control.store"].detail == {"reason": "absent"}
+    assert report.healthy is True
+    note = _by_id(report)["control.store"].detail["note"]
+    assert "removed" in note
 
 
 def test_migrate_refuses_a_workspace_without_a_control_store(tmp_path: Path) -> None:
@@ -515,7 +554,8 @@ def test_diagnostics_carry_no_absolute_path_for_any_check(tmp_path: Path) -> Non
             "referenced",
             "missing",
             "corrupt",
-            "verified",
+            "bytesVerified",
+            "presenceChecked",
             "bundlePresent",
             "pythonSupported",
             "freeSpaceSufficient",

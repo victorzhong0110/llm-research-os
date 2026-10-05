@@ -1017,12 +1017,12 @@ Executed on the R15 branch from a clean `uv sync` (Python 3.12.14, Linux
 container), marker selection `not oci_live and not slow and not ray_native_live
 and not native_remote_live`:
 
-- Recovery suites: 120 tests collected across `tests/test_recovery_backup.py`,
-  `tests/test_recovery_doctor.py`, `tests/test_recovery_contracts.py` and
-  `tests/test_recovery_trials.py`; 118 passed and 2 skipped locally because this
-  container runs as root and a privileged reader ignores mode bits. Those two run
-  in ordinary CI.
-- Whole selected suite: **2,348 passed, 0 failed, 2 skipped, 30 deselected.**
+- Recovery suites: 140 tests collected across `tests/test_recovery_backup.py`,
+  `tests/test_recovery_doctor.py`, `tests/test_recovery_contracts.py`,
+  `tests/test_recovery_trials.py` and `tests/test_problem_report_type_vocabulary.py`;
+  138 passed and 2 skipped locally because this container runs as root and a
+  privileged reader ignores mode bits. Those two run in ordinary CI.
+- Whole selected suite: **2,349 passed, 0 failed, 2 skipped, 30 deselected.**
   This suite previously reported 4 failures in `tests/test_native_ssh_live.py`
   and recorded them as pre-existing environment failures, verified as such on an
   untouched worktree at `main`. That explanation was correct but the failures
@@ -1038,7 +1038,7 @@ and not native_remote_live`:
   they had passed all along.
 - The two skipped `test_recovery_*` tests are skipped only because this container
   runs as root and a privileged reader ignores mode bits. They run in ordinary CI.
-- Coverage: **85.413907%** (30,304/35,479 statement and branch counts), above the
+- Coverage: **85.376574%** (30,301/35,491 statement and branch counts), above the
   unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
   integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
 - `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 267
@@ -1202,6 +1202,51 @@ the missing-database case and passed, because the path it used had a missing
 *parent*, which is a different branch. All four now carry no path, and the
 parameterised test covers each. Every control-store message is now path-free;
 `evidenceAttached` and the absent-database message keep their actionable halves.
+
+### Implementer self-run of T1–T5 — four main-path defects, and what it is not
+
+The plan's "fix main-path defects" deliverable needs defects, and the only
+defects that count come from TRIAL-01/02. Those have not run. So the implementer
+ran T1–T5 themself, from a clean wheel outside any checkout, to find defects that
+a person who did not build this would hit first.
+
+**This is not a trial and is recorded as none of the things a trial is.** It is
+not TRIAL-01 or TRIAL-02, it produces no `TrialRecord`, it has no participant,
+and it cannot be self-confirmed. It contributes implementation findings only. A
+rehearsal by the implementer is evidence about the *product* and never about its
+*usability for someone else*. The R02/R15 acceptance language is unchanged and
+Checkpoint D is exactly as unclosable as it was.
+
+What it found, and what was fixed:
+
+| # | Defect | Why it matters | Fix |
+| --- | --- | --- | --- |
+| 1 | `researchos app init` required four layout arguments with no defaults, no examples and no help text | T1 forbids cloning the repository, so `--help` is the only documentation a participant has — and it did not carry the layout convention. T2 as written was not executable. | The four arguments now default to the conventional `control/events.sqlite`, `cas`, `worker` under `--root`, with help text and a description carrying an example. Explicit values still work. |
+| 2 | A freshly initialized workspace reported `healthy: false` with `control.store`, `control.migration` and `objects.referenced` all `failed`, `reason: absent` | Those three are the *expected* state of a workspace that has not appended a fact (the accepted R02 contract). T2 tells a user to init a workspace and then read the diagnostic; what they read was "unhealthy", three times. | Reported as `skipped` with `reason: not-yet-populated` and a note. A fresh workspace is now `healthy: true`. |
+| 3 | `objects.referenced` reported `verified: false` on a shallow run that had re-hashed nothing | The key reads as "these objects are not fine" on an `ok` check. | Split into `bytesVerified` (needs `--deep`) and `presenceChecked` (always true), so the two meanings cannot be confused. |
+| 4 | `backup create` took `--out` and `backup restore` took `--root`, so `--root` meant source on one subcommand and destination on the other; T4's text named neither | A participant copying the flag vocabulary from T3 to T4 fails. Found because the self-run did exactly that. | `backup restore` accepts `--out` as well, with `--root` kept working; both now say "this command's output". |
+
+One further gap was found and is **not** closed here: T3 says "import the
+example evidence", but the only copy of that example lived in the repository
+that T1 forbids cloning. The evidence request and its Markdown source are now
+packaged inside the wheel beside the rest of the offline corpus, and
+`researchos workspace demo` prints the exact import command as its first `next`
+hint, so the journey is runnable by copy-paste with no checkout. That makes T3
+executable; it does not make it observed.
+
+Two limitations of the self-run, stated rather than smoothed over:
+
+- The doctor still cannot distinguish "this workspace never had a control store"
+  from "this workspace had one and it was removed". Nothing survives deleting the
+  store — there is no marker, and the receipt store is not created on this path.
+  The report therefore names the question in the `skipped` note rather than
+  guessing. The trade is deliberate: a fresh workspace is no longer alarmed, and
+  an operator who knows they had a store is told what to look at.
+- The self-run confirms the product works when the commands are known. Whether
+  the commands are *discoverable* is exactly what T1–T5 measure, and defects 1,
+  3 and 4 were all discoverability failures that only a person following the task
+  text would hit. Fixing them should change what a trial finds, which is a reason
+  to run the trial, not a reason to skip it.
 
 ### A trial record is pending until the person confirms it
 

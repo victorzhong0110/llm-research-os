@@ -48,15 +48,28 @@ def add_recovery_parser(subparsers: argparse._SubParsersAction[argparse.Argument
     backup_commands = backup.add_subparsers(dest="backup_command", required=True)
 
     create = backup_commands.add_parser("create", help="write a verified prefix backup")
-    create.add_argument("--root", type=Path, required=True, help="workspace root")
-    create.add_argument("--out", type=Path, required=True, help="new image directory")
+    create.add_argument("--root", type=Path, required=True, help="workspace root to back up")
+    create.add_argument(
+        "--out", type=Path, required=True, help="new image directory (this command's output)"
+    )
 
     verify = backup_commands.add_parser("verify", help="re-verify a backup image")
     verify.add_argument("--image", type=Path, required=True, help="backup image directory")
 
     restore = backup_commands.add_parser("restore", help="restore a verified image")
     restore.add_argument("--image", type=Path, required=True, help="backup image directory")
-    restore.add_argument("--root", type=Path, required=True, help="new workspace root")
+    # `--root` on create names the source and on restore it names the
+    # destination, so a user moving from one subcommand to the other guessed
+    # wrong. `--out` means "what this command produces" on both, and is accepted
+    # here as the clearer name; `--root` stays so existing scripts keep working.
+    restore.add_argument("--root", type=Path, default=None, help="new workspace root")
+    restore.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        dest="out",
+        help="new workspace root (this command's output); same as --root",
+    )
     restore.add_argument(
         "--project",
         help=(
@@ -86,7 +99,11 @@ def run_workspace(args: argparse.Namespace) -> int:
                         "runId": result.run_id,
                         "queued": result.queued,
                         "healthy": result.healthy,
-                        "next": [result.backup_command, result.serve_command],
+                        "next": [
+                            result.evidence_import_command,
+                            result.backup_command,
+                            result.serve_command,
+                        ],
                     }
                 )
             )
@@ -115,7 +132,12 @@ def run_backup(args: argparse.Namespace) -> int:
             print(dumps_json(verified.model_dump(mode="json", by_alias=True, exclude_none=True)))
             return 0
         if args.backup_command == "restore":
-            restored = restore_backup(args.image, args.root, project_id=args.project)
+            destination = args.root or args.out
+            if args.root is not None and args.out is not None and args.root != args.out:
+                raise SystemExit("backup restore: --root and --out name the same directory")
+            if destination is None:
+                raise SystemExit("backup restore: one of --out or --root is required")
+            restored = restore_backup(args.image, destination, project_id=args.project)
             print(dumps_json(restored.model_dump(mode="json", by_alias=True, exclude_none=True)))
             return 0
     except (BackupIntegrityError, RecoveryError) as exc:

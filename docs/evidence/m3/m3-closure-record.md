@@ -23,14 +23,14 @@ create or modify any acceptance criterion.
 | R06 | Merged #115 at `62cfad00` | [CI 36695842170](https://github.com/victorzhong0110/llm-research-os/actions/runs/36695842170) | No blanket checkpoint acceptance |
 | R07 | Merged #116 at `1f8b1422` | [CI 36696795007](https://github.com/victorzhong0110/llm-research-os/actions/runs/36696795007) | **Authorized-host acceptance pending-live** |
 | R08 | Multiple merged slices through #128 | [CI 37141821193](https://github.com/victorzhong0110/llm-research-os/actions/runs/37141821193) and earlier | **Two-host and GPU evidence pending-live** |
-| R09 | Candidate, PR #131 (unmerged) | Candidate tests on branch | Not accepted |
-| R10 | Candidate, PR #132 (unmerged) | Candidate tests on branch | Not accepted; no CI browser E2E |
-| R11 | Candidate, PR #133 (unmerged) | Candidate tests on branch | Not accepted |
-| R12 | Candidate, PR #134 (unmerged) | Candidate tests on branch | Not accepted |
-| R13 | Candidate, PR #135 (unmerged) | Candidate tests on branch | Not accepted |
-| R14 | Candidate, PR #136 (unmerged) | 27 tests on branch | Not accepted; no CLI, `BlockRegistry` separate |
-| R15 | Candidate, PR (R15 branch, unmerged) | 62 R15 tests; local static checks; clean-install smoke outside source | Not accepted; no CI run yet |
-| R16 | Candidate, R16 branch (unmerged) | Trial kit committed; **no trial performed** | Not accepted; Checkpoint D open |
+| R09 | Merged #131 at `73e1386` | Final-head CI 37209190785; merged local API and browser authority boundaries | Merged by maintainer-directed integration; Checkpoint B still open on R08 live evidence |
+| R10 | Merged #132 at `bf7fdf0` | Review repairs integrated on top of merged R09 | Merged; no CI browser E2E |
+| R11 | Merged #133 at `b3a351c` | Final-head CI recorded in the acceptance matrix | Merged as a partial operations slice; start/reconnect/restore not delivered |
+| R12 | Merged #134 at `89b9ab4` | Final-head CI recorded in the acceptance matrix | Merged as a partial ledger/proposal slice; browser evidence-import form not delivered |
+| R13 | Merged #135 at `bc0bcbc` | Final-head CI recorded in the acceptance matrix | Merged as a partial computed-fixture slice; no editable report renderer |
+| R14 | Merged #136 at `bf8a45a` | Reviewed bounded Python boundary; review repairs in the integration commit | Merged as a partial boundary; typed third-party integration, extensions CLI, and full R14/D remain open |
+| R15 | Candidate, PR #139 (`main` ← `r15-installation-recovery`), unmerged | 62 R15 tests; local static checks; clean-install smoke outside source | Not accepted; no CI run yet |
+| R16 | Candidate, PR #140 (`r15-installation-recovery` ← `r16-independent-trials`), unmerged | Trial kit committed; **no trial performed** | Not accepted; Checkpoint D open |
 
 Full per-package rows and candidate detail are in the
 [acceptance matrix](acceptance-matrix.md). This table is a roll-up, not a
@@ -93,3 +93,35 @@ Ordered by what blocks the next gate, not by effort.
 5. Whether the draft closure direction above is acceptable as the planning
    assistant's starting point, given that this file was authored by an
    implementer and proposes no acceptance change.
+
+## Triage of what remains
+
+Sorted by whether the blocker is code, a person, or access. Nothing in the
+"code" row is a reason Checkpoint D is open; the other two rows are the whole
+story.
+
+| Remaining item | Blocked on | Owner | Can it be done locally? |
+| --- | --- | --- | --- |
+| TRIAL-01: T1–T5 with participant A, each record confirmed by that participant | Maintainer invitation; two people who did not build the system | Maintainer | **No** — needs people |
+| TRIAL-02: T1–T5 with participant B, same confirmation rule | Same | Maintainer | **No** — needs people |
+| TRIAL-03: at least one authorized remote journey | Two-host connection configuration and selected-GPU access (COMM-0004) | Maintainer / resource owner | **No** — needs access |
+| TRIAL-04: fix main-path defects found in TRIAL-01/02 and re-run affected tasks | The findings do not exist yet | Implementer, after the trials | **No** — needs the trials first |
+| TRIAL-05: reconcile this record against real trial outcomes | TRIAL-01/02/03 | Planning/review assistant | **No** — needs the trials |
+| Checkpoint D review and acceptance decision | All of the above | Maintainer | **No** |
+| Release name, version, tag, publication | A maintainer decision, deliberately not pre-taken | Maintainer | **No** — and not pre-empted here either |
+| Any new paid activity | A maintainer decision | Maintainer | **No** — none was spent, and none is proposed |
+| R15/R16 candidates pushed and stacked | Done — PR #139 (`main` ← R15), PR #140 (R15 ← R16), both unmerged | Implementer | Yes — complete |
+| Main-path defects on the T1–T5 path | Found by implementer self-run; four fixed, recorded in the R16 evidence | Implementer | Yes — complete |
+| Closure record kept honest | Stale pre-merge R09–R14 rows corrected in this pass | Implementer | Yes — complete |
+
+The last three rows are the whole of what was available locally. Everything above
+them needs a person, an authorization, or hardware, and none of it can be
+manufactured by working harder on the repository.
+
+### Decisions deliberately not taken here
+
+Release naming, versioning, tagging, and publication are **maintainer decisions**
+under the plan, and no new paid activity was required or attempted to produce any
+of this. Nothing was deployed: there is no hosted instance, no public URL, and no
+service behind these packages. The evidence in this repository is the deliverable;
+shipping it is not part of it.

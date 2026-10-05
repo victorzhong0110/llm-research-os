@@ -43,6 +43,7 @@ class DemoResult:
     healthy: bool
     backup_command: str
     serve_command: str
+    evidence_import_command: str
 
 
 def run_demo(root: Path, *, now: datetime) -> DemoResult:
@@ -90,6 +91,16 @@ def run_demo(root: Path, *, now: datetime) -> DemoResult:
             f"researchos backup create --root {workspace.root} --out {workspace.root}-backup"
         ),
         serve_command=f"researchos web serve --root {workspace.root} --port 8787",
+        # The evidence request and its Markdown source are packaged beside the
+        # rest of the corpus. Without a copy-pasteable command, "import the
+        # example evidence" is a task a participant cannot finish: T1 forbids
+        # cloning the repository that holds the only other copy.
+        evidence_import_command=(
+            f"researchos evidence import {DEMO_CORPUS / 'evidence' / 'import-markdown.json'} "
+            f"{workspace.control_db} "
+            f"--source {DEMO_CORPUS / 'evidence' / 'eval-split.md'} "
+            f"--artifacts {workspace.cas_root}"
+        ),
     )
 
 

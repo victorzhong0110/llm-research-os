@@ -10,6 +10,13 @@ authorized release.
 ## Unreleased
 
 ### Added
+
+- The evidence-import example request and its Markdown source now ship inside the
+  wheel beside the offline demonstration corpus, and `researchos workspace demo`
+  prints the exact `researchos evidence import ...` command as its first next
+  hint. The installation task forbids cloning the repository, so a participant
+  previously had no way to run the evidence-import journey at all.
+
 - R15 installation, startup, backup, and recovery. `researchos backup create |
   verify | restore` produce a self-describing backup image of a **verified
   high-water prefix** of the EventStore plus the immutable CAS objects that
@@ -264,6 +271,36 @@ authorized release.
   remote executor/recovery and new authorized two-host/GPU acceptance remain open.
 
 ### Fixed
+
+- **A correctly initialized workspace reported itself unhealthy.**
+  `researchos workspace doctor` marked `control.store`, `control.migration` and
+  `objects.referenced` as `failed` with `reason: absent` whenever the control
+  store did not exist — but `app init` deliberately does not create it, so that
+  is the expected state of a fresh workspace under the accepted R02 contract.
+  They are now `skipped` with `reason: not-yet-populated` and a note, and a fresh
+  workspace reports `healthy: true`. The note states the one thing the doctor
+  cannot determine: nothing survives deleting a control store, so "never had one"
+  and "had one removed" are indistinguishable, and a removed store therefore
+  reads as `skipped` rather than `failed`.
+
+- **`researchos app init` needed four layout arguments with no defaults and no
+  help text.** `--control-db`, `--cas-root` and `--worker-root` now default to
+  the conventional arrangement under `--root`, and the subcommand carries a
+  description with an example, so `researchos app init --root ./workspace
+  --project my-project` works. Previously the only place the convention was
+  written down was a guide in the repository that the installation task tells
+  you not to clone.
+
+- **`backup restore` took `--root` where `backup create` took `--out`**, so
+  `--root` named the source on one subcommand and the destination on the other.
+  `restore` now accepts `--out` as well, `--root` keeps working, and both
+  subcommands describe it as this command's output.
+
+- **`objects.referenced` reported `verified: false` on a shallow run** that had
+  re-hashed nothing, which reads as "these objects are not fine" on a check whose
+  status is `ok`. Split into `bytesVerified` (requires `--deep`) and
+  `presenceChecked` (always true).
+
 
 - Four `tests/test_native_ssh_live.py` tests failed in any environment whose
   system `python3` predates 3.12. The local transport runs the real remote

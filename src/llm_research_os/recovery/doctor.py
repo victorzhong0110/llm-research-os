@@ -127,9 +127,28 @@ def _check_roots(workspace: Workspace) -> DiagnosticCheck:
     )
 
 
+#: Detail attached to every check that cannot run because the control store does
+#: not exist yet. Reported as ``skipped`` rather than ``failed``: a workspace
+#: that has not appended its first fact is not unhealthy, and calling it
+#: unhealthy is what made a correctly-initialized workspace look broken.
+#:
+#: ``note`` carries the one thing that cannot be decided from the workspace
+#: alone. There is no marker distinguishing "never had a control store" from
+#: "had one and it was removed", so the report states the question instead of
+#: guessing the answer.
+_NOT_YET_POPULATED: dict[str, object] = {
+    "reason": "not-yet-populated",
+    "expected": True,
+    "note": (
+        "this workspace has not appended a fact, so it has no control store yet; "
+        "if it previously had one, that store was removed"
+    ),
+}
+
+
 def _check_control_store(workspace: Workspace) -> DiagnosticCheck:
     if not workspace.control_db.exists():
-        return _check("control.store", "failed", {"reason": "absent"})
+        return _check("control.store", "skipped", dict(_NOT_YET_POPULATED))
     try:
         with EventStore(workspace.control_db, create=False) as store:
             high_water = store.freeze_high_water()
@@ -144,7 +163,7 @@ def _check_control_store(workspace: Workspace) -> DiagnosticCheck:
 
 def _check_migration(workspace: Workspace) -> DiagnosticCheck:
     if not workspace.control_db.exists():
-        return _check("control.migration", "failed", {"reason": "absent"})
+        return _check("control.migration", "skipped", dict(_NOT_YET_POPULATED))
     current = read_header_version(workspace.control_db)
     if current is None:
         return _check("control.migration", "failed", {"reason": "unreadable"})
@@ -167,7 +186,7 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
     """Report referenced-object coverage. ``deep`` re-verifies bytes, not just presence."""
 
     if not workspace.control_db.exists():
-        return _check("objects.referenced", "failed", {"reason": "absent"})
+        return _check("objects.referenced", "skipped", dict(_NOT_YET_POPULATED))
     try:
         with EventStore(workspace.control_db, create=False) as store:
             high_water = store.freeze_high_water()
@@ -193,6 +212,10 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
             except (ArtifactStoreError, OSError, ValueError):
                 corrupt += 1
     status = "ok" if missing == 0 and corrupt == 0 else "failed"
+    # `verified` read as "these objects were checked and are fine" even on a
+    # shallow run, where nothing was re-hashed at all. The presence and
+    # missing counts are real either way; only byte verification needs --deep,
+    # so the flag says which one happened.
     return _check(
         "objects.referenced",
         status,
@@ -200,7 +223,8 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
             "referenced": len(referenced),
             "missing": missing,
             "corrupt": corrupt if deep else 0,
-            "verified": deep,
+            "bytesVerified": deep,
+            "presenceChecked": True,
         },
     )
 
