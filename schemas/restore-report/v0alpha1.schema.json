@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "ReconciledRun": {
+      "additionalProperties": false,
+      "description": "One Run that needs operator action after a restore.\n\nA restore cannot observe a process that belonged to the previous machine, so\na Run left non-terminal is reported as ``unknown`` and left that way\n(ADR-0054). Listing it is not relaunching it.",
+      "properties": {
+        "lastState": {
+          "minLength": 1,
+          "title": "Laststate",
+          "type": "string"
+        },
+        "nextAction": {
+          "const": "reconcile-manually",
+          "default": "reconcile-manually",
+          "title": "Nextaction",
+          "type": "string"
+        },
+        "observation": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Observation",
+          "type": "string"
+        },
+        "runId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Runid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "lastState"
+      ],
+      "title": "ReconciledRun",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/restore-report/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Outcome of restoring one verified image into a new workspace directory.",
+  "properties": {
+    "apiVersion": {
+      "default": "researchos.dev/recovery/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "appendedEvents": {
+      "const": 0,
+      "default": 0,
+      "title": "Appendedevents",
+      "type": "integer"
+    },
+    "kind": {
+      "const": "RestoreReport",
+      "default": "RestoreReport",
+      "title": "Kind",
+      "type": "string"
+    },
+    "ledgerMatches": {
+      "title": "Ledgermatches",
+      "type": "boolean"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "reconciledRuns": {
+      "items": {
+        "$ref": "#/$defs/ReconciledRun"
+      },
+      "title": "Reconciledruns",
+      "type": "array"
+    },
+    "relaunchPolicy": {
+      "const": "not-relaunched",
+      "default": "not-relaunched",
+      "title": "Relaunchpolicy",
+      "type": "string"
+    },
+    "restoredEventCount": {
+      "minimum": 0,
+      "title": "Restoredeventcount",
+      "type": "integer"
+    },
+    "restoredHighWater": {
+      "minimum": 0,
+      "title": "Restoredhighwater",
+      "type": "integer"
+    },
+    "restoredObjectCount": {
+      "minimum": 0,
+      "title": "Restoredobjectcount",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "projectId",
+    "restoredHighWater",
+    "restoredEventCount",
+    "restoredObjectCount",
+    "ledgerMatches",
+    "reconciledRuns"
+  ],
+  "title": "RestoreReport",
+  "type": "object"
+}

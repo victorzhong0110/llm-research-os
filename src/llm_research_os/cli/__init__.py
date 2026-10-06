@@ -18,6 +18,7 @@ from llm_research_os.cli.m2_commands import run_m2
 from llm_research_os.cli.models_commands import run_models
 from llm_research_os.cli.native_commands import run_native
 from llm_research_os.cli.parser import build_parser
+from llm_research_os.cli.recovery_commands import run_backup, run_workspace
 from llm_research_os.cli.report_commands import run_report
 from llm_research_os.cli.research_commands import (
     run_decisions,
@@ -66,6 +67,8 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "m2": run_m2,
     "training": _run_training,
     "web": run_web,
+    "workspace": run_workspace,
+    "backup": run_backup,
 }
 
 

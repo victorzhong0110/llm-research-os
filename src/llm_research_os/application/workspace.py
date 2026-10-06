@@ -81,6 +81,10 @@ def init_workspace(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    # The control store is deliberately not created here. The R02 service
+    # contract is that a fresh workspace has no EventStore until the first
+    # append, and `ApplicationService.open` reports `store-missing` until then.
+    # R15 diagnostics read that state rather than changing it.
     return load_workspace(workspace_root)
 
 

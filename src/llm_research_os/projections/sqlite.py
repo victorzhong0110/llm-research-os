@@ -120,6 +120,18 @@ def _index_spec_revision(
         )
 
 
+def referenced_digests(event: ResearchEvent) -> tuple[tuple[str, str], ...]:
+    """Return the ``(digest, role)`` references one event makes.
+
+    Prefix backup decides which immutable objects an event prefix needs, so it
+    uses the same rule as the artifact projection rather than a second guess.
+    A digest that a prefix references but the store does not hold must fail the
+    backup, not be skipped.
+    """
+
+    return tuple(_digest_refs(event))
+
+
 def _digest_refs(event: ResearchEvent) -> Iterator[tuple[str, str]]:
     seen: set[tuple[str, str]] = set()
     for digest, role in _walk_digests(event.data.payload, default_role="payload"):

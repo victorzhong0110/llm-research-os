@@ -909,3 +909,49 @@ owned process group. Per-invocation applied limits are reported via a bounded
 private pipe. Permissions are inert requests, not OS grants; same-user file and
 network access are explicitly not isolated. Disabled state does not cancel
 in-flight work. Tests reproduce each repaired boundary.
+### TM-093: A backup is taken by copying a live SQLite file, or an image is trusted on its own manifest
+
+A naive file copy of a live WAL database can capture a torn page set and miss
+committed content, and a manifest is only a claim until the bytes are re-derived
+from it. `backup create` therefore snapshots through the SQLite online backup
+API, reads the resulting prefix, then collapses the snapshot to one standalone
+file with no `-wal`/`-shm` sidecar so every event the manifest digest covers is
+present in the file it covers. The written image is re-verified from a copy
+before it is published, and `backup verify` re-derives the snapshot digest, every
+object digest and size, and the event count from the image itself. A referenced
+content object missing from the workspace aborts the backup instead of producing
+an image that restores to a broken project.
+
+Gate: `tests/test_recovery_backup.py` snapshot-shape, tampered-snapshot,
+tampered-object, escaping-manifest-key, missing-object, interrupted-backup and
+verify-after-create tests, plus the installed-wheel clean-install journey in
+`scripts/wheel_smoke.py`.
+
+### TM-094: A restored workspace is treated as resumable, or its diagnostics are shared before inspection
+
+A restore cannot observe a process that belonged to the previous machine, so it
+copies facts and nothing else: the restored high-water equals the image
+high-water, `appendedEvents` is 0, no Worker is started, and every Run left
+non-terminal is reported as `unknown` with a `reconcile-manually` next action
+(ADR-0054). A hand-edited manifest is refused: the object *set* is re-derived from the
+events and must equal the manifest's, an object key must equal the key derived
+from its digest, the snapshot size and the last event digest are compared, the
+schema version is compared, and the manifest read is size-bounded. A rename
+naming a project the image has no events for fails the ledger comparison rather
+than folding an empty ledger on both sides and reporting a match. An occupied
+restore destination is refused before anything is written. Diagnostic details carry
+counts, booleans and caller-supplied identifiers only, pass through
+`redact_object` (TM-007, TM-022), and never carry a host path, a document body
+or a credential, so a report is safe to paste into an issue.
+
+Gate: `tests/test_recovery_backup.py` no-relaunch, damaged-image-before-write,
+occupied-destination and escaping-key tests; `tests/test_recovery_doctor.py`
+host-path-leak, secret-redaction, damaged-store, missing-asset, missing-object
+and taken-port tests.
+
+R15 review hardening (2026-10-06): restore binds the copied SQLite bytes to the
+verified snapshot digest before opening them; layout overrides cannot escape the
+new root, staging directories are unique, and backup reads reject non-regular
+files. The manifest is size-bounded during the read. Parent-directory races by
+processes with the same filesystem privileges remain outside this local-tool
+boundary. Regression evidence: `tests/test_recovery_backup.py`.
