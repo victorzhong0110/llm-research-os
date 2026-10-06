@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
+from pydantic import ValidationError
 
 from llm_research_os.application.workspace import init_workspace, load_workspace
 from llm_research_os.cli.contracts import SCHEMA_CONTRACTS
@@ -329,3 +330,20 @@ def test_offline_demo_cli_prints_the_next_commands(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["healthy"] is True
     assert any("backup create" in command for command in payload["next"])
+
+
+@pytest.mark.parametrize(
+    "name,model",
+    (
+        ("backup-manifest", BackupManifest),
+        ("backup-report", BackupReport),
+        ("restore-report", RestoreReport),
+        ("workspace-diagnostic", DiagnosticReport),
+    ),
+)
+def test_recovery_example_contracts(name: str, model: Any) -> None:
+    model.model_validate_json((ROOT / "examples/recovery/valid" / f"{name}.json").read_bytes())
+    with pytest.raises(ValidationError, match="kind"):
+        model.model_validate_json(
+            (ROOT / "examples/recovery/invalid" / f"{name}.json").read_bytes()
+        )

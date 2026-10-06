@@ -41,9 +41,9 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R11 | Browser approval, execution, cancellation, and restore | Partial operations slice merged #133 at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` | Final-head CI 37224701233 passed; start/restore and B remain open | [R11 review](../../reviews/pr134-136-2026-10-05.md) |
 | R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice merged in #134 at `89b9ab4`; final-head CI 37230774848 passed | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R15 | Installation, startup, backup, and recovery | Candidate on `r15-installation-recovery`, rebased onto merged R14 (`bf8a45a`); open PR, not merged | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
-| R16 | Independent trials and phase acceptance | Authorized sequentially; not started | Not yet accepted | Add scoped evidence with R16 |
+| R14 | Minimal extension mechanism and permission boundary | Partial Python boundary merged #136 at `bf8a45a`; final-head CI 37233415368 passed | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
+| R15 | Installation, startup, backup, and recovery | Reviewed recovery slice in #139; final repair head `d50aff3` and CI 37454556583; exact integration at the PR | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
+| R16 | Independent trials and phase acceptance | Reviewed and repaired trial tooling in #140; final head/checks/integration recorded at the PR | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
 
 ## R10 candidate evidence
 
@@ -1017,24 +1017,31 @@ Executed on the R15 branch from a clean `uv sync` (Python 3.12.14, Linux
 container), marker selection `not oci_live and not slow and not ray_native_live
 and not native_remote_live`:
 
-- R15 suites: 98 tests collected across `tests/test_recovery_backup.py`,
-  `tests/test_recovery_doctor.py` and `tests/test_recovery_contracts.py`; 96
-  passed and 2 skipped locally because this container runs as root and a
+- Recovery suites: 140 tests collected across `tests/test_recovery_backup.py`,
+  `tests/test_recovery_doctor.py`, `tests/test_recovery_contracts.py`,
+  `tests/test_recovery_trials.py` and `tests/test_problem_report_type_vocabulary.py`;
+  138 passed and 2 skipped locally because this container runs as root and a
   privileged reader ignores mode bits. Those two run in ordinary CI.
-- Whole selected suite: **2,227 passed, 4 failed, 2 skipped, 30 deselected.** All four failures
-  are pre-existing and were verified as such, not assumed:
-  - `tests/test_native_ssh_live.py` (4) fail identically on an untouched
-    worktree at `r14-extension-boundary`; the fake-SSH probe reports
-    `python-too-old` in this container.
-  - The two `tests/test_evidence.py` wall-clock bound tests that also failed in
-    an earlier run of this branch pass in isolation and in combination with the
-    R15 suites; they assert `elapsed < MAX_PDF_EXTRACT_SECONDS + 3.0` and exceed
-    it only under full-suite load on a shared container. They are not counted as
-    failures in this run.
-- Coverage: **85.211842%** (29,243/34,318 statement and branch counts), above the
+- Whole selected suite: **2,385 passed, 0 failed, 2 skipped, 30 deselected.**
+  This suite previously reported 4 failures in `tests/test_native_ssh_live.py`
+  and recorded them as pre-existing environment failures, verified as such on an
+  untouched worktree at `main`. That explanation was correct but the failures
+  were **not** in fact unavoidable, and the honest reading of "pre-existing"
+  should have been "not mine" rather than "not fixable". The cause was the test
+  harness, not the container: the local transport runs the real remote command
+  `python3 -I -c ...`, resolving `python3` from `PATH` inside this container,
+  which is 3.11.2 while the probe requires 3.12+ on a worker host. The probe was
+  correct to refuse the simulated host; the harness was simulating the wrong one.
+  `_setup` now pins `PATH` to the interpreter running the suite, a guard test
+  fails loudly if that pinning stops working, and the old-host rejection is
+  still tested directly. All 39 tests in that file pass. CI runs 3.12/3.13, where
+  they had passed all along.
+- The two skipped `test_recovery_*` tests are skipped only because this container
+  runs as root and a privileged reader ignores mode bits. They run in ordinary CI.
+- Coverage: **85.686539%** (30,441/35,526 statement and branch counts), above the
   unrounded 85% floor. `scripts/check_coverage.py` independently reproduces the
   integer counts and exits 0. The new `recovery/` package is 92.7%–100% by file.
-- `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 258
+- `ruff check .` clean, `ruff format --check .` clean, `mypy src` clean over 267
   files, `researchos schema --check-all` current, `scripts/event_catalog.py
   --check` and `scripts/project_status.py --check` pass, and
   `node conformance/digest/verify.mjs` passed 13 RFC 8785 vectors.
@@ -1117,3 +1124,267 @@ limit fixture's shell pipeline encountered a denied group cleanup signal,
 masking its original bound error. The follow-up preserves that error, falls
 back to killing its own SSH child, and uses a single-process output fixture.
 The 38 SSH tests and static checks passed locally before publication.
+
+## R16 candidate evidence
+
+Status: **trial kit prepared and machine-checkable on the R16 branch; no trial
+performed; not merged, not accepted.** Checkpoint D is open and cannot close from
+this branch. Each record additionally awaits the participant's own confirmation,
+which no implementer or observer can supply for them.
+
+R16 is the one package whose deliverable is human work by people who did not
+implement the system. What this branch can honestly contribute is the kit that
+makes such a trial measurable and the record that makes its absence visible.
+
+### Delivered
+
+| Item | Where |
+| --- | --- |
+| Fixed trial tasks T1–T5 and REMOTE, offline, no key, no GPU | [`r16-independent-trials.md`](r16-independent-trials.md) |
+| A validated `TrialRecord` / `TrialKit` contract and published schemas | [`trial-record`](../../schemas/trial-record/v0alpha1.schema.json), [`trial-kit`](../../schemas/trial-kit/v0alpha1.schema.json) |
+| `researchos trial scaffold/validate/aggregate` | `src/llm_research_os/cli/trial_commands.py` |
+| TRIAL-01..05 pending table with owners | same |
+| Aggregated per-package roll-up, checkpoint status, and BACKLOG-01..12 | [`m3-closure-record.md`](m3-closure-record.md) |
+
+### The kit is machine-checkable, not a prose template
+
+A trial record kept as free text cannot be validated, aggregated, or
+distinguished from one the implementer filled in. `TrialRecord` is a closed
+contract instead:
+
+- `interventions` and `confusionObserved` are the measurement, and a record
+  authored by `recordedBy: implementer` is **refused** if either is non-empty.
+  The guard is the point: without it, "no confusion observed" and "nobody wrote
+  down the confusion" look identical.
+- `evidenceAttached` must be non-empty, so a record that cannot be reviewed
+  later is refused now.
+- `task` is restricted to the agreed task list, so a report from outside the kit
+  cannot be aggregated with the rest of R16's evidence.
+- `researchos trial scaffold` writes deliberately **invalid** record slots and
+  exits `1`. An unrun trial therefore reads as unrun in a machine-readable way
+  rather than as a missing file.
+- `researchos trial aggregate` reports participants, tasks covered, recorded
+  remote journeys, and the blockers still unresolved, and reports
+  `checkpointD: false` until two participants and one remote journey exist.
+
+### One main-path defect fixed, and its path re-tested
+
+Found during R15 implementation rather than during a trial, and recorded as
+such: a fresh workspace has no EventStore until the first append (the accepted
+R02 contract), and the first command an operator ran against one returned
+`EventStoreSchemaError: database does not exist: /absolute/host/path`. That
+rendered a host path into CLI output, which the rest of the project treats as a
+disclosure defect, and gave no next step.
+
+`EventStoreSchemaError` now carries a `code` attribute, and the
+missing-database message is path-free and actionable: the control store does not
+exist, a fresh workspace has no EventStore until a command appends a fact, or
+restore one from a backup image. The R02 contract is unchanged; only the message
+changed. This does **not** close TRIAL-04, which is scoped to defects found in
+TRIAL-01/02.
+
+### `ProblemReport.type` is now a code, adopted
+
+The proposal below was taken on maintainer instruction. `EventStoreSchemaError`
+joins the coded errors, so `type` carries `event-store-absent` rather than the
+class name, and `docs/protocols/problem-report-v0alpha1.md` now states the rule:
+`type` is a stable machine identifier, a caller may branch on it, it is never a
+class name, and an error with a closed code set surfaces its code while one
+without falls back to its class name. The three CLI tests that pinned
+`EventStoreSchemaError` were updated, and `tests/test_problem_report_type_vocabulary.py`
+pins the vocabulary and the one-directional fallback.
+
+**Writing the test found a second leak the first fix had missed.**
+`_validate_database_path` had four rejections that still interpolated the host
+path — missing parent directory, inspect failure, symlink, and not-a-regular-file
+— and none of them had a test. The first version of the new test only covered
+the missing-database case and passed, because the path it used had a missing
+*parent*, which is a different branch. All four now carry no path, and the
+parameterised test covers each. Every control-store message is now path-free;
+`evidenceAttached` and the absent-database message keep their actionable halves.
+
+### Implementer self-run of T1–T5 — four main-path defects, and what it is not
+
+The plan's "fix main-path defects" deliverable needs defects, and the only
+defects that count come from TRIAL-01/02. Those have not run. So the implementer
+ran T1–T5 themself, from a clean wheel outside any checkout, to find defects that
+a person who did not build this would hit first.
+
+**This is not a trial and is recorded as none of the things a trial is.** It is
+not TRIAL-01 or TRIAL-02, it produces no `TrialRecord`, it has no participant,
+and it cannot be self-confirmed. It contributes implementation findings only. A
+rehearsal by the implementer is evidence about the *product* and never about its
+*usability for someone else*. The R02/R15 acceptance language is unchanged and
+Checkpoint D is exactly as unclosable as it was.
+
+What it found, and what was fixed:
+
+| # | Defect | Why it matters | Fix |
+| --- | --- | --- | --- |
+| 1 | `researchos app init` required four layout arguments with no defaults, no examples and no help text | T1 forbids cloning the repository, so `--help` is the only documentation a participant has — and it did not carry the layout convention. T2 as written was not executable. | The four arguments now default to the conventional `control/events.sqlite`, `cas`, `worker` under `--root`, with help text and a description carrying an example. Explicit values still work. |
+| 2 | A freshly initialized workspace reported `healthy: false` with `control.store`, `control.migration` and `objects.referenced` all `failed`, `reason: absent` | Those three are the *expected* state of a workspace that has not appended a fact (the accepted R02 contract). T2 tells a user to init a workspace and then read the diagnostic; what they read was "unhealthy", three times. | Reported as `skipped` with `reason: not-yet-populated` and a note. A fresh workspace is now `healthy: true`. |
+| 3 | `objects.referenced` reported `verified: false` on a shallow run that had re-hashed nothing | The key reads as "these objects are not fine" on an `ok` check. | Split into `bytesVerified` (needs `--deep`) and `presenceChecked` (always true), so the two meanings cannot be confused. |
+| 4 | `backup create` took `--out` and `backup restore` took `--root`, so `--root` meant source on one subcommand and destination on the other; T4's text named neither | A participant copying the flag vocabulary from T3 to T4 fails. Found because the self-run did exactly that. | `backup restore` accepts `--out` as well, with `--root` kept working; both now say "this command's output". |
+
+One further gap was found and is **not** closed here: T3 says "import the
+example evidence", but the only copy of that example lived in the repository
+that T1 forbids cloning. The evidence request and its Markdown source are now
+packaged inside the wheel beside the rest of the offline corpus, and
+`researchos workspace demo` prints the exact import command as its first `next`
+hint, so the journey is runnable by copy-paste with no checkout. That makes T3
+executable; it does not make it observed.
+
+### The CLI layer was the weakest code in the package
+
+The recovery suites tested the library functions underneath the new commands and
+never the commands, so the dispatch layer went in almost uncovered. It was the
+three lowest-covered modules in the project, and all three were added by this
+work:
+
+| Module | Before | After |
+| --- | --- | --- |
+| `cli/trial_commands.py` | 35.53% | **93.42%** |
+| `cli/recovery_commands.py` | 39.00% | **90.00%** |
+| `cli/application_commands.py` | 52.27% | **81.82%** |
+
+`tests/test_recovery_cli.py` drives `main(argv)` directly — the same
+`build_parser`, the same handlers, the same exit codes — rather than spawning
+`python -m llm_research_os`. In-process is deliberate: a child process reports
+coverage to a different file, so a suite that spawns the CLI is not measurable
+at all, and the original version of this file passed 31 tests while moving
+`trial_commands` from 35% to **0%** as far as the report was concerned.
+
+What an in-process harness cannot show: a broken interpreter, a missing console
+script, or an uncaught crash's exit status. Those stay with the installed-wheel
+smoke, which does run the real entrypoint.
+
+### The doctor can now tell a fresh workspace from a gutted one
+
+The self-run left one honest weakness, and it was closed rather than documented
+as a limitation. The problem: `init_workspace` does not create a control store,
+so "no store" is a normal state — and deleting a store leaves exactly the same
+evidence. A workspace that lost its data was reported as merely unpopulated.
+
+The fix is a lifecycle marker, `.control-store.json`, written beside the control
+database the first time a store is created, plus a second signal covering the
+case the marker cannot: `init_workspace` **always** creates the control
+directory, so its absence is itself proof of removal. `restore` writes the marker
+too, because the restore path bypasses `EventStore`'s create branch and would
+otherwise leave a restored workspace unable to tell that its store was deleted
+later.
+
+| Workspace state | `control.store` | `healthy` |
+| --- | --- | --- |
+| Initialized, never appended | `skipped` / `not-yet-populated` | `true` |
+| Database deleted, marker survives | `failed` / `removed` | `false` |
+| Whole control directory removed | `failed` / `removed` | `false` |
+| Restored, then database deleted | `failed` / `removed` | `false` |
+
+The marker holds a kind, a version and a timestamp — no path, no project id,
+nothing to redact. It is a local lifecycle artifact rather than a published
+contract, on the same footing as `workspace.json`, and it is written
+best-effort: a store that cannot also write a sibling marker has already failed
+for a reason the caller will see, and refusing to open it would turn a
+diagnostic aid into a hard dependency.
+
+One limitation of the self-run remains, stated rather than smoothed over:
+- The self-run confirms the product works when the commands are known. Whether
+  the commands are *discoverable* is exactly what T1–T5 measure, and defects 1,
+  3 and 4 were all discoverability failures that only a person following the task
+  text would hit. Fixing them should change what a trial finds, which is a reason
+  to run the trial, not a reason to skip it.
+
+### A trial record is pending until the person confirms it
+
+The contract already refused an implementer-authored measurement. It did not stop
+an **observer** from filing every record on a participant's behalf, and an
+observer-authored roll-up is not evidence that anyone took part — it is evidence
+that someone watched. So confirmation is now a field with rules:
+
+- `participantConfirmed` defaults to `false`, and `confirmedAt` must be present
+  when it is set and absent when it is not.
+- An implementer may not set it at all. Only the participant, or an observer who
+  has the participant's confirmation, may.
+- `confirmedParticipants`, `completedTasks` and `remoteJourneys` are all
+  **confirmed-only**. `aggregate` reports `participants` and
+  `observedParticipants` separately, plus `pendingConfirmation`, so a kit full of
+  unconfirmed records shows both numbers rather than quietly counting as complete.
+- `scaffold` writes `participantConfirmed: false` explicitly, so "not yet
+  confirmed" is a recorded state rather than an absent field readable as an
+  oversight.
+
+A confirmed `REMOTE` record is the only thing that satisfies the authorized-remote
+requirement, which is the one requirement that most clearly has to come from a
+person rather than from the project's own records.
+
+### Three decisions taken under maintainer delegation
+
+On 2026-10-05 the maintainer delegated three review decisions to the implementer.
+Each is recorded as an implementer decision under delegation, not as maintainer
+acceptance, and none of them accepts a package.
+
+| Decision | Choice | Reasoning |
+| --- | --- | --- |
+| May R15 close without replication, encryption, and downgrade support? | **Yes, with those three named as accepted limitations** | None is in the R15 acceptance criteria; the plan's R15 out-of-scope list already names publishing, garbage collection, and naive SQLite copying. Adding them would be new scope, and a backup tool that silently claims durability it does not provide is worse than one that names its limits. Recorded as limitations in the protocol and guide, and as BACKLOG-12. |
+| What to do about the R10–R14 undefined anchors? | **Add a routing table; do not edit another package's record** | The anchors are broken, but filling them means writing evidence attributed to packages this one did not build. The table routes a reader to the authoritative PR instead. Whether each should be filled retroactively stays open as BACKLOG-04. |
+| Should a fresh workspace materialize its EventStore at init (BACKLOG-06)? | **No. Keep the R02 contract; fix the error instead** | `ApplicationService.open` reporting `store-missing` on a fresh workspace is accepted R02 behaviour. Changing `init_workspace` to create the store would alter an accepted package's semantics to remove a rough edge, which is a scope change disguised as a convenience. The closed-code error above removes the actual harm. BACKLOG-06 stays open for a scoped decision. |
+
+### What is not delivered, and cannot be from here
+
+| Requirement | State |
+| --- | --- |
+| Two independent participants completing the core journeys | **Not performed** (TRIAL-01/02) |
+| Interventions, confusion, and recovery recorded per task | **Not performed** |
+| At least one authorized remote journey | **Not performed** — blocked on COMM-0004 access |
+| Main-path defects fixed and paths re-run | Not applicable until a trial finds one |
+
+No trial was simulated, rehearsed by an implementer, or inferred from local
+results. A rehearsal by someone who built the system is not a trial, and the
+plan states that unperformed live work remains pending-live and prevents
+claiming the checkpoint complete.
+
+### Next action / owner
+
+Maintainer performs the invitations and authorization for TRIAL-01/02 and
+supplies the access TRIAL-03 needs. The planning/review assistant reconciles the
+draft closure record against real outcomes. The maintainer then reviews
+Checkpoint D.
+
+
+
+## R15 and R16 review supplement — 2026-10-06
+
+Earlier candidate sections preserve the implementer's pre-push local record;
+their statements that no CI exists are historical and are superseded here.
+The maintainer authorized review, repair and integration of all submitted PRs.
+
+- R15 repair head: `d50aff3b8caeb09b20e1fafbd1ae9e137c119a2c`, CI
+  [37454556583](https://github.com/victorzhong0110/llm-research-os/actions/runs/37454556583).
+  Private snapshot bytes are rebound to the verified manifest before opening;
+  external restore layouts are refused, staging paths are unique and manifest
+  reads are bounded. Local recovery checks: 101 passed, two root-only skips.
+- R16 preserves those repairs, corrects trial task aggregation, closes the
+  remaining SQLite initialization path leak and quotes demo command arguments.
+  Combined local recovery/CLI/trial/native-SSH tests: 227 passed, two root-only
+  skips; final contract and read-bound suites: 72 passed. Ruff, format, mypy,
+  generated schemas, digest conformance and package build passed.
+- Recovery and trial contracts now have explicit valid/invalid examples under
+  `examples/recovery/` and `examples/trial/`; all are labeled simulation or
+  unconfirmed contract fixtures, never human or live execution evidence.
+- `trialTaskCoverageComplete` is derived from confirmed, completed T1–T5 records
+  for each of two distinct participants and a completed REMOTE record. Fixed
+  requirements cannot be omitted, and record IDs cannot clear them. Extra
+  blockers remain open. `checkpointD` is always false until a separate maintainer
+  acceptance process; independence, remote authorization and evidence require
+  reviewer verification.
+- Reviewed integration is limited to the submitted engineering slices. Full
+  R11–R14, R16 and M3/Checkpoint B/C/D acceptance gaps remain unchanged. No
+  independent human trial, selected-host/GPU evidence, release or deployment is
+  manufactured by merging these PRs.
+
+See [the review record](../../reviews/pr139-140-2026-10-06.md) and the final
+[#139](https://github.com/victorzhong0110/llm-research-os/pull/139) /
+[#140](https://github.com/victorzhong0110/llm-research-os/pull/140) metadata for
+remote heads, final checks and exact integration SHAs.
+
+R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c944794dc574cbc66937` after final-head CI 37454556583 passed all five Python, actual browser, Ray, native and OCI gates. Linux Python 3.12: 2328 passed, 15 deselected; coverage 86.13%, unrounded floor check passed. The integrated tree is `23f3c89caad63a9055eb8ee66358c5ae90d82750`, identical to the reviewed repair tree. #140 preserves that tree's recovery fixes and records this actual main as a parent; its final-head CI remains the gate for its own integration.

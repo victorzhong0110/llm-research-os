@@ -49,7 +49,7 @@ from llm_research_os.research.ledger import build_research_ledger
 from llm_research_os.research.models import research_ledger_document
 from llm_research_os.runs.models import TERMINAL_RUN_STATUSES
 from llm_research_os.storage.schema import SCHEMA_DEFINITION_DIGEST, SCHEMA_VERSION
-from llm_research_os.storage.store import EventStore
+from llm_research_os.storage.store import EventStore, write_control_store_marker
 
 _CHUNK = 1 << 20
 _MAX_SNAPSHOT_BYTES = 1 << 34  # 16 GiB guard on a single snapshot file.
@@ -210,6 +210,7 @@ def restore_backup(
     control_db: Path | None = None,
     cas_root: Path | None = None,
     worker_root: Path | None = None,
+    now: datetime | None = None,
 ) -> RestoreReport:
     """Verify an image, then materialize it as a new workspace.
 
@@ -241,6 +242,7 @@ def restore_backup(
             control_db=control_db,
             cas_root=cas_root,
             worker_root=worker_root,
+            now=now or datetime.now(UTC),
         )
     except BaseException:
         _remove_tree(staging)
@@ -258,6 +260,7 @@ def _materialize(
     control_db: Path | None,
     cas_root: Path | None,
     worker_root: Path | None,
+    now: datetime,
 ) -> RestoreReport:
     project = project_id or manifest.project_id
     for path in (control_db, cas_root, worker_root):
@@ -285,6 +288,11 @@ def _materialize(
     with _snapshot_copy(staged) as image_store:
         source_ledger, source_events = _ledger_state(image_store, project, manifest.high_water)
     staged.replace(workspace.control_db)
+    # The restore path does not go through EventStore's create branch, so the
+    # lifecycle marker is written here. Without it a restored workspace whose
+    # store was later deleted would read as never-populated, which is the exact
+    # ambiguity the marker exists to remove.
+    write_control_store_marker(workspace.control_db, now=now)
 
     restored = LocalArtifactStore(workspace.cas_root)
     for entry in manifest.objects:

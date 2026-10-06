@@ -1,0 +1,68 @@
+{
+  "apiVersion": "researchos.dev/recovery/v0alpha1",
+  "checks": [
+    {
+      "detail": {
+        "projectId": "example-minimal"
+      },
+      "id": "workspace.manifest",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "casRootIsolated": true,
+        "workerRootExists": true,
+        "workerRootIsolated": true
+      },
+      "id": "workspace.roots",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "highWater": 14,
+        "schemaVersion": 2
+      },
+      "id": "control.store",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "currentVersion": 2
+      },
+      "id": "control.migration",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "bytesVerified": false,
+        "corrupt": 0,
+        "missing": 0,
+        "presenceChecked": true,
+        "referenced": 0
+      },
+      "id": "objects.referenced",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "bundlePresent": true
+      },
+      "id": "web.assets",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "freeSpaceSufficient": true,
+        "pythonSupported": true
+      },
+      "id": "platform.runtime",
+      "status": "ok"
+    }
+  ],
+  "generatedAt": "2026-10-06T00:00:00Z",
+  "healthy": true,
+  "kind": "WorkspaceDiagnostic",
+  "projectId": "example-minimal",
+  "pythonVersion": "3.12.14",
+  "schemaVersion": 2
+}

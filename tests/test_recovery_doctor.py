@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -26,6 +27,10 @@ from llm_research_os.recovery import doctor as doctor_module
 from llm_research_os.secrets.redaction import REDACTED
 from llm_research_os.storage import EventStore
 from llm_research_os.storage.schema import SCHEMA_VERSION
+from llm_research_os.storage.store import (
+    CONTROL_STORE_MARKER_VERSION,
+    control_store_marker_path,
+)
 from llm_research_os.web import serve as serve_module
 
 ROOT = Path(__file__).parents[1]
@@ -88,6 +93,13 @@ def _cli(*arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _control_status(workspace: Any) -> str:
+    """The reason the control.store check reports, or '' if it is present."""
+
+    check = _by_id(diagnose(workspace.root, now=NOW))["control.store"]
+    return str(check.detail.get("reason", ""))
+
+
 def _by_id(report: Any) -> dict[str, Any]:
     return {check.id: check for check in report.checks}
 
@@ -108,7 +120,10 @@ def test_healthy_workspace_reports_every_check_as_ok(tmp_path: Path) -> None:
         "referenced": 1,
         "missing": 0,
         "corrupt": 0,
-        "verified": True,
+        # `bytesVerified` rather than `verified`: the old key read as "these
+        # objects are fine" even on a shallow run that re-hashed nothing.
+        "bytesVerified": True,
+        "presenceChecked": True,
     }
     assert checks["web.assets"].detail["bundlePresent"] is True
     assert checks["workspace.roots"].detail["workerRootIsolated"] is True
@@ -169,7 +184,9 @@ def test_missing_referenced_object_is_reported_with_counts(tmp_path: Path) -> No
     assert report.healthy is False
     detail = _by_id(report)["objects.referenced"].detail
     assert detail["missing"] == 1
-    assert detail["verified"] is False
+    # Shallow run: presence was checked, bytes were not.
+    assert detail["bytesVerified"] is False
+    assert detail["presenceChecked"] is True
 
 
 def test_overlapping_worker_root_is_refused_at_init(tmp_path: Path) -> None:
@@ -376,8 +393,49 @@ def test_cli_migrate_uses_a_closed_code_for_a_missing_workspace(tmp_path: Path) 
 
 
 def test_absent_control_store_is_reported_by_the_doctor(tmp_path: Path) -> None:
-    """The R02 contract leaves the store absent until the first append."""
+    """The R02 contract leaves the store absent until the first append.
 
+    Covered together with the removed-store case in
+    `test_the_skipped_state_still_names_the_lost_store_case`; both are the same
+    observation as far as the workspace is concerned.
+    """
+
+    workspace = _workspace(tmp_path)
+
+    report = diagnose(workspace.root, now=NOW)
+
+    assert _by_id(report)["control.store"].status == "skipped"
+
+
+def test_fresh_workspace_reports_its_absent_control_store_as_skipped(
+    tmp_path: Path,
+) -> None:
+    """A workspace that never appended a fact is not unhealthy.
+
+    `init` deliberately does not create the control store, so the checks that
+    need it cannot run. Reporting that as `failed` made a correctly-initialized
+    workspace read as broken, which is the first thing the T2 task asks an
+    independent user to look at.
+    """
+    workspace = _workspace(tmp_path)
+
+    report = diagnose(workspace.root, now=NOW)
+
+    assert report.healthy is True
+    for check_id in ("control.store", "control.migration", "objects.referenced"):
+        check = _by_id(report)[check_id]
+        assert check.status == "skipped"
+        assert check.detail["reason"] == "not-yet-populated"
+        assert check.detail["expected"] is True
+
+
+def test_a_removed_control_store_is_reported_as_a_failure(tmp_path: Path) -> None:
+    """Deleting a control store is data loss, and the report now says so.
+
+    The lifecycle marker survives when the database does not, so this is
+    distinguishable from a fresh workspace rather than reported as merely
+    unpopulated. The earlier version had to guess, and guessed 'fine'.
+    """
     workspace = _workspace(tmp_path)
     _materialize(workspace)
     workspace.control_db.unlink()
@@ -385,16 +443,88 @@ def test_absent_control_store_is_reported_by_the_doctor(tmp_path: Path) -> None:
     report = diagnose(workspace.root, now=NOW)
 
     assert report.healthy is False
-    assert _by_id(report)["control.store"].detail == {"reason": "absent"}
+    for check_id in ("control.store", "control.migration", "objects.referenced"):
+        check = _by_id(report)[check_id]
+        assert check.status == "failed"
+        assert check.detail["reason"] == "removed"
+        assert check.detail["expected"] is False
+    assert "backup" in _by_id(report)["control.store"].detail["note"]
 
 
-def test_fresh_workspace_reports_its_absent_control_store(tmp_path: Path) -> None:
+def test_removing_the_whole_control_directory_is_also_detected(tmp_path: Path) -> None:
+    """The second signal: `init_workspace` always creates the control directory.
+
+    A wholesale `rm -rf control` takes the marker with it, so the directory's
+    absence is the only evidence left -- and it is reliable, because a workspace
+    this tool created always has one.
+    """
     workspace = _workspace(tmp_path)
+    _materialize(workspace)
+    shutil.rmtree(workspace.control_db.parent)
 
     report = diagnose(workspace.root, now=NOW)
 
     assert report.healthy is False
-    assert _by_id(report)["control.store"].detail == {"reason": "absent"}
+    assert _by_id(report)["control.store"].detail["reason"] == "removed"
+
+
+def test_the_marker_is_written_when_a_store_is_created(tmp_path: Path) -> None:
+    """The signal only works if something writes it, and writes it once."""
+    workspace = _workspace(tmp_path)
+    marker = control_store_marker_path(workspace.control_db)
+    assert not marker.exists()
+
+    _materialize(workspace)
+    assert marker.exists()
+
+    payload = json.loads(marker.read_text())
+    assert payload["kind"] == "ControlStoreLifecycle"
+    assert payload["markerVersion"] == CONTROL_STORE_MARKER_VERSION
+
+    # A second open must not rewrite it: the marker records first creation, and
+    # a rewritten timestamp would misreport when the store first came about.
+    before = marker.read_text()
+    with EventStore(workspace.control_db, require_existing=True):
+        pass
+    assert marker.read_text() == before
+
+
+def test_the_marker_carries_nothing_that_needs_redacting(tmp_path: Path) -> None:
+    """It sits inside a shareable workspace, so it must hold nothing sensitive."""
+    workspace = _workspace(tmp_path)
+    _materialize(workspace)
+
+    rendered = control_store_marker_path(workspace.control_db).read_text()
+
+    assert str(workspace.root) not in rendered
+    assert str(tmp_path) not in rendered
+    assert workspace.project_id not in rendered
+
+
+def test_the_doctor_distinguishes_the_three_states(tmp_path: Path) -> None:
+    """The point of the marker, asserted as a single comparison.
+
+    Written as three workspaces in one test because the interesting claim is the
+    difference between them, not any one of them.
+    """
+    states: dict[str, tuple[bool, str]] = {}
+    for name, damage in (
+        ("fresh", None),
+        ("db-removed", "db"),
+        ("dir-removed", "dir"),
+    ):
+        ws = _workspace(tmp_path / name)
+        if damage is not None:
+            _materialize(ws)
+            if damage == "db":
+                ws.control_db.unlink()
+            else:
+                shutil.rmtree(ws.control_db.parent)
+        states[name] = (diagnose(ws.root, now=NOW).healthy, _control_status(ws))
+
+    assert states["fresh"] == (True, "not-yet-populated")
+    assert states["db-removed"] == (False, "removed")
+    assert states["dir-removed"] == (False, "removed")
 
 
 def test_migrate_refuses_a_workspace_without_a_control_store(tmp_path: Path) -> None:
@@ -515,7 +645,8 @@ def test_diagnostics_carry_no_absolute_path_for_any_check(tmp_path: Path) -> Non
             "referenced",
             "missing",
             "corrupt",
-            "verified",
+            "bytesVerified",
+            "presenceChecked",
             "bundlePresent",
             "pythonSupported",
             "freeSpaceSufficient",
@@ -574,3 +705,25 @@ def test_cli_restore_refuses_a_project_override_with_no_events(tmp_path: Path) -
     assert result.returncode == 2
     assert json.loads(result.stderr)["code"] == "restore-ledger-mismatch"
     assert not (tmp_path / "restored").exists()
+
+
+def test_demo_hints_preserve_paths_with_shell_metacharacters(tmp_path: Path) -> None:
+    import shlex
+
+    root = tmp_path / "space $dollar;literal"
+    from llm_research_os.recovery.demo import run_demo
+
+    result = run_demo(root, now=NOW)
+    assert shlex.split(result.backup_command) == [
+        "researchos",
+        "backup",
+        "create",
+        "--root",
+        str(root),
+        "--out",
+        f"{root}-backup",
+    ]
+    assert shlex.split(result.serve_command)[3:5] == ["--root", str(root)]
+    tokens = shlex.split(result.evidence_import_command)
+    assert tokens[4] == str(root / "control/events.sqlite")
+    assert tokens[-1] == str(root / "cas")

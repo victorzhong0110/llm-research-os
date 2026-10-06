@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/recovery/v0alpha1",
+  "appendedEvents": 0,
+  "kind": "RestoreReport",
+  "ledgerMatches": true,
+  "projectId": "example-minimal",
+  "reconciledRuns": [],
+  "relaunchPolicy": "not-relaunched",
+  "restoredEventCount": 14,
+  "restoredHighWater": 14,
+  "restoredObjectCount": 0
+}

@@ -29,6 +29,7 @@ from llm_research_os.cli.research_commands import (
 )
 from llm_research_os.cli.runs_commands import run_runs
 from llm_research_os.cli.spec_commands import run_diff, run_dry_run, run_schema, run_validate
+from llm_research_os.cli.trial_commands import run_trial
 from llm_research_os.cli.web_commands import run_web
 from llm_research_os.cli.worker_commands import run_grants, run_workers
 
@@ -69,6 +70,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "web": run_web,
     "workspace": run_workspace,
     "backup": run_backup,
+    "trial": run_trial,
 }
 
 

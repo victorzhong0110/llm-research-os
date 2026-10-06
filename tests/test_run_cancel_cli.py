@@ -202,7 +202,7 @@ def test_missing_database_fails_without_creating_it(
     output = capsys.readouterr()  # type: ignore[attr-defined]
     problem = json.loads(output.err)
     assert output.out == ""
-    assert problem["errors"][0]["type"] == "EventStoreSchemaError"
+    assert problem["errors"][0]["type"] == "event-store-absent"
     assert not database.exists()
 
 
@@ -346,7 +346,7 @@ def test_corrupt_database_is_not_modified_or_reported_as_cancelled(
     output = capsys.readouterr()  # type: ignore[attr-defined]
     problem = json.loads(output.err)
     assert output.out == ""
-    assert problem["errors"][0]["type"] == "EventStoreSchemaError"
+    assert problem["errors"][0]["type"] == "event-store-schema-invalid"
     assert database.read_bytes() == before
 
 

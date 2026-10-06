@@ -6,7 +6,17 @@ class EventStoreError(RuntimeError):
 
 
 class EventStoreSchemaError(EventStoreError):
-    """Raised when a database does not match the supported schema."""
+    """Raised when a database does not match the supported schema.
+
+    ``code`` is a stable machine identifier. The rendered message carries no
+    host path: these reach CLI output, logs, and issue reports, and a
+    filesystem path in a shared error is a disclosure the rest of the project
+    treats as a defect.
+    """
+
+    def __init__(self, message: str, *, code: str = "event-store-schema-invalid") -> None:
+        self.code = code
+        super().__init__(message)
 
 
 class EventAppendError(EventStoreError):

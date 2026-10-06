@@ -955,3 +955,15 @@ new root, staging directories are unique, and backup reads reject non-regular
 files. The manifest is size-bounded during the read. Parent-directory races by
 processes with the same filesystem privileges remain outside this local-tool
 boundary. Regression evidence: `tests/test_recovery_backup.py`.
+
+### TM-095: A trial record counter is mistaken for phase acceptance
+
+Trial records are self-reported operator documents. Confirmation fields cannot
+authenticate an author, prove participant independence, grant remote access or
+verify an attached report. The aggregate derives fixed task coverage from
+confirmed completed journeys, refuses duplicate IDs and contradictory outcomes,
+and preserves arbitrary extra blockers. It always returns `checkpointD: false`
+and `acceptance: requires-maintainer-review`; task coverage is a separate result.
+Regular-file reads are bounded at 1 MiB per record and 32 MiB per kit. Tests:
+`test_recovery_trials.py` and `test_recovery_cli.py`. Real human and selected-host
+acceptance remains pending-live and cannot be fabricated by this tooling.

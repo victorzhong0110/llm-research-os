@@ -10,6 +10,13 @@ authorized release.
 ## Unreleased
 
 ### Added
+
+- The evidence-import example request and its Markdown source now ship inside the
+  wheel beside the offline demonstration corpus, and `researchos workspace demo`
+  prints the exact `researchos evidence import ...` command as its first next
+  hint. The installation task forbids cloning the repository, so a participant
+  previously had no way to run the evidence-import journey at all.
+
 - R15 installation, startup, backup, and recovery. `researchos backup create |
   verify | restore` produce a self-describing backup image of a **verified
   high-water prefix** of the EventStore plus the immutable CAS objects that
@@ -70,6 +77,54 @@ authorized release.
   in the image carries instead of folding an empty ledger on both sides and
   reporting a match. A rename that leaves the manifest disagreeing with every
   stored event is now a closed `restore-ledger-mismatch`.
+- R16 the independent-trial kit: six fixed offline tasks (T1–T5 and REMOTE), a
+  TRIAL-01..05 pending table, and an aggregated closure record with a
+  BACKLOG-01..12 remainder list. **No trial was performed and none is simulated**;
+  Checkpoint D cannot close from this branch.
+
+- R16 the trial record is a validated contract, not a prose template. A
+  `TrialRecord` authored by `recordedBy: implementer` is refused if it names any
+  intervention or confusion, because "no confusion observed" and "nobody wrote
+  the confusion down" are otherwise indistinguishable; `evidenceAttached` must be
+  non-empty so a record can be reviewed later; and `task` is restricted to the
+  agreed list. `researchos trial scaffold` writes deliberately invalid slots and
+  exits 1, `validate` refuses an unfilled one, and `aggregate` reports
+  participants, tasks covered, recorded remote journeys, unresolved blockers, and
+  `checkpointD`. Two new published contracts, `trial-record` and `trial-kit`.
+
+- R16 a trial record is **pending until the participant themself confirms it**.
+  `participantConfirmed` defaults to false, `confirmedAt` is required when it is
+  set and refused when it is not, and an implementer may not set it at all. The
+  participant roll-up, the completed-task count and the remote-journey tally are
+  all confirmed-only; `aggregate` reports `participants`,
+  `observedParticipants` and `pendingConfirmation` separately. Without this an
+  observer could file every record on a participant's behalf and the kit would
+  report a completed trial programme.
+
+- R16 `ProblemReport.type` is now a code. `EventStoreSchemaError` joins the
+  coded errors, so a missing control store reports `event-store-absent` instead
+  of the class name, and the protocol states the rule: `type` is a stable machine
+  identifier, never a class name, with a class-name fallback only for errors
+  that define no codes. Adopted on maintainer instruction; the three CLI tests
+  that pinned the class name were updated and
+  `tests/test_problem_report_type_vocabulary.py` pins the vocabulary and the
+  fallback.
+
+- **Four more host-path leaks fixed.** `_validate_database_path` interpolated
+  the path into its missing-parent, inspect-failure, symlink and not-a-regular-
+  file messages, and none had a test. Writing the type-vocabulary test is what
+  found them: its first version used a path with a missing parent, hit a
+  different branch, and passed without covering them. All control-store messages
+  are now path-free.
+
+- R16 the missing-control-store error no longer renders a host path. A fresh
+  workspace still has no EventStore until the first append — that accepted R02
+  contract is unchanged — but the error now says so and names the next step
+  instead of printing `/absolute/host/path`. `EventStoreSchemaError` also
+  carries a `code` attribute; routing it into the `ProblemReport` `type` field
+  would change a published error surface, so that is raised as a review proposal
+  rather than taken here.
+
 - R14 minimal extension mechanism and permission boundary: a versioned manifest
   contract with a closed permission set, a compatibility refusal, a bounded
   subprocess host for one reviewed same-user adapter, and explicit
@@ -216,6 +271,63 @@ authorized release.
   remote executor/recovery and new authorized two-host/GPU acceptance remain open.
 
 ### Fixed
+
+- **`workspace doctor` could not tell a fresh workspace from one that had lost
+  its data.** `init` deliberately does not create a control store, so "no store"
+  is a normal state — and deleting a store left exactly the same evidence, so a
+  gutted workspace was reported as merely unpopulated. A lifecycle marker,
+  `.control-store.json`, is now written beside the control database when a store
+  is created, and `restore` writes it too. A second signal covers the case the
+  marker cannot: `init` always creates the control directory, so its absence is
+  itself proof of removal. All three states are now distinct —
+  `not-yet-populated` (skipped) versus `removed` (failed) — and the marker holds
+  no path, no project id, and nothing needing redaction.
+
+- `researchos backup restore` rejected a missing or duplicated destination with
+  a bare `SystemExit`, which printed a sentence and exited 1, where every other
+  failure in the command renders a closed code and message on stderr with exit
+  2. It now raises `backup-restore-ambiguous` and
+  `backup-restore-destination-missing` through the same path.
+
+
+- **A correctly initialized workspace reported itself unhealthy.**
+  `researchos workspace doctor` marked `control.store`, `control.migration` and
+  `objects.referenced` as `failed` with `reason: absent` whenever the control
+  store did not exist — but `app init` deliberately does not create it, so that
+  is the expected state of a fresh workspace under the accepted R02 contract.
+  They are now `skipped` with `reason: not-yet-populated` and a note, and a fresh
+  workspace reports `healthy: true`. The note states the one thing the doctor
+  cannot determine: nothing survives deleting a control store, so "never had one"
+  and "had one removed" are indistinguishable, and a removed store therefore
+  reads as `skipped` rather than `failed`.
+
+- **`researchos app init` needed four layout arguments with no defaults and no
+  help text.** `--control-db`, `--cas-root` and `--worker-root` now default to
+  the conventional arrangement under `--root`, and the subcommand carries a
+  description with an example, so `researchos app init --root ./workspace
+  --project my-project` works. Previously the only place the convention was
+  written down was a guide in the repository that the installation task tells
+  you not to clone.
+
+- **`backup restore` took `--root` where `backup create` took `--out`**, so
+  `--root` named the source on one subcommand and the destination on the other.
+  `restore` now accepts `--out` as well, `--root` keeps working, and both
+  subcommands describe it as this command's output.
+
+- **`objects.referenced` reported `verified: false` on a shallow run** that had
+  re-hashed nothing, which reads as "these objects are not fine" on a check whose
+  status is `ok`. Split into `bytesVerified` (requires `--deep`) and
+  `presenceChecked` (always true).
+
+
+- Four `tests/test_native_ssh_live.py` tests failed in any environment whose
+  system `python3` predates 3.12. The local transport runs the real remote
+  command `python3 -I -c ...`, so the simulated worker host inherited the
+  container's Python 3.11 and the probe correctly refused it — four tests
+  asserting `ready` were failing for a reason unrelated to what they test. The
+  harness now pins `PATH` to the interpreter running the suite, a guard test
+  fails loudly if that stops working, and the old-host rejection is still tested
+  directly. The selected suite is now **2,348 passed, 0 failed**.
 
 - The local API server raised an unhandled `OSError` when its port was already
   bound, so an operator with a port conflict got a traceback instead of a cause.

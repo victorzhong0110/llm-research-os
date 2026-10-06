@@ -119,6 +119,9 @@ def _validate_event_types(value: frozenset[str] | None) -> frozenset[str] | None
 
 
 def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
+    # No host path in any message below. These reach CLI output, logs, and issue
+    # reports; the caller already holds the path it passed in, so repeating it
+    # adds nothing but a disclosure.
     source = Path(path).absolute()
     if str(path) == ":memory:":
         raise EventStoreSchemaError("the M0 event store requires a local filesystem path")
@@ -126,19 +129,16 @@ def _validate_database_path(path: str | Path) -> tuple[Path, bool]:
     try:
         metadata = os.lstat(source)
     except FileNotFoundError:
-        parent = source.parent
-        if not parent.is_dir():
-            raise EventStoreSchemaError(
-                f"database parent directory does not exist: {parent}"
-            ) from None
+        if not source.parent.is_dir():
+            raise EventStoreSchemaError("database parent directory does not exist") from None
         return source, True
     except OSError as exc:
-        raise EventStoreSchemaError(f"could not inspect database path: {source}") from exc
+        raise EventStoreSchemaError("could not inspect the database path") from exc
 
     if stat.S_ISLNK(metadata.st_mode):
-        raise EventStoreSchemaError(f"database path must not be a symbolic link: {source}")
+        raise EventStoreSchemaError("database path must not be a symbolic link")
     if not stat.S_ISREG(metadata.st_mode):
-        raise EventStoreSchemaError(f"database path must be a regular file: {source}")
+        raise EventStoreSchemaError("database path must be a regular file")
     return source, False
 
 
@@ -152,7 +152,15 @@ def _connect_sqlite(
 ) -> sqlite3.Connection:
     if require_existing:
         if is_new:
-            raise EventStoreSchemaError(f"database does not exist: {path}")
+            # No host path: this text reaches CLI output and issue reports. A
+            # fresh workspace deliberately has no EventStore until the first
+            # append, so the message says what to do rather than where it looked.
+            raise EventStoreSchemaError(
+                "the control store does not exist; a fresh workspace has no "
+                "EventStore until a command appends a fact, or restore one from "
+                "a backup image",
+                code="event-store-absent",
+            )
         try:
             return sqlite3.connect(
                 f"{path.as_uri()}?mode=rw",
@@ -161,7 +169,10 @@ def _connect_sqlite(
                 uri=True,
             )
         except sqlite3.OperationalError as exc:
-            raise EventStoreSchemaError(f"could not open database for writing: {path}") from exc
+            raise EventStoreSchemaError(
+                "the control store could not be opened for writing",
+                code="event-store-unwritable",
+            ) from exc
     if create:
         return sqlite3.connect(path, timeout=timeout_seconds, autocommit=True)
     try:
@@ -173,8 +184,83 @@ def _connect_sqlite(
         )
     except sqlite3.OperationalError as exc:
         if is_new:
-            raise EventStoreSchemaError(f"database does not exist: {path}") from exc
-        raise EventStoreSchemaError(f"could not open database: {path}") from exc
+            raise EventStoreSchemaError(
+                "the control store does not exist; a fresh workspace has no "
+                "EventStore until a command appends a fact, or restore one from "
+                "a backup image",
+                code="event-store-absent",
+            ) from exc
+        raise EventStoreSchemaError(
+            "the control store could not be opened for reading", code="event-store-unreadable"
+        ) from exc
+
+
+#: Sibling of the control database, written the first time a store is created.
+#:
+#: Without it, a workspace whose control store was deleted is indistinguishable
+#: from a workspace that never had one: the R02 contract leaves a fresh workspace
+#: without a store, so "no store" is a normal state, and deleting one produces
+#: exactly the same evidence. A workspace whose control store is destroyed is
+#: data loss and must not be reported as merely unpopulated.
+CONTROL_STORE_MARKER_NAME = ".control-store.json"
+
+#: Bumped when the marker's shape changes. It is a local lifecycle artifact, not
+#: a published contract: no path, no project id, and nothing a reader would need
+#: redaction for.
+CONTROL_STORE_MARKER_VERSION = 1
+
+
+def control_store_marker_path(database: str | Path) -> Path:
+    """Return the lifecycle marker that sits beside a control database."""
+
+    return Path(database).absolute().parent / CONTROL_STORE_MARKER_NAME
+
+
+def write_control_store_marker(database: str | Path, *, now: datetime) -> None:
+    """Record that a control store exists here, if it is not recorded already.
+
+    Best effort by design. A store that cannot also write a sibling marker has
+    already failed for a reason the caller will see; refusing to open it because
+    the marker could not be written would turn a diagnostic aid into a hard
+    dependency.
+    """
+
+    path = control_store_marker_path(database)
+    if path.exists():
+        return
+    payload = {
+        "apiVersion": "researchos.dev/recovery/v0alpha1",
+        "kind": "ControlStoreLifecycle",
+        "markerVersion": CONTROL_STORE_MARKER_VERSION,
+        "createdAt": now.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+    }
+    try:
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        return
+
+
+def control_store_was_removed(database: str | Path) -> bool:
+    """Report whether a control store existed here and is now gone.
+
+    Two signals, because either alone has a blind spot:
+
+    - the marker surviving means the database itself was removed;
+    - the control *directory* being absent means it was removed wholesale, and
+      ``init_workspace`` always creates that directory, so it cannot be missing
+      from a workspace this tool created.
+    """
+
+    database_path = Path(database).absolute()
+    if database_path.exists():
+        return False
+    if control_store_marker_path(database_path).exists():
+        return True
+    return not database_path.parent.is_dir()
 
 
 class EventStore:
@@ -222,6 +308,7 @@ class EventStore:
             self._connection.row_factory = sqlite3.Row
             if create and is_new:
                 os.chmod(self._path, stat.S_IRUSR | stat.S_IWUSR)
+                write_control_store_marker(self._path, now=self._clock())
             if require_existing:
                 self._configure_connection_guards(timeout_seconds)
                 self._initialize_or_verify_schema(allow_create=False)
@@ -233,9 +320,7 @@ class EventStore:
             connection = getattr(self, "_connection", None)
             if connection is not None:
                 connection.close()
-            raise EventStoreSchemaError(
-                f"could not initialize event-store database: {self._path}"
-            ) from exc
+            raise EventStoreSchemaError("could not initialize event-store database") from exc
         except Exception:
             connection = getattr(self, "_connection", None)
             if connection is not None:

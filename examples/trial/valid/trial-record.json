@@ -1,0 +1,29 @@
+{
+  "apiVersion": "researchos.dev/trial/v0alpha1",
+  "buildUnderTest": "contract-fixture-not-a-real-trial",
+  "completed": true,
+  "confusionObserved": [],
+  "defectsFound": [],
+  "elapsedSeconds": 240,
+  "evidenceAttached": [
+    "doctor.json"
+  ],
+  "exitState": "workspace demo reported a healthy workspace",
+  "gpu": "absent",
+  "interventions": [],
+  "kind": "TrialRecord",
+  "modelKey": "absent",
+  "node": "absent",
+  "participantAlias": "fixture-only",
+  "participantConfirmed": false,
+  "platform": "Linux 6.8, x86_64",
+  "pythonVersion": "3.12.14",
+  "recordedAt": "2026-10-06T09:00:00Z",
+  "recordedBy": "implementer",
+  "recoveryObserved": [],
+  "sourceCheckout": "absent",
+  "task": "T1",
+  "taskTextGiven": "Install the wheel and run the demonstration.",
+  "trialId": "synthetic-contract-fixture",
+  "verdict": "core-journey-completed"
+}

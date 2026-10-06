@@ -1,0 +1,225 @@
+{
+  "$id": "https://researchos.dev/schemas/trial-record/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One participant's result on one fixed task.",
+  "properties": {
+    "apiVersion": {
+      "default": "researchos.dev/trial/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "buildUnderTest": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Buildundertest",
+      "type": "string"
+    },
+    "completed": {
+      "title": "Completed",
+      "type": "boolean"
+    },
+    "confirmedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmedat"
+    },
+    "confusionObserved": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Confusionobserved",
+      "type": "array"
+    },
+    "defectsFound": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Defectsfound",
+      "type": "array"
+    },
+    "elapsedSeconds": {
+      "maximum": 86400,
+      "minimum": 0,
+      "title": "Elapsedseconds",
+      "type": "integer"
+    },
+    "evidenceAttached": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Evidenceattached",
+      "type": "array"
+    },
+    "exitState": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Exitstate",
+      "type": "string"
+    },
+    "gpu": {
+      "default": "absent",
+      "enum": [
+        "absent",
+        "present-but-unused"
+      ],
+      "title": "Gpu",
+      "type": "string"
+    },
+    "interventions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Interventions",
+      "type": "array"
+    },
+    "kind": {
+      "const": "TrialRecord",
+      "default": "TrialRecord",
+      "title": "Kind",
+      "type": "string"
+    },
+    "modelKey": {
+      "enum": [
+        "absent",
+        "present-but-unused"
+      ],
+      "title": "Modelkey",
+      "type": "string"
+    },
+    "node": {
+      "default": "absent",
+      "enum": [
+        "absent",
+        "present-but-unused"
+      ],
+      "title": "Node",
+      "type": "string"
+    },
+    "participantAlias": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Participantalias",
+      "type": "string"
+    },
+    "participantConfirmed": {
+      "default": false,
+      "title": "Participantconfirmed",
+      "type": "boolean"
+    },
+    "platform": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Platform",
+      "type": "string"
+    },
+    "pythonVersion": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Pythonversion",
+      "type": "string"
+    },
+    "recordedAt": {
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+      "title": "Recordedat",
+      "type": "string"
+    },
+    "recordedBy": {
+      "default": "observer",
+      "enum": [
+        "participant",
+        "observer",
+        "implementer"
+      ],
+      "title": "Recordedby",
+      "type": "string"
+    },
+    "recoveryObserved": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Recoveryobserved",
+      "type": "array"
+    },
+    "sourceCheckout": {
+      "enum": [
+        "absent",
+        "present-but-unused"
+      ],
+      "title": "Sourcecheckout",
+      "type": "string"
+    },
+    "task": {
+      "enum": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "REMOTE"
+      ],
+      "title": "Task",
+      "type": "string"
+    },
+    "taskTextGiven": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "title": "Tasktextgiven",
+      "type": "string"
+    },
+    "trialId": {
+      "maxLength": 128,
+      "minLength": 3,
+      "title": "Trialid",
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "core-journey-completed",
+        "blocked",
+        "abandoned"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "required": [
+    "trialId",
+    "task",
+    "participantAlias",
+    "recordedAt",
+    "buildUnderTest",
+    "platform",
+    "pythonVersion",
+    "modelKey",
+    "sourceCheckout",
+    "taskTextGiven",
+    "completed",
+    "exitState",
+    "elapsedSeconds",
+    "interventions",
+    "confusionObserved",
+    "recoveryObserved",
+    "defectsFound",
+    "evidenceAttached",
+    "verdict"
+  ],
+  "title": "TrialRecord",
+  "type": "object"
+}

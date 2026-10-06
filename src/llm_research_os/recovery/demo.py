@@ -14,6 +14,7 @@ training result and not a scientific conclusion (ADR-0062, TM-023).
 
 from __future__ import annotations
 
+import shlex
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ class DemoResult:
     healthy: bool
     backup_command: str
     serve_command: str
+    evidence_import_command: str
 
 
 def run_demo(root: Path, *, now: datetime) -> DemoResult:
@@ -86,10 +88,33 @@ def run_demo(root: Path, *, now: datetime) -> DemoResult:
         queued=result.queued,
         run_id=result.run_id,
         healthy=report.healthy,
-        backup_command=(
-            f"researchos backup create --root {workspace.root} --out {workspace.root}-backup"
+        backup_command=shlex.join(
+            [
+                "researchos",
+                "backup",
+                "create",
+                "--root",
+                str(workspace.root),
+                "--out",
+                f"{workspace.root}-backup",
+            ]
         ),
-        serve_command=f"researchos web serve --root {workspace.root} --port 8787",
+        serve_command=shlex.join(
+            ["researchos", "web", "serve", "--root", str(workspace.root), "--port", "8787"]
+        ),
+        evidence_import_command=shlex.join(
+            [
+                "researchos",
+                "evidence",
+                "import",
+                str(DEMO_CORPUS / "evidence" / "import-markdown.json"),
+                str(workspace.control_db),
+                "--source",
+                str(DEMO_CORPUS / "evidence" / "eval-split.md"),
+                "--artifacts",
+                str(workspace.cas_root),
+            ]
+        ),
     )
 
 

@@ -31,7 +31,7 @@ from llm_research_os.recovery.models import DiagnosticCheck, DiagnosticReport
 from llm_research_os.secrets.redaction import redact_object
 from llm_research_os.storage.errors import EventIntegrityError, EventStoreError
 from llm_research_os.storage.schema import MIGRATIONS, SCHEMA_VERSION
-from llm_research_os.storage.store import EventStore
+from llm_research_os.storage.store import EventStore, control_store_was_removed
 from llm_research_os.web.assets import INDEX_NAME, STATIC_ROOT
 
 MINIMUM_PYTHON = (3, 12)
@@ -127,9 +127,46 @@ def _check_roots(workspace: Workspace) -> DiagnosticCheck:
     )
 
 
+#: Detail attached to every check that cannot run because the control store does
+#: not exist yet. Reported as ``skipped`` rather than ``failed``: a workspace
+#: that has not appended its first fact is not unhealthy, and calling it
+#: unhealthy is what made a correctly-initialized workspace look broken.
+#:
+#: ``note`` carries the one thing that cannot be decided from the workspace
+#: alone. There is no marker distinguishing "never had a control store" from
+#: "had one and it was removed", so the report states the question instead of
+#: guessing the answer.
+_NOT_YET_POPULATED: dict[str, object] = {
+    "reason": "not-yet-populated",
+    "expected": True,
+    "note": "this workspace has not appended a fact, so it has no control store yet",
+}
+
+#: A control store that existed and is now gone. This is data loss, and it is
+#: distinguishable from a fresh workspace: the lifecycle marker survives when the
+#: database is deleted, and ``init_workspace`` always creates the control
+#: directory, so its absence is itself evidence of removal.
+_STORE_REMOVED: dict[str, object] = {
+    "reason": "removed",
+    "expected": False,
+    "note": ("a control store was recorded here and is now gone; restore one from a backup image"),
+}
+
+
+def _absent_control_store(workspace: Workspace) -> DiagnosticCheck:
+    """Report a missing control store, distinguishing fresh from removed."""
+
+    detail = (
+        _STORE_REMOVED if control_store_was_removed(workspace.control_db) else _NOT_YET_POPULATED
+    )
+    return _check(
+        "control.store", "failed" if detail is _STORE_REMOVED else "skipped", dict(detail)
+    )
+
+
 def _check_control_store(workspace: Workspace) -> DiagnosticCheck:
     if not workspace.control_db.exists():
-        return _check("control.store", "failed", {"reason": "absent"})
+        return _absent_control_store(workspace)
     try:
         with EventStore(workspace.control_db, create=False) as store:
             high_water = store.freeze_high_water()
@@ -144,7 +181,8 @@ def _check_control_store(workspace: Workspace) -> DiagnosticCheck:
 
 def _check_migration(workspace: Workspace) -> DiagnosticCheck:
     if not workspace.control_db.exists():
-        return _check("control.migration", "failed", {"reason": "absent"})
+        absent = _absent_control_store(workspace)
+        return _check("control.migration", absent.status, dict(absent.detail))
     current = read_header_version(workspace.control_db)
     if current is None:
         return _check("control.migration", "failed", {"reason": "unreadable"})
@@ -167,7 +205,8 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
     """Report referenced-object coverage. ``deep`` re-verifies bytes, not just presence."""
 
     if not workspace.control_db.exists():
-        return _check("objects.referenced", "failed", {"reason": "absent"})
+        absent = _absent_control_store(workspace)
+        return _check("objects.referenced", absent.status, dict(absent.detail))
     try:
         with EventStore(workspace.control_db, create=False) as store:
             high_water = store.freeze_high_water()
@@ -193,6 +232,10 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
             except (ArtifactStoreError, OSError, ValueError):
                 corrupt += 1
     status = "ok" if missing == 0 and corrupt == 0 else "failed"
+    # `verified` read as "these objects were checked and are fine" even on a
+    # shallow run, where nothing was re-hashed at all. The presence and
+    # missing counts are real either way; only byte verification needs --deep,
+    # so the flag says which one happened.
     return _check(
         "objects.referenced",
         status,
@@ -200,7 +243,8 @@ def _check_objects(workspace: Workspace, *, deep: bool) -> DiagnosticCheck | Non
             "referenced": len(referenced),
             "missing": missing,
             "corrupt": corrupt if deep else 0,
-            "verified": deep,
+            "bytesVerified": deep,
+            "presenceChecked": True,
         },
     )
 
