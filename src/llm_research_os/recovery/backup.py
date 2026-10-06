@@ -20,12 +20,13 @@ import hashlib
 import json
 import os
 import sqlite3
+import stat
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import BinaryIO, cast
 from urllib.parse import quote
 
 from llm_research_os.application.workspace import Workspace, init_workspace
@@ -70,10 +71,7 @@ def create_backup(workspace: Workspace, destination: Path, *, now: datetime) -> 
         if any(image.iterdir()):
             raise RecoveryError("backup-path-occupied", "backup destination is not empty")
     image.parent.mkdir(parents=True, exist_ok=True)
-    staging = image.parent / f".{image.name}.partial-{os.getpid()}"
-    if staging.exists():
-        _remove_tree(staging)
-    staging.mkdir(parents=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{image.name}.partial-", dir=image.parent))
     try:
         report = _build_image(workspace, staging, now=now)
     except BaseException:
@@ -106,6 +104,13 @@ def _verify_image(image: Path) -> tuple[BackupManifest, BackupReport]:
 
     manifest = load_manifest(image)
     snapshot = image / EVENTS_SNAPSHOT_NAME
+    try:
+        if snapshot.stat().st_size > _MAX_SNAPSHOT_BYTES:
+            raise RecoveryError("backup-too-large", "the event snapshot exceeds the supported size")
+    except OSError as exc:
+        raise BackupIntegrityError(
+            "backup-snapshot-missing", "the event snapshot is missing"
+        ) from exc
     observed = _file_digest(snapshot, missing_code="backup-snapshot-missing")
     if observed != manifest.snapshot_digest:
         raise BackupIntegrityError(
@@ -226,9 +231,7 @@ def restore_backup(
         if any(target.iterdir()):
             raise RecoveryError("restore-path-occupied", "restore destination is not empty")
     target.parent.mkdir(parents=True, exist_ok=True)
-    staging = target.parent / f".{target.name}.partial-{os.getpid()}"
-    if staging.exists():
-        _remove_tree(staging)
+    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.partial-", dir=target.parent))
     try:
         report = _materialize(
             source,
@@ -257,6 +260,11 @@ def _materialize(
     worker_root: Path | None,
 ) -> RestoreReport:
     project = project_id or manifest.project_id
+    for path in (control_db, cas_root, worker_root):
+        if path is not None and (path.is_absolute() or ".." in path.parts):
+            raise RecoveryError(
+                "restore-layout-invalid", "restore paths must remain inside the new workspace"
+            )
     workspace = init_workspace(
         staging,
         project_id=project,
@@ -267,6 +275,15 @@ def _materialize(
     snapshot = source / EVENTS_SNAPSHOT_NAME
     staged = workspace.control_db.parent / f".{workspace.control_db.name}.partial"
     _copy_file(snapshot, staged)
+    if (
+        staged.stat().st_size != manifest.snapshot_bytes
+        or _file_digest(staged) != manifest.snapshot_digest
+    ):
+        raise BackupIntegrityError(
+            "restore-snapshot-mismatch", "the copied event snapshot changed after verification"
+        )
+    with _snapshot_copy(staged) as image_store:
+        source_ledger, source_events = _ledger_state(image_store, project, manifest.high_water)
     staged.replace(workspace.control_db)
 
     restored = LocalArtifactStore(workspace.cas_root)
@@ -282,8 +299,6 @@ def _materialize(
             )
         restored.verify(entry.digest)
 
-    with _snapshot_copy(snapshot) as image_store:
-        source_ledger, source_events = _ledger_state(image_store, project, manifest.high_water)
     with EventStore(workspace.control_db, require_existing=True) as store:
         restored_count = store.verify_integrity()
         restored_high_water = store.last_sequence()
@@ -322,9 +337,10 @@ def load_manifest(image: Path) -> BackupManifest:
 
     path = image / MANIFEST_NAME
     try:
-        if path.stat().st_size > _MAX_MANIFEST_BYTES:
+        with _regular_reader(path) as handle:
+            payload = handle.read(_MAX_MANIFEST_BYTES + 1)
+        if len(payload) > _MAX_MANIFEST_BYTES:
             raise RecoveryError("backup-manifest-too-large", "backup manifest is too large")
-        payload = path.read_text(encoding="utf-8")
     except RecoveryError:
         raise
     except OSError as exc:
@@ -538,7 +554,7 @@ def _write_manifest(image: Path, manifest: BackupManifest) -> None:
 def _file_digest(path: Path, *, missing_code: str = "backup-object-missing") -> str:
     digest = hashlib.sha256()
     try:
-        with path.open("rb") as handle:
+        with _regular_reader(path) as handle:
             while chunk := handle.read(_CHUNK):
                 digest.update(chunk)
     except FileNotFoundError as exc:
@@ -550,9 +566,21 @@ def _file_digest(path: Path, *, missing_code: str = "backup-object-missing") -> 
 
 def _copy_file(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with source.open("rb") as handle:
+    with _regular_reader(source) as handle:
         _copy_stream(handle, destination)
     _fsync_path(destination)
+
+
+@contextmanager
+def _regular_reader(path: Path) -> Iterator[BinaryIO]:
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise RecoveryError("backup-file-invalid", "backup inputs must be regular files")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            yield handle
+    finally:
+        os.close(descriptor)
 
 
 def _copy_stream(source: object, destination: Path) -> None:

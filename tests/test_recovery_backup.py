@@ -750,7 +750,11 @@ def test_restore_uses_the_verified_store_for_its_own_comparison(tmp_path: Path) 
             restore_backup(image, target)
     finally:
         backup_module._copy_file = real_copy
-    assert info.value.code in {"restore-event-mismatch", "restore-ledger-mismatch"}
+    assert info.value.code in {
+        "restore-event-mismatch",
+        "restore-ledger-mismatch",
+        "restore-snapshot-mismatch",
+    }
     assert not target.exists()
 
 
@@ -802,3 +806,53 @@ def _edit_manifest(image: Path, mutate: Any) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     mutate(payload)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_restore_rejects_snapshot_replacement_after_verification(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    workspace = _workspace(tmp_path)
+    _seed_checkpoint(workspace)
+    image = tmp_path / "image"
+    create_backup(workspace, image, now=NOW)
+    original = backup_module._verify_image
+
+    def swap(candidate: Path) -> Any:
+        result = original(candidate)
+        snapshot = candidate / EVENTS_SNAPSHOT_NAME
+        # Change only an unused SQLite header byte: event count and ledger remain identical.
+        data = bytearray(snapshot.read_bytes())
+        data[72] ^= 1
+        snapshot.write_bytes(data)
+        return result
+
+    monkeypatch.setattr(backup_module, "_verify_image", swap)
+    with pytest.raises(BackupIntegrityError) as info:
+        restore_backup(image, tmp_path / "restored")
+    assert info.value.code == "restore-snapshot-mismatch"
+    assert not (tmp_path / "restored").exists()
+
+
+@pytest.mark.parametrize("field", ("control_db", "cas_root", "worker_root"))
+def test_restore_refuses_external_layout_without_writing(tmp_path: Path, field: str) -> None:
+    workspace = _workspace(tmp_path)
+    _seed_checkpoint(workspace)
+    image = tmp_path / "image"
+    create_backup(workspace, image, now=NOW)
+    outside = tmp_path / "outside"
+    with pytest.raises(RecoveryError) as info:
+        restore_backup(image, tmp_path / "restored", **{field: outside})
+    assert info.value.code == "restore-layout-invalid"
+    assert not outside.exists()
+    assert not (tmp_path / "restored").exists()
+
+
+def test_verify_refuses_fifo_manifest_without_waiting(tmp_path: Path) -> None:
+    import os
+
+    image = tmp_path / "image"
+    image.mkdir()
+    os.mkfifo(image / MANIFEST_NAME)
+    with pytest.raises(RecoveryError) as info:
+        verify_backup(image)
+    assert info.value.code == "backup-file-invalid"

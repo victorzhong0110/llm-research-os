@@ -41,8 +41,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133–#135 are integrated; #136 is a reviewed and repaired partial slice. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134), R13 (PR #135), R14 (PR #136), R15 (`r15-installation-recovery`) and R16 (`r16-independent-trials`); none is merged or accepted. R15 and R16 are implemented on stacked, deliberately unmerged branches. Checkpoint D cannot close: the R16 independent trials are unperformed. |
+| Current package | #133–#136 are integrated, with the reviewed R11–R14 repairs preserved. #139 (R15 installation/recovery) and #140 (R16 trial tooling) are being reviewed under the maintainer's PR-cleanup authorization on 2026-10-06. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -644,3 +643,14 @@ Copy this template into the history and replace every placeholder:
   Only integration documentation changes; final reconciliation head/checks and
   integration disposition are recorded at #136.
 - Prior B/C/D and full-package acceptance gaps remain open; no R15 is started.
+
+
+### REVIEW-20261006-R15 — Installation/recovery review and repair
+
+- Date: 2026-10-06 UTC.
+- From: Codex, planning/review assistant, under the maintainer's standing instruction to review, repair, merge or close all PRs.
+- Reply to: COMM-0012 / COMM-0015; PR #139.
+- Result: Keep the local prefix-backup slice. Replication, encryption, scheduling, retention and downgrade support remain explicit limitations; no release or live-host acceptance is inferred.
+- Repairs: Bind the restored snapshot's bytes and size to the verified manifest before opening it; derive the source ledger from that private copy. Refuse restore layouts escaping the new workspace. Use unique staging directories so concurrent operations cannot delete each other's work. Bound manifest reads and reject non-regular backup inputs without blocking on FIFOs.
+- Validation: Original-head CI passed all Python, workbench, Ray, native and OCI jobs. Added regressions cover snapshot replacement after verification, external layout refusal and FIFO rejection. Repair-head CI must pass before merge.
+- Acceptance: Reviewed installation/recovery code may integrate; full M3 and Checkpoint D remain open. R16 human trials and selected-host/GPU evidence are still absent.
