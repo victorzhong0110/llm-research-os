@@ -169,3 +169,13 @@ network, Worker, or paid resource.
 | `diagnostic-invalid` | A diagnostic detail could not be rendered (internal invariant) |
 
 No message contains a host path, a document body, or a credential.
+
+## Review hardening (2026-10-06)
+
+Restore checks the private snapshot copy's digest and size against the verified
+manifest before opening it, and compares the ledger using that private copy.
+Layout overrides must be relative and stay inside the new workspace. Staging
+directories are unique per operation. Backup inputs must be regular files;
+manifest reads stop at 8 MiB plus one byte. Parent directories and the local
+filesystem remain operator-controlled; this is not an authenticated archive or
+an OS sandbox against another process with the same filesystem privileges.

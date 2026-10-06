@@ -705,3 +705,25 @@ def test_cli_restore_refuses_a_project_override_with_no_events(tmp_path: Path) -
     assert result.returncode == 2
     assert json.loads(result.stderr)["code"] == "restore-ledger-mismatch"
     assert not (tmp_path / "restored").exists()
+
+
+def test_demo_hints_preserve_paths_with_shell_metacharacters(tmp_path: Path) -> None:
+    import shlex
+
+    root = tmp_path / "space $dollar;literal"
+    from llm_research_os.recovery.demo import run_demo
+
+    result = run_demo(root, now=NOW)
+    assert shlex.split(result.backup_command) == [
+        "researchos",
+        "backup",
+        "create",
+        "--root",
+        str(root),
+        "--out",
+        f"{root}-backup",
+    ]
+    assert shlex.split(result.serve_command)[3:5] == ["--root", str(root)]
+    tokens = shlex.split(result.evidence_import_command)
+    assert tokens[4] == str(root / "control/events.sqlite")
+    assert tokens[-1] == str(root / "cas")

@@ -320,9 +320,7 @@ class EventStore:
             connection = getattr(self, "_connection", None)
             if connection is not None:
                 connection.close()
-            raise EventStoreSchemaError(
-                f"could not initialize event-store database: {self._path}"
-            ) from exc
+            raise EventStoreSchemaError("could not initialize event-store database") from exc
         except Exception:
             connection = getattr(self, "_connection", None)
             if connection is not None:

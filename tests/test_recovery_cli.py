@@ -559,7 +559,8 @@ def test_trial_aggregate_counts_only_confirmed_records(
     # Both records completed a core journey, one of which was the remote one.
     assert payload["completedTasks"] == 2
     assert payload["remoteJourneys"] == 1
-    assert payload["checkpointD"] is True
+    assert payload["checkpointD"] is False
+    assert payload["trialTaskCoverageComplete"] is False
 
 
 def test_trial_aggregate_reports_an_unreadable_kit(

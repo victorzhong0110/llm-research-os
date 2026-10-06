@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -133,7 +134,9 @@ def _rejected_paths(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-@pytest.mark.parametrize("condition", sorted(_rejected_paths(Path("/tmp/never-created"))))
+@pytest.mark.parametrize(
+    "condition", ("missing parent directory", "symbolic link", "not a regular file")
+)
 def test_no_path_rejection_message_leaks_the_path(tmp_path: Path, condition: str) -> None:
     """Every rejection in the path validator is subject to the same rule.
 
@@ -166,3 +169,24 @@ def test_an_uncoded_error_still_falls_back_to_its_class_name() -> None:
         pass
 
     assert problem_report(UnrelatedError("boom")).errors[0].type == "UnrelatedError"
+
+
+def test_sqlite_initialization_error_does_not_disclose_host_path(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    import sqlite3
+
+    import llm_research_os.storage.store as module
+
+    path = tmp_path / "customer-private.sqlite"
+
+    def fail(*args: Any, **kwargs: Any) -> Any:
+        raise sqlite3.OperationalError("private sqlite detail")
+
+    monkeypatch.setattr(module.sqlite3, "connect", fail)
+    with pytest.raises(EventStoreSchemaError) as captured:
+        EventStore(path)
+    rendered = json.dumps(problem_report(captured.value).model_dump())
+    assert str(path) not in rendered
+    assert "customer-private" not in rendered
+    assert "private sqlite detail" not in rendered

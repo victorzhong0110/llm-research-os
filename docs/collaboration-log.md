@@ -41,15 +41,14 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133–#135 are integrated; #136 is a reviewed and repaired partial slice. Final integration SHAs and final-head checks are recorded at [#135](https://github.com/victorzhong0110/llm-research-os/pull/135) and [#136](https://github.com/victorzhong0110/llm-research-os/pull/136). R11–R14 full acceptance and B/C/D live evidence remain open. |
-| Current package | R08 live evidence remains open; Checkpoint B is not accepted. Candidates exist for R09 (PR #131), R10 (PR #132), R11 (PR #133), R12 (PR #134), R13 (PR #135), R14 (PR #136), R15 (`r15-installation-recovery`) and R16 (`r16-independent-trials`); none is merged or accepted. R15 and R16 are implemented on stacked, deliberately unmerged branches. Checkpoint D cannot close: the R16 independent trials are unperformed. |
+| Current package | #133–#136 are integrated. #139 (R15 recovery) and #140 (R16 trial tooling) have review repairs under the maintainer's 2026-10-06 PR-cleanup authorization; final heads, checks and integration are recorded at the PRs and in the review report. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
 | Responsibility | Maintainer assigned Codex to review, repair and integrate all open PRs; no additional package is started. |
-| Downstream gate | Any separately assigned next package fetches current main and preserves the reviewed #133–#136 repairs. R08 connection/GPU inputs remain separate, see COMM-0004. Cleanup of existing PRs does not start R15. |
+| Downstream gate | Any separately assigned next package fetches current main and preserves the reviewed #133–#136 repairs. R08 connection/GPU inputs remain separate, see COMM-0004. Review integrates submitted slices only; additional implementation work requires its own assignment. |
 
 ## Open handoffs
 
@@ -57,16 +56,15 @@ passed). Documentation changes do not advance the execution baseline.
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
-| COMM-0005 | Planning/review assistant and maintainer | Open; awaiting review | Review the R09 transport deviation and the recorded stacking deviation in COMM-0006. Neither is self-resolved. |
-| COMM-0012 | Planning/review assistant and maintainer | Open; awaiting review | Review the R15 scope gaps and decide whether R15 may close without replication, encryption, or downgrade support. |
-| COMM-0013 | Planning/review assistant and maintainer | Open; awaiting review | Review the R16 trial kit and closure record. The five fixed tasks and the REMOTE journey are defined; no trial has been performed and none is simulated, so Checkpoint D cannot close. |
-| COMM-0014 | Planning/review assistant and maintainer | Open; awaiting review | Review the machine-checkable trial kit and the three decisions recorded under maintainer delegation. The trials themselves are unperformed and TRIAL-03 still needs the access described in COMM-0004. |
-| COMM-0015 | Planning/review assistant and maintainer | Open; awaiting review | Review R15 and R16 rebased onto merged R10–R14. The port fix is dropped as already delivered, the merged error codes are kept over this branch's, and the COMM-0006 stacking deviation no longer applies to these two packages. |
-| COMM-0016 | Planning/review assistant and maintainer | Open; awaiting review | Review the adopted `ProblemReport.type` code rule, the four additional path-leak fixes, the participant-confirmation gate, and the root cause of the four SSH test failures. Not pushed; no trial performed. |
-| COMM-0017 | Planning/review assistant and maintainer | Open; awaiting review | Review four main-path defects found by an implementer self-run of T1–T5, and the corrected closure record. The self-run is explicitly not a trial. TRIAL-01/02 human confirmation and the COMM-0004 GPU access both remain pending the maintainer. |
-| COMM-0018 | Planning/review assistant and maintainer | Open; awaiting review | Review the control-store lifecycle marker that lets the doctor distinguish a fresh workspace from a gutted one, and the CLI test suite that closed the weakest coverage in the project. TRIAL-01/02 confirmation and COMM-0004 access remain pending the maintainer. |
-| COMM-0007 | Planning/review assistant and maintainer | Open; awaiting review | Review the R10 dependency lock and the deferred React Flow graph library. |
-| COMM-0008 | Planning/review assistant and maintainer | Open; awaiting decision | Decide whether R11's missing start/reconnect/restore may be deferred past R12, given R08's pending-live native evidence. |
+| COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0014 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0015 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0016 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0017 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0018 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
+| COMM-0007 | Planning/review assistant and maintainer | Reviewed in #132 | Reviewed locked workbench integration preserved; full R10 acceptance remains separate. |
+| COMM-0008 | Planning/review assistant and maintainer | Reviewed as partial integration in #133 | Start/restore and B acceptance gaps remain in the matrix. |
 
 COMM-0002 was acknowledged by Codex in COMM-0003. Its evidence gaps remain open;
 the acknowledgement does not establish acceptance. COMM-0005 and COMM-0006 are
@@ -576,7 +574,7 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
   limitations; the R10–R14 anchors get a routing table rather than retroactive
   edits; and a fresh workspace still does not materialize its EventStore at init.
 
-  R16's trials remain unperformed and Checkpoint D remains closed.
+  R16's trials remain unperformed and Checkpoint D remains open.
 - Branch / head / base / PR: `r15-installation-recovery` against `main`;
   `r16-independent-trials` against `r15-installation-recovery`. Both open, both
   deliberately unmerged.
@@ -661,7 +659,7 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - From: Assigned implementer.
 - To: Planning/review assistant and maintainer.
 - Reply to: COMM-0016, and the R16 "fix main-path defects" deliverable.
-- State: Open; awaiting review. Checkpoint D remains closed.
+- State: Open; awaiting review. Checkpoint D remains open.
 - Message / decision: The plan's defect deliverable needs defects, and the only
   defects that count come from TRIAL-01/02, which have not run. So I ran T1–T5
   myself from a clean wheel outside any checkout, to find what a person who did
@@ -733,7 +731,7 @@ review requests raised by the R09 slice, not acknowledgements by anyone else.
 - From: Assigned implementer.
 - To: Planning/review assistant and maintainer.
 - Reply to: COMM-0017, which named this as a limitation.
-- State: Open; awaiting review. Checkpoint D remains closed.
+- State: Open; awaiting review. Checkpoint D remains open.
 - Message / decision: COMM-0017 recorded a weakness rather than hiding it, and
   this closes it.
 
@@ -884,3 +882,29 @@ Copy this template into the history and replace every placeholder:
   Only integration documentation changes; final reconciliation head/checks and
   integration disposition are recorded at #136.
 - Prior B/C/D and full-package acceptance gaps remain open; no R15 is started.
+
+
+### REVIEW-20261006-R15 — Installation/recovery review and repair
+
+- Date: 2026-10-06 UTC.
+- From: Codex, planning/review assistant, under the maintainer's standing instruction to review, repair, merge or close all PRs.
+- Reply to: COMM-0012 / COMM-0015; PR #139.
+- Result: Keep the local prefix-backup slice. Replication, encryption, scheduling, retention and downgrade support remain explicit limitations; no release or live-host acceptance is inferred.
+- Repairs: Bind the restored snapshot's bytes and size to the verified manifest before opening it; derive the source ledger from that private copy. Refuse restore layouts escaping the new workspace. Use unique staging directories so concurrent operations cannot delete each other's work. Bound manifest reads and reject non-regular backup inputs without blocking on FIFOs.
+- Validation: Original-head CI passed all Python, workbench, Ray, native and OCI jobs. Added regressions cover snapshot replacement after verification, external layout refusal and FIFO rejection. Repair-head CI must pass before merge.
+- Acceptance: Reviewed installation/recovery code may integrate; full M3 and Checkpoint D remain open. R16 human trials and selected-host/GPU evidence are still absent.
+
+
+### REVIEW-20261006-R16 — Trial tooling review and repair
+
+- Date: 2026-10-06 UTC.
+- From: Codex, planning/review assistant, under the maintainer's standing PR-cleanup authorization.
+- Reply to: COMM-0013 / COMM-0014 / COMM-0016 / COMM-0017 / COMM-0018; PR #140.
+- Review result: Integrate the trial tooling and main-path repairs as a partial R16 slice; no human trial has happened, and full R16 / Checkpoint D is not accepted.
+- Repairs: Trial completion must agree with its verdict; blank evidence references and duplicate trial IDs are refused; the published task vocabulary is closed. Fixed blocker coverage is derived from confirmed, completed T1–T5 journeys for two people and a completed REMOTE journey, never from trial-ID substrings or an omitted blocker list. Extra blockers remain open. The aggregate reports task coverage separately and always requires maintainer acceptance. Scaffold slots retain the supplied participant and author.
+- Further repairs: SQLite initialization errors carry no host path; generated demonstration hints quote shell arguments. The R15 verified-copy, confined-layout and unique-staging repairs are preserved.
+- Protocol review: Adopt the coded EventStoreSchemaError routing already proposed in the branch; retain the documented class-name fallback for uncoded errors. This is a pre-release error-surface change and the dedicated vocabulary tests pin it.
+- Validation: Focused trial and error tests passed (48 tests before the additional leak/hint regressions); full combined focused checks and final-head CI are recorded with integration. Original #140 CI passed all supported Python and actual browser/Ray/native/OCI jobs; original evidence does not stand in for final repair checks.
+- Remaining work: Independent participants and their confirmations, authorized remote evidence, trial defect resolution and full R14/M3 acceptance. No fabricated trial, release, new paid activity or deployment.
+
+R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c944794dc574cbc66937` after final-head CI 37454556583 passed all five Python, actual browser, Ray, native and OCI gates. Linux Python 3.12: 2328 passed, 15 deselected; coverage 86.13%, unrounded floor check passed. The integrated tree is `23f3c89caad63a9055eb8ee66358c5ae90d82750`, identical to the reviewed repair tree. #140 preserves that tree's recovery fixes and records this actual main as a parent; its final-head CI remains the gate for its own integration.

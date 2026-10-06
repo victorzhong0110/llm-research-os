@@ -1,0 +1,11 @@
+{
+  "apiVersion": "researchos.dev/recovery/v0alpha1",
+  "eventCount": 14,
+  "highWater": 14,
+  "kind": "UnknownRecoveryDocument",
+  "objectCount": 0,
+  "projectId": "example-minimal",
+  "snapshotBytes": 114688,
+  "totalObjectBytes": 0,
+  "verified": true
+}

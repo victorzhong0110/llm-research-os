@@ -60,6 +60,7 @@
         "type": "string"
       },
       "maxItems": 64,
+      "minItems": 1,
       "title": "Evidenceattached",
       "type": "array"
     },
@@ -165,6 +166,14 @@
       "type": "string"
     },
     "task": {
+      "enum": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "REMOTE"
+      ],
       "title": "Task",
       "type": "string"
     },

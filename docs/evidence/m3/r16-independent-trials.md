@@ -171,9 +171,15 @@ difference is the whole measurement R16 exists to make.
   (confirmed), `observedParticipants` (anyone with a record), and
   `pendingConfirmation` (record ids awaiting the person), so a kit full of
   unconfirmed records shows both numbers instead of reading as complete.
-- A confirmed `REMOTE` record is the only thing that satisfies the
-  authorized-remote requirement, because that requirement is about access a
-  person was actually given.
+- A confirmed, completed `REMOTE` record contributes to task coverage. The
+  reviewer separately verifies the access authorization and attached evidence.
+- The aggregate requires T1–T5 completion by each of two distinct confirmed
+  participants and one completed remote journey. Record names cannot clear
+  blockers, and omitting the blocker list cannot omit the fixed requirements.
+- `trialTaskCoverageComplete` reports only that coverage. `checkpointD` stays
+  false with `acceptance: requires-maintainer-review`: participant independence,
+  authorization, evidence, defect resolution and preceding-package acceptance
+  are reviewer decisions, not a record counter.
 
 ## Aggregate requirements before Checkpoint D
 
@@ -207,7 +213,9 @@ implementer is not a trial.
   unperformed, and one of those is blocked on missing access.
 - That a release version, tag, or publication is ready. That is a separate
   maintainer decision and this package does not prepare one.
-- That the R15 install, backup, and restore paths work on macOS or on a machine
-  other than the development container. Local results are recorded at their
-  platform and SHA; cross-platform CI results are not yet cited for the R15
-  branch.
+- That CI or local installation results substitute for an independent user trial.
+  CI identities and platform results are recorded separately from human evidence.
+
+Document reads reject non-regular files and are bounded at 1 MiB per record and
+32 MiB per kit. Confirmation is a reported field rather than authenticated
+identity; reviewers verify participant independence and the linked evidence.

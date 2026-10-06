@@ -114,6 +114,8 @@ def _scaffold(args: argparse.Namespace) -> int:
                 {
                     "apiVersion": "researchos.dev/trial/v0alpha1",
                     "task": task,
+                    "participantAlias": args.participant,
+                    "recordedBy": args.recorded_by,
                     "participantConfirmed": False,
                 },
                 indent=2,
@@ -166,8 +168,14 @@ def _aggregate(args: argparse.Namespace) -> int:
     # an observer filed stays pending until the participant themself confirms
     # it, so both the count and the remote-journey tally are confirmed-only.
     participants = kit.confirmed_participants()
-    missing = [blocker for blocker in TRIAL_BLOCKERS if blocker in kit.unresolved_blocks()]
-    checkpoint_d = len(participants) >= 2 and kit.remote_journeys_recorded() >= 1 and not missing
+    # Always evaluate the fixed requirements, even if a caller omits blockers.
+    requirements = TrialKit(records=kit.records, blockers=list(TRIAL_BLOCKERS))
+    missing = list(dict.fromkeys((*requirements.unresolved_blocks(), *kit.unresolved_blocks())))
+    coverage_complete = not missing
+    # Participant independence, remote authorization, attached evidence, defect
+    # resolution and preceding-package acceptance require reviewer verification.
+    # A roll-up of self-reported records never accepts the phase.
+    checkpoint_d = False
     print(
         dumps_json(
             {
@@ -179,7 +187,11 @@ def _aggregate(args: argparse.Namespace) -> int:
                 "completedTasks": kit.completed_tasks(),
                 "remoteJourneys": kit.remote_journeys_recorded(),
                 "unresolvedBlockers": missing,
+                "trialTaskCoverageComplete": coverage_complete,
+                "completedCoreParticipants": list(kit.completed_core_participants()),
+                "completedRemoteJourneys": kit.completed_remote_journeys(),
                 "checkpointD": checkpoint_d,
+                "acceptance": "requires-maintainer-review",
                 "valid": True,
             }
         )

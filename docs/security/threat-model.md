@@ -948,3 +948,22 @@ Gate: `tests/test_recovery_backup.py` no-relaunch, damaged-image-before-write,
 occupied-destination and escaping-key tests; `tests/test_recovery_doctor.py`
 host-path-leak, secret-redaction, damaged-store, missing-asset, missing-object
 and taken-port tests.
+
+R15 review hardening (2026-10-06): restore binds the copied SQLite bytes to the
+verified snapshot digest before opening them; layout overrides cannot escape the
+new root, staging directories are unique, and backup reads reject non-regular
+files. The manifest is size-bounded during the read. Parent-directory races by
+processes with the same filesystem privileges remain outside this local-tool
+boundary. Regression evidence: `tests/test_recovery_backup.py`.
+
+### TM-095: A trial record counter is mistaken for phase acceptance
+
+Trial records are self-reported operator documents. Confirmation fields cannot
+authenticate an author, prove participant independence, grant remote access or
+verify an attached report. The aggregate derives fixed task coverage from
+confirmed completed journeys, refuses duplicate IDs and contradictory outcomes,
+and preserves arbitrary extra blockers. It always returns `checkpointD: false`
+and `acceptance: requires-maintainer-review`; task coverage is a separate result.
+Regular-file reads are bounded at 1 MiB per record and 32 MiB per kit. Tests:
+`test_recovery_trials.py` and `test_recovery_cli.py`. Real human and selected-host
+acceptance remains pending-live and cannot be fabricated by this tooling.

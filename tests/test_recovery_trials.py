@@ -351,3 +351,100 @@ def test_an_unconfirmed_remote_journey_does_not_satisfy_the_remote_requirement()
 
     confirmed = TrialRecord.model_validate(_confirmed(task="REMOTE"))
     assert TrialKit(records=[confirmed], blockers=[]).remote_journeys_recorded() == 1
+
+
+@pytest.mark.parametrize(
+    "overrides", ({"completed": False}, {"verdict": "blocked"}, {"evidenceAttached": ["   "]})
+)
+def test_trial_refuses_contradictory_or_blank_evidence(overrides: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError, match=r"completed|evidenceAttached"):
+        TrialRecord.model_validate(_confirmed(**overrides))
+
+
+def test_blocked_remote_and_record_names_do_not_clear_requirements() -> None:
+    record = TrialRecord.model_validate(
+        _confirmed(
+            trialId="TRIAL-01: one independent participant has completed T1-T5",
+            task="REMOTE",
+            completed=False,
+            verdict="blocked",
+        )
+    )
+    from llm_research_os.cli.trial_commands import TRIAL_BLOCKERS
+
+    kit = TrialKit(records=[record], blockers=list(TRIAL_BLOCKERS))
+    assert kit.unresolved_blocks() == TRIAL_BLOCKERS
+    assert kit.completed_remote_journeys() == 0
+
+
+def test_kit_rejects_duplicate_record_ids() -> None:
+    record = TrialRecord.model_validate(_confirmed())
+    with pytest.raises(ValidationError, match="trialId must be unique"):
+        TrialKit(records=[record, record], blockers=[])
+
+
+def test_aggregate_keeps_acceptance_open_even_with_complete_task_coverage(tmp_path: Path) -> None:
+    records = [
+        TrialRecord.model_validate(
+            _confirmed(trialId=f"{alias}-{task}", task=task, participantAlias=alias)
+        )
+        for alias in ("a", "b")
+        for task in TRIAL_TASKS
+    ]
+    kit = TrialKit(records=records, blockers=[])
+    (tmp_path / "trial-kit.json").write_text(json.dumps(kit.describe()), encoding="utf-8")
+    result = _cli("trial", "aggregate", "--root", str(tmp_path))
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["trialTaskCoverageComplete"] is True
+    assert payload["completedCoreParticipants"] == ["a", "b"]
+    assert payload["checkpointD"] is False
+    assert payload["acceptance"] == "requires-maintainer-review"
+
+
+def test_aggregate_cannot_bypass_required_tasks_by_omitting_blockers(tmp_path: Path) -> None:
+    records = [
+        TrialRecord.model_validate(
+            _confirmed(trialId=f"{alias}-REMOTE", task="REMOTE", participantAlias=alias)
+        )
+        for alias in ("a", "b")
+    ]
+    kit = TrialKit(records=records, blockers=[])
+    (tmp_path / "trial-kit.json").write_text(json.dumps(kit.describe()), encoding="utf-8")
+    result = _cli("trial", "aggregate", "--root", str(tmp_path))
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["trialTaskCoverageComplete"] is False
+    assert len(payload["unresolvedBlockers"]) == 2
+    assert payload["checkpointD"] is False
+
+
+def test_trial_read_refuses_non_regular_input_and_oversized_kit(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    import os
+
+    import llm_research_os.recovery.trial as module
+
+    fifo = tmp_path / "record.json"
+    os.mkfifo(fifo)
+    with pytest.raises(RecoveryError) as info:
+        load_trial_record(fifo)
+    assert info.value.code == "trial-record-unreadable"
+    path = tmp_path / "kit.json"
+    path.write_bytes(b"x" * 32)
+    monkeypatch.setattr(module, "_MAX_KIT_BYTES", 16)
+    with pytest.raises(RecoveryError) as info:
+        load_trial_kit(path)
+    assert info.value.code == "trial-kit-unreadable"
+
+
+@pytest.mark.parametrize("name,model", (("trial-record", TrialRecord), ("trial-kit", TrialKit)))
+def test_trial_contract_fixtures_remain_unconfirmed(name: str, model: Any) -> None:
+    valid = model.model_validate_json((ROOT / "examples/trial/valid" / f"{name}.json").read_bytes())
+    if isinstance(valid, TrialRecord):
+        assert not valid.is_confirmed()
+    else:
+        assert valid.confirmed_participants() == ()
+    with pytest.raises(ValidationError, match=r"task|trialId"):
+        model.model_validate_json((ROOT / "examples/trial/invalid" / f"{name}.json").read_bytes())

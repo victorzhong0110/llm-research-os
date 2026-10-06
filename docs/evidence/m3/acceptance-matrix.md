@@ -41,9 +41,9 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R11 | Browser approval, execution, cancellation, and restore | Partial operations slice merged #133 at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` | Final-head CI 37224701233 passed; start/restore and B remain open | [R11 review](../../reviews/pr134-136-2026-10-05.md) |
 | R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice merged in #134 at `89b9ab4`; final-head CI 37230774848 passed | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R14 | Minimal extension mechanism and permission boundary | Partial reviewed Python boundary in #136; final head and CI at the PR | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R15 | Installation, startup, backup, and recovery | Candidate on `r15-installation-recovery`, rebased onto merged R14 (`bf8a45a`); open PR, not merged | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
-| R16 | Independent trials and phase acceptance | Trial kit and closure record on `r16-independent-trials`, rebased onto merged R14; open PR, not merged | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
+| R14 | Minimal extension mechanism and permission boundary | Partial Python boundary merged #136 at `bf8a45a`; final-head CI 37233415368 passed | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
+| R15 | Installation, startup, backup, and recovery | Reviewed recovery slice in #139; final repair head `d50aff3` and CI 37454556583; exact integration at the PR | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
+| R16 | Independent trials and phase acceptance | Reviewed and repaired trial tooling in #140; final head/checks/integration recorded at the PR | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
 
 ## R10 candidate evidence
 
@@ -1350,3 +1350,41 @@ supplies the access TRIAL-03 needs. The planning/review assistant reconciles the
 draft closure record against real outcomes. The maintainer then reviews
 Checkpoint D.
 
+
+
+## R15 and R16 review supplement — 2026-10-06
+
+Earlier candidate sections preserve the implementer's pre-push local record;
+their statements that no CI exists are historical and are superseded here.
+The maintainer authorized review, repair and integration of all submitted PRs.
+
+- R15 repair head: `d50aff3b8caeb09b20e1fafbd1ae9e137c119a2c`, CI
+  [37454556583](https://github.com/victorzhong0110/llm-research-os/actions/runs/37454556583).
+  Private snapshot bytes are rebound to the verified manifest before opening;
+  external restore layouts are refused, staging paths are unique and manifest
+  reads are bounded. Local recovery checks: 101 passed, two root-only skips.
+- R16 preserves those repairs, corrects trial task aggregation, closes the
+  remaining SQLite initialization path leak and quotes demo command arguments.
+  Combined local recovery/CLI/trial/native-SSH tests: 227 passed, two root-only
+  skips; final contract and read-bound suites: 72 passed. Ruff, format, mypy,
+  generated schemas, digest conformance and package build passed.
+- Recovery and trial contracts now have explicit valid/invalid examples under
+  `examples/recovery/` and `examples/trial/`; all are labeled simulation or
+  unconfirmed contract fixtures, never human or live execution evidence.
+- `trialTaskCoverageComplete` is derived from confirmed, completed T1–T5 records
+  for each of two distinct participants and a completed REMOTE record. Fixed
+  requirements cannot be omitted, and record IDs cannot clear them. Extra
+  blockers remain open. `checkpointD` is always false until a separate maintainer
+  acceptance process; independence, remote authorization and evidence require
+  reviewer verification.
+- Reviewed integration is limited to the submitted engineering slices. Full
+  R11–R14, R16 and M3/Checkpoint B/C/D acceptance gaps remain unchanged. No
+  independent human trial, selected-host/GPU evidence, release or deployment is
+  manufactured by merging these PRs.
+
+See [the review record](../../reviews/pr139-140-2026-10-06.md) and the final
+[#139](https://github.com/victorzhong0110/llm-research-os/pull/139) /
+[#140](https://github.com/victorzhong0110/llm-research-os/pull/140) metadata for
+remote heads, final checks and exact integration SHAs.
+
+R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c944794dc574cbc66937` after final-head CI 37454556583 passed all five Python, actual browser, Ray, native and OCI gates. Linux Python 3.12: 2328 passed, 15 deselected; coverage 86.13%, unrounded floor check passed. The integrated tree is `23f3c89caad63a9055eb8ee66358c5ae90d82750`, identical to the reviewed repair tree. #140 preserves that tree's recovery fixes and records this actual main as a parent; its final-head CI remains the gate for its own integration.

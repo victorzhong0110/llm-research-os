@@ -20,8 +20,12 @@ from typing import Literal, Self
 from pydantic import Field, field_validator, model_validator
 
 from llm_research_os.events.models import Rfc3339Timestamp
+from llm_research_os.recovery.backup import _regular_reader
 from llm_research_os.recovery.errors import RecoveryError
 from llm_research_os.recovery.models import _RecoveryModel
+
+_MAX_RECORD_BYTES = 1 << 20
+_MAX_KIT_BYTES = 32 << 20
 
 TRIAL_API_VERSION = "researchos.dev/trial/v0alpha1"
 TRIAL_RECORD_SCHEMA_ID = "https://researchos.dev/schemas/trial-record/v0alpha1.schema.json"
@@ -45,7 +49,7 @@ class TrialRecord(_RecoveryModel):
     api_version: str = Field(default=TRIAL_API_VERSION, alias="apiVersion")
     kind: Literal["TrialRecord"] = "TrialRecord"
     trial_id: str = Field(alias="trialId", min_length=3, max_length=128)
-    task: str
+    task: Literal["T1", "T2", "T3", "T4", "T5", "REMOTE"]
     participant_alias: str = Field(alias="participantAlias", min_length=1, max_length=64)
     recorded_at: Rfc3339Timestamp = Field(alias="recordedAt")
     recorded_by: Literal["participant", "observer", "implementer"] = Field(
@@ -78,7 +82,7 @@ class TrialRecord(_RecoveryModel):
     recovery_observed: list[str] = Field(alias="recoveryObserved", max_length=64)
 
     defects_found: list[str] = Field(alias="defectsFound", max_length=64)
-    evidence_attached: list[str] = Field(alias="evidenceAttached", max_length=64)
+    evidence_attached: list[str] = Field(alias="evidenceAttached", min_length=1, max_length=64)
     verdict: Verdict
 
     @field_validator("task")
@@ -95,7 +99,9 @@ class TrialRecord(_RecoveryModel):
         # An evidence list is what makes a record auditable later. A trial that
         # completed with nothing attached cannot be reviewed after the fact, and
         # an abandoned one is exactly the case worth reviewing.
-        if not self.evidence_attached:
+        if self.completed != (self.verdict == "core-journey-completed"):
+            raise ValueError("completed must agree with verdict")
+        if not self.evidence_attached or any(not item.strip() for item in self.evidence_attached):
             raise ValueError("evidenceAttached must name at least one attachable report or path")
         if self.recorded_by == "implementer" and (self.interventions or self.confusion_observed):
             raise ValueError(
@@ -141,6 +147,13 @@ class TrialKit(_RecoveryModel):
     records: list[TrialRecord] = Field(max_length=1024)
     blockers: list[str] = Field(max_length=64)
 
+    @model_validator(mode="after")
+    def _unique_records(self) -> Self:
+        identifiers = [record.trial_id for record in self.records]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("trialId must be unique within a kit")
+        return self
+
     def participants(self) -> tuple[str, ...]:
         return tuple(sorted({record.participant_alias for record in self.records}))
 
@@ -177,26 +190,55 @@ class TrialKit(_RecoveryModel):
             1 for record in self.records if record.task == "REMOTE" and record.is_confirmed()
         )
 
-    def unresolved_blocks(self) -> tuple[str, ...]:
-        """Blockers the kit names that no record has cleared."""
-
-        cleared = {record.trial_id for record in self.records}
+    def completed_core_participants(self) -> tuple[str, ...]:
+        tasks: dict[str, set[str]] = {}
+        for record in self.records:
+            if record.is_confirmed() and record.completed:
+                tasks.setdefault(record.participant_alias, set()).add(record.task)
         return tuple(
-            blocker
-            for blocker in self.blockers
-            if not any(blocker in trial_id for trial_id in cleared)
+            sorted(alias for alias, covered in tasks.items() if set(TRIAL_TASKS[:-1]) <= covered)
+        )
+
+    def completed_remote_journeys(self) -> int:
+        return sum(
+            1
+            for record in self.records
+            if record.task == "REMOTE" and record.completed and record.is_confirmed()
+        )
+
+    def unresolved_blocks(self) -> tuple[str, ...]:
+        """Derive task coverage; a record name cannot clear a requirement."""
+
+        completed = len(self.completed_core_participants())
+        cleared = set()
+        if completed >= 1:
+            cleared.add("TRIAL-01")
+        if completed >= 2:
+            cleared.add("TRIAL-02")
+        if self.completed_remote_journeys():
+            cleared.add("TRIAL-03")
+        return tuple(
+            blocker for blocker in self.blockers if blocker.split(":", 1)[0] not in cleared
         )
 
     def describe(self) -> dict[str, object]:
         return self.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
+def _read_document(path: Path, limit: int) -> bytes:
+    with _regular_reader(path) as handle:
+        content = handle.read(limit + 1)
+    if len(content) > limit:
+        raise RecoveryError("trial-document-too-large", "the trial document exceeds the read limit")
+    return content
+
+
 def load_trial_record(path: Path) -> TrialRecord:
     """Read and validate one trial record from disk."""
 
     try:
-        return TrialRecord.model_validate_json(Path(path).read_text(encoding="utf-8"))
-    except OSError as exc:
+        return TrialRecord.model_validate_json(_read_document(path, _MAX_RECORD_BYTES))
+    except (OSError, RecoveryError) as exc:
         raise RecoveryError(
             "trial-record-unreadable", "the trial record could not be read"
         ) from exc
@@ -210,8 +252,8 @@ def load_trial_kit(path: Path) -> TrialKit:
     """Read and validate an aggregated trial kit from disk."""
 
     try:
-        return TrialKit.model_validate_json(Path(path).read_text(encoding="utf-8"))
-    except OSError as exc:
+        return TrialKit.model_validate_json(_read_document(path, _MAX_KIT_BYTES))
+    except (OSError, RecoveryError) as exc:
         raise RecoveryError("trial-kit-unreadable", "the trial kit could not be read") from exc
     except ValueError as exc:
         raise RecoveryError("trial-kit-invalid", "the trial kit is not a valid contract") from exc
