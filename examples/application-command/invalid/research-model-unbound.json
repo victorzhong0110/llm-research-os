@@ -1,0 +1,13 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationCommand",
+  "commandId": "example.research.inspect",
+  "actorId": "researcher",
+  "submittedAt": "2026-10-07T00:00:00Z",
+  "expectedHead": 0,
+  "expectedRevision": 1,
+  "operation": {
+    "kind": "model.generate",
+    "profileId": "mock"
+  }
+}

@@ -15,6 +15,14 @@ from llm_research_os.events.models import (
     EventIdentifier,
     Rfc3339Timestamp,
 )
+from llm_research_os.evidence.requests import EvidenceImportRequestDocument
+from llm_research_os.research.requests import (
+    DecisionRecordRequestDocument,
+    DissentRecordRequestDocument,
+    ProposalSubmitRequestDocument,
+    QuestionAnswerRequestDocument,
+    QuestionAskRequestDocument,
+)
 from llm_research_os.spec.io import load_document
 
 APPLICATION_API_VERSION = "researchos.dev/application/v0alpha1"
@@ -32,6 +40,10 @@ _MUTATING = frozenset(
     {
         "authorization.revoke",
         "conclusion.record",
+        "research.submit",
+        "research.record",
+        "evidence.import",
+        "model.generate",
         "proposal.submit",
         "research.decision",
         "run.cancel",
@@ -43,6 +55,11 @@ _MUTATING = frozenset(
 )
 _REVISION_BOUND = frozenset(
     {
+        "research.draft",
+        "research.submit",
+        "research.record",
+        "evidence.import",
+        "model.generate",
         "spec.validate",
         "spec.diff",
         "plan.dry-run",
@@ -65,6 +82,14 @@ _HEAD_BOUND = frozenset(
         "run.show",
         "run.simulate",
         "run.cancel",
+        "research.draft",
+        "research.submit",
+        "research.record",
+        "evidence.import",
+        "model.generate",
+        "model.inspect",
+        "model.observe",
+        "research.budget",
         "proposal.submit",
         "proposal.validate",
     }
@@ -241,6 +266,12 @@ class ProposalValidateOperation(ApplicationModel):
 
     kind: Literal["proposal.validate"]
     request: CommandPath
+    base_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="baseArtifact"
+    )
+    candidate_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="candidateArtifact"
+    )
 
 
 class ProposalSubmitOperation(ApplicationModel):
@@ -253,6 +284,75 @@ class ProposalSubmitOperation(ApplicationModel):
 
     kind: Literal["proposal.submit"]
     request: CommandPath
+    base_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="baseArtifact"
+    )
+    candidate_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="candidateArtifact"
+    )
+
+
+class ResearchDraftOperation(ApplicationModel):
+    kind: Literal["research.draft", "research.submit"]
+    proposal: ProposalSubmitRequestDocument
+    base_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="baseArtifact"
+    )
+    candidate_artifact: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = Field(
+        alias="candidateArtifact"
+    )
+
+
+class ResearchRecordOperation(ApplicationModel):
+    kind: Literal["research.record"]
+    document: Annotated[
+        DecisionRecordRequestDocument
+        | DissentRecordRequestDocument
+        | QuestionAskRequestDocument
+        | QuestionAnswerRequestDocument,
+        Field(discriminator="kind"),
+    ]
+
+
+class EvidenceImportOperation(ApplicationModel):
+    kind: Literal["evidence.import"]
+    document: EvidenceImportRequestDocument
+    inbox_file: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")] = Field(
+        alias="inboxFile"
+    )
+
+
+class ModelProfileOperation(ApplicationModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {"properties": {"kind": {"const": "model.generate"}}},
+                    "then": {
+                        "required": ["materialDigest"],
+                        "properties": {"materialDigest": {"type": "string"}},
+                    },
+                }
+            ]
+        }
+    )
+    kind: Literal["model.inspect", "model.generate", "model.observe"]
+    profile_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")] = Field(
+        alias="profileId"
+    )
+    material_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] | None = Field(
+        default=None, alias="materialDigest"
+    )
+
+    @model_validator(mode="after")
+    def generation_binds_inspection(self) -> Self:
+        if self.kind == "model.generate" and self.material_digest is None:
+            raise ValueError("model generation requires inspected materialDigest")
+        return self
+
+
+class ResearchBudgetOperation(ApplicationModel):
+    kind: Literal["research.budget"]
 
 
 class EvaluationRunOperation(ApplicationModel):
@@ -317,7 +417,12 @@ ApplicationOperation = Annotated[
     | RunCancelOperation
     | AuthorizationRevokeOperation
     | NativeOperation
-    | BackupOperation,
+    | BackupOperation
+    | ResearchDraftOperation
+    | ResearchRecordOperation
+    | EvidenceImportOperation
+    | ModelProfileOperation
+    | ResearchBudgetOperation,
     Field(discriminator="kind"),
 ]
 
@@ -365,6 +470,14 @@ class ApplicationReceipt(ApplicationModel):
     actor_id: EventIdentifier = Field(alias="actorId")
     submitted_at: Rfc3339Timestamp = Field(alias="submittedAt")
     operation: Literal[
+        "research.draft",
+        "research.submit",
+        "research.record",
+        "evidence.import",
+        "model.generate",
+        "model.inspect",
+        "model.observe",
+        "research.budget",
         "spec.validate",
         "spec.diff",
         "plan.dry-run",

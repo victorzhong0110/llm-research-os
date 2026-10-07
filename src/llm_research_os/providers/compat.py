@@ -263,6 +263,7 @@ def record_compat_generate(
     fixture: ModelFixtureDocument,
     provider: CompatHttpProvider,
     artifacts: LocalArtifactStore | None,
+    expected_last_sequence: int | None = None,
 ) -> tuple[StoredEvent, StoredEvent, StoredEvent, StoredEvent | None]:
     if not isinstance(request, OpenAICompatGenerateRequestDocument):
         raise ModelCallError("request is not an HTTP generate document", code="invalid-request")
@@ -321,6 +322,7 @@ def record_compat_generate(
                 "cap": request.budget_cap,
             },
         ),
+        expected_last_sequence=expected_last_sequence,
     )
     report = provider.capabilities().document()
     declared = tuple(report["declaredCapabilities"])

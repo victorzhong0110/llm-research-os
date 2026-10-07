@@ -17,10 +17,13 @@ from llm_research_os.application.schema import (
     canonical_application_command_schema,
     canonical_application_receipt_schema,
     canonical_native_launch_profile_schema,
+    canonical_research_model_profile_schema,
     native_launch_profile_schema_matches,
+    research_model_profile_schema_matches,
     write_application_command_schema,
     write_application_receipt_schema,
     write_native_launch_profile_schema,
+    write_research_model_profile_schema,
 )
 from llm_research_os.artifacts.schema import (
     canonical_schema as canonical_artifact_object_report_schema,
@@ -351,6 +354,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "research-model-profile": _contract(
+        canonical_research_model_profile_schema,
+        research_model_profile_schema_matches,
+        write_research_model_profile_schema,
+        "schemas/research-model-profile/v0alpha1.schema.json",
+    ),
     "native-launch-profile": _contract(
         canonical_native_launch_profile_schema,
         native_launch_profile_schema_matches,

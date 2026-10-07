@@ -122,9 +122,62 @@ class EvidenceControl:
             text_digest=text_digest,
         )
 
-    def _append_one(self, document: dict[str, Any]) -> StoredEvent:
+    @staticmethod
+    def snapshot_draft(request: EvidenceImportRequestDocument, payload: bytes) -> dict[str, Any]:
+        """Derive the exact fact from frozen bytes without touching paths or facts."""
+        if type(payload) is not bytes or len(payload) > MAX_EVIDENCE_BYTES:
+            raise EvidenceExtractError("frozen evidence exceeds limit", code="source-too-large")
+        text = extract_text(payload, request.media_type)
+        encoded = text.encode("utf-8")
+        if len(encoded) > MAX_PUT_BYTES:
+            raise EvidenceExtractError("extracted text exceeds limit", code="text-too-large")
+        return request.event_draft(
+            snapshot_digest="sha256:" + hashlib.sha256(payload).hexdigest(),
+            text_digest=content_digest({"text": text}),
+            text_artifact="sha256:" + hashlib.sha256(encoded).hexdigest(),
+            byte_length=len(payload),
+            text_characters=len(text),
+        )
+
+    def import_snapshot(
+        self,
+        request: EvidenceImportRequestDocument,
+        payload: bytes,
+        artifacts: LocalArtifactStore,
+        *,
+        expected_last_sequence: int,
+    ) -> EvidenceImportResult:
+        """Import already frozen bytes; caller head remains the append precondition."""
+        if request.project_id != self._project_id:
+            raise EvidenceCallError("import project differs", code="project-mismatch")
+        if type(payload) is not bytes or len(payload) > MAX_EVIDENCE_BYTES:
+            raise EvidenceExtractError("frozen evidence exceeds limit", code="source-too-large")
+        text = extract_text(payload, request.media_type)
+        encoded = text.encode("utf-8")
+        if len(encoded) > MAX_PUT_BYTES:
+            raise EvidenceExtractError("extracted text exceeds limit", code="text-too-large")
+        snapshot = artifacts.put_bytes(payload, limit=MAX_EVIDENCE_BYTES)
+        text_record = artifacts.put_bytes(encoded)
+        text_digest = content_digest({"text": text})
+        draft = request.event_draft(
+            snapshot_digest=snapshot.digest,
+            text_digest=text_digest,
+            text_artifact=text_record.digest,
+            byte_length=len(payload),
+            text_characters=len(text),
+        )
+        stored = self._append_one(draft, expected_last_sequence=expected_last_sequence)
+        return EvidenceImportResult(stored, snapshot.digest, text_digest)
+
+    def _append_one(
+        self, document: dict[str, Any], *, expected_last_sequence: int | None = None
+    ) -> StoredEvent:
         head = self.rebuild()
         frozen_head = head.last_sequence
+        if expected_last_sequence is not None and expected_last_sequence != frozen_head:
+            from llm_research_os.storage.errors import EventSequenceConflictError
+
+            raise EventSequenceConflictError(expected_last_sequence, frozen_head)
         try:
             draft = snapshot_json_document(document)
         except JsonCloneError as exc:

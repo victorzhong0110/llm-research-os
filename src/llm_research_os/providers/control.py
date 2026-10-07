@@ -93,6 +93,7 @@ class ModelCallControl:
         provider: ModelProvider,
         *,
         artifacts: LocalArtifactStore | None = None,
+        expected_last_sequence: int | None = None,
     ) -> ModelCallResult:
         if request.project_id != self._project_id:
             raise ModelCallError(
@@ -144,7 +145,7 @@ class ModelCallControl:
             prompt_artifact=prompt_artifact,
             output_artifact=output_artifact,
         )
-        started = self._append_one(started_draft)
+        started = self._append_one(started_draft, expected_last_sequence=expected_last_sequence)
         completed = self._append_one(completed_draft)
         return ModelCallResult(started=started, completed=completed)
 
@@ -155,6 +156,7 @@ class ModelCallControl:
         provider: ModelProvider,
         *,
         artifacts: LocalArtifactStore | None = None,
+        expected_last_sequence: int | None = None,
     ) -> ModelCallResult:
         if not isinstance(provider, CompatHttpProvider):
             raise ModelCallError("provider is not the HTTP adapter", code="provider-not-compat")
@@ -166,6 +168,7 @@ class ModelCallControl:
             fixture=fixture,
             provider=provider,
             artifacts=artifacts,
+            expected_last_sequence=expected_last_sequence,
         )
         return ModelCallResult(
             started=started,
@@ -174,9 +177,15 @@ class ModelCallControl:
             consumed=consumed,
         )
 
-    def _append_one(self, document: dict[str, Any]) -> StoredEvent:
+    def _append_one(
+        self, document: dict[str, Any], *, expected_last_sequence: int | None = None
+    ) -> StoredEvent:
         head = self.rebuild()
         frozen_head = head.last_sequence
+        if expected_last_sequence is not None and frozen_head != expected_last_sequence:
+            from llm_research_os.storage.errors import EventSequenceConflictError
+
+            raise EventSequenceConflictError(expected_last_sequence, frozen_head)
         try:
             draft = snapshot_json_document(document)
         except JsonCloneError as exc:

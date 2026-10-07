@@ -28,12 +28,17 @@ from llm_research_os.application.models import (
     ConclusionRecordOperation,
     EvaluationCompareOperation,
     EvaluationRunOperation,
+    EvidenceImportOperation,
+    ModelProfileOperation,
     NativeOperation,
     PlanDryRunOperation,
     PlanPreflightOperation,
     ProposalSubmitOperation,
     ProposalValidateOperation,
+    ResearchBudgetOperation,
     ResearchDecisionOperation,
+    ResearchDraftOperation,
+    ResearchRecordOperation,
     RunCancelOperation,
     RunShowOperation,
     RunSimulateOperation,
@@ -47,6 +52,17 @@ from llm_research_os.application.native import (
     freeze_native,
 )
 from llm_research_os.application.receipts import ReceiptLog
+from llm_research_os.application.research import (
+    ModelContext,
+    budget_view,
+    freeze_model,
+    proposal_preview,
+    read_artifact,
+    require_base,
+    require_citations,
+    spec_artifact,
+    store_draft,
+)
 from llm_research_os.application.workspace import Workspace, load_workspace
 from llm_research_os.artifacts.errors import (
     ArtifactNotFoundError,
@@ -163,6 +179,37 @@ class ApplicationService:
             frozen = _FrozenOperation(
                 native=freeze_native(self._workspace, command.operation.profile_id)
             )
+        elif isinstance(command.operation, ModelProfileOperation):
+            frozen = _FrozenOperation(
+                model=freeze_model(self._workspace, command.operation.profile_id)
+            )
+        elif isinstance(
+            command.operation,
+            (ResearchDraftOperation, ProposalValidateOperation, ProposalSubmitOperation),
+        ):
+            frozen = _FrozenOperation(
+                proposal=frozen.proposal,
+                research_base=spec_artifact(self._workspace, command.operation.base_artifact),
+                research_candidate=spec_artifact(
+                    self._workspace, command.operation.candidate_artifact
+                ),
+            )
+        elif isinstance(command.operation, EvidenceImportOperation):
+            from llm_research_os.evidence.extract import MAX_EVIDENCE_BYTES, media_type_for_suffix
+            from llm_research_os.execution.native_reviewed_preparation import load_bounded_file
+
+            name = command.operation.inbox_file
+            # Dedicated inbox prevents importing native credentials elsewhere in the workspace.
+            path = confined(self._workspace.root, Path("evidence-inbox") / name)
+            if media_type_for_suffix(path.suffix) != command.operation.document.media_type:
+                raise ApplicationError(
+                    "evidence-invalid", "evidence media type differs from inbox suffix"
+                )
+            payload = load_bounded_file(path, limit=MAX_EVIDENCE_BYTES)
+            frozen = _FrozenOperation(
+                evidence=payload,
+                evidence_draft=EvidenceControl.snapshot_draft(command.operation.document, payload),
+            )
         elif isinstance(command.operation, BackupOperation):
             from llm_research_os.recovery.backup import load_manifest, verify_backup
 
@@ -263,6 +310,17 @@ class ApplicationService:
             return self._evaluation_compare(command)
         if kind == "conclusion.record":
             return self._conclusion_record(command)
+        if isinstance(
+            command.operation,
+            (
+                ResearchDraftOperation,
+                ResearchRecordOperation,
+                EvidenceImportOperation,
+                ModelProfileOperation,
+                ResearchBudgetOperation,
+            ),
+        ):
+            return self._research_workflow(command, frozen)
         if kind == "proposal.validate":
             return self._proposal_validate(command, frozen)
         if kind == "proposal.submit":
@@ -568,7 +626,347 @@ class ApplicationService:
         # the control plane derived.
         return _Outcome(result={**conclusion.document(), "systemDerived": False})
 
-    def _proposal_preview(self, proposal: ProposalSubmitRequestDocument) -> dict[str, Any]:
+    def _research_workflow(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        operation = command.operation
+        if isinstance(operation, ResearchBudgetOperation):
+            return _Outcome(result=budget_view(self._workspace))
+        if isinstance(operation, ModelProfileOperation):
+            return self._generate_research(command, frozen)
+        artifacts = LocalArtifactStore(self._workspace.cas_root)
+        if isinstance(operation, ResearchDraftOperation):
+            if frozen.research_base is None or frozen.research_candidate is None:
+                raise ApplicationError("research-invalid", "draft materials are missing")
+            preview = proposal_preview(
+                self._workspace,
+                operation.proposal,
+                frozen.research_base,
+                frozen.research_candidate,
+                command.expected_revision,
+            )
+            digest = store_draft(
+                self._workspace, preview, operation.base_artifact, operation.candidate_artifact
+            )
+            facts: tuple[str, ...] = ()
+            if operation.kind == "research.submit":
+                with self._open_store(create=False) as store:
+                    event_id, _, _ = _append_or_recover_decision(
+                        store,
+                        project_id=self._workspace.project_id,
+                        draft=operation.proposal.event_draft(),
+                        event_id=operation.proposal.event.id,
+                        expected_head=command.expected_head
+                        if command.expected_head is not None
+                        else 0,
+                    )
+                facts = (event_id,)
+            return _Outcome(
+                result={
+                    **preview,
+                    "draftArtifact": digest,
+                    "disposition": "recorded" if facts else "validated-draft",
+                },
+                fact_event_ids=facts,
+                artifact_digests=(digest, operation.base_artifact, operation.candidate_artifact),
+            )
+        if isinstance(operation, (ResearchRecordOperation, EvidenceImportOperation)):
+            request = operation.document
+            _require_project(request.project_id, self._workspace.project_id)
+            _require_revision(request.experiment_revision, command.expected_revision)
+            require_citations(self._workspace, request.evidence_refs)
+            with self._open_store(create=False) as store:
+                if isinstance(operation, ResearchRecordOperation):
+                    draft = operation.document.event_draft()
+                    event_id, _, _ = _append_or_recover_decision(
+                        store,
+                        project_id=self._workspace.project_id,
+                        draft=draft,
+                        event_id=request.event.id,
+                        expected_head=command.expected_head
+                        if command.expected_head is not None
+                        else 0,
+                    )
+                    return _Outcome(
+                        result={
+                            "disposition": "recorded",
+                            "runQueued": False,
+                            "grantedPermissions": [],
+                            "launchAllowed": False,
+                        },
+                        fact_event_ids=(event_id,),
+                    )
+                if frozen.evidence is None:
+                    raise ApplicationError("evidence-invalid", "evidence snapshot is missing")
+                existing = store.get_event(operation.document.event.id)
+                if existing is not None and frozen.evidence_draft is not None:
+                    _require_identical_fact(frozen.evidence_draft, existing)
+                    payload = dict(existing.event.data.payload)
+                    return _Outcome(
+                        result={"disposition": "imported", **payload, "launchAllowed": False},
+                        fact_event_ids=(existing.event.id,),
+                        artifact_digests=tuple(
+                            dict.fromkeys(
+                                (str(payload["snapshotDigest"]), str(payload["textArtifact"]))
+                            )
+                        ),
+                    )
+                imported = EvidenceControl(
+                    store, project_id=self._workspace.project_id
+                ).import_snapshot(
+                    operation.document,
+                    frozen.evidence,
+                    artifacts,
+                    expected_last_sequence=command.expected_head
+                    if command.expected_head is not None
+                    else 0,
+                )
+                payload = dict(imported.stored.event.data.payload)
+                return _Outcome(
+                    result={"disposition": "imported", **payload, "launchAllowed": False},
+                    fact_event_ids=(imported.stored.event.id,),
+                    artifact_digests=tuple(
+                        dict.fromkeys((imported.snapshot_digest, str(payload["textArtifact"])))
+                    ),
+                )
+        raise ApplicationError("operation-unsupported", "research operation is missing")
+
+    def _generate_research(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        from llm_research_os.providers.compat import CompatHttpProvider
+        from llm_research_os.providers.compat_requests import OpenAICompatGenerateRequestDocument
+        from llm_research_os.providers.control import ModelCallControl
+        from llm_research_os.providers.mock import DeterministicMockProvider
+        from llm_research_os.secrets.resolve import SecretResolutionError, resolve_secret
+
+        operation = command.operation
+        context = frozen.model
+        if not isinstance(operation, ModelProfileOperation) or context is None:
+            raise ApplicationError("model-profile-invalid", "model profile is missing")
+        request = context.request
+        if operation.kind == "model.observe":
+            return self._observe_model(context)
+        require_base(self._workspace, context.base, request.experiment_revision)
+        require_citations(self._workspace, request.evidence_refs)
+        if operation.kind == "model.inspect":
+            return _Outcome(
+                result={
+                    "materialDigest": context.digest,
+                    "profileId": operation.profile_id,
+                    "providerId": request.provider_id,
+                    "modelId": request.actor.model_id,
+                    "callId": request.call_id,
+                    "baseRevision": request.experiment_revision,
+                    "baseArtifact": context.profile.base_artifact,
+                    "candidateArtifact": context.profile.candidate_artifact,
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                    "dispatchAllowed": False,
+                    "requestedReservation": str(request.reserve_amount)
+                    if isinstance(request, OpenAICompatGenerateRequestDocument)
+                    else None,
+                    "declaredBudgetCap": str(request.budget_cap)
+                    if isinstance(request, OpenAICompatGenerateRequestDocument)
+                    else None,
+                    "kernelCapabilities": [
+                        item.value for item in request.granted_kernel_capabilities
+                    ]
+                    if isinstance(request, OpenAICompatGenerateRequestDocument)
+                    else [],
+                }
+            )
+        _require_revision(request.experiment_revision, command.expected_revision)
+        if operation.material_digest != context.digest:
+            raise ApplicationError(
+                "model-material-changed", "inspect the current model profile before dispatch"
+            )
+        secret = None
+        if (
+            isinstance(request, OpenAICompatGenerateRequestDocument)
+            and request.secret_ref is not None
+        ):
+            try:
+                secret = resolve_secret(request.secret_ref)
+            except SecretResolutionError as exc:
+                raise ApplicationError(
+                    "secret-unavailable", "configured provider secret is unavailable"
+                ) from exc
+        if not self._receipts.reserve_effect(
+            f"model:{request.project_id}:{request.call_id}", context.digest
+        ):
+            return _Outcome(
+                result={
+                    "observation": "unknown",
+                    "reasonCode": "model-dispatch-already-reserved",
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                }
+            )
+        artifacts = LocalArtifactStore(self._workspace.cas_root)
+        try:
+            with self._open_store(create=False) as store:
+                control = ModelCallControl(store, project_id=self._workspace.project_id)
+                if isinstance(request, OpenAICompatGenerateRequestDocument):
+                    provider = CompatHttpProvider(
+                        endpoint=request.endpoint, model_id=request.actor.model_id, secret=secret
+                    )
+                    call = control.record_http_generate(
+                        request,
+                        context.fixture,
+                        provider,
+                        artifacts=artifacts,
+                        expected_last_sequence=command.expected_head,
+                    )
+                else:
+                    call = control.record_generate(
+                        request,
+                        context.fixture,
+                        DeterministicMockProvider({context.fixture.id: context.fixture}),
+                        artifacts=artifacts,
+                        expected_last_sequence=command.expected_head,
+                    )
+        except (ValueError, EventStoreError, ArtifactStoreError, OSError):
+            # The reservation survives every failure. BudgetControl retains dispatched uncertainty.
+            return _Outcome(
+                result={
+                    "observation": "refused-or-uncertain",
+                    "reasonCode": "model-call-unconfirmed",
+                    "callId": request.call_id,
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                    "dispatchRetryAllowed": False,
+                }
+            )
+        payload = dict(call.completed.event.data.payload)
+        facts = tuple(
+            item.event.id
+            for item in (call.reserved, call.started, call.completed, call.consumed)
+            if item is not None
+        )
+        return self._generated_draft_result(context, command.expected_revision, payload, facts)
+
+    def _observe_model(self, context: ModelContext) -> _Outcome:
+        request = context.request
+        with self._open_store(create=False) as store:
+            started = store.get_event(request.events["ai.call.started"].id)
+            completed = store.get_event(request.events["ai.call.completed"].id)
+            facts = tuple(store.get_event(event.id) for event in request.events.values())
+        if started is None or completed is None:
+            return _Outcome(
+                result={
+                    "observation": "unknown",
+                    "callId": request.call_id,
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                    "dispatchRetryAllowed": False,
+                }
+            )
+        for stored, event_type, identity in (
+            (started, "ai.call.started", request.events["ai.call.started"]),
+            (completed, "ai.call.completed", request.events["ai.call.completed"]),
+        ):
+            event = stored.event
+            if (
+                event.type != event_type
+                or event.data.project_id != request.project_id
+                or event.data.experiment_revision != request.experiment_revision
+                or event.data.actor.id != request.actor.id
+                or event.data.actor.model_id != request.actor.model_id
+                or event.data.payload.get("callId") != request.call_id
+                or event.time != identity.time
+            ):
+                raise ApplicationError(
+                    "model-observation-conflict",
+                    "recorded model call differs from installed identity",
+                )
+        if started.event.data.payload.get("promptDigest") != content_digest(context.fixture.prompt):
+            raise ApplicationError(
+                "model-observation-conflict",
+                "recorded model prompt differs from installed material",
+            )
+        return self._generated_draft_result(
+            context,
+            request.experiment_revision,
+            dict(completed.event.data.payload),
+            tuple(
+                item.event.id
+                for item in facts
+                if item is not None
+                and item.event.data.project_id == request.project_id
+                and item.event.data.payload.get("callId") == request.call_id
+            ),
+        )
+
+    def _generated_draft_result(
+        self,
+        context: ModelContext,
+        revision: int | None,
+        payload: dict[str, Any],
+        facts: tuple[str, ...],
+    ) -> _Outcome:
+        from llm_research_os.providers.compat_requests import OpenAICompatGenerateRequestDocument
+        from llm_research_os.spec.io import decode_document_text
+
+        request = context.request
+        output_artifact = str(payload["outputArtifact"])
+        try:
+            output = read_artifact(self._workspace, output_artifact)
+            if content_digest(output) != payload["outputDigest"]:
+                raise ValueError("recorded output digest differs from the CAS document")
+            if isinstance(request, OpenAICompatGenerateRequestDocument):
+                text = output.get("text")
+                if type(text) is not str:
+                    raise ValueError("compatible output text is missing")
+                output = decode_document_text(text, suffix=".json")
+            proposal = ProposalSubmitRequestDocument.model_validate(output)
+            if (
+                proposal.actor.id != request.actor.id
+                or proposal.actor.model_id != request.actor.model_id
+            ):
+                raise ApplicationError(
+                    "model-actor-mismatch", "generated proposal actor differs from the provider"
+                )
+            preview = proposal_preview(
+                self._workspace,
+                proposal,
+                context.base,
+                context.candidate,
+                revision,
+            )
+            draft = store_draft(
+                self._workspace,
+                preview,
+                context.profile.base_artifact,
+                context.profile.candidate_artifact,
+            )
+        except (ValueError, ApplicationError):
+            return _Outcome(
+                result={
+                    "observation": "completed-invalid-draft",
+                    "reasonCode": "generated-draft-invalid",
+                    "draftValidated": False,
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                },
+                fact_event_ids=facts,
+                artifact_digests=(output_artifact,),
+            )
+        return _Outcome(
+            result={
+                **preview,
+                "observation": "completed-validated-draft",
+                "draftArtifact": draft,
+                "baseArtifact": context.profile.base_artifact,
+                "candidateArtifact": context.profile.candidate_artifact,
+                "budget": budget_view(self._workspace),
+            },
+            fact_event_ids=facts,
+            artifact_digests=(output_artifact, draft),
+        )
+
+    def _proposal_preview(
+        self,
+        proposal: ProposalSubmitRequestDocument,
+        frozen: _FrozenOperation,
+        revision: int | None,
+    ) -> dict[str, Any]:
         """Resolve a proposal's citations against the recorded evidence.
 
         Imported text is evidence, never an instruction, and a citation the
@@ -588,10 +986,18 @@ class ApplicationService:
             raise ApplicationError(
                 "evidence-unavailable", "recorded evidence is unreadable"
             ) from exc
+        if frozen.research_base is None or frozen.research_candidate is None:
+            raise ApplicationError(
+                "proposal-material-required", "proposal specification artifacts are missing"
+            )
+        derived = proposal_preview(
+            self._workspace, proposal, frozen.research_base, frozen.research_candidate, revision
+        )
         cited = tuple(str(item) for item in proposal.evidence_refs)
         resolved = tuple(item for item in cited if item in recorded)
         unresolved = tuple(item for item in cited if item not in recorded)
         return {
+            **derived,
             "proposalId": str(proposal.proposal_id),
             "experimentRevision": proposal.experiment_revision,
             "proposedSpecDigest": proposal.proposed_spec_digest,
@@ -614,7 +1020,7 @@ class ApplicationService:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
         _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
         _require_revision(frozen.proposal.experiment_revision, command.expected_revision)
-        preview = self._proposal_preview(frozen.proposal)
+        preview = self._proposal_preview(frozen.proposal, frozen, command.expected_revision)
         if preview["unresolvedCitations"]:
             raise ApplicationError(
                 "citation-unresolved",
@@ -645,7 +1051,9 @@ class ApplicationService:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
         _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
         _require_revision(frozen.proposal.experiment_revision, command.expected_revision)
-        if self._proposal_preview(frozen.proposal)["unresolvedCitations"]:
+        if self._proposal_preview(frozen.proposal, frozen, command.expected_revision)[
+            "unresolvedCitations"
+        ]:
             raise ApplicationError(
                 "citation-unresolved",
                 "one or more citations are not recorded evidence in this project",
@@ -1070,6 +1478,26 @@ class ApplicationService:
         """True when this decision fact is already stored, so a stale head can recover it."""
 
         operation = command.operation
+        if isinstance(operation, EvidenceImportOperation) and frozen.evidence_draft is not None:
+            _require_project(operation.document.project_id, self._workspace.project_id)
+            with self._open_store(create=False) as store:
+                existing = store.get_event(operation.document.event.id)
+            return existing is not None and _same_committed_fact(frozen.evidence_draft, existing)
+        if isinstance(operation, (ResearchDraftOperation, ResearchRecordOperation)):
+            request = (
+                operation.proposal
+                if isinstance(operation, ResearchDraftOperation)
+                else operation.document
+            )
+            if (
+                isinstance(operation, ResearchDraftOperation)
+                and operation.kind != "research.submit"
+            ):
+                return False
+            _require_project(request.project_id, self._workspace.project_id)
+            with self._open_store(create=False) as store:
+                existing = store.get_event(request.event.id)
+            return existing is not None and _same_committed_fact(request.event_draft(), existing)
         if isinstance(operation, ProposalSubmitOperation) and frozen.proposal is not None:
             _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
             with self._open_store(create=False) as store:
@@ -1159,6 +1587,16 @@ def _replay_document(document: dict[str, object]) -> dict[str, Any]:
 def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) -> dict[str, Any]:
     operation = command.operation
     kind = operation.kind
+    if frozen.model is not None:
+        return {
+            **operation.model_dump(mode="json", by_alias=True),
+            "profileDigest": frozen.model.digest,
+        }
+    if frozen.evidence is not None:
+        return {
+            **operation.model_dump(mode="json", by_alias=True),
+            "snapshotDigest": "sha256:" + hashlib.sha256(frozen.evidence).hexdigest(),
+        }
     if frozen.native is not None:
         return {
             **operation.model_dump(mode="json", by_alias=True),
@@ -1172,7 +1610,12 @@ def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) ->
     if isinstance(operation, (ProposalValidateOperation, ProposalSubmitOperation)):
         if frozen.proposal is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
-        return {"kind": kind, "request": frozen.proposal.model_dump(mode="json", by_alias=True)}
+        return {
+            "kind": kind,
+            "request": frozen.proposal.model_dump(mode="json", by_alias=True),
+            "baseArtifact": operation.base_artifact,
+            "candidateArtifact": operation.candidate_artifact,
+        }
     if isinstance(operation, SpecValidateOperation):
         if frozen.spec is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
@@ -1466,6 +1909,11 @@ class _Snapshot:
 
 @dataclass(frozen=True, slots=True)
 class _FrozenOperation:
+    model: ModelContext | None = None
+    evidence: bytes | None = None
+    evidence_draft: dict[str, Any] | None = None
+    research_base: ResearchSpec | None = None
+    research_candidate: ResearchSpec | None = None
     native: NativeContext | None = None
     backup_digest: str | None = None
     spec: _Snapshot | None = None
