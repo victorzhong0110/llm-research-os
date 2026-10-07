@@ -104,7 +104,13 @@
         "plan.preflight",
         "proposal.submit",
         "proposal.validate",
-        "run.cancel"
+        "run.cancel",
+        "native.start",
+        "native.restore",
+        "native.observe",
+        "native.inspect",
+        "backup.verify",
+        "backup.restore"
       ],
       "title": "Operation",
       "type": "string"

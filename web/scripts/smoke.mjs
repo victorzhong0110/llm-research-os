@@ -13,9 +13,9 @@ const fixtureRoot = await mkdtemp(join(tmpdir(), "researchos-browser-"));
 let server;
 let browser;
 const errors = [];
-async function startServer() {
+async function startServer(script = "tests/workbench_smoke_server.py", directory = fixtureRoot) {
   server = spawn(process.env.RESEARCHOS_PYTHON ?? join(root, ".venv/bin/python"),
-    ["tests/workbench_smoke_server.py", fixtureRoot],
+    [script, directory],
     {cwd:root, env:{...process.env,PYTHONPATH:`${root}/src:${root}/tests`}, stdio:["ignore","pipe","pipe"]});
   server.stderr.on("data", chunk => errors.push(chunk.toString()));
   return await new Promise((ok, fail) => {
@@ -99,8 +99,38 @@ try {
   await page.getByRole("heading", {name:"Research workbench"}).waitFor();
   await page.getByRole("button", {name:"Runs",exact:true}).click();
   await page.getByText("Cancellation requested", {exact:true}).waitFor();
+  await stopServer();
+  fixture = await startServer("tests/native_browser_server.py", join(fixtureRoot, "native"));
+  await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
+  await page.getByRole("button", {name:"Operations",exact:true}).click();
+  await page.getByRole("textbox", {name:"Installed native profile ID",exact:true}).fill("cpu");
+  assert.equal(await page.getByRole("button", {name:"Start reviewed work",exact:true}).isEnabled(), false);
+  await page.getByRole("button", {name:"Inspect installed work",exact:true}).click();
+  await page.getByText(/"materialDigest":/).waitFor();
+  let launchLost = false;
+  await page.route("**/api/v0alpha1/commands", async route => {
+    if (!launchLost) {launchLost = true; await route.fetch(); await route.abort();}
+    else await route.continue();
+  });
+  await page.getByRole("button", {name:"Start reviewed work",exact:true}).click();
+  await page.getByRole("heading", {name:"Outcome not confirmed",exact:true}).waitFor();
+  await page.getByRole("button", {name:"Retry same command",exact:true}).click();
+  await page.getByText("Replayed (no new fact)",{exact:true}).waitFor();
+  await page.getByText(/"observation": "completed"/).waitFor();
+  await page.unroute("**/api/v0alpha1/commands");
+  await page.reload();
+  await page.getByRole("button", {name:"Operations",exact:true}).click();
+  await page.getByRole("textbox", {name:"Existing Run ID",exact:true}).fill(fixture.runId);
+  await page.getByRole("button", {name:"Reconnect and read Run",exact:true}).click();
+  await page.getByText(/"status": "completed"/).waitFor();
+  await page.getByRole("textbox", {name:"Staged backup image ID",exact:true}).fill("image1");
+  await page.getByRole("button", {name:"Verify backup",exact:true}).click();
+  await page.getByText(/"verified": true/).waitFor();
+  await page.getByRole("textbox", {name:"New restored workspace ID",exact:true}).fill("copy1");
+  await page.getByRole("button", {name:"Restore backup to new workspace",exact:true}).click();
+  await page.getByText(/"relaunchPolicy": "not-relaunched"/).waitFor();
   assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED") && !text.includes("409 (Conflict)")), []);
-  console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh and persisted-store restart.");
+  console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh, persisted-store restart, real CPU start with lost-response replay, reconnect and backup restore.");
 } finally {
   if (browser) await browser.close();
   await stopServer();

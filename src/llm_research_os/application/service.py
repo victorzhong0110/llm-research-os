@@ -24,9 +24,11 @@ from llm_research_os.application.models import (
     ApplicationOperation,
     ApplicationReceipt,
     AuthorizationRevokeOperation,
+    BackupOperation,
     ConclusionRecordOperation,
     EvaluationCompareOperation,
     EvaluationRunOperation,
+    NativeOperation,
     PlanDryRunOperation,
     PlanPreflightOperation,
     ProposalSubmitOperation,
@@ -37,6 +39,12 @@ from llm_research_os.application.models import (
     RunSimulateOperation,
     SpecDiffOperation,
     SpecValidateOperation,
+)
+from llm_research_os.application.native import (
+    NativeContext,
+    confined,
+    dispatch_native,
+    freeze_native,
 )
 from llm_research_os.application.receipts import ReceiptLog
 from llm_research_os.application.workspace import Workspace, load_workspace
@@ -151,6 +159,32 @@ class ApplicationService:
         """Run ``command`` or return the prior receipt for the same content."""
 
         frozen = _freeze_operation(command.operation)
+        if isinstance(command.operation, NativeOperation):
+            frozen = _FrozenOperation(
+                native=freeze_native(self._workspace, command.operation.profile_id)
+            )
+        elif isinstance(command.operation, BackupOperation):
+            from llm_research_os.recovery.backup import load_manifest, verify_backup
+
+            image = confined(self._workspace.root, Path("backups") / command.operation.image_id)
+            try:
+                manifest = load_manifest(image)
+                manifest_digest = content_digest(manifest.model_dump(mode="json", by_alias=True))
+                report = verify_backup(image)
+                if (
+                    content_digest(load_manifest(image).model_dump(mode="json", by_alias=True))
+                    != manifest_digest
+                ):
+                    raise ApplicationError(
+                        "backup-changed", "staged backup changed during verification"
+                    )
+            except (OSError, ValueError) as exc:
+                raise ApplicationError(
+                    "backup-invalid", "staged backup failed verification"
+                ) from exc
+            if report.project_id != self._workspace.project_id:
+                raise ApplicationError("project-mismatch", "backup belongs to another project")
+            frozen = _FrozenOperation(backup_digest=manifest_digest)
         digest = self._request_digest(command, frozen)
         prior = self._receipts.lookup(command.command_id)
         if prior is not None:
@@ -189,6 +223,10 @@ class ApplicationService:
 
     def _perform(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         kind = command.operation.kind
+        if isinstance(command.operation, NativeOperation):
+            return self._native(command, frozen)
+        if isinstance(command.operation, BackupOperation):
+            return self._backup(command, frozen)
         if kind == "workspace.show":
             described = self._workspace.describe()
             return _Outcome(
@@ -890,6 +928,114 @@ class ApplicationService:
             verified.append(record.digest)
         return tuple(verified)
 
+    def _native(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        operation = command.operation
+        context = frozen.native
+        if not isinstance(operation, NativeOperation) or context is None:
+            raise ApplicationError("operation-unsupported", "native context is missing")
+        if operation.kind == "native.inspect":
+            report = TrustedKernel(context.registry).dry_run(
+                context.spec, workflow_id=context.request.workflow_id
+            )
+            return _Outcome(
+                result={
+                    "materialDigest": context.digest,
+                    "plan": report.model_dump(mode="json", by_alias=True),
+                    "runId": context.request.run_id,
+                    "attemptId": context.request.attempt_id,
+                    "workerId": context.request.worker_id,
+                    "authorizationEventId": context.request.authorization_event_id,
+                    "authorizationSequence": context.request.authorization_sequence,
+                    "platform": context.request.platform.model_dump(mode="json", by_alias=True),
+                    "declaredLimits": context.request.limits.model_dump(
+                        mode="json", by_alias=True, exclude_none=True
+                    ),
+                    "resources": [
+                        item.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for item in context.spec.resources
+                    ],
+                    "policy": context.spec.policies.model_dump(mode="json", by_alias=True),
+                    "limitPolicy": "reviewed same-user limits rechecked before launch",
+                    "restoreMode": context.claim.mode if context.claim else None,
+                    "launchAllowed": False,
+                }
+            )
+        if operation.kind != "native.observe":
+            if operation.material_digest != context.digest:
+                raise ApplicationError(
+                    "native-material-changed", "inspect the current profile before dispatch"
+                )
+            _require_revision(context.spec.metadata.revision, command.expected_revision)
+            if (operation.kind == "native.restore") != (context.claim is not None):
+                raise ApplicationError(
+                    "restore-prerequisite", "select the matching start or restore profile"
+                )
+            scope = f"native:{context.request.project_id}:{context.request.run_id}"
+            if not self._receipts.reserve_effect(scope, context.digest):
+                return _Outcome(
+                    result={
+                        "runId": context.request.run_id,
+                        "attemptId": context.request.attempt_id,
+                        "observation": "unknown",
+                        "reasonCode": "dispatch-already-reserved",
+                        "launchAllowed": False,
+                    }
+                )
+        before = self._head()
+        result = dispatch_native(
+            self._workspace, context, observe=operation.kind == "native.observe"
+        )
+        with self._open_store(create=False) as store:
+            events = store.read_events(
+                after_sequence=before,
+                limit=100,
+                run_id=context.request.run_id,
+                project_id=self._workspace.project_id,
+                until_sequence=store.last_sequence(),
+            )
+        artifacts = (result["artifactDigest"],) if "artifactDigest" in result else ()
+        return _Outcome(
+            result=result,
+            fact_event_ids=tuple(item.event.id for item in events),
+            artifact_digests=artifacts,
+        )
+
+    def _backup(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
+        from llm_research_os.recovery.backup import restore_backup, verify_backup
+
+        operation = command.operation
+        if not isinstance(operation, BackupOperation):
+            raise ApplicationError("operation-unsupported", "backup operation is missing")
+        image = confined(self._workspace.root, Path("backups") / operation.image_id)
+        if operation.kind == "backup.verify":
+            report = verify_backup(image)
+            return _Outcome(result=report.model_dump(mode="json", by_alias=True))
+        target = confined(
+            self._workspace.root, Path("restored") / str(operation.destination_id), exists=False
+        )
+        scope = f"backup:{operation.destination_id}"
+        if not self._receipts.reserve_effect(scope, frozen.backup_digest or ""):
+            return _Outcome(
+                result={
+                    "observation": "unknown",
+                    "reasonCode": "restore-already-reserved",
+                    "launchAllowed": False,
+                }
+            )
+        try:
+            restored = restore_backup(image, target, expected_manifest_digest=frozen.backup_digest)
+        except (OSError, ValueError) as exc:
+            raise ApplicationError(
+                "restore-refused", "backup restore failed; inspect the reserved destination"
+            ) from exc
+        return _Outcome(
+            result={
+                **restored.model_dump(mode="json", by_alias=True),
+                "destinationId": operation.destination_id,
+                "launchAllowed": False,
+            }
+        )
+
     def _require_expected_head(self, command: ApplicationCommand) -> None:
         if command.expected_head is None:
             return
@@ -1013,6 +1159,16 @@ def _replay_document(document: dict[str, object]) -> dict[str, Any]:
 def _operation_content(command: ApplicationCommand, frozen: _FrozenOperation) -> dict[str, Any]:
     operation = command.operation
     kind = operation.kind
+    if frozen.native is not None:
+        return {
+            **operation.model_dump(mode="json", by_alias=True),
+            "materialDigest": frozen.native.digest,
+        }
+    if frozen.backup_digest is not None:
+        return {
+            **operation.model_dump(mode="json", by_alias=True),
+            "manifestDigest": frozen.backup_digest,
+        }
     if isinstance(operation, (ProposalValidateOperation, ProposalSubmitOperation)):
         if frozen.proposal is None:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
@@ -1310,6 +1466,8 @@ class _Snapshot:
 
 @dataclass(frozen=True, slots=True)
 class _FrozenOperation:
+    native: NativeContext | None = None
+    backup_digest: str | None = None
     spec: _Snapshot | None = None
     old_spec: _Snapshot | None = None
     new_spec: _Snapshot | None = None

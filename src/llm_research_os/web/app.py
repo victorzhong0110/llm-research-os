@@ -408,6 +408,13 @@ class LocalApi:
         """Browser inputs are operator-staged workspace files, never arbitrary host reads."""
         if command.operation.kind not in {
             "plan.preflight",
+            "run.show",
+            "native.start",
+            "native.restore",
+            "native.observe",
+            "native.inspect",
+            "backup.verify",
+            "backup.restore",
             "run.cancel",
             "authorization.revoke",
             "proposal.validate",

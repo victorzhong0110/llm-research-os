@@ -9,6 +9,9 @@ authorized release.
 
 ## Unreleased
 
+- Add material-bound browser native start/checkpoint restore, conservative
+  observation/reconnect and verified new-root backup recovery through shared commands.
+
 ### Added
 
 - The evidence-import example request and its Markdown source now ship inside the

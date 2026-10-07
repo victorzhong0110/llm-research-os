@@ -30,7 +30,10 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-05, sequential PR integration review**. Verified reviewed integration:
+Snapshot date: **2026-10-07, maintainer-assigned engineering completion**. Current main:
+`a32493efb800a3c573ad49aef7077b006d6569ca` (#140); final-head CI 37456094346
+passed all supported Python and actual browser/Ray/native/OCI gates.
+Historical sequential PR integration review: Verified reviewed integration:
 `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
 passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
 final-head CI 37230774848 passed. Historical live execution baseline remains
@@ -41,14 +44,14 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133–#136 are integrated. #139 (R15 recovery) and #140 (R16 trial tooling) have review repairs under the maintainer's 2026-10-06 PR-cleanup authorization; final heads, checks and integration are recorded at the PRs and in the review report. Full-package and B/C/D acceptance gaps remain open. |
+| Current package | #133–#136 and reviewed #139/#140 are integrated. R11 engineering continuation is in progress under REVIEW-20261007-R11. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Maintainer assigned Codex to review, repair and integrate all open PRs; no additional package is started. |
-| Downstream gate | Any separately assigned next package fetches current main and preserves the reviewed #133–#136 repairs. R08 connection/GPU inputs remain separate, see COMM-0004. Review integrates submitted slices only; additional implementation work requires its own assignment. |
+| Responsibility | Maintainer explicitly assigned Codex on 2026-10-07 to complete independently executable engineering work while the maintainer handles Mac and human work. Complete R11–R14 sequentially from verified main, preserving earlier review repairs. |
+| Downstream gate | Engineering continuation is assigned. Fetch current main before each slice; acceptance dependencies and pending-live inputs remain open, including COMM-0004. Human/Mac work is owned by the maintainer in parallel and must not be represented by synthetic fixtures. |
 
 ## Open handoffs
 
@@ -908,3 +911,28 @@ Copy this template into the history and replace every placeholder:
 - Remaining work: Independent participants and their confirmations, authorized remote evidence, trial defect resolution and full R14/M3 acceptance. No fabricated trial, release, new paid activity or deployment.
 
 R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c944794dc574cbc66937` after final-head CI 37454556583 passed all five Python, actual browser, Ray, native and OCI gates. Linux Python 3.12: 2328 passed, 15 deselected; coverage 86.13%, unrounded floor check passed. The integrated tree is `23f3c89caad63a9055eb8ee66358c5ae90d82750`, identical to the reviewed repair tree. #140 preserves that tree's recovery fixes and records this actual main as a parent; its final-head CI remains the gate for its own integration.
+
+
+### REVIEW-20261007-R11 — Assigned engineering continuation
+
+- Date/time: 2026-10-07T20:57:46+08:00 (maintainer assignment).
+- From: Codex recording and acknowledging the maintainer's direction.
+- To: Maintainer and subsequent collaborators; reply to COMM-0008 and prior reviews.
+- State: Implementation and candidate validation in progress; no merge or acceptance claimed.
+- Scope: Complete independent R11–R14 engineering sequentially. The maintainer
+  concurrently handles required Mac and personal/human work. This assignment
+  allows engineering continuation with B/live/human acceptance still open.
+- Branch/base: `work/20261007-r11-completion`, based on verified main
+  `a32493efb800a3c573ad49aef7077b006d6569ca`. No other R package branch started.
+- R11 behavior: Operator-installed profile dispatch uses the existing reviewed
+  native executor and checkpoint gates. Material-bound inspection, durable Run
+  reservation, conservative observation, reconnect, verified new-root backup
+  restore and exact-body retry preserve existing authority and unknown semantics.
+- Candidate evidence: Actual CPU and valid source/target checkpoint regression,
+  shared-service/web regression, generated schemas, browser build/type checks
+  and full final-head checks are recorded in the implementation PR.
+- Acceptance: No selected-host/GPU evidence or participant journey is inferred.
+  This is engineering completion under explicit assignment, not B/C/D acceptance.
+- Next action/owner: Codex verifies this slice, integrates with standing merge
+  authorization, then starts R12 from actual main. Maintainer owns parallel Mac,
+  private environment/provider and human acceptance observations.

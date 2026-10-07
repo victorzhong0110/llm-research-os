@@ -12,6 +12,7 @@ from llm_research_os.application.models import (
     ApplicationCommand,
     ApplicationReceipt,
 )
+from llm_research_os.application.native import NativeLaunchProfile
 from llm_research_os.spec.schema import SCHEMA_DIALECT
 
 
@@ -74,3 +75,22 @@ def _matches(canonical: str, path: str | Path) -> bool:
         return candidate.read_text(encoding="utf-8") == canonical
     except OSError:
         return False
+
+
+def canonical_native_launch_profile_schema() -> str:
+    return _canonical(
+        _build(
+            NativeLaunchProfile,
+            "https://researchos.dev/schemas/native-launch-profile/v0alpha1.schema.json",
+        )
+    )
+
+
+def write_native_launch_profile_schema(path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(canonical_native_launch_profile_schema(), encoding="utf-8")
+
+
+def native_launch_profile_schema_matches(path: str | Path) -> bool:
+    return _matches(canonical_native_launch_profile_schema(), path)

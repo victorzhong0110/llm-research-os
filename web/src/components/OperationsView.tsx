@@ -32,7 +32,9 @@ function post(body: string): Promise<CommandReceipt> {
   return api.command(body);
 }
 
-export function OperationsView({ expectedHead }: { readonly expectedHead: number }) {
+export function OperationsView({ expectedHead: initialHead }: { readonly expectedHead: number }) {
+  const [expectedHead, setExpectedHead] = useState(initialHead);
+  const [inspected, setInspected] = useState<{profileId:string; digest:string} | null>(null);
   const [state, setState] = useState<CommandState>({ status: "idle" });
   const [requestPath, setRequestPath] = useState("");
   const [specPath, setSpecPath] = useState("");
@@ -41,6 +43,10 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
   const sending = useRef(false);
   const [revision, setRevision] = useState(1);
   const [grantId, setGrantId] = useState("");
+  const [profileId, setProfileId] = useState("");
+  const [runId, setRunId] = useState("");
+  const [imageId, setImageId] = useState("");
+  const [destinationId, setDestinationId] = useState("");
 
   const send = useCallback((commandId: string, document: unknown, label: string) => {
     if (sending.current) return;
@@ -54,6 +60,14 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
         sending.current = false;
         setBusy(false);
         setState({ status: "settled", receipt });
+        setExpectedHead(receipt.observedHead);
+        if (receipt.operation === "native.inspect") {
+          const operation = (document as {operation?:{profileId?:string}}).operation;
+          const digest = receipt.result["materialDigest"];
+          if (operation?.profileId && typeof digest === "string") {
+            setInspected({profileId:operation.profileId, digest});
+          }
+        }
       },
       (error: unknown) => {
         sending.current = false;
@@ -113,6 +127,10 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
         supply, dispatched unchanged.
       </p>
 
+      <p>Observed event head: {expectedHead}. <button type="button" disabled={busy}
+        onClick={() => { api.workspace().then(value => setExpectedHead(value.highWaterMark), error =>
+          setState({status:"refused", detail: error instanceof Error ? error.message : "Refresh failed"})); }}>
+        Refresh event head</button></p>
       <article className="detail">
         <h3>Inspect a plan before authorizing</h3>
         <p className="note">
@@ -198,6 +216,57 @@ export function OperationsView({ expectedHead }: { readonly expectedHead: number
         </form>
       </article>
 
+      <article className="detail">
+        <h3>Execute reviewed native work</h3>
+        <p className="note">The operator installs the profile, credentials and reviewed material outside
+          this form. Start consumes its existing grant. Checkpoint restore requires a completed source,
+          compatible state and a new authorized Run. If a response is uncertain, observe this identity.</p>
+        <label htmlFor="native-profile">Installed native profile ID</label>
+        <input id="native-profile" value={profileId} onChange={e => setProfileId(e.target.value)} />
+        {(["inspect", "start", "restore", "observe"] as const).map(action => <button key={action} type="button"
+          disabled={busy || state.status === "uncertain" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(profileId)
+            || ((action === "start" || action === "restore") && inspected?.profileId !== profileId)}
+          onClick={() => {
+            const id = newCommandId(action);
+            send(id, envelope(id, {kind:`native.${action}`, profileId,
+              ...((action === "start" || action === "restore") ? {materialDigest:inspected?.digest} : {})},
+              (action === "observe" || action === "inspect") ? undefined : expectedHead,
+              (action === "observe" || action === "inspect") ? undefined : revision), action);
+          }}>{action === "inspect" ? "Inspect installed work" : action === "start" ? "Start reviewed work" : action === "restore" ? "Restore checkpoint" : "Observe existing work"}</button>)}
+      </article>
+      <article className="detail">
+        <h3>Reconnect to a Run</h3>
+        <p className="note">Read the existing event-derived Run after a disconnect. This does not launch,
+          poll a Worker or infer completion from request acceptance.</p>
+        <form onSubmit={event => {
+          event.preventDefault();
+          const id = newCommandId("reconnect");
+          send(id, envelope(id, {kind:"run.show", runId}, expectedHead), "reconnect");
+        }}>
+          <label htmlFor="reconnect-run">Existing Run ID</label>
+          <input id="reconnect-run" value={runId} onChange={e => setRunId(e.target.value)} />
+          <button type="submit" disabled={busy || state.status === "uncertain" || !runId.trim()}>Reconnect and read Run</button>
+        </form>
+      </article>
+      <article className="detail">
+        <h3>Verify or restore a backup</h3>
+        <p className="note">The operator stages images under backups/. Restore creates a new workspace
+          under restored/ and leaves historical active work unknown for reconciliation. It starts nothing.</p>
+        <label htmlFor="backup-image">Staged backup image ID</label>
+        <input id="backup-image" value={imageId} onChange={e => setImageId(e.target.value)} />
+        <label htmlFor="restore-destination">New restored workspace ID</label>
+        <input id="restore-destination" value={destinationId} onChange={e => setDestinationId(e.target.value)} />
+        {(["verify", "restore"] as const).map(action => <button key={action} type="button"
+          disabled={busy || state.status === "uncertain" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(imageId)
+            || (action === "restore" && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(destinationId))}
+          onClick={() => {
+            const id = newCommandId(`backup-${action}`);
+            send(id, envelope(id, {kind:`backup.${action}`, imageId,
+              ...(action === "restore" ? {destinationId} : {})},
+              action === "restore" ? expectedHead : undefined), action);
+          }}>{action === "verify" ? "Verify backup" : "Restore backup to new workspace"}</button>)}
+      </article>
+
       <Outcome state={state} onRetry={() => {
         const request = pending.current;
         if (request) send(request.id, JSON.parse(request.body), "retry");
@@ -217,7 +286,7 @@ function Outcome({
     return (
       <Empty
         title="No command sent"
-        detail="Run a preflight to inspect a plan, or request a cancellation. Preflight records a receipt; cancellation and revocation record domain facts."
+        detail="Inspect a plan, execute installed reviewed work, reconnect, or verify a backup. Preflight records a receipt; cancellation and revocation record domain facts."
       />
     );
   }
@@ -244,7 +313,7 @@ function Outcome({
       <div className="state state--error" role="alert">
         <h3>Command refused</h3>
         <p>{state.detail}</p>
-        <p className="note">A refusal appends nothing.</p>
+        <p className="note">Inspect or observe an uncertain dispatch before making another intent.</p>
       </div>
     );
   }

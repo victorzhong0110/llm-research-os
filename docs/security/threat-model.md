@@ -967,3 +967,29 @@ and `acceptance: requires-maintainer-review`; task coverage is a separate result
 Regular-file reads are bounded at 1 MiB per record and 32 MiB per kit. Tests:
 `test_recovery_trials.py` and `test_recovery_cli.py`. Real human and selected-host
 acceptance remains pending-live and cannot be fabricated by this tooling.
+
+### TM-096: Browser retry or configured profile launches unintended native work
+
+The local browser selects a bounded installed profile ID; it cannot submit
+credential paths, code or a profile document. Configuration is installed by the
+operator. Inputs are confined to the controller workspace and prepared/state
+paths to its Worker root, with ancestor symlink checks and bounded regular-file
+reads. Inspection binds material identity; changed material is refused at start.
+Existing native reviewed authorization, grant, code/platform/limit, restore and
+cancellation gates remain mandatory. Secrets stay in the controller process;
+receipts expose identities and observed outcome digests only.
+
+A durable project/Run reservation precedes execution. It persists across failed
+HTTP responses, crashes and receipt-write errors, so another browser command
+cannot redispatch that Run. Observe uses existing identity and authority only.
+Backup restore uses a confined new destination and pins the verified manifest
+at materialization. No task is automatically restarted. The native subprocess
+continues to be reviewed same-user execution, not an untrusted-code sandbox.
+Operator privileges, same-user directory races and deliberate edits to private
+SQLite operation state remain outside this browser boundary. Browser request
+deadlines can leave a live task requiring explicit observation.
+
+Gate: `tests/test_application_native.py` actual CPU launch, source/target
+checkpoint restore, reservation/crash/material-change/escape regressions; actual
+browser gate `web/scripts/smoke.mjs` lost-response replay, reconnect and backup
+recovery. Existing native/Worker and backup gates remain required.

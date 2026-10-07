@@ -93,3 +93,7 @@ regular files staged within the workspace, without symlink ancestors. This is a
 same-user file boundary, not isolation from another process owned by that user.
 Browser results redact structured secret fields and host paths; resultDigest
 identifies the served redacted result. CLI receipts retain their original result.
+
+
+Operator-installed native start/observe/checkpoint and verified backup recovery
+are documented in [browser native operations](browser-native-operations.md).

@@ -40,6 +40,43 @@
       "title": "AuthorizationRevokeOperation",
       "type": "object"
     },
+    "BackupOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "destinationId": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destinationid"
+        },
+        "imageId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Imageid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "backup.verify",
+            "backup.restore"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "imageId"
+      ],
+      "title": "BackupOperation",
+      "type": "object"
+    },
     "ConclusionRecordOperation": {
       "additionalProperties": false,
       "description": "Record a human conclusion. The system never supplies the judgement.",
@@ -172,6 +209,69 @@
         "mode"
       ],
       "title": "EvaluationRunOperation",
+      "type": "object"
+    },
+    "NativeOperation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "native.start",
+                  "native.restore"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "materialDigest": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "materialDigest"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "native.start",
+            "native.restore",
+            "native.observe",
+            "native.inspect"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "materialDigest": {
+          "anyOf": [
+            {
+              "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Materialdigest"
+        },
+        "profileId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Profileid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "profileId"
+      ],
+      "title": "NativeOperation",
       "type": "object"
     },
     "PlanDryRunOperation": {
@@ -591,9 +691,15 @@
       "discriminator": {
         "mapping": {
           "authorization.revoke": "#/$defs/AuthorizationRevokeOperation",
+          "backup.restore": "#/$defs/BackupOperation",
+          "backup.verify": "#/$defs/BackupOperation",
           "conclusion.record": "#/$defs/ConclusionRecordOperation",
           "evaluation.compare": "#/$defs/EvaluationCompareOperation",
           "evaluation.run": "#/$defs/EvaluationRunOperation",
+          "native.inspect": "#/$defs/NativeOperation",
+          "native.observe": "#/$defs/NativeOperation",
+          "native.restore": "#/$defs/NativeOperation",
+          "native.start": "#/$defs/NativeOperation",
           "plan.dry-run": "#/$defs/PlanDryRunOperation",
           "plan.preflight": "#/$defs/PlanPreflightOperation",
           "proposal.submit": "#/$defs/ProposalSubmitOperation",
@@ -661,6 +767,12 @@
         },
         {
           "$ref": "#/$defs/AuthorizationRevokeOperation"
+        },
+        {
+          "$ref": "#/$defs/NativeOperation"
+        },
+        {
+          "$ref": "#/$defs/BackupOperation"
         }
       ],
       "title": "Operation"

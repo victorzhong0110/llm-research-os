@@ -1388,3 +1388,27 @@ See [the review record](../../reviews/pr139-140-2026-10-06.md) and the final
 remote heads, final checks and exact integration SHAs.
 
 R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c944794dc574cbc66937` after final-head CI 37454556583 passed all five Python, actual browser, Ray, native and OCI gates. Linux Python 3.12: 2328 passed, 15 deselected; coverage 86.13%, unrounded floor check passed. The integrated tree is `23f3c89caad63a9055eb8ee66358c5ae90d82750`, identical to the reviewed repair tree. #140 preserves that tree's recovery fixes and records this actual main as a parent; its final-head CI remains the gate for its own integration.
+
+
+## R11 engineering continuation — 2026-10-07 candidate
+
+Base: `a32493efb800a3c573ad49aef7077b006d6569ca`; branch
+`work/20261007-r11-completion`. The maintainer explicitly assigned engineering
+continuation while separately performing Mac and human work. See
+[REVIEW-20261007-R11](../../collaboration-log.md#review-20261007-r11--assigned-engineering-continuation).
+
+- Browser native inspection binds exact installed material; existing reviewed
+  native start and checkpoint restore remain subject to authorization/grant,
+  byte/platform/limit/lineage and cancellation checks. No UI-created authority.
+- A durable Run reservation prevents duplicate dispatch after uncertain HTTP or
+  receipt failure. Observation and reconnect use existing identity and facts.
+- Backup verification/restore use confined names, a verified pinned manifest and
+  new-root recovery. Restore appends nothing and never relaunches historical work.
+- Automated CPU fixtures execute actual local processes. Source/target checkpoint
+  tests verify independently authorized new work consuming the prior result.
+  These are synthetic test inputs, not selected-host/GPU or participant evidence.
+- Candidate checks, exact final head/CI and integration are recorded by the PR.
+  The local browser download failed in this runtime; actual browser validation
+  is required in the designated CI gate before integration.
+- Full B/C/D acceptance, selected-host/GPU proof and independent human trials stay
+  open. This candidate does not change historical acceptance or package meaning.

@@ -105,3 +105,8 @@ regular files staged within the workspace, without symlink ancestors. This is a
 same-user file boundary, not isolation from another process owned by that user.
 Browser results redact structured secret fields and host paths; resultDigest
 identifies the served redacted result. CLI receipts retain their original result.
+
+
+The [native and backup continuation](browser-native-operations-v0alpha1.md) adds
+material-bound installed-profile dispatch, conservative observation/reconnect,
+and pinned verified new-root recovery to this command surface.
