@@ -21,6 +21,12 @@ CREATE TABLE IF NOT EXISTS operation_receipts (
     receipt_json TEXT NOT NULL CHECK (json_valid(receipt_json))
 ) STRICT
 """
+_INTENTS = """
+CREATE TABLE IF NOT EXISTS operation_effect_intents (
+    scope TEXT PRIMARY KEY,
+    content_digest TEXT NOT NULL
+) STRICT
+"""
 _REJECT_UPDATE = """
 CREATE TRIGGER IF NOT EXISTS operation_receipts_reject_update
 BEFORE UPDATE ON operation_receipts
@@ -74,6 +80,32 @@ class ReceiptLog:
             document=document,
         )
 
+    def reserve_effect(self, scope: str, digest: str) -> bool:
+        """Reserve before dispatch. Crash/timeout never releases this identity."""
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT content_digest FROM operation_effect_intents WHERE scope = ?", (scope,)
+            ).fetchone()
+            if row is not None:
+                if row[0] != digest:
+                    raise ApplicationError(
+                        "effect-conflict", "effect identity already binds other material"
+                    )
+                return False
+            connection.execute(
+                "INSERT INTO operation_effect_intents VALUES (?, ?)", (scope, digest)
+            )
+            connection.commit()
+            return True
+        except sqlite3.Error as exc:
+            raise ApplicationError(
+                "receipt-unwritable", "dispatch intent could not be recorded"
+            ) from exc
+        finally:
+            connection.close()
+
     def append(self, command_id: str, request_digest: str, document: dict[str, object]) -> None:
         payload = json.dumps(document, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         connection = self._connect()
@@ -114,6 +146,7 @@ class ReceiptLog:
             if journal is None or str(journal[0]).lower() != "wal":
                 raise ApplicationError("receipt-unwritable", "receipt log requires SQLite WAL")
             connection.execute(_SCHEMA)
+            connection.execute(_INTENTS)
             connection.execute(_REJECT_UPDATE)
             connection.execute(_REJECT_DELETE)
             connection.execute("PRAGMA user_version = 1")

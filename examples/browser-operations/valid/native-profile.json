@@ -1,0 +1,13 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "NativeLaunchProfile",
+  "request": "reviewed/request.json",
+  "spec": "reviewed/spec.json",
+  "registry": [
+    "reviewed/block.json"
+  ],
+  "preparedRoot": "material",
+  "stateRoot": "launch",
+  "grantTokenFile": "private/grant-token",
+  "hmacKeyFile": "private/grant-key"
+}

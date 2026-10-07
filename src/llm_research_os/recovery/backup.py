@@ -211,6 +211,7 @@ def restore_backup(
     cas_root: Path | None = None,
     worker_root: Path | None = None,
     now: datetime | None = None,
+    expected_manifest_digest: str | None = None,
 ) -> RestoreReport:
     """Verify an image, then materialize it as a new workspace.
 
@@ -225,6 +226,12 @@ def restore_backup(
     source = image.absolute()
     # The manifest used below is the one just verified, not a second read.
     manifest, _report = _verify_image(source)
+    if (
+        expected_manifest_digest is not None
+        and content_digest(manifest.model_dump(mode="json", by_alias=True))
+        != expected_manifest_digest
+    ):
+        raise RecoveryError("restore-image-changed", "backup changed after the reviewed command")
     target = destination_root.absolute()
     if target.exists():
         if not target.is_dir():

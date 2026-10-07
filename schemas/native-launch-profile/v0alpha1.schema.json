@@ -1,0 +1,161 @@
+{
+  "$id": "https://researchos.dev/schemas/native-launch-profile/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "restoreClaim": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restoreClaim"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sourceRequest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceRequest"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sourceRequest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceRequest"
+        ]
+      },
+      "then": {
+        "properties": {
+          "restoreClaim": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "restoreClaim"
+        ]
+      }
+    }
+  ],
+  "description": "Installed by the operator, never accepted as browser-supplied JSON.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/application/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "grantTokenFile": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Granttokenfile",
+      "type": "string"
+    },
+    "hmacKeyFile": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Hmackeyfile",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeLaunchProfile",
+      "title": "Kind",
+      "type": "string"
+    },
+    "preparedRoot": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Preparedroot",
+      "type": "string"
+    },
+    "registry": {
+      "items": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "title": "Registry",
+      "type": "array"
+    },
+    "request": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Request",
+      "type": "string"
+    },
+    "restoreClaim": {
+      "anyOf": [
+        {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Restoreclaim"
+    },
+    "sourceRequest": {
+      "anyOf": [
+        {
+          "maxLength": 4096,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcerequest"
+    },
+    "spec": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Spec",
+      "type": "string"
+    },
+    "stateRoot": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+      "title": "Stateroot",
+      "type": "string"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "request",
+    "spec",
+    "registry",
+    "preparedRoot",
+    "stateRoot",
+    "grantTokenFile",
+    "hmacKeyFile"
+  ],
+  "title": "NativeLaunchProfile",
+  "type": "object"
+}

@@ -36,6 +36,9 @@ _MUTATING = frozenset(
         "research.decision",
         "run.cancel",
         "run.simulate",
+        "native.start",
+        "native.restore",
+        "backup.restore",
     }
 )
 _REVISION_BOUND = frozenset(
@@ -50,6 +53,8 @@ _REVISION_BOUND = frozenset(
         "proposal.submit",
         "evaluation.run",
         "conclusion.record",
+        "native.start",
+        "native.restore",
     }
 )
 _HEAD_BOUND = frozenset(
@@ -147,6 +152,52 @@ class RunSimulateOperation(ApplicationModel):
 
 class WorkspaceShowOperation(ApplicationModel):
     kind: Literal["workspace.show"]
+
+
+class NativeOperation(ApplicationModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {"properties": {"kind": {"enum": ["native.start", "native.restore"]}}},
+                    "then": {
+                        "required": ["materialDigest"],
+                        "properties": {"materialDigest": {"type": "string"}},
+                    },
+                }
+            ]
+        }
+    )
+
+    kind: Literal["native.start", "native.restore", "native.observe", "native.inspect"]
+    profile_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")] = Field(
+        alias="profileId"
+    )
+    material_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] | None = Field(
+        default=None, alias="materialDigest"
+    )
+
+    @model_validator(mode="after")
+    def launches_bind_inspected_material(self) -> Self:
+        if self.kind in {"native.start", "native.restore"} and self.material_digest is None:
+            raise ValueError("launch requires inspected materialDigest")
+        return self
+
+
+class BackupOperation(ApplicationModel):
+    kind: Literal["backup.verify", "backup.restore"]
+    image_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")] = Field(
+        alias="imageId"
+    )
+    destination_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")] | None = (
+        Field(default=None, alias="destinationId")
+    )
+
+    @model_validator(mode="after")
+    def destination_matches_operation(self) -> Self:
+        if (self.kind == "backup.restore") != (self.destination_id is not None):
+            raise ValueError("only restore requires destinationId")
+        return self
 
 
 class PlanPreflightOperation(ApplicationModel):
@@ -264,7 +315,9 @@ ApplicationOperation = Annotated[
     | ProposalSubmitOperation
     | ProposalValidateOperation
     | RunCancelOperation
-    | AuthorizationRevokeOperation,
+    | AuthorizationRevokeOperation
+    | NativeOperation
+    | BackupOperation,
     Field(discriminator="kind"),
 ]
 
@@ -329,6 +382,12 @@ class ApplicationReceipt(ApplicationModel):
         "proposal.submit",
         "proposal.validate",
         "run.cancel",
+        "native.start",
+        "native.restore",
+        "native.observe",
+        "native.inspect",
+        "backup.verify",
+        "backup.restore",
     ]
     request_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
         alias="requestDigest"
