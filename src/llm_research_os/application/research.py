@@ -170,8 +170,14 @@ def proposal_preview(
     base: ResearchSpec,
     candidate: ResearchSpec,
     revision: int | None,
+    *,
+    historical_committed: bool = False,
 ) -> dict[str, Any]:
-    require_base(workspace, base, revision)
+    if historical_committed:
+        if str(base.metadata.id) != workspace.project_id or base.metadata.revision != revision:
+            raise ApplicationError("stale-revision", "historical base identity differs")
+    else:
+        require_base(workspace, base, revision)
     if proposal.project_id != workspace.project_id or proposal.experiment_revision != revision:
         raise ApplicationError("stale-revision", "proposal base project or revision differs")
     changes = [change.as_dict() for change in semantic_diff(base, candidate)]
@@ -193,6 +199,7 @@ def proposal_preview(
     citations = require_citations(workspace, proposal.evidence_refs)
     return {
         "valid": True,
+        "historicalCommittedFact": historical_committed,
         "draft": proposal.model_dump(mode="json", by_alias=True),
         "baseRevision": base.metadata.revision,
         "candidateRevision": candidate.metadata.revision,

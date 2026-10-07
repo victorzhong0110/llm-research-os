@@ -56,3 +56,11 @@ Proposal, decision and evidence facts committed just before receipt loss recover
 ## Limits and non-goals
 
 This is a same-user operator workbench, not adversarial host isolation. Direct same-user database/filesystem mutation remains outside the boundary. Profiles do not provide general autonomous agents, tools, literature crawling, automatic acceptance, unlimited retries or invoice reconciliation. Local compatible-server and Mock tests are synthetic contract evidence; they do not establish paid-provider availability, research improvement, selected GPU/two-host evidence, human trials or Checkpoint C acceptance.
+
+## Terminal failure and historical receipt recovery
+
+`model.observe` validates configured terminal failure identity as well as the start/prompt. A recorded failure returns `failed-observed` and its fact ID, with current budget and dispatch retry disabled. A dispatched transport failure can leave the remote effect uncertain even though a local failure fact exists; its outstanding reservation remains. Conflicting completion/failure identities are refused.
+
+Inbox extraction, unsupported media and size/encoding errors are normal application refusals (browser HTTP 409), without facts, receipts or raw source details.
+
+When the exact proposal fact committed before receipt failure, recovery verifies its immutable identity and original artifact-bound diff even if a later revision has since been recorded. Inline recovery marks `historicalCommittedFact`; it does not newly validate the old base for future work. Fresh validation and new submissions still require the current recorded base. This also applies to legacy path-based proposal submission.

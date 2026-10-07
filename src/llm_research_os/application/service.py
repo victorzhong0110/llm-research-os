@@ -200,16 +200,25 @@ class ApplicationService:
 
             name = command.operation.inbox_file
             # Dedicated inbox prevents importing native credentials elsewhere in the workspace.
-            path = confined(self._workspace.root, Path("evidence-inbox") / name)
-            if media_type_for_suffix(path.suffix) != command.operation.document.media_type:
-                raise ApplicationError(
-                    "evidence-invalid", "evidence media type differs from inbox suffix"
+            try:
+                path = confined(self._workspace.root, Path("evidence-inbox") / name)
+                if media_type_for_suffix(path.suffix) != command.operation.document.media_type:
+                    raise ApplicationError(
+                        "evidence-invalid", "evidence media type differs from inbox suffix"
+                    )
+                payload = load_bounded_file(path, limit=MAX_EVIDENCE_BYTES)
+                frozen = _FrozenOperation(
+                    evidence=payload,
+                    evidence_draft=EvidenceControl.snapshot_draft(
+                        command.operation.document, payload
+                    ),
                 )
-            payload = load_bounded_file(path, limit=MAX_EVIDENCE_BYTES)
-            frozen = _FrozenOperation(
-                evidence=payload,
-                evidence_draft=EvidenceControl.snapshot_draft(command.operation.document, payload),
-            )
+            except (OSError, ValueError) as exc:
+                if isinstance(exc, ApplicationError):
+                    raise
+                raise ApplicationError(
+                    "evidence-invalid", "inbox evidence failed extraction or media validation"
+                ) from exc
         elif isinstance(command.operation, BackupOperation):
             from llm_research_os.recovery.backup import load_manifest, verify_backup
 
@@ -642,6 +651,8 @@ class ApplicationService:
                 frozen.research_base,
                 frozen.research_candidate,
                 command.expected_revision,
+                historical_committed=operation.kind == "research.submit"
+                and self._identical_decision_already_committed(command, frozen),
             )
             digest = store_draft(
                 self._workspace, preview, operation.base_artifact, operation.candidate_artifact
@@ -843,12 +854,24 @@ class ApplicationService:
         return self._generated_draft_result(context, command.expected_revision, payload, facts)
 
     def _observe_model(self, context: ModelContext) -> _Outcome:
+        from llm_research_os.providers.compat_requests import OpenAICompatGenerateRequestDocument
+
         request = context.request
+        failure_identity = (
+            request.events["ai.call.failed"]
+            if isinstance(request, OpenAICompatGenerateRequestDocument)
+            else None
+        )
         with self._open_store(create=False) as store:
             started = store.get_event(request.events["ai.call.started"].id)
             completed = store.get_event(request.events["ai.call.completed"].id)
+            failed = store.get_event(failure_identity.id) if failure_identity else None
             facts = tuple(store.get_event(event.id) for event in request.events.values())
-        if started is None or completed is None:
+        if completed is not None and failed is not None:
+            raise ApplicationError(
+                "model-observation-conflict", "model call has conflicting terminal facts"
+            )
+        if completed is None and failed is None:
             return _Outcome(
                 result={
                     "observation": "unknown",
@@ -858,10 +881,26 @@ class ApplicationService:
                     "dispatchRetryAllowed": False,
                 }
             )
+        if started is None:
+            raise ApplicationError(
+                "model-observation-conflict", "terminal call has no matching start"
+            )
+        terminal = completed if completed is not None else failed
+        terminal_identity = (
+            request.events["ai.call.completed"] if completed is not None else failure_identity
+        )
         for stored, event_type, identity in (
             (started, "ai.call.started", request.events["ai.call.started"]),
-            (completed, "ai.call.completed", request.events["ai.call.completed"]),
+            (
+                terminal,
+                "ai.call.completed" if completed is not None else "ai.call.failed",
+                terminal_identity,
+            ),
         ):
+            if stored is None or identity is None:
+                raise ApplicationError(
+                    "model-observation-conflict", "model call identity is missing"
+                )
             event = stored.event
             if (
                 event.type != event_type
@@ -881,17 +920,33 @@ class ApplicationService:
                 "model-observation-conflict",
                 "recorded model prompt differs from installed material",
             )
+        fact_ids = tuple(
+            item.event.id
+            for item in facts
+            if item is not None
+            and item.event.data.project_id == request.project_id
+            and item.event.data.payload.get("callId") == request.call_id
+        )
+        if failed is not None:
+            return _Outcome(
+                result={
+                    "observation": "failed-observed",
+                    "reasonCode": "recorded-model-call-failed",
+                    "failedEventId": failed.event.id,
+                    "callId": request.call_id,
+                    "budget": budget_view(self._workspace),
+                    "launchAllowed": False,
+                    "dispatchRetryAllowed": False,
+                },
+                fact_event_ids=fact_ids,
+            )
+        if completed is None:
+            raise ApplicationError("model-observation-conflict", "completion fact is missing")
         return self._generated_draft_result(
             context,
             request.experiment_revision,
             dict(completed.event.data.payload),
-            tuple(
-                item.event.id
-                for item in facts
-                if item is not None
-                and item.event.data.project_id == request.project_id
-                and item.event.data.payload.get("callId") == request.call_id
-            ),
+            fact_ids,
         )
 
     def _generated_draft_result(
@@ -966,6 +1021,8 @@ class ApplicationService:
         proposal: ProposalSubmitRequestDocument,
         frozen: _FrozenOperation,
         revision: int | None,
+        *,
+        historical_committed: bool = False,
     ) -> dict[str, Any]:
         """Resolve a proposal's citations against the recorded evidence.
 
@@ -991,7 +1048,12 @@ class ApplicationService:
                 "proposal-material-required", "proposal specification artifacts are missing"
             )
         derived = proposal_preview(
-            self._workspace, proposal, frozen.research_base, frozen.research_candidate, revision
+            self._workspace,
+            proposal,
+            frozen.research_base,
+            frozen.research_candidate,
+            revision,
+            historical_committed=historical_committed,
         )
         cited = tuple(str(item) for item in proposal.evidence_refs)
         resolved = tuple(item for item in cited if item in recorded)
@@ -1051,9 +1113,12 @@ class ApplicationService:
             raise ApplicationError("operation-unsupported", "operation kind does not match")
         _require_project(str(frozen.proposal.project_id), self._workspace.project_id)
         _require_revision(frozen.proposal.experiment_revision, command.expected_revision)
-        if self._proposal_preview(frozen.proposal, frozen, command.expected_revision)[
-            "unresolvedCitations"
-        ]:
+        if self._proposal_preview(
+            frozen.proposal,
+            frozen,
+            command.expected_revision,
+            historical_committed=self._identical_decision_already_committed(command, frozen),
+        )["unresolvedCitations"]:
             raise ApplicationError(
                 "citation-unresolved",
                 "one or more citations are not recorded evidence in this project",

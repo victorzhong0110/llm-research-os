@@ -27,7 +27,7 @@ Local loopback contract servers require no secret and zero CNY declared cap/rese
 
 ## An unconfirmed response
 
-Retry the exact research intent to obtain its receipt; the UI retains the exact serialized body while mounted. After refresh/restart, enter the installed profile and choose **Observe model call**. Observation only reads recorded facts/CAS and budget. An incomplete call remains unknown and must not be rerun automatically. Open budget reservations remain visible; consumed/project budget numbers are not a provider invoice.
+Retry the exact research intent to obtain its receipt; the UI retains the exact serialized body while mounted. After refresh/restart, enter the installed profile and choose **Observe model call**. Observation only reads recorded facts/CAS and budget. An incomplete call remains unknown and must not be rerun automatically. A recorded terminal failure is shown as `failed-observed`; a dispatched transport failure can still retain uncertain remote effects and outstanding budget. Open budget reservations remain visible; consumed/project budget numbers are not a provider invoice.
 
 For an old path-based application proposal command, supply `baseArtifact` and `candidateArtifact` as well as the staged request path. The shared service recomputes the same diff. Historical M1 CLI examples remain historical; their asserted digests alone do not satisfy the new application workflow.
 

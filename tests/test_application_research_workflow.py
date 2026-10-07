@@ -567,3 +567,166 @@ def test_evidence_source_changed_after_freeze_does_not_change_import(
         service, {"kind": "evidence.import", "document": request, "inboxFile": "source.md"}
     )
     assert result["result"]["snapshotDigest"] == expected
+
+
+@pytest.mark.parametrize("dispatched", [False, True])
+def test_observation_identifies_recorded_failure_and_keeps_budget_uncertainty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dispatched: bool
+) -> None:
+    service, data = setup_research(tmp_path)
+    compat_profile(service, data, "https://example.com/v1", remote=True)
+    path = service.workspace.root / "generate.json"
+    request = json.loads(path.read_text())
+    monkeypatch.setenv(request["secretRef"]["name"], "synthetic-test-key")
+    with EventStore(service.workspace.control_db) as store:
+        BudgetControl(store, project_id="example-minimal").append(
+            budget_limit_draft(project_id="example-minimal", cap="2.00", event_id="evt.limit")
+        )
+    calls = []
+
+    def fail(*_: Any) -> Any:
+        calls.append(1)
+        raise ModelTransportError(
+            "synthetic failure", code="transport-timeout", dispatched=dispatched
+        )
+
+    monkeypatch.setattr(CompatHttpProvider, "generate_fixture", fail)
+    invoke(
+        service,
+        {
+            "kind": "model.generate",
+            "profileId": "mock",
+            "materialDigest": freeze_model(service.workspace, "mock").digest,
+        },
+    )
+    observed = invoke(
+        ApplicationService.open(service.workspace.root),
+        {"kind": "model.observe", "profileId": "mock"},
+        "test.failed.observe",
+    )
+    assert observed["result"]["observation"] == "failed-observed"
+    assert observed["result"]["dispatchRetryAllowed"] is False
+    assert observed["result"]["budget"]["outstanding"] == ("1.00" if dispatched else "0.00")
+    assert request["events"]["ai.call.failed"]["id"] in observed["factEventIds"]
+    assert len(calls) == 1
+    request["events"]["ai.call.failed"]["time"] = "2027-01-01T00:00:00Z"
+    path.write_text(json.dumps(request))
+    with pytest.raises(ApplicationError, match="recorded model call differs"):
+        invoke(service, {"kind": "model.observe", "profileId": "mock"}, "test.failed.conflict")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "name,payload",
+    [
+        ("empty.md", b""),
+        ("invalid.md", b"\xff"),
+        ("text-large.md", b"x" * 400_001),
+        ("source-large.md", b"x" * 8_388_609),
+        ("broken.pdf", b"%PDF-1.7 broken"),
+        ("unsupported.txt", b"synthetic input"),
+    ],
+    ids=["empty", "non-utf8", "text-limit", "source-limit", "malformed-pdf", "unsupported-media"],
+)
+def test_inbox_input_errors_are_browser_refusals_without_side_effects(
+    tmp_path: Path, name: str, payload: bytes
+) -> None:
+    service, _ = setup_research(tmp_path)
+    inbox = service.workspace.root / "evidence-inbox"
+    inbox.mkdir()
+    (inbox / name).write_bytes(payload)
+    request = json.loads((DEMO / "evidence/import-markdown.json").read_text())
+    if name.endswith(".pdf"):
+        request["mediaType"] = "application/pdf"
+    api = LocalApi(
+        service.workspace,
+        sessions=SessionStore(bootstrap_token=BOOTSTRAP),
+        allowed_hosts=frozenset({"127.0.0.1:8787"}),
+        allowed_origin=ORIGIN,
+    )
+    client = Client(api)
+    client.bootstrap(BOOTSTRAP)
+    command = _command(
+        {"kind": "evidence.import", "document": request, "inboxFile": name},
+        expectedHead=0,
+        expectedRevision=1,
+    )
+    status, _, result = client.request(
+        "POST",
+        "/api/v0alpha1/commands",
+        body=command.model_dump_json(by_alias=True).encode(),
+        content_type="application/json",
+        origin=ORIGIN,
+    )
+    assert status == 409, result
+    assert result["code"] == "command-refused"
+    with pytest.raises(ApplicationError, match="extraction or media"):
+        service.execute(command)
+    assert "Traceback" not in json.dumps(result)
+    with EventStore(service.workspace.control_db) as store:
+        assert store.last_sequence() == 0
+    assert service._receipts.lookup(command.command_id) is None
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_committed_proposal_recovers_after_a_new_revision_without_revalidating_current_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy: bool
+) -> None:
+    from test_query_tables import _queued_draft
+
+    from llm_research_os.application.receipts import ReceiptLog
+    from llm_research_os.projections.sqlite import rebuild_query_tables
+
+    service, data = setup_research(tmp_path)
+    operation = {
+        "kind": "research.submit",
+        "proposal": data["proposal"],
+        "baseArtifact": data["base"],
+        "candidateArtifact": data["candidate"],
+    }
+    if legacy:
+        (service.workspace.root / "proposal.json").write_text(json.dumps(data["proposal"]))
+        operation = {
+            "kind": "proposal.submit",
+            "request": str(service.workspace.root / "proposal.json"),
+            "baseArtifact": data["base"],
+            "candidateArtifact": data["candidate"],
+        }
+    command = _command(operation, expectedHead=0, expectedRevision=1)
+    original = ReceiptLog.append
+
+    def fail(*_: Any, **__: Any) -> Any:
+        raise ApplicationError("receipt-unwritable", "synthetic receipt crash")
+
+    monkeypatch.setattr(ReceiptLog, "append", fail)
+    with pytest.raises(ApplicationError, match="receipt crash"):
+        service.execute(command)
+    monkeypatch.setattr(ReceiptLog, "append", original)
+    with EventStore(service.workspace.control_db) as store:
+        draft = _queued_draft()
+        draft["data"]["projectId"] = service.workspace.project_id
+        draft["data"]["experimentRevision"] = 2
+        draft["data"]["payload"]["specDigest"] = data["candidate"]
+        store.append(draft)
+        rebuild_query_tables(store)
+        assert store.list_spec_revisions()[0].revision == 2
+    recovered = ApplicationService.open(service.workspace.root).execute(command)
+    assert recovered["factEventIds"] == [data["proposal"]["event"]["id"]]
+    assert service.execute(command)["disposition"] == "replayed"
+    assert recovered["result"]["disposition"] == "recorded"
+    if not legacy:
+        assert recovered["result"]["historicalCommittedFact"] is True
+    with EventStore(service.workspace.control_db) as store:
+        assert store.last_sequence() == 2
+    # A fresh validation still rejects the old base; recovery cannot refresh its authority.
+    with pytest.raises(ApplicationError, match="latest recorded"):
+        invoke(
+            service,
+            {
+                "kind": "research.draft",
+                "proposal": data["proposal"],
+                "baseArtifact": data["base"],
+                "candidateArtifact": data["candidate"],
+            },
+            "test.stale.draft",
+        )
