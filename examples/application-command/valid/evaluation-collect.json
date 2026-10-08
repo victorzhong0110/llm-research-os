@@ -1,0 +1,14 @@
+{
+  "actorId": "operator",
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "commandId": "example.evaluation.collect",
+  "expectedHead": 14,
+  "expectedRevision": 1,
+  "kind": "ApplicationCommand",
+  "operation": {
+    "kind": "evaluation.collect",
+    "outputArtifact": "sha256:dfe641c164e5c52b4df8fd360e8a2ab110a20c982d80aece672761a8fb2a35a1",
+    "profileId": "cpu"
+  },
+  "submittedAt": "2026-10-04T10:00:00+08:00"
+}

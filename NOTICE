@@ -1,2 +1,11 @@
 llm-research-os
 Copyright 2026 victorzhong0110
+
+The Iris data embedded in evaluation/iris.py is attributed to:
+Fisher, R. (1936). Iris [Dataset]. UCI Machine Learning Repository.
+https://doi.org/10.24432/C56C76
+Data license: Creative Commons Attribution 4.0 International (CC BY 4.0),
+https://creativecommons.org/licenses/by/4.0/
+The source data bytes are unchanged. A binary subset and deterministic
+training/held-out split are derived for a public development benchmark.
+This data does not inherit the repository's Apache-2.0 code license.

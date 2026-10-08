@@ -1,0 +1,12 @@
+{
+  "apiVersion": "researchos.dev/operations-backup/v0alpha1",
+  "kind": "OperationState",
+  "projectId": "example-minimal",
+  "receipts": [],
+  "intents": [
+    {
+      "scope": "synthetic-unfinished",
+      "contentDigest": "jcs-sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ]
+}

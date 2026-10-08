@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 import llm_research_os
+from llm_research_os.evaluation import iris
 from llm_research_os.recovery.demo import DEMO_CORPUS, DEMO_PROJECT
 
 package = Path(llm_research_os.__file__).resolve()
@@ -27,6 +28,9 @@ if importlib.util.find_spec("torch") is not None or importlib.util.find_spec("sw
     raise SystemExit("smoke environment must not contain training extras")
 if not DEMO_CORPUS.is_dir():
     raise SystemExit("the installed wheel does not contain the offline demonstration corpus")
+training_material = iris.main()
+if len(training_material["training"]) != 80 or len(training_material["heldout"]) != 20:
+    raise SystemExit("the installed wheel lacks the pinned real-model material")
 
 
 def cli(*arguments: object, cwd: Path) -> "subprocess.CompletedProcess[str]":

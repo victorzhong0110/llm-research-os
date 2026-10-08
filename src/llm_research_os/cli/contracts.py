@@ -54,6 +54,15 @@ from llm_research_os.evaluation.schema import (
 from llm_research_os.evaluation.schema import (
     write_schema as write_evaluation_schema,
 )
+from llm_research_os.evaluation.trained_schema import (
+    canonical_schema as canonical_trained_evaluation_schema,
+)
+from llm_research_os.evaluation.trained_schema import (
+    schema_matches as trained_evaluation_schema_matches,
+)
+from llm_research_os.evaluation.trained_schema import (
+    write_schema as write_trained_evaluation_schema,
+)
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
@@ -205,15 +214,21 @@ from llm_research_os.providers.schema import (
 )
 from llm_research_os.recovery.schema import (
     backup_manifest_schema_matches,
+    backup_manifest_v2_schema_matches,
     backup_report_schema_matches,
     canonical_backup_manifest_schema,
+    canonical_backup_manifest_v2_schema,
     canonical_backup_report_schema,
+    canonical_operations_backup_schema,
     canonical_restore_report_schema,
     canonical_workspace_diagnostic_schema,
+    operations_backup_schema_matches,
     restore_report_schema_matches,
     workspace_diagnostic_schema_matches,
     write_backup_manifest_schema,
+    write_backup_manifest_v2_schema,
     write_backup_report_schema,
+    write_operations_backup_schema,
     write_restore_report_schema,
     write_workspace_diagnostic_schema,
 )
@@ -378,6 +393,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         write_evaluation_schema,
         "schemas/evaluation-document/v0alpha1.schema.json",
     ),
+    "trained-evaluation-document": _contract(
+        canonical_trained_evaluation_schema,
+        trained_evaluation_schema_matches,
+        write_trained_evaluation_schema,
+        "schemas/trained-evaluation-document/v0alpha1.schema.json",
+    ),
     "local-api-response": _contract(
         canonical_local_api_response_schema,
         local_api_response_schema_matches,
@@ -401,6 +422,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         backup_manifest_schema_matches,
         write_backup_manifest_schema,
         "schemas/backup-manifest/v0alpha1.schema.json",
+    ),
+    "backup-manifest-v2": _contract(
+        canonical_backup_manifest_v2_schema,
+        backup_manifest_v2_schema_matches,
+        write_backup_manifest_v2_schema,
+        "schemas/backup-manifest/v0alpha2.schema.json",
+    ),
+    "operations-backup": _contract(
+        canonical_operations_backup_schema,
+        operations_backup_schema_matches,
+        write_operations_backup_schema,
+        "schemas/operations-backup/v0alpha1.schema.json",
     ),
     "backup-report": _contract(
         canonical_backup_report_schema,

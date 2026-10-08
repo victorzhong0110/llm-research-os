@@ -191,6 +191,7 @@ def _request_for(
     inventory_digest: str,
     input_digest: str,
     input_size: int,
+    stdout_bytes: int = 4096,
 ) -> NativeReviewedExecutionRequest:
     system = platform.system().lower()
     architecture = platform.machine()
@@ -239,7 +240,7 @@ def _request_for(
         },
         "limits": {
             "wallTimeSeconds": 60,
-            "stdoutBytes": 4096,
+            "stdoutBytes": stdout_bytes,
             "stderrBytes": 4096,
             "artifactBytes": 1048576,
             "memoryBytes": {"ceiling": 268435456, "required": False},
@@ -261,6 +262,7 @@ def _build(
     package_pin: dict[str, str] | None = None,
     executable_digest: str | None = None,
     brick: bytes = BRICK,
+    stdout_bytes: int = 4096,
 ) -> World:
     code_path = tmp_path / "source" / "task.py"
     code_path.parent.mkdir(parents=True)
@@ -328,6 +330,7 @@ def _build(
         inventory_digest=_sha(inventory),
         input_digest=_sha(corpus),
         input_size=len(corpus),
+        stdout_bytes=stdout_bytes,
     )
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()

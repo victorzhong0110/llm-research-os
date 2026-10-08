@@ -1,0 +1,695 @@
+{
+  "$defs": {
+    "EvaluationComparisonDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/evaluation/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "baselineDetailDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Baselinedetaildigest",
+          "type": "string"
+        },
+        "candidateDetailDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Candidatedetaildigest",
+          "type": "string"
+        },
+        "deltas": {
+          "items": {
+            "$ref": "#/$defs/MetricDeltaDocument"
+          },
+          "maxItems": 3,
+          "title": "Deltas",
+          "type": "array"
+        },
+        "kind": {
+          "const": "EvaluationComparison",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "missingMetrics": {
+          "items": {
+            "enum": [
+              "accuracy",
+              "macro_f1",
+              "mean_absolute_error"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Missingmetrics",
+          "type": "array"
+        },
+        "outcome": {
+          "enum": [
+            "improved",
+            "regressed",
+            "unchanged",
+            "incomparable"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "refusal": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refusal"
+        },
+        "requiredMetrics": {
+          "items": {
+            "enum": [
+              "accuracy",
+              "macro_f1",
+              "mean_absolute_error"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Requiredmetrics",
+          "type": "array"
+        },
+        "supportsAConclusion": {
+          "title": "Supportsaconclusion",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "outcome",
+        "baselineDetailDigest",
+        "candidateDetailDigest",
+        "requiredMetrics",
+        "deltas",
+        "missingMetrics",
+        "supportsAConclusion",
+        "refusal",
+        "limitations"
+      ],
+      "title": "EvaluationComparisonDocument",
+      "type": "object"
+    },
+    "EvaluationDetailDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/evaluation/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "datasetDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Datasetdigest",
+          "type": "string"
+        },
+        "evaluatorName": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Evaluatorname",
+          "type": "string"
+        },
+        "evaluatorVersion": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Evaluatorversion",
+          "type": "string"
+        },
+        "exampleCount": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Examplecount",
+          "type": "integer"
+        },
+        "examples": {
+          "items": {
+            "$ref": "#/$defs/ExampleDetail"
+          },
+          "maxItems": 10000,
+          "minItems": 1,
+          "title": "Examples",
+          "type": "array"
+        },
+        "kind": {
+          "const": "EvaluationDetail",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metrics": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "seed": {
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "split": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Split",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "datasetDigest",
+        "evaluatorName",
+        "evaluatorVersion",
+        "split",
+        "seed",
+        "exampleCount",
+        "metrics",
+        "examples"
+      ],
+      "title": "EvaluationDetailDocument",
+      "type": "object"
+    },
+    "ExampleDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "absoluteError": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Absoluteerror",
+          "type": "string"
+        },
+        "correct": {
+          "title": "Correct",
+          "type": "boolean"
+        },
+        "exampleId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Exampleid",
+          "type": "string"
+        },
+        "expected": {
+          "enum": [
+            0,
+            1
+          ],
+          "title": "Expected",
+          "type": "integer"
+        },
+        "predicted": {
+          "enum": [
+            0,
+            1
+          ],
+          "title": "Predicted",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "exampleId",
+        "predicted",
+        "expected",
+        "correct",
+        "absoluteError"
+      ],
+      "title": "ExampleDetail",
+      "type": "object"
+    },
+    "MetricDeltaDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Baseline",
+          "type": "string"
+        },
+        "candidate": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "change": {
+          "pattern": "^[+-](?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Change",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "better",
+            "same",
+            "worse",
+            "incomparable"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "accuracy",
+            "macro_f1",
+            "mean_absolute_error"
+          ],
+          "title": "Metric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "baseline",
+        "candidate",
+        "change",
+        "direction"
+      ],
+      "title": "MetricDeltaDocument",
+      "type": "object"
+    },
+    "Metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "accuracy": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Accuracy",
+          "type": "string"
+        },
+        "macro_f1": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Macro F1",
+          "type": "string"
+        },
+        "mean_absolute_error": {
+          "pattern": "^(?:0\\.[0-9]{6}|1\\.000000)$",
+          "title": "Mean Absolute Error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "accuracy",
+        "macro_f1",
+        "mean_absolute_error"
+      ],
+      "title": "Metrics",
+      "type": "object"
+    },
+    "ResearchReport": {
+      "additionalProperties": false,
+      "properties": {
+        "actorId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "actorKind": {
+          "const": "human",
+          "title": "Actorkind",
+          "type": "string"
+        },
+        "apiVersion": {
+          "const": "researchos.dev/conclusion/v0alpha2",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "comparison": {
+          "$ref": "#/$defs/TrainedComparison"
+        },
+        "comparisonDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Comparisondigest",
+          "type": "string"
+        },
+        "contractVersion": {
+          "const": "v0alpha2",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array"
+        },
+        "experimentRevision": {
+          "minimum": 1,
+          "title": "Experimentrevision",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "ResearchReport",
+          "title": "Kind",
+          "type": "string"
+        },
+        "narrative": {
+          "maxLength": 12000,
+          "minLength": 1,
+          "title": "Narrative",
+          "type": "string"
+        },
+        "projectId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Projectid",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "reportId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Reportid",
+          "type": "string"
+        },
+        "submittedAt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Submittedat",
+          "type": "string"
+        },
+        "systemDerived": {
+          "const": false,
+          "title": "Systemderived",
+          "type": "boolean"
+        },
+        "verdict": {
+          "enum": [
+            "insufficient-evidence",
+            "supported",
+            "unsupported"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "contractVersion",
+        "reportId",
+        "projectId",
+        "experimentRevision",
+        "actorId",
+        "actorKind",
+        "submittedAt",
+        "comparisonDigest",
+        "comparison",
+        "narrative",
+        "verdict",
+        "rationale",
+        "evidenceRefs",
+        "systemDerived"
+      ],
+      "title": "ResearchReport",
+      "type": "object"
+    },
+    "TrainedComparison": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/evaluation/v0alpha2",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "baseline": {
+          "$ref": "#/$defs/TrainingProvenance"
+        },
+        "baselineArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Baselineartifact",
+          "type": "string"
+        },
+        "candidate": {
+          "$ref": "#/$defs/TrainingProvenance"
+        },
+        "candidateArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Candidateartifact",
+          "type": "string"
+        },
+        "comparison": {
+          "$ref": "#/$defs/EvaluationComparisonDocument"
+        },
+        "kind": {
+          "const": "TrainedComparison",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "systemDerivedConclusion": {
+          "const": false,
+          "title": "Systemderivedconclusion",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "baselineArtifact",
+        "candidateArtifact",
+        "baseline",
+        "candidate",
+        "comparison",
+        "limitations",
+        "systemDerivedConclusion"
+      ],
+      "title": "TrainedComparison",
+      "type": "object"
+    },
+    "TrainedEvaluationDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/evaluation/v0alpha2",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "detail": {
+          "$ref": "#/$defs/EvaluationDetailDocument"
+        },
+        "failureExampleIds": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Failureexampleids",
+          "type": "array"
+        },
+        "kind": {
+          "const": "TrainedEvaluationDetail",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "const": "real-trained-public-development-benchmark",
+          "title": "Label",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "modelRole": {
+          "enum": [
+            "baseline",
+            "candidate"
+          ],
+          "title": "Modelrole",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/TrainingProvenance"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "label",
+        "modelRole",
+        "provenance",
+        "detail",
+        "failureExampleIds",
+        "limitations"
+      ],
+      "title": "TrainedEvaluationDetail",
+      "type": "object"
+    },
+    "TrainingProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Attemptid",
+          "type": "string"
+        },
+        "completedEventId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Completedeventid",
+          "type": "string"
+        },
+        "completedSequence": {
+          "minimum": 1,
+          "title": "Completedsequence",
+          "type": "integer"
+        },
+        "configDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Configdigest",
+          "type": "string"
+        },
+        "decisionId": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Decisionid"
+        },
+        "experimentRevision": {
+          "minimum": 1,
+          "title": "Experimentrevision",
+          "type": "integer"
+        },
+        "modelDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Modeldigest",
+          "type": "string"
+        },
+        "outputArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Outputartifact",
+          "type": "string"
+        },
+        "projectId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Projectid",
+          "type": "string"
+        },
+        "proposalId": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Proposalid"
+        },
+        "requestArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Requestartifact",
+          "type": "string"
+        },
+        "requestDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Requestdigest",
+          "type": "string"
+        },
+        "runId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Runid",
+          "type": "string"
+        },
+        "sourceDigest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sourcedigest",
+          "type": "string"
+        },
+        "taskId": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Taskid",
+          "type": "string"
+        },
+        "trainingDatasetDigest": {
+          "pattern": "^jcs-sha256:[0-9a-f]{64}$",
+          "title": "Trainingdatasetdigest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "experimentRevision",
+        "runId",
+        "attemptId",
+        "taskId",
+        "outputArtifact",
+        "requestArtifact",
+        "requestDigest",
+        "sourceDigest",
+        "trainingDatasetDigest",
+        "configDigest",
+        "modelDigest",
+        "completedEventId",
+        "completedSequence",
+        "proposalId",
+        "decisionId"
+      ],
+      "title": "TrainingProvenance",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/trained-evaluation-document/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/TrainedEvaluationDetail"
+    },
+    {
+      "$ref": "#/$defs/TrainedComparison"
+    },
+    {
+      "$ref": "#/$defs/ResearchReport"
+    }
+  ]
+}

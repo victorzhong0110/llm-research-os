@@ -179,3 +179,8 @@ directories are unique per operation. Backup inputs must be regular files;
 manifest reads stop at 8 MiB plus one byte. Parent directories and the local
 filesystem remain operator-controlled; this is not an authenticated archive or
 an OS sandbox against another process with the same filesystem privileges.
+
+
+Receipt-backed operation state uses the explicitly versioned
+[v0alpha2 successor](backup-restore-v0alpha2.md); the v0alpha1 event-only contract
+and its existing images remain supported.

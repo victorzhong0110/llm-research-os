@@ -999,3 +999,26 @@ recovery. Existing native/Worker and backup gates remain required.
 Operator-installed model profiles bind bounded workspace request/fixture documents and CAS base/candidate material; browser callers supply a simple ID and an inspected digest. Existing endpoint/permission/secret/budget gates remain authoritative. A durable project/call intent precedes effects; the initial budget or Mock fact uses the caller's expected head. Dispatched uncertainty remains reserved, exact receipts replay, and observation reads stored facts without requesting again. Output is a strict, actor-bound, citation-resolved draft with a recomputed semantic diff, never tool authority.
 
 Frozen evidence only comes from the dedicated inbox and preserves source/version, reading/training rights and bounded isolated extraction. Symlink/path escapes and selecting credentials outside that inbox are refused. Human edits are attributed to the operator and do not erase generated CAS evidence or dissent. These controls do not isolate an adversarial same-user process, validate an operator's license assertion, reconcile provider invoices, or prove human/scientific acceptance. Gate: `test_application_research_workflow.py`, legacy proposal regressions, actual loopback HTTP and committed-bundle browser CI.
+
+
+### TM-098 — Trained evaluation and recorded human reports
+
+The fixed public-data task uses the existing native-reviewed material, interpreter,
+Worker grant, resource and process/observation gates. There is no new execution
+backend or implicit dispatch. Typed collection binds CAS bytes and the reviewed
+request/source to the actual completed Worker lease and Run/Attempt. Model and
+prediction replay rejects asserted scores, altered data/configuration and forged
+lineage. Optional accepted-decision links must precede the exact Run spec.
+
+Browser report preview leaves verdict empty; explicit operator narrative and
+judgement cannot overwrite verified metrics or provenance. Additional citations
+resolve in the same project. Immutable reports and receipt identities survive
+restart and exact response-loss retry. Workspace-local report discovery is bounded
+to ten entries with a withheld count; CAS reads retain the 4 MiB bound.
+
+The model is a public development benchmark, not independent validation. Human
+actor fields remain local caller claims. Same-user source/SQLite interference,
+operator licensing assertions, generalization and malicious-code isolation remain
+outside this boundary. Gate: actual CPU and refusal regressions in
+`test_trained_evaluation.py`, existing native/Worker gates, generated contract
+checks and the full committed-bundle Checkpoint C engineering browser chain.

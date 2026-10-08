@@ -430,6 +430,11 @@ class LocalApi:
             "research.decision",
             "evaluation.run",
             "evaluation.compare",
+            "evaluation.collect",
+            "evaluation.report",
+            "conclusion.publish",
+            "conclusion.list",
+            "conclusion.inspect",
             "conclusion.record",
         }:
             raise LocalApiError(

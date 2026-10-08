@@ -39,11 +39,20 @@ from llm_research_os.recovery.models import (
     EVENTS_SNAPSHOT_NAME,
     MANIFEST_NAME,
     OBJECT_ROOT_NAME,
+    OPERATIONS_SNAPSHOT_NAME,
     BackupManifest,
+    BackupManifestV2,
     BackupObject,
     BackupReport,
     ReconciledRun,
     RestoreReport,
+)
+from llm_research_os.recovery.operations import (
+    MAX_OPERATION_BYTES,
+    OperationState,
+    capture_operation_state,
+    operation_references,
+    restore_operation_state,
 )
 from llm_research_os.research.ledger import build_research_ledger
 from llm_research_os.research.models import research_ledger_document
@@ -149,6 +158,18 @@ def _verify_image(image: Path) -> tuple[BackupManifest, BackupReport]:
         count = store.verify_integrity()
         head = store.last_sequence()
         referenced, last_digest = _prefix_object_state(store, head)
+        operations = _verified_operations(image, manifest, store)
+        if operations is not None:
+            referenced = tuple(
+                sorted(
+                    set(referenced)
+                    | set(
+                        operation_references(
+                            operations, store, project_id=manifest.project_id, high_water=head
+                        )
+                    )
+                )
+            )
     if count != manifest.event_count or head != manifest.high_water:
         raise BackupIntegrityError(
             "backup-event-count-mismatch",
@@ -332,6 +353,14 @@ def _materialize(
         raise BackupIntegrityError(
             "restore-ledger-mismatch", "the restored research ledger does not match the image"
         )
+    if isinstance(manifest, BackupManifestV2):
+        with EventStore(workspace.control_db, require_existing=True) as store:
+            operations = _verified_operations(source, manifest, store)
+        if operations is None:
+            raise BackupIntegrityError("backup-operations-missing", "operation snapshot is missing")
+        if project != operations.project_id:
+            raise RecoveryError("restore-project-mismatch", "operation state belongs elsewhere")
+        restore_operation_state(operations, workspace)
     return RestoreReport(
         projectId=project,
         restoredHighWater=restored_high_water,
@@ -361,7 +390,19 @@ def load_manifest(image: Path) -> BackupManifest:
     except OSError as exc:
         raise RecoveryError("backup-manifest-missing", "backup manifest could not be read") from exc
     try:
-        return BackupManifest.model_validate_json(payload)
+        document = json.loads(payload)
+        if (
+            type(document) is dict
+            and document.get("apiVersion") == "researchos.dev/recovery/v0alpha2"
+        ):
+            return BackupManifestV2.model_validate(document)
+        if (
+            type(document) is not dict
+            or document.get("apiVersion", "researchos.dev/recovery/v0alpha1")
+            != "researchos.dev/recovery/v0alpha1"
+        ):
+            raise ValueError("unsupported recovery manifest version")
+        return BackupManifest.model_validate(document)
     except ValueError as exc:
         raise RecoveryError(
             "backup-manifest-invalid", "backup manifest is not a valid contract"
@@ -369,12 +410,29 @@ def load_manifest(image: Path) -> BackupManifest:
 
 
 def _build_image(workspace: Workspace, staging: Path, *, now: datetime) -> BackupReport:
+    # Capture receipts first: every receipt-cited fact must exist in the later
+    # event prefix. Reservations without a receipt remain inert unknown state.
+    operations = capture_operation_state(workspace)
     snapshot = staging / EVENTS_SNAPSHOT_NAME
     _snapshot_database(workspace.control_db, snapshot)
     with EventStore(snapshot, create=False) as store:
         event_count = store.verify_integrity()
         high_water = store.last_sequence()
         digests, last_digest = _prefix_object_state(store, high_water)
+        if operations is not None:
+            digests = tuple(
+                sorted(
+                    set(digests)
+                    | set(
+                        operation_references(
+                            operations,
+                            store,
+                            project_id=workspace.project_id,
+                            high_water=high_water,
+                        )
+                    )
+                )
+            )
     source_store = LocalArtifactStore(workspace.cas_root)
     objects = _copy_objects(source_store, staging, digests)
     # Reading the snapshot above put it back into WAL mode, so committed pages
@@ -396,7 +454,27 @@ def _build_image(workspace: Workspace, staging: Path, *, now: datetime) -> Backu
         objects=list(objects),
         totalObjectBytes=sum(entry.size_bytes for entry in objects),
     )
+    if operations is not None:
+        payload = operations.model_dump_json(by_alias=True).encode()
+        if len(payload) > MAX_OPERATION_BYTES:
+            raise RecoveryError("backup-operations-too-large", "operation snapshot exceeds bounds")
+        path = staging / OPERATIONS_SNAPSHOT_NAME
+        path.write_bytes(payload)
+        _fsync_path(path)
+        manifest = BackupManifestV2.model_validate(
+            {
+                **manifest.model_dump(mode="json", by_alias=True),
+                "apiVersion": "researchos.dev/recovery/v0alpha2",
+                "operationsSnapshotDigest": _file_digest(path),
+                "operationsSnapshotBytes": len(payload),
+                "operationsReceiptCount": len(operations.receipts),
+                "operationsIntentCount": len(operations.intents),
+            }
+        )
     _write_manifest(staging, manifest)
+    # Re-verify the fully assembled image, including its receipt-backed object
+    # set, before it can be renamed into the operator's destination.
+    _verify_image(staging)
     return BackupReport(
         projectId=manifest.project_id,
         verified=True,
@@ -406,6 +484,43 @@ def _build_image(workspace: Workspace, staging: Path, *, now: datetime) -> Backu
         totalObjectBytes=manifest.total_object_bytes,
         snapshotBytes=manifest.snapshot_bytes,
     )
+
+
+def _verified_operations(
+    image: Path, manifest: BackupManifest, store: EventStore
+) -> OperationState | None:
+    if not isinstance(manifest, BackupManifestV2):
+        return None
+    path = image / OPERATIONS_SNAPSHOT_NAME
+    try:
+        with _regular_reader(path) as handle:
+            payload = handle.read(MAX_OPERATION_BYTES + 1)
+        if len(payload) > MAX_OPERATION_BYTES:
+            raise RecoveryError("backup-operations-too-large", "operation snapshot exceeds bounds")
+        digest = f"sha256:{hashlib.sha256(payload).hexdigest()}"
+        if (
+            digest != manifest.operations_snapshot_digest
+            or len(payload) != manifest.operations_snapshot_bytes
+        ):
+            raise BackupIntegrityError(
+                "backup-operations-mismatch", "operation snapshot differs from its manifest"
+            )
+        state = OperationState.model_validate_json(payload)
+        if (
+            len(state.receipts) != manifest.operations_receipt_count
+            or len(state.intents) != manifest.operations_intent_count
+        ):
+            raise ValueError("operation snapshot counts differ")
+        operation_references(
+            state, store, project_id=manifest.project_id, high_water=manifest.high_water
+        )
+        return state
+    except RecoveryError:
+        raise
+    except (OSError, ValueError, TypeError, RecursionError) as exc:
+        raise BackupIntegrityError(
+            "backup-operations-invalid", "operation snapshot failed validation"
+        ) from exc
 
 
 def _collapse_snapshot(snapshot: Path) -> None:

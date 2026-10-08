@@ -25,8 +25,13 @@ from llm_research_os.application.models import (
     ApplicationReceipt,
     AuthorizationRevokeOperation,
     BackupOperation,
+    ConclusionInspectOperation,
+    ConclusionListOperation,
+    ConclusionPublishOperation,
     ConclusionRecordOperation,
+    EvaluationCollectOperation,
     EvaluationCompareOperation,
+    EvaluationReportOperation,
     EvaluationRunOperation,
     EvidenceImportOperation,
     ModelProfileOperation,
@@ -175,7 +180,7 @@ class ApplicationService:
         """Run ``command`` or return the prior receipt for the same content."""
 
         frozen = _freeze_operation(command.operation)
-        if isinstance(command.operation, NativeOperation):
+        if isinstance(command.operation, (NativeOperation, EvaluationCollectOperation)):
             frozen = _FrozenOperation(
                 native=freeze_native(self._workspace, command.operation.profile_id)
             )
@@ -319,6 +324,14 @@ class ApplicationService:
             return self._evaluation_compare(command)
         if kind == "conclusion.record":
             return self._conclusion_record(command)
+        if kind in {
+            "evaluation.collect",
+            "evaluation.report",
+            "conclusion.publish",
+            "conclusion.list",
+            "conclusion.inspect",
+        }:
+            return self._trained_evaluation(command, frozen)
         if isinstance(
             command.operation,
             (
@@ -545,7 +558,7 @@ class ApplicationService:
             ) from exc
 
     def _evaluation_run(self, command: ApplicationCommand) -> _Outcome:
-        """Compute a real evaluation and store its detail artifact.
+        """Compute the synthetic CPU fixture and store its detail artifact.
 
         Nothing is sampled and nothing is simulated: the dataset is committed,
         the evaluator is deterministic, and the per-example detail is stored so
@@ -634,6 +647,192 @@ class ApplicationService:
         # than in the receipt, so a conclusion can never be mistaken for a fact
         # the control plane derived.
         return _Outcome(result={**conclusion.document(), "systemDerived": False})
+
+    def _trained_evaluation(
+        self, command: ApplicationCommand, frozen: _FrozenOperation
+    ) -> _Outcome:
+        from llm_research_os.evaluation.trained import comparison_document, detail_documents
+        from llm_research_os.evaluation.trained_contracts import ResearchReport, TrainedComparison
+
+        operation = command.operation
+        cas = LocalArtifactStore(self._workspace.cas_root)
+        try:
+            if isinstance(operation, (ConclusionInspectOperation, ConclusionListOperation)):
+                receipts, count = self._receipts.published_reports(
+                    report_artifact=operation.report_artifact
+                    if isinstance(operation, ConclusionInspectOperation)
+                    else None
+                )
+                summaries = []
+                reports = []
+                for stored_receipt in receipts:
+                    parsed_receipt = ApplicationReceipt.model_validate(stored_receipt)
+                    if content_digest(parsed_receipt.result) != parsed_receipt.result_digest:
+                        raise ApplicationError("report-invalid", "report receipt identity differs")
+                    artifact = parsed_receipt.result["reportArtifact"]
+                    report_document = json.loads(self._read_artifact(Path(artifact)))
+                    report = ResearchReport.model_validate(report_document)
+                    if (
+                        report.project_id != self._workspace.project_id
+                        or report_document != parsed_receipt.result["report"]
+                    ):
+                        raise ApplicationError(
+                            "report-invalid", "report differs from its recorded receipt"
+                        )
+                    reports.append(report_document)
+                    summaries.append(
+                        {
+                            "reportId": report.report_id,
+                            "reportArtifact": artifact,
+                            "actorId": report.actor_id,
+                            "verdict": report.verdict,
+                            "experimentRevision": report.experiment_revision,
+                            "submittedAt": report.submitted_at,
+                        }
+                    )
+                if isinstance(operation, ConclusionInspectOperation):
+                    if not reports:
+                        raise ApplicationError(
+                            "report-missing", "no recorded report matches this artifact"
+                        )
+                    return _Outcome(
+                        result={
+                            "report": reports[0],
+                            "reportArtifact": operation.report_artifact,
+                            "historicalRecordedReport": True,
+                            "systemDerived": False,
+                        }
+                    )
+                return _Outcome(
+                    result={"reports": summaries, "withheld": max(0, count - len(summaries))}
+                )
+            if isinstance(operation, EvaluationCollectOperation):
+                context = frozen.native
+                if context is None:
+                    raise ApplicationError(
+                        "evaluation-profile", "a reviewed native profile is required"
+                    )
+                _require_revision(int(context.request.revision_id), command.expected_revision)
+                request = cas.put_bytes(
+                    canonical_json(
+                        context.request.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    ).encode()
+                )
+                pair = detail_documents(
+                    self._workspace,
+                    context.request,
+                    request.digest,
+                    operation.output_artifact,
+                    self._read_artifact,
+                    operation.decision_id,
+                )
+                stored_pair = [
+                    cas.put_bytes(canonical_json(document).encode()) for document in pair
+                ]
+                return _Outcome(
+                    result={
+                        "baselineArtifact": stored_pair[0].digest,
+                        "candidateArtifact": stored_pair[1].digest,
+                        "baselineMetrics": pair[0]["detail"]["metrics"],
+                        "candidateMetrics": pair[1]["detail"]["metrics"],
+                        "failureExampleIds": pair[1]["failureExampleIds"],
+                        "provenance": pair[1]["provenance"],
+                        "limitations": pair[1]["limitations"],
+                        "label": pair[1]["label"],
+                        "reproducible": True,
+                        "systemDerivedConclusion": False,
+                    },
+                    artifact_digests=(request.digest, *(item.digest for item in stored_pair)),
+                )
+            if not isinstance(operation, (EvaluationReportOperation, ConclusionPublishOperation)):
+                raise ApplicationError(
+                    "operation-unsupported", "trained evaluation operation required"
+                )
+            comparison = comparison_document(
+                self._workspace, operation.baseline, operation.candidate, self._read_artifact
+            )
+            TrainedComparison.model_validate(comparison)
+            _require_revision(
+                comparison["candidate"]["experimentRevision"], command.expected_revision
+            )
+            digest = content_digest(comparison)
+            if isinstance(operation, EvaluationReportOperation):
+                facts = comparison["comparison"]
+                narrative = (
+                    "Baseline/candidate public development benchmark\n\n"
+                    + "\n".join(
+                        f"{d['metric']}: {d['baseline']} -> {d['candidate']} ({d['direction']})"
+                        for d in facts["deltas"]
+                    )
+                    + "\n\nLimitations:\n"
+                    + "\n".join(comparison["limitations"])
+                    + "\n\nHuman interpretation: [edit before recording a conclusion]"
+                )
+                stored = cas.put_bytes(canonical_json(comparison).encode())
+                return _Outcome(
+                    result={
+                        "comparison": comparison,
+                        "comparisonDigest": digest,
+                        "comparisonArtifact": stored.digest,
+                        "narrative": narrative,
+                        "verdict": None,
+                        "humanDecisionRequired": True,
+                    },
+                    artifact_digests=(stored.digest,),
+                )
+            if operation.comparison_digest != digest:
+                raise ApplicationError(
+                    "evaluation-comparison", "previewed comparison identity changed"
+                )
+            if (
+                operation.verdict != "insufficient-evidence"
+                and not comparison["comparison"]["supportsAConclusion"]
+            ):
+                raise ApplicationError(
+                    "conclusion-refused",
+                    "incompatible or incomplete evidence permits insufficient-evidence only",
+                )
+            if not operation.narrative.strip() or not operation.rationale.strip():
+                raise ApplicationError(
+                    "conclusion-refused", "a human narrative and rationale are required"
+                )
+            if len(set(operation.evidence_refs)) != len(operation.evidence_refs):
+                raise ApplicationError("conclusion-refused", "duplicate evidence references")
+            require_citations(self._workspace, tuple(operation.evidence_refs))
+            document = {
+                "apiVersion": "researchos.dev/conclusion/v0alpha2",
+                "kind": "ResearchReport",
+                "contractVersion": "v0alpha2",
+                "reportId": operation.report_id,
+                "projectId": self._workspace.project_id,
+                "experimentRevision": command.expected_revision,
+                "actorId": command.actor_id,
+                "actorKind": "human",
+                "submittedAt": command.submitted_at,
+                "comparisonDigest": digest,
+                "comparison": comparison,
+                "narrative": operation.narrative,
+                "verdict": operation.verdict,
+                "rationale": operation.rationale,
+                "evidenceRefs": list(operation.evidence_refs),
+                "systemDerived": False,
+            }
+            ResearchReport.model_validate(document)
+            stored = cas.put_bytes(canonical_json(document).encode())
+            return _Outcome(
+                result={
+                    "report": document,
+                    "reportArtifact": stored.digest,
+                    "systemDerived": False,
+                },
+                artifact_digests=(stored.digest,),
+            )
+        except (ValueError, TypeError, OSError, KeyError, RecursionError) as exc:
+            if isinstance(exc, ApplicationError):
+                raise
+            raise ApplicationError(
+                "evaluation-refused", "trained evaluation failed validation or replay"
+            ) from exc
 
     def _research_workflow(self, command: ApplicationCommand, frozen: _FrozenOperation) -> _Outcome:
         operation = command.operation

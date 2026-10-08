@@ -1,0 +1,20 @@
+{
+  "apiVersion": "researchos.dev/recovery/v0alpha2",
+  "createdAt": "2026-10-06T00:00:00Z",
+  "eventCount": 14,
+  "highWater": 14,
+  "kind": "BackupManifest",
+  "lastEventDigest": "sha256:079569cc7e0382564462026973c2e2bfc2ccea27bb2600c256df328734aba6af",
+  "objects": [],
+  "projectId": "example-minimal",
+  "relaunchPolicy": "not-relaunched",
+  "schemaDigest": "sha256:426fff7eaf173d703e1c0910b1237558bf99aac4d187a39f96bab55a563e202b",
+  "schemaVersion": 2,
+  "snapshotBytes": 114688,
+  "snapshotDigest": "sha256:0abcdc45c2ffef4c679843670058614ab32802a330b2b189559f0f6ac54689e1",
+  "totalObjectBytes": 0,
+  "operationsSnapshotDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "operationsSnapshotBytes": 256,
+  "operationsReceiptCount": 0,
+  "operationsIntentCount": 0
+}

@@ -30,10 +30,14 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-07, maintainer-assigned engineering completion**. Current main:
-`5a99c71e4ac61300e26c49fab8a9401c162d0585` (#141); final-head CI 37627514776
-passed all five Python/platform and actual browser/Ray/native/OCI gates. Reviewed
-R11 tree `f7c47ffbc0c64664935f7576d0a0cc9511c90ffb` exactly matches integrated main.
+Snapshot date: **2026-10-08, maintainer-assigned engineering completion**. Current main:
+`0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142); final repair-head CI
+37680752180 passed all 11 applicable jobs, including actual browser/native/OCI/Ray
+and five Python/platform jobs. Linux 3.12: 2455 passed, 15 deselected, unrounded
+coverage 31465/36400 = 86.442308%. Reviewed R12 tree
+`e55926e3cc3e2438396b96fa425c8e613c4cf9c8` exactly matches fetched main. R11 #141
+remains integrated at `5a99c71e4ac61300e26c49fab8a9401c162d0585`, with its evidence
+at the historical platform/SHA. Full human/live phase acceptance remains open.
 Historical sequential PR integration review: Verified reviewed integration:
 `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
 passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
@@ -45,7 +49,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #141 R11 engineering continuation is integrated and verified. R12 continuation is in progress under REVIEW-20261007-R12 on a sequential branch based on that actual main. Full-package and B/C/D acceptance gaps remain open. |
+| Current package | #142 R12 continuation is merged and verified. R13 engineering continuation is the sole active R package on `work/20261008-r13-completion`, based on that actual main. See REVIEW-20261008-R13. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -957,3 +961,131 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Three automated review findings were reproduced and fixed before integration: validate/report recorded model failure rather than unknown; map expected evidence extraction/media failures to safe application refusals; recover an identical committed proposal after a subsequent spec revision without treating the old base as newly valid. Both inline and legacy submission recover the historical fact.
 - New regressions cover dispatched/non-dispatched failure observation and identity conflicts, empty/non-UTF-8/over-limit/malformed PDF/unsupported inbox inputs, and receipt loss plus a subsequent recorded revision for both proposal interfaces. Exact counts/final-head CI are recorded in the PR. Initial CI is historical evidence, not the repair head's green light.
 - Human/private-provider/Checkpoint C acceptance gaps remain open. No test gate or acceptance rule was relaxed.
+
+
+### REVIEW-20261008-R13 — Real CPU evaluation and human reports
+
+- Date: 2026-10-08 (Asia/Taipei). From: Codex. To: maintainer.
+- State: R13 engineering candidate; final submitted head/tree and CI are recorded
+  at its PR. No full-package or Checkpoint C acceptance is asserted.
+- Base: actual fetched main `0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142),
+  verified tree `e55926e3cc3e2438396b96fa425c8e613c4cf9c8`. No R14 branch started.
+- R12 integration: repair head `bd211c3b4e599633bf72b23bd6ce28c154b4678e`,
+  all 11 applicable final CI jobs passed; three automated P2 findings repaired,
+  covered and resolved. Squash merge and fetched main tree match verified.
+- Deliverable: existing reviewed native CPU adapter runs the fixed attributed
+  public Iris centroid/training-majority task, with 80 training and 20 held-out
+  rows, seed/version/config/source/model provenance, verified actual Run/Attempt
+  and Worker completion, prediction/parameter replay and bounded failure cases.
+- Optional accepted decision links precede the exact Run spec; a research
+  decision still supplies no launch authority. Preserved synthetic v0alpha1
+  fixture mechanics remain separately labelled.
+- New v0alpha2 editable reports bind the whole comparison, explicit human-labelled
+  verdict/rationale, same-project evidence references and immutable CAS receipt
+  identity; bounded discovery and historical reads survive restart.
+- Verification: actual CPU/forged-material/head/receipt/report/contract regressions,
+  lint/type/schema/catalog/status/digest/type/build/package checks and final-head
+  committed-bundle browser CI are the gate. Exact local/full-suite and final CI
+  results are reported at the PR; a queued or failed gate is not a pass.
+- Demo: source-checkout synthetic actors/grants, actual public CPU training,
+  proposal -> accepted decision -> exact-spec Run -> comparison -> edited
+  explicit conclusion -> response-loss replay -> restart/read. The fixture is
+  not a production grant provisioner or real participant acceptance evidence.
+- Gaps: private-provider/selected-host/GPU and actual human Checkpoint C/phase
+  acceptance remain open. Public development results establish no independent
+  research improvement or statistical significance. R14 starts only after
+  this slice is independently verified and merged. Normative scope changes: none.
+
+
+### REVIEW-20261008-R13-BROWSER — Cross-panel head refresh
+
+- State: engineering repair for #143; no acceptance inferred.
+- Initial submitted head `372b8ded403ebe5da5cdabf79d6fd2eefeacd87a`, CI
+  37710189377: native, OCI and both Ray integrations passed; actual browser
+  job 113094052995 failed at the training start button. The new evaluation panel
+  retained its initial head after the research panel appended the decision, so
+  its read-only material inspection was refused and start stayed disabled.
+- Repair: read-only evaluation intents omit optional expectedHead; native
+  inspection supplies the current observed head. `native.start` and
+  `conclusion.publish` retain required head/revision checks. No service gate,
+  Worker authorization, browser assertion or time limit is weakened. Rebuilt
+  committed assets match the TypeScript change.
+- Local full suite: 2439 passed, 28 failed, 5 skipped, 15 deselected; unrounded
+  coverage 31512/36777 = 85.683987%. On unchanged R12, 27 selected failure cases
+  reproduced and one passed once; that CLI case then failed in isolated absolute
+  source-path reruns on both R12 and R13. All original failures remain recorded;
+  final-head actual CI is mandatory, with no waiver.
+- Final focused application/evaluation/CLI tests: 64 passed (17 trained cases).
+  Global checks, package build and fresh installed core-only wheel passed.
+  Local browser executable unavailable; only actual CI can supply browser proof.
+- Final repair head/tree and CI are recorded at #143. R14 remains unstarted.
+
+
+### REVIEW-20261008-R13-RECOVERY — 2026-10-08T01:14:10Z
+
+- Sender: Codex planning/review assistant and assigned implementer.
+- Recipient: Maintainer and future sequential implementer.
+- State: R13 #143 remains open; review repair candidate, not acceptance.
+- Reply to REVIEW-20261008-R13 and REVIEW-20261008-R13-BROWSER:
+  current pre-recovery remote head `086276af4af06bcf2fae1152838a9ecdbf832b82`,
+  tree `d3346fb91fffe94140206fee13351819c99d3317`.
+  CI 37710590323 actual Workbench browser, native, OCI, both Ray gates and human
+  authorship passed; the Python matrix was still running when this entry was
+  prepared. Do not substitute those results for a later repair head.
+- P1 PRRT_kwDOUA4Md86qJ4xe correctly found that the event-only backup loses
+  receipt-backed training details and report discovery. Add an explicit v0alpha2
+  manifest, bounded inert operation snapshot, verified union object set, and
+  append-only receipt/reservation restoration; keep old v0alpha1 images readable.
+  Regressions use actual reviewed CPU training followed by backup, verification,
+  restore, report list/read, detail recomputation and exact receipt replay, plus
+  corrupted scope/results/objects/counts and preserved unknown reservations.
+- Environment: local exec-server reported `environment_offline` on this resume.
+  No new local test/format/schema generation is claimed. A temporary read-only
+  GitHub Actions preparation job formats source and generates schemas from
+  Pydantic, emitting only explicitly listed public source/schema bytes. Its
+  outputs must be committed, the temporary workflow removed, and final unchanged
+  CI gates passed before merge. There is no workflow write token or check waiver.
+- Next owner: Codex completes the review repair and final-head verification,
+  merges under the maintainer's existing authorization, fetches actual main,
+  then begins R14 sequentially. Human/phase/live acceptance remains open.
+
+
+### REVIEW-20261008-R13-RECOVERY-VERIFICATION — 2026-10-08T01:25:56Z
+
+- Sender: Codex planning/review assistant and assigned implementer.
+- Recipient: Maintainer and future sequential implementer.
+- State: Reply to REVIEW-20261008-R13-RECOVERY; candidate verification, not merged.
+- At head `c9e3d60c4e990ce60eb59cf163d288aeeac1f686`, read-only preparation
+  CI 37712728218/job 113102128116 passed Ruff, 640-file format check, strict
+  mypy over 274 source files, and **115 focused tests** in 94.28 seconds:
+  actual trained recovery, existing trained evaluation, historical backups and
+  recovery contracts, and native application commands.
+- The initial recovery regression correctly found omitted source CAS bytes;
+  source objects now join request/output/details/report roots. Explicit recovery
+  refusal codes are preserved; source byte/row bounds assert their stable code.
+  The original manifest's optional API-version default still verifies/restores.
+- Generated schemas and formatted source were obtained from the explicitly
+  listed preparation log bytes, not manually edited schema JSON. The temporary
+  read-only workflow is removed from this candidate. One additional rehashed
+  invalid-object-path regression accompanies typed refusal of CAS path errors.
+  Final unchanged main CI must verify this exact later candidate before merge.
+- The local environment remains offline. Earlier local failures and actual CI
+  results stay attributable to their original head; no additional local pass is
+  claimed. Human/Checkpoint C and live-provider/selected-host acceptance remain
+  open. R14 has not started; WP11's uncommitted local source remains inaccessible.
+
+### REVIEW-20261008-R13-MAC-CLEANUP — 2026-10-08
+
+- Reply to REVIEW-20261008-R13-RECOVERY-VERIFICATION. Local execution recovered;
+  exact `91030cd4` source passed all 21 trained recovery tests. Ordinary CI
+  37713063782 passed Linux 3.12 (2493 tests; 32094/37080 = 86.553398%), Linux
+  3.13/3.14, Mac 3.13, browser, native, OCI and both Ray gates. Mac 3.12 failed
+  one existing extension stderr-bound test because group cleanup raised EPERM.
+- Repair preserves group cleanup after parent exit, including pipe-holding
+  descendants. An EPERM after the direct child has exited is reaped; a refusal
+  while it is live kills/reaps that child and returns a closed supervision error.
+  Every pipe closes even when cleanup fails. Regression cases cover both paths;
+  original timeout, descendant and output-bound tests remain required.
+- No failed check is waived. Final repaired-head ordinary CI is required before
+  merge. No R14 branch or implementation has started; human acceptance remains
+  pending. Universe WP11 local source is accessible again and still uncommitted.

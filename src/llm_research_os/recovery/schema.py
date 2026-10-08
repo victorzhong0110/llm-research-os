@@ -8,14 +8,17 @@ from typing import Any
 
 from llm_research_os.recovery.models import (
     BACKUP_MANIFEST_SCHEMA_ID,
+    BACKUP_MANIFEST_V2_SCHEMA_ID,
     BACKUP_REPORT_SCHEMA_ID,
     DIAGNOSTIC_REPORT_SCHEMA_ID,
     RESTORE_REPORT_SCHEMA_ID,
     BackupManifest,
+    BackupManifestV2,
     BackupReport,
     DiagnosticReport,
     RestoreReport,
 )
+from llm_research_os.recovery.operations import OPERATIONS_SCHEMA_ID, OperationState
 from llm_research_os.spec.schema import SCHEMA_DIALECT
 
 
@@ -99,3 +102,31 @@ def write_workspace_diagnostic_schema(path: str | Path) -> None:
 
 def workspace_diagnostic_schema_matches(path: str | Path) -> bool:
     return _matches(canonical_workspace_diagnostic_schema(), path)
+
+
+def canonical_backup_manifest_v2_schema() -> str:
+    return _emit(BackupManifestV2, BACKUP_MANIFEST_V2_SCHEMA_ID)[0]
+
+
+def write_backup_manifest_v2_schema(path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(canonical_backup_manifest_v2_schema(), encoding="utf-8")
+
+
+def backup_manifest_v2_schema_matches(path: str | Path) -> bool:
+    return _matches(canonical_backup_manifest_v2_schema(), path)
+
+
+def canonical_operations_backup_schema() -> str:
+    return _emit(OperationState, OPERATIONS_SCHEMA_ID)[0]
+
+
+def write_operations_backup_schema(path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(canonical_operations_backup_schema(), encoding="utf-8")
+
+
+def operations_backup_schema_matches(path: str | Path) -> bool:
+    return _matches(canonical_operations_backup_schema(), path)

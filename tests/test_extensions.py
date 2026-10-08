@@ -435,6 +435,37 @@ def test_non_utf8_stderr_is_bounded_and_explicit() -> None:
     assert result.public_document()["stderrBytes"] <= 65536
 
 
+def test_exited_group_permission_race_preserves_bounded_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refused_group(_pid: int, _signal: int) -> None:
+        raise PermissionError("exited group")
+
+    monkeypatch.setattr(os, "killpg", refused_group)
+    result = run_adapter(parse_manifest(_manifest(entry_module="print('finished')")), {})
+    assert result.outcome == "ok"
+    assert result.stdout == "finished\n"
+
+
+def test_live_group_permission_refusal_is_closed_and_child_is_reaped(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import time
+
+    def refused_group(_pid: int, _signal: int) -> None:
+        raise PermissionError("live group")
+
+    marker = tmp_path / "live-child-survived"
+    entry = f"import time; time.sleep(0.8); open({str(marker)!r}, 'w').write('bad')"
+    monkeypatch.setattr(os, "killpg", refused_group)
+    with pytest.raises(ExtensionError, match="process group could not be stopped") as caught:
+        run_adapter(parse_manifest(_manifest(entry_module=entry)), {}, timeout=0.1)
+    assert caught.value.code == "adapter-unavailable"
+    time.sleep(0.9)
+    assert not marker.exists()
+
+
 def test_descendant_holding_pipes_is_killed_with_owned_group(tmp_path: Path) -> None:
     import time
 

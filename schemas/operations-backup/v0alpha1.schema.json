@@ -1,0 +1,245 @@
+{
+  "$defs": {
+    "ApplicationReceipt": {
+      "additionalProperties": false,
+      "description": "Durable result of one command, linked to facts and artifact digests.",
+      "properties": {
+        "actorId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actorid",
+          "type": "string"
+        },
+        "apiVersion": {
+          "const": "researchos.dev/application/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "artifactDigests": {
+          "items": {
+            "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Artifactdigests",
+          "type": "array"
+        },
+        "commandId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Commandid",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "committed",
+            "replayed"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "expectedHead": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expectedhead"
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expectedrevision"
+        },
+        "factEventIds": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Facteventids",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ApplicationReceipt",
+          "title": "Kind",
+          "type": "string"
+        },
+        "observedHead": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Observedhead",
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "research.draft",
+            "research.submit",
+            "research.record",
+            "evidence.import",
+            "model.generate",
+            "model.inspect",
+            "model.observe",
+            "research.budget",
+            "spec.validate",
+            "spec.diff",
+            "plan.dry-run",
+            "research.ledger",
+            "research.decision",
+            "revision.list",
+            "run.show",
+            "run.simulate",
+            "workspace.show",
+            "authorization.revoke",
+            "conclusion.record",
+            "evaluation.collect",
+            "evaluation.report",
+            "conclusion.publish",
+            "conclusion.list",
+            "conclusion.inspect",
+            "evaluation.compare",
+            "evaluation.run",
+            "plan.preflight",
+            "proposal.submit",
+            "proposal.validate",
+            "run.cancel",
+            "native.start",
+            "native.restore",
+            "native.observe",
+            "native.inspect",
+            "backup.verify",
+            "backup.restore"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "requestDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Requestdigest",
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": true,
+          "title": "Result",
+          "type": "object"
+        },
+        "resultDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Resultdigest",
+          "type": "string"
+        },
+        "submittedAt": {
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "title": "Submittedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "commandId",
+        "actorId",
+        "submittedAt",
+        "operation",
+        "requestDigest",
+        "expectedHead",
+        "expectedRevision",
+        "observedHead",
+        "disposition",
+        "factEventIds",
+        "artifactDigests",
+        "resultDigest",
+        "result"
+      ],
+      "title": "ApplicationReceipt",
+      "type": "object"
+    },
+    "EffectIntent": {
+      "additionalProperties": false,
+      "description": "A prior dispatch reservation, never a permission or relaunch request.",
+      "properties": {
+        "contentDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Contentdigest",
+          "type": "string"
+        },
+        "scope": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "contentDigest"
+      ],
+      "title": "EffectIntent",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/operations-backup/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Inert receipts and dispatch reservations bound to one workspace.",
+  "properties": {
+    "apiVersion": {
+      "const": "researchos.dev/operations-backup/v0alpha1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "intents": {
+      "items": {
+        "$ref": "#/$defs/EffectIntent"
+      },
+      "maxItems": 100000,
+      "title": "Intents",
+      "type": "array"
+    },
+    "kind": {
+      "const": "OperationState",
+      "title": "Kind",
+      "type": "string"
+    },
+    "projectId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "receipts": {
+      "items": {
+        "$ref": "#/$defs/ApplicationReceipt"
+      },
+      "maxItems": 100000,
+      "title": "Receipts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "receipts",
+    "intents"
+  ],
+  "title": "OperationState",
+  "type": "object"
+}

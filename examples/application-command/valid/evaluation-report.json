@@ -1,0 +1,14 @@
+{
+  "actorId": "operator",
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "commandId": "example.evaluation.report",
+  "expectedHead": 14,
+  "expectedRevision": 1,
+  "kind": "ApplicationCommand",
+  "operation": {
+    "baseline": "sha256:f9fd8197f3b6d721e1ef01a456d91ca9c554968e2023104c297a5c7c2431ed5d",
+    "candidate": "sha256:6a3281040e7c8660e12c1bb43dd47295a0e5dd2d52f79eb77fd8c9dbfb4ca943",
+    "kind": "evaluation.report"
+  },
+  "submittedAt": "2026-10-04T10:00:00+08:00"
+}

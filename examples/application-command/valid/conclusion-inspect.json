@@ -1,0 +1,13 @@
+{
+  "actorId": "operator",
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "commandId": "example.conclusion.inspect",
+  "expectedHead": 14,
+  "expectedRevision": 1,
+  "kind": "ApplicationCommand",
+  "operation": {
+    "kind": "conclusion.inspect",
+    "reportArtifact": "sha256:6243820cf0839ef35ba0a5398389b5c79bc7d3f398034415aaf017fc3c2ec186"
+  },
+  "submittedAt": "2026-10-04T10:00:00+08:00"
+}

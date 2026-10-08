@@ -126,6 +126,118 @@
       "title": "BackupOperation",
       "type": "object"
     },
+    "ConclusionInspectOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "conclusion.inspect",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reportArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Reportartifact",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reportArtifact"
+      ],
+      "title": "ConclusionInspectOperation",
+      "type": "object"
+    },
+    "ConclusionListOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "conclusion.list",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ConclusionListOperation",
+      "type": "object"
+    },
+    "ConclusionPublishOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Baseline",
+          "type": "string"
+        },
+        "candidate": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "comparisonDigest": {
+          "pattern": "^(?:jcs-sha256|sha256):[0-9a-f]{64}$",
+          "title": "Comparisondigest",
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Evidencerefs",
+          "type": "array"
+        },
+        "kind": {
+          "const": "conclusion.publish",
+          "title": "Kind",
+          "type": "string"
+        },
+        "narrative": {
+          "maxLength": 12000,
+          "minLength": 1,
+          "title": "Narrative",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "reportId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Reportid",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "insufficient-evidence",
+            "supported",
+            "unsupported"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "baseline",
+        "candidate",
+        "comparisonDigest",
+        "reportId",
+        "narrative",
+        "verdict",
+        "rationale"
+      ],
+      "title": "ConclusionPublishOperation",
+      "type": "object"
+    },
     "ConclusionRecordOperation": {
       "additionalProperties": false,
       "description": "Record a human conclusion. The system never supplies the judgement.",
@@ -497,6 +609,48 @@
       "title": "DissentTargetKind",
       "type": "string"
     },
+    "EvaluationCollectOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "decisionId": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decisionid"
+        },
+        "kind": {
+          "const": "evaluation.collect",
+          "title": "Kind",
+          "type": "string"
+        },
+        "outputArtifact": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Outputartifact",
+          "type": "string"
+        },
+        "profileId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Profileid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "profileId",
+        "outputArtifact"
+      ],
+      "title": "EvaluationCollectOperation",
+      "type": "object"
+    },
     "EvaluationCompareOperation": {
       "additionalProperties": false,
       "description": "Compare a baseline and a candidate result, refusing incompatible setups.",
@@ -529,9 +683,36 @@
       "title": "EvaluationCompareOperation",
       "type": "object"
     },
+    "EvaluationReportOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Baseline",
+          "type": "string"
+        },
+        "candidate": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "kind": {
+          "const": "evaluation.report",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "baseline",
+        "candidate"
+      ],
+      "title": "EvaluationReportOperation",
+      "type": "object"
+    },
     "EvaluationRunOperation": {
       "additionalProperties": false,
-      "description": "Compute one real evaluation over the fixed held-out set.\n\nReads the committed dataset and the registered predictors, writes a detail\nartifact, and appends no per-sample events. A caller may add their own\npredictor later by registering it; this slice evaluates the baseline and the\nthreshold candidate only, and says so.",
+      "description": "Compute the labelled synthetic CPU contract fixture, without training.",
       "properties": {
         "kind": {
           "const": "evaluation.run",
@@ -2091,8 +2272,13 @@
           "authorization.revoke": "#/$defs/AuthorizationRevokeOperation",
           "backup.restore": "#/$defs/BackupOperation",
           "backup.verify": "#/$defs/BackupOperation",
+          "conclusion.inspect": "#/$defs/ConclusionInspectOperation",
+          "conclusion.list": "#/$defs/ConclusionListOperation",
+          "conclusion.publish": "#/$defs/ConclusionPublishOperation",
           "conclusion.record": "#/$defs/ConclusionRecordOperation",
+          "evaluation.collect": "#/$defs/EvaluationCollectOperation",
           "evaluation.compare": "#/$defs/EvaluationCompareOperation",
+          "evaluation.report": "#/$defs/EvaluationReportOperation",
           "evaluation.run": "#/$defs/EvaluationRunOperation",
           "evidence.import": "#/$defs/EvidenceImportOperation",
           "model.generate": "#/$defs/ModelProfileOperation",
@@ -2152,6 +2338,21 @@
         },
         {
           "$ref": "#/$defs/ConclusionRecordOperation"
+        },
+        {
+          "$ref": "#/$defs/EvaluationCollectOperation"
+        },
+        {
+          "$ref": "#/$defs/EvaluationReportOperation"
+        },
+        {
+          "$ref": "#/$defs/ConclusionPublishOperation"
+        },
+        {
+          "$ref": "#/$defs/ConclusionListOperation"
+        },
+        {
+          "$ref": "#/$defs/ConclusionInspectOperation"
         },
         {
           "$ref": "#/$defs/EvaluationCompareOperation"
