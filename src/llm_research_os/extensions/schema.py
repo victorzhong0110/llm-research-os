@@ -50,3 +50,30 @@ def schema_matches(path: str | Path) -> bool:
         return Path(path).read_text(encoding="utf-8") == canonical_schema()
     except (OSError, UnicodeError):
         return False
+
+
+def build_package_schema() -> dict[str, Any]:
+    from llm_research_os.extensions.package import AdapterInput, AdapterOutput, ExtensionPackage
+
+    return {
+        "$schema": SCHEMA_DIALECT,
+        "$id": "https://researchos.dev/schemas/extension-package/v0alpha1.schema.json",
+        **TypeAdapter(ExtensionPackage | AdapterInput | AdapterOutput).json_schema(by_alias=True),
+    }
+
+
+def canonical_package_schema() -> str:
+    return json.dumps(build_package_schema(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def write_package_schema(path: str | Path) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(canonical_package_schema(), encoding="utf-8")
+
+
+def package_schema_matches(path: str | Path) -> bool:
+    try:
+        return Path(path).read_text(encoding="utf-8") == canonical_package_schema()
+    except (OSError, UnicodeError):
+        return False

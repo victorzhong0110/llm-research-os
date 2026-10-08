@@ -1075,6 +1075,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_event_format_argument(training_collect)
     add_app_parser(subparsers)
     add_web_parser(subparsers)
+    from llm_research_os.cli.extension_commands import add_extension_parser
+
+    add_extension_parser(subparsers)
     add_recovery_parser(subparsers)
     add_trial_parser(subparsers)
     return parser

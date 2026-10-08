@@ -49,7 +49,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #142 R12 continuation is merged and verified. R13 engineering continuation is the sole active R package on `work/20261008-r13-completion`, based on that actual main. See REVIEW-20261008-R13. Full-package and B/C/D acceptance gaps remain open. |
+| Current package | #143 R13 engineering is merged at `b1962d5ae8cc97f6237f1c05b1bf742cfe1d5fa1`, verified tree `b9f6a6968bdfd7ebbc6487fcb78a0d29c5d24803`. R14 continuation is the sole active R package based on that actual main. Human/full-package B/C/D acceptance remains open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1089,3 +1089,31 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - No failed check is waived. Final repaired-head ordinary CI is required before
   merge. No R14 branch or implementation has started; human acceptance remains
   pending. Universe WP11 local source is accessible again and still uncommitted.
+
+### REVIEW-20261008-R14 — Sequential extension engineering continuation
+
+- Reply to REVIEW-20261008-R13-MAC-CLEANUP: #143 final head `4b8c142914...`
+  passed all 11 applicable jobs in CI 37714394679. Linux 3.12: 2495 passed,
+  15 deselected; coverage 32095/37099 = 86.511766%. The repaired P1 recovery
+  thread was resolved after actual verification. Squash main `b1962d5ae8cc97f6237f1c05b1bf742cfe1d5fa1`
+  was fetched; its tree exactly matches final candidate `b9f6a6968bdfd7ebbc6487fcb78a0d29c5d24803`.
+- Only then began R14 `work/20261008-r14-completion`, under the maintainer's
+  continuing independent-engineering/merge instruction. No delegation or live
+  provider/paid work. Human and Checkpoint C/D acceptance are still pending.
+- Deliver typed package/input/output interfaces for brick/evaluator/provider,
+  exact host/dependency compatibility, persistent explicit reviewed lifecycle,
+  CLI inspection/install/disable/uninstall and closed dispatch failures. Loading
+  is inert, permissions grant nothing, untrusted code stays refused, and all
+  earlier child-process failure bounds and Darwin cleanup repairs remain.
+- The existing R13 pure CPU Iris function is the real small evaluator example:
+  its explicit reviewed subprocess output is recomputed exactly; no EventStore
+  or CAS write, Run authority, human report or scientific confirmation is implied.
+- New explicit package protocol leaves v1 manifest schemas unchanged. Backup
+  restore intentionally requires code review and reinstallation of operator
+  executable declarations/trust; it does not silently reactivate them.
+- Initial relevant local regression: 79 passed (including extension/CLI tests),
+  Ruff/format and strict mypy 277 source files passed. Exact final head/tree,
+  final-head CI and any later repairs are recorded in this package's PR.
+- Next owner: Codex verifies all applicable final-head gates and integrates
+  under standing authorization. Maintainer supplies real human/private-host
+  and phase-acceptance evidence; it is not manufactured by this implementation.

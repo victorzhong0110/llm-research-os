@@ -190,6 +190,11 @@ from llm_research_os.execution.schema import canonical_schema as canonical_dry_r
 from llm_research_os.execution.schema import schema_matches as dry_run_schema_matches
 from llm_research_os.execution.schema import write_schema as write_dry_run_schema
 from llm_research_os.extensions.schema import (
+    canonical_package_schema,
+    package_schema_matches,
+    write_package_schema,
+)
+from llm_research_os.extensions.schema import (
     canonical_schema as canonical_extension_schema,
 )
 from llm_research_os.extensions.schema import (
@@ -369,6 +374,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "extension-package": _contract(
+        canonical_package_schema,
+        package_schema_matches,
+        write_package_schema,
+        "schemas/extension-package/v0alpha1.schema.json",
+    ),
     "research-model-profile": _contract(
         canonical_research_model_profile_schema,
         research_model_profile_schema_matches,

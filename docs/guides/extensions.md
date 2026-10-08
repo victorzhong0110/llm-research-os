@@ -29,3 +29,27 @@ Contract: [extension boundary](../protocols/extension-boundary-v0alpha1.md).
 Generate/check the combined input/output schema with
 `researchos schema --contract extension-document` and `researchos schema --check-all`.
 Typed third-party integrations, a CLI and full R14/D acceptance remain open.
+
+## Persistent packages and CLI (2026-10-08 continuation)
+
+The older process-local API above remains supported. The package CLI now retains
+explicit reviewed registrations across restarts. Inspect code before selecting
+reviewed-same-user; default installation stays inert.
+
+```sh
+researchos extensions install --root WORKSPACE --package package.json
+researchos extensions inspect --root WORKSPACE
+researchos extensions install-cpu-example --root WORKSPACE --trust reviewed-same-user
+# input.json: {"task":"pinned-iris"}
+researchos extensions run --root WORKSPACE --id researchos.pinned-iris --version 1.0.0 --role evaluator --input input.json
+researchos extensions disable --root WORKSPACE --id researchos.pinned-iris --version 1.0.0
+researchos extensions uninstall --root WORKSPACE --id researchos.pinned-iris --version 1.0.0
+```
+
+Exact dependency failures appear in inspect diagnostics and block dispatch.
+Removing extensions does not remove core startup, offline workflows or generic
+CPU execution. A restored workspace requires explicit reinstallation and code
+review; executable declarations/trust are not silently restored. The registered
+package interface covers brick/evaluator/provider data envelopes; the delivered
+real example is the existing CPU evaluator. Full R14/D human/live acceptance is
+still open. See [package protocol](../protocols/extension-package-v0alpha1.md).

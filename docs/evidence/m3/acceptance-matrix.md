@@ -40,7 +40,7 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R10 | Read-only research workbench | Reviewed repair in #132; exact integration state/SHA at the PR | Final-head browser/type/build/full-suite CI is the integration gate | [R10 candidate](#r10-candidate-evidence) |
 | R11 | Browser approval, execution, cancellation, and restore | Engineering continuation merged #141 at `5a99c71`; final-head CI 37627514776 passed | Real human/selected-host/full R11 and B acceptance remain open; historical #133 evidence preserved | [R11 continuation](#r11-engineering-continuation--2026-10-07-candidate) |
 | R12 | AI proposals, citations, and researcher decisions | Engineering continuation merged #142 at `0a8a3f0`; final repair-head CI 37680752180 passed all applicable gates | Actual provider/human/full R12 and C acceptance remain open; historical #134 evidence preserved below | [R12 continuation](#r12-engineering-continuation--2026-10-07-candidate) |
-| R13 | Real evaluation, comparison, and conclusions | Trained model/report engineering candidate on verified #142 main; historical #135 fixture evidence preserved | Final-head integration gates and real human/full R13/Checkpoint C acceptance remain open | [R13 continuation](#r13-maintainer-assigned-trained-evaluation-continuation) |
+| R13 | Real evaluation, comparison, and conclusions | #143 engineering merged at `b1962d5`; final CI 37714394679 passed; historical #135 evidence preserved | Real human/full R13/Checkpoint C acceptance remains open | [R13 continuation](#r13-maintainer-assigned-trained-evaluation-continuation) |
 | R14 | Minimal extension mechanism and permission boundary | Partial Python boundary merged #136 at `bf8a45a`; final-head CI 37233415368 passed | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R15 | Installation, startup, backup, and recovery | Reviewed recovery slice in #139; final repair head `d50aff3` and CI 37454556583; exact integration at the PR | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
 | R16 | Independent trials and phase acceptance | Reviewed and repaired trial tooling in #140; final head/checks/integration recorded at the PR | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
@@ -1448,3 +1448,15 @@ the original SHA/platform. Required final-head cross-platform/native/OCI/Ray and
 browser gates remain mandatory; pending or local environment failures are
 reported, never rewritten as acceptance. No canonical package meaning, authority
 boundary, or live/human acceptance criterion changes.
+
+## R14 maintainer-assigned extension continuation
+
+Candidate on verified #143 main `b1962d5ae8cc97f6237f1c05b1bf742cfe1d5fa1`.
+Package interface and CLI now persist explicit inert/reviewed registrations;
+exact dependency/interface compatibility blocks dispatch when unavailable.
+The existing R13 CPU evaluator proves actual bounded adapter integration, with
+no control/CAS mutation. Earlier crash/hang/permission/env/Darwin regressions
+remain required. Relevant initial local tests: 79 passed; final-head matrix,
+installed-wheel, native/browser/OCI/Ray checks are required before integration.
+No real human/private-host/full R14 or Checkpoint D acceptance is asserted.
+See [extension protocol](../../protocols/extension-package-v0alpha1.md).
