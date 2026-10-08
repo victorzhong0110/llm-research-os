@@ -213,6 +213,12 @@ from llm_research_os.providers.schema import (
     write_openai_compat_generate_request_schema,
 )
 from llm_research_os.recovery.schema import (
+    backup_manifest_v2_schema_matches,
+    canonical_backup_manifest_v2_schema,
+    canonical_operations_backup_schema,
+    operations_backup_schema_matches,
+    write_backup_manifest_v2_schema,
+    write_operations_backup_schema,
     backup_manifest_schema_matches,
     backup_report_schema_matches,
     canonical_backup_manifest_schema,
@@ -416,6 +422,18 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         backup_manifest_schema_matches,
         write_backup_manifest_schema,
         "schemas/backup-manifest/v0alpha1.schema.json",
+    ),
+    "backup-manifest-v2": _contract(
+        canonical_backup_manifest_v2_schema,
+        backup_manifest_v2_schema_matches,
+        write_backup_manifest_v2_schema,
+        "schemas/backup-manifest/v0alpha2.schema.json",
+    ),
+    "operations-backup": _contract(
+        canonical_operations_backup_schema,
+        operations_backup_schema_matches,
+        write_operations_backup_schema,
+        "schemas/operations-backup/v0alpha1.schema.json",
     ),
     "backup-report": _contract(
         canonical_backup_report_schema,

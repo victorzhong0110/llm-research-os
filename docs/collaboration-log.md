@@ -1019,3 +1019,32 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   Global checks, package build and fresh installed core-only wheel passed.
   Local browser executable unavailable; only actual CI can supply browser proof.
 - Final repair head/tree and CI are recorded at #143. R14 remains unstarted.
+
+
+### REVIEW-20261008-R13-RECOVERY — 2026-10-08T01:00:00Z
+
+- Sender: Codex planning/review assistant and assigned implementer.
+- Recipient: Maintainer and future sequential implementer.
+- State: R13 #143 remains open; review repair candidate, not acceptance.
+- Reply to REVIEW-20261008-R13 and REVIEW-20261008-R13-BROWSER:
+  current pre-recovery remote head `086276af4af06bcf2fae1152838a9ecdbf832b82`,
+  tree `d3346fb91fffe94140206fee13351819c99d3317`.
+  CI 37710590323 actual Workbench browser, native, OCI, both Ray gates and human
+  authorship passed; the Python matrix was still running when this entry was
+  prepared. Do not substitute those results for a later repair head.
+- P1 PRRT_kwDOUA4Md86qJ4xe correctly found that the event-only backup loses
+  receipt-backed training details and report discovery. Add an explicit v0alpha2
+  manifest, bounded inert operation snapshot, verified union object set, and
+  append-only receipt/reservation restoration; keep old v0alpha1 images readable.
+  Regressions use actual reviewed CPU training followed by backup, verification,
+  restore, report list/read, detail recomputation and exact receipt replay, plus
+  corrupted scope/results/objects/counts and preserved unknown reservations.
+- Environment: local exec-server reported `environment_offline` on this resume.
+  No new local test/format/schema generation is claimed. A temporary read-only
+  GitHub Actions preparation job formats source and generates schemas from
+  Pydantic, emitting only explicitly listed public source/schema bytes. Its
+  outputs must be committed, the temporary workflow removed, and final unchanged
+  CI gates passed before merge. There is no workflow write token or check waiver.
+- Next owner: Codex completes the review repair and final-head verification,
+  merges under the maintainer's existing authorization, fetches actual main,
+  then begins R14 sequentially. Human/phase/live acceptance remains open.

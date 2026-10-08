@@ -33,6 +33,8 @@ DIAGNOSTIC_REPORT_SCHEMA_ID = (
 MANIFEST_NAME = "backup-manifest.json"
 EVENTS_SNAPSHOT_NAME = "events.sqlite3"
 OBJECT_ROOT_NAME = "cas"
+OPERATIONS_SNAPSHOT_NAME = "operations.json"
+BACKUP_MANIFEST_V2_SCHEMA_ID = "https://researchos.dev/schemas/backup-manifest/v0alpha2.schema.json"
 
 RESTORE_RELAUNCH_POLICY: Literal["not-relaunched"] = "not-relaunched"
 
@@ -85,6 +87,20 @@ class BackupManifest(_RecoveryModel):
 
     def object_count(self) -> int:
         return len(self.objects)
+
+
+class BackupManifestV2(BackupManifest):
+    """Receipt-aware image; the original v0alpha1 event-prefix contract is unchanged."""
+
+    api_version: Literal["researchos.dev/recovery/v0alpha2"] = Field(
+        default="researchos.dev/recovery/v0alpha2", alias="apiVersion"
+    )
+    operations_snapshot_digest: str = Field(
+        alias="operationsSnapshotDigest", pattern=r"^sha256:[0-9a-f]{64}$"
+    )
+    operations_snapshot_bytes: int = Field(alias="operationsSnapshotBytes", ge=1, le=67_108_864)
+    operations_receipt_count: int = Field(alias="operationsReceiptCount", ge=0, le=100_000)
+    operations_intent_count: int = Field(alias="operationsIntentCount", ge=0, le=100_000)
 
 
 class BackupReport(_RecoveryModel):
