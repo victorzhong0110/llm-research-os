@@ -151,3 +151,46 @@ def test_loading_duplicate_or_symlink_package_is_inert(root: Path) -> None:
     link.symlink_to(path)
     with pytest.raises(ExtensionError):
         load_package(link)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity", "1e999"])
+def test_nonfinite_response_is_closed_before_python_or_cli_output(
+    root: Path, constant: str
+) -> None:
+    document = existing_cpu_evaluator()
+    response = (
+        '{"kind":"EvaluationOutput","version":"v0alpha1","payload":{"nested":[' + constant + "]}}"
+    )
+    document["manifest"]["entryModule"] = "print(" + repr(response) + ")"
+    registry = PersistentExtensions(root)
+    registry.install_package(parse_package(document), trust="reviewed-same-user")
+    with pytest.raises(ExtensionError) as failure:
+        registry.run("researchos.pinned-iris", "1.0.0", "evaluator", {})
+    assert failure.value.code == "response-invalid"
+
+
+def test_fifo_package_refused_without_writer_or_indefinite_wait(root: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("FIFO creation is unavailable")
+    path = root / "package.fifo"
+    os.mkfifo(path)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; from pathlib import Path; "
+            "from llm_research_os.extensions.package import load_package; "
+            "load_package(Path(sys.argv[1]))",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode != 0
+    assert "the package could not be read" in result.stderr
+    assert not (root / "extensions.sqlite").exists()

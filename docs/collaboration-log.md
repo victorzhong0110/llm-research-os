@@ -1117,3 +1117,12 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next owner: Codex verifies all applicable final-head gates and integrates
   under standing authorization. Maintainer supplies real human/private-host
   and phase-acceptance evidence; it is not manufactured by this implementation.
+
+
+### REVIEW-20261008-R14-P2 — Inert FIFO refusal and finite responses
+
+- #144 original candidate a49de009a2d0bf7aeea2e417b1bef1fda0304a92 received two P2 findings: FIFO loading could block before fstat, and jsonclone preserves NaN/Infinity rather than enforcing finite JSON.
+- Package open now includes O_NONBLOCK before the regular-file check. Adapter responses are finite-JSON encoded before exposing them; this rejects nested NaN/Infinity and numeric overflow (1e999) through the correct response-invalid boundary. Package serialization is also finite.
+- A real FIFO with no writer is refused in a bounded subprocess; four actual adapter responses exercise non-finite constants and overflow. Extension/package/CLI selection: 84 passed locally; global Ruff/format and strict mypy 277 source files passed.
+- Original-head Linux CI ran 2507 tests successfully (15 deselected); its Mac 3.13 job was cancelled, so this is not an all-platform accepted candidate. Final repair head must receive its own complete CI; old green results are historical evidence only.
+- Human/full R14/Checkpoint D acceptance remains open. No auto trust, malicious-code sandbox claim, release or paid/private activity.

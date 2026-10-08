@@ -222,6 +222,9 @@ class PersistentExtensions:
             # Reject NaN/deep/foreign JSON before passing an adapter response on.
             from llm_research_os.internal.jsonclone import snapshot_json_document
 
+            # jsonclone rejects host types/cycles but preserves floats. JSON encoding
+            # must reject non-finite values, including overflow such as 1e999.
+            json.dumps(response, allow_nan=False)
             response = snapshot_json_document(response)
             AdapterOutput.model_validate(response)
         except (ValueError, TypeError, RecursionError) as exc:

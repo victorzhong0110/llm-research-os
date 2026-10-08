@@ -68,7 +68,7 @@ class ExtensionPackage(Document):
 def parse_package(document: dict[str, Any]) -> ExtensionPackage:
     try:
         bounded = snapshot_json_document(document)
-        if len(json.dumps(bounded).encode()) > MAX_MANIFEST_BYTES:
+        if len(json.dumps(bounded, allow_nan=False).encode()) > MAX_MANIFEST_BYTES:
             raise ValueError("package too large")
         package = ExtensionPackage.model_validate(bounded)
         parse_manifest(package.manifest.model_dump(mode="json", by_alias=True, exclude_none=True))
@@ -96,7 +96,9 @@ def load_package(path: Path) -> ExtensionPackage:
 
     fd = -1
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(
+            path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        )
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise ValueError("not regular")
         raw = os.read(fd, MAX_MANIFEST_BYTES + 1)
