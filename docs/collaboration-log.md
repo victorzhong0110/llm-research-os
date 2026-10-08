@@ -1073,3 +1073,19 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   results stay attributable to their original head; no additional local pass is
   claimed. Human/Checkpoint C and live-provider/selected-host acceptance remain
   open. R14 has not started; WP11's uncommitted local source remains inaccessible.
+
+### REVIEW-20261008-R13-MAC-CLEANUP — 2026-10-08
+
+- Reply to REVIEW-20261008-R13-RECOVERY-VERIFICATION. Local execution recovered;
+  exact `91030cd4` source passed all 21 trained recovery tests. Ordinary CI
+  37713063782 passed Linux 3.12 (2493 tests; 32094/37080 = 86.553398%), Linux
+  3.13/3.14, Mac 3.13, browser, native, OCI and both Ray gates. Mac 3.12 failed
+  one existing extension stderr-bound test because group cleanup raised EPERM.
+- Repair preserves group cleanup after parent exit, including pipe-holding
+  descendants. An EPERM after the direct child has exited is reaped; a refusal
+  while it is live kills/reaps that child and returns a closed supervision error.
+  Every pipe closes even when cleanup fails. Regression cases cover both paths;
+  original timeout, descendant and output-bound tests remain required.
+- No failed check is waived. Final repaired-head ordinary CI is required before
+  merge. No R14 branch or implementation has started; human acceptance remains
+  pending. Universe WP11 local source is accessible again and still uncommitted.

@@ -417,16 +417,17 @@ def run_adapter(
             "adapter-unavailable", "the adapter could not be started or supervised"
         ) from exc
     finally:
-        if child is not None:
-            with suppress(ProcessLookupError):
-                os.killpg(child.pid, signal.SIGKILL)
-            child.wait(timeout=2)
-            for pipe in (child.stdin, child.stdout, child.stderr):
-                if pipe is not None:
-                    pipe.close()
-        os.close(metadata_read)
-        if metadata_write >= 0:
-            os.close(metadata_write)
+        try:
+            if child is not None:
+                _stop_adapter(child)
+        finally:
+            if child is not None:
+                for pipe in (child.stdin, child.stdout, child.stderr):
+                    if pipe is not None:
+                        pipe.close()
+            os.close(metadata_read)
+            if metadata_write >= 0:
+                os.close(metadata_write)
     try:
         applied = json.loads(buffers["limits"])
         limits = tuple(sorted(name for name in applied if name in {item[0] for item in _LIMITS}))
@@ -448,6 +449,29 @@ def run_adapter(
         output_limited=output_limited,
         effective_resource_limits=limits,
     )
+
+
+def _stop_adapter(child: subprocess.Popen[bytes]) -> None:
+    """Clean up the owned group, including descendants after a parent exits."""
+    try:
+        os.killpg(child.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except PermissionError as exc:
+        # Darwin can return EPERM for a group whose last live member has exited.
+        # Do not hide a refusal while the direct child is still running. Reap
+        # that child, report supervision failure, and still close every pipe.
+        if child.poll() is None:
+            with suppress(ProcessLookupError):
+                child.kill()
+            child.wait(timeout=2)
+            raise ExtensionError(
+                "adapter-unavailable", "the adapter process group could not be stopped"
+            ) from exc
+    try:
+        child.wait(timeout=2)
+    except subprocess.TimeoutExpired as exc:
+        raise ExtensionError("adapter-unavailable", "the adapter could not be reaped") from exc
 
 
 # Which bound goes with which rlimit, and the value to lower it to. A platform
