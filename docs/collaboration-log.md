@@ -995,3 +995,27 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   acceptance remain open. Public development results establish no independent
   research improvement or statistical significance. R14 starts only after
   this slice is independently verified and merged. Normative scope changes: none.
+
+
+### REVIEW-20261008-R13-BROWSER — Cross-panel head refresh
+
+- State: engineering repair for #143; no acceptance inferred.
+- Initial submitted head `372b8ded403ebe5da5cdabf79d6fd2eefeacd87a`, CI
+  37710189377: native, OCI and both Ray integrations passed; actual browser
+  job 113094052995 failed at the training start button. The new evaluation panel
+  retained its initial head after the research panel appended the decision, so
+  its read-only material inspection was refused and start stayed disabled.
+- Repair: read-only evaluation intents omit optional expectedHead; native
+  inspection supplies the current observed head. `native.start` and
+  `conclusion.publish` retain required head/revision checks. No service gate,
+  Worker authorization, browser assertion or time limit is weakened. Rebuilt
+  committed assets match the TypeScript change.
+- Local full suite: 2439 passed, 28 failed, 5 skipped, 15 deselected; unrounded
+  coverage 31512/36777 = 85.683987%. On unchanged R12, 27 selected failure cases
+  reproduced and one passed once; that CLI case then failed in isolated absolute
+  source-path reruns on both R12 and R13. All original failures remain recorded;
+  final-head actual CI is mandatory, with no waiver.
+- Final focused application/evaluation/CLI tests: 64 passed (17 trained cases).
+  Global checks, package build and fresh installed core-only wheel passed.
+  Local browser executable unavailable; only actual CI can supply browser proof.
+- Final repair head/tree and CI are recorded at #143. R14 remains unstarted.

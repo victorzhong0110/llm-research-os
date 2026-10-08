@@ -56,7 +56,8 @@ export function EvaluationActions() {
     if (sending.current) return;
     void dispatch(JSON.stringify({ apiVersion: "researchos.dev/application/v0alpha1", kind: "ApplicationCommand",
       commandId: `browser.evaluation.${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
-      actorId: "browser-operator", submittedAt: new Date().toISOString(), expectedHead: head,
+      actorId: "browser-operator", submittedAt: new Date().toISOString(),
+      expectedHead: operation["kind"] === "native.start" || operation["kind"] === "conclusion.publish" ? head : null,
       expectedRevision: revision, operation }));
   }
   return <section aria-labelledby="evaluation-heading">
