@@ -160,9 +160,16 @@ def _verify_image(image: Path) -> tuple[BackupManifest, BackupReport]:
         referenced, last_digest = _prefix_object_state(store, head)
         operations = _verified_operations(image, manifest, store)
         if operations is not None:
-            referenced = tuple(sorted(set(referenced) | set(operation_references(
-                operations, store, project_id=manifest.project_id, high_water=head
-            ))))
+            referenced = tuple(
+                sorted(
+                    set(referenced)
+                    | set(
+                        operation_references(
+                            operations, store, project_id=manifest.project_id, high_water=head
+                        )
+                    )
+                )
+            )
     if count != manifest.event_count or head != manifest.high_water:
         raise BackupIntegrityError(
             "backup-event-count-mismatch",
@@ -384,9 +391,15 @@ def load_manifest(image: Path) -> BackupManifest:
         raise RecoveryError("backup-manifest-missing", "backup manifest could not be read") from exc
     try:
         document = json.loads(payload)
-        if type(document) is dict and document.get("apiVersion") == "researchos.dev/recovery/v0alpha2":
+        if (
+            type(document) is dict
+            and document.get("apiVersion") == "researchos.dev/recovery/v0alpha2"
+        ):
             return BackupManifestV2.model_validate(document)
-        if type(document) is not dict or document.get("apiVersion") != "researchos.dev/recovery/v0alpha1":
+        if (
+            type(document) is not dict
+            or document.get("apiVersion") != "researchos.dev/recovery/v0alpha1"
+        ):
             raise ValueError("unsupported recovery manifest version")
         return BackupManifest.model_validate(document)
     except ValueError as exc:
@@ -406,9 +419,19 @@ def _build_image(workspace: Workspace, staging: Path, *, now: datetime) -> Backu
         high_water = store.last_sequence()
         digests, last_digest = _prefix_object_state(store, high_water)
         if operations is not None:
-            digests = tuple(sorted(set(digests) | set(operation_references(
-                operations, store, project_id=workspace.project_id, high_water=high_water
-            ))))
+            digests = tuple(
+                sorted(
+                    set(digests)
+                    | set(
+                        operation_references(
+                            operations,
+                            store,
+                            project_id=workspace.project_id,
+                            high_water=high_water,
+                        )
+                    )
+                )
+            )
     source_store = LocalArtifactStore(workspace.cas_root)
     objects = _copy_objects(source_store, staging, digests)
     # Reading the snapshot above put it back into WAL mode, so committed pages
@@ -437,14 +460,16 @@ def _build_image(workspace: Workspace, staging: Path, *, now: datetime) -> Backu
         path = staging / OPERATIONS_SNAPSHOT_NAME
         path.write_bytes(payload)
         _fsync_path(path)
-        manifest = BackupManifestV2.model_validate({
-            **manifest.model_dump(mode="json", by_alias=True),
-            "apiVersion": "researchos.dev/recovery/v0alpha2",
-            "operationsSnapshotDigest": _file_digest(path),
-            "operationsSnapshotBytes": len(payload),
-            "operationsReceiptCount": len(operations.receipts),
-            "operationsIntentCount": len(operations.intents),
-        })
+        manifest = BackupManifestV2.model_validate(
+            {
+                **manifest.model_dump(mode="json", by_alias=True),
+                "apiVersion": "researchos.dev/recovery/v0alpha2",
+                "operationsSnapshotDigest": _file_digest(path),
+                "operationsSnapshotBytes": len(payload),
+                "operationsReceiptCount": len(operations.receipts),
+                "operationsIntentCount": len(operations.intents),
+            }
+        )
     _write_manifest(staging, manifest)
     # Re-verify the fully assembled image, including its receipt-backed object
     # set, before it can be renamed into the operator's destination.
@@ -489,7 +514,7 @@ def _verified_operations(
             state, store, project_id=manifest.project_id, high_water=manifest.high_water
         )
         return state
-    except (OSError, ValueError, TypeError) as exc:
+    except (OSError, ValueError, TypeError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation snapshot failed validation"
         ) from exc

@@ -60,14 +60,16 @@ def capture_operation_state(workspace: Workspace) -> OperationState | None:
         return None
     uri = f"file:{quote(workspace.receipt_db.absolute().as_posix(), safe='/')}?mode=ro"
     connection = sqlite3.connect(uri, uri=True, timeout=30.0)
-    receipts = []
-    intents = []
+    receipts: list[dict[str, object]] = []
+    intents: list[dict[str, str]] = []
     total_bytes = 0
     try:
         connection.execute("PRAGMA query_only = ON")
         connection.execute("BEGIN")
         rows = connection.execute(
-            """SELECT command_id, request_digest, length(CAST(receipt_json AS BLOB)),
+            """SELECT CASE WHEN length(command_id) <= 128 THEN command_id END,
+            CASE WHEN length(request_digest) <= 128 THEN request_digest END,
+            length(CAST(receipt_json AS BLOB)),
             CASE WHEN length(CAST(receipt_json AS BLOB)) <= 4194304 THEN receipt_json END
             FROM operation_receipts ORDER BY rowid LIMIT 100001"""
         )
@@ -88,6 +90,11 @@ def capture_operation_state(workspace: Workspace) -> OperationState | None:
             ORDER BY rowid LIMIT 100001"""
         )
         for scope, digest in rows:
+            if not isinstance(scope, str) or not isinstance(digest, str):
+                raise ValueError("invalid dispatch reservation")
+            total_bytes += len(scope.encode()) + len(digest.encode())
+            if total_bytes > MAX_OPERATION_BYTES:
+                raise RecoveryError("backup-operations-too-large", "operation state exceeds bounds")
             if len(intents) >= MAX_OPERATION_ROWS:
                 raise RecoveryError("backup-operations-too-large", "too many dispatch reservations")
             intents.append({"scope": scope, "contentDigest": digest})
@@ -100,7 +107,7 @@ def capture_operation_state(workspace: Workspace) -> OperationState | None:
                 "intents": intents,
             }
         )
-    except (sqlite3.Error, ValueError, TypeError) as exc:
+    except (sqlite3.Error, ValueError, TypeError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation state failed validation"
         ) from exc
@@ -131,15 +138,19 @@ def operation_references(
             comparisons = []
             if receipt.operation in ("conclusion.publish", "conclusion.inspect"):
                 report = ResearchReport.model_validate(result["report"])
-                if (
-                    report.project_id != project_id
-                    or report.comparison_digest
-                    != content_digest(report.comparison.model_dump(mode="json", by_alias=True))
+                if report.project_id != project_id or report.comparison_digest != content_digest(
+                    report.comparison.model_dump(mode="json", by_alias=True)
                 ):
                     raise ValueError("report identity or project differs")
-                if receipt.operation == "conclusion.publish" and report.actor_id != receipt.actor_id:
+                if (
+                    receipt.operation == "conclusion.publish"
+                    and report.actor_id != receipt.actor_id
+                ):
                     raise ValueError("report actor differs from its recorded receipt")
-                if _byte_digest(report.model_dump(mode="json", by_alias=True)) != result["reportArtifact"]:
+                if (
+                    _byte_digest(report.model_dump(mode="json", by_alias=True))
+                    != result["reportArtifact"]
+                ):
                     raise ValueError("report object differs from its recorded content")
                 digests.add(result["reportArtifact"])
                 comparisons.append(report.comparison)
@@ -172,7 +183,7 @@ def operation_references(
         for digest in digests:
             storage_key_for(digest)
         return tuple(sorted(digests))
-    except (ValueError, TypeError, KeyError) as exc:
+    except (ValueError, TypeError, KeyError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation receipts do not match the verified prefix"
         ) from exc

@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
-
 from test_trained_evaluation import command, setup_trained
 
 from llm_research_os.application import ApplicationService
@@ -56,7 +55,9 @@ def published_workspace(tmp_path: Path):
     return service, result, intent, published
 
 
-def test_backup_restore_preserves_real_details_reports_and_unknown_reservations(tmp_path: Path) -> None:
+def test_backup_restore_preserves_real_details_reports_and_unknown_reservations(
+    tmp_path: Path,
+) -> None:
     service, result, intent, published = published_workspace(tmp_path)
     image = tmp_path / "image"
     report = create_backup(service.workspace, image, now=NOW)
@@ -77,10 +78,14 @@ def test_backup_restore_preserves_real_details_reports_and_unknown_reservations(
     reopened = ApplicationService.open(tmp_path / "restored")
     for role in ("baseline", "candidate"):
         detail = load_detail(reopened.workspace, result[f"{role}Artifact"], reopened._read_artifact)
-        assert detail["modelRole"] == role and detail["provenance"] == (
-            load_detail(service.workspace, result[f"{role}Artifact"], service._read_artifact)[
-                "provenance"
-            ]
+        assert (
+            detail["modelRole"] == role
+            and detail["provenance"]
+            == (
+                load_detail(service.workspace, result[f"{role}Artifact"], service._read_artifact)[
+                    "provenance"
+                ]
+            )
         )
     listed = reopened.execute(command(reopened, {"kind": "conclusion.list"}, "restored.list"))[
         "result"
@@ -204,3 +209,58 @@ def test_capture_refuses_corrupt_source_receipt_and_preserves_source(tmp_path: P
         create_backup(service.workspace, target, now=NOW)
     assert not target.exists()
     assert service.workspace.control_db.exists()
+
+
+@pytest.mark.parametrize("name", ["backup-manifest-v2", "operations-backup"])
+def test_receipt_backup_contract_examples_and_generators(tmp_path: Path, name: str) -> None:
+    from pydantic import ValidationError
+
+    from llm_research_os.recovery.operations import OperationState
+
+    contract = SCHEMA_CONTRACTS[name]
+    path = tmp_path / "schema.json"
+    contract.write(path)
+    assert contract.matches(path) and not contract.matches(tmp_path / "missing")
+    validator = Draft202012Validator(json.loads(path.read_bytes()))
+    model = BackupManifestV2 if name == "backup-manifest-v2" else OperationState
+    root = Path(__file__).parents[1] / "examples/recovery"
+    valid = json.loads((root / "valid" / f"{name}.json").read_bytes())
+    validator.validate(valid)
+    model.model_validate(valid)
+    invalid = json.loads((root / "invalid" / f"{name}.json").read_bytes())
+    assert list(validator.iter_errors(invalid))
+    with pytest.raises(ValidationError, match="digest|SnapshotDigest"):
+        model.model_validate(invalid)
+
+
+@pytest.mark.parametrize("guard", ["MAX_OPERATION_BYTES", "MAX_RECEIPT_BYTES", "MAX_OPERATION_ROWS"])
+def test_source_operation_bounds_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, guard: str
+) -> None:
+    import llm_research_os.recovery.operations as module
+
+    service, _result, _intent, _published = published_workspace(tmp_path)
+    monkeypatch.setattr(module, guard, 1)
+    with pytest.raises(RecoveryError, match="bounds|too many"):
+        create_backup(service.workspace, tmp_path / "refused", now=NOW)
+    assert not (tmp_path / "refused").exists()
+
+
+def test_changed_operation_snapshot_during_restore_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_research_os.recovery import backup as module
+
+    service, _result, _intent, _published = published_workspace(tmp_path)
+    image = tmp_path / "image"
+    create_backup(service.workspace, image, now=NOW)
+    original = module._materialize
+
+    def changed(*args, **kwargs):
+        rewrite_operations(image, lambda state: state.update(projectId="project.foreign"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "_materialize", changed)
+    with pytest.raises(RecoveryError, match="operation"):
+        restore_backup(image, tmp_path / "refused")
+    assert not (tmp_path / "refused").exists()
