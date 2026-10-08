@@ -13,6 +13,7 @@ from llm_research_os.application.models import (
     ApplicationReceipt,
 )
 from llm_research_os.application.native import NativeLaunchProfile
+from llm_research_os.application.research import ResearchModelProfile
 from llm_research_os.spec.schema import SCHEMA_DIALECT
 
 
@@ -94,3 +95,22 @@ def write_native_launch_profile_schema(path: str | Path) -> None:
 
 def native_launch_profile_schema_matches(path: str | Path) -> bool:
     return _matches(canonical_native_launch_profile_schema(), path)
+
+
+def canonical_research_model_profile_schema() -> str:
+    return _canonical(
+        _build(
+            ResearchModelProfile,
+            "https://researchos.dev/schemas/research-model-profile/v0alpha1.schema.json",
+        )
+    )
+
+
+def write_research_model_profile_schema(path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(canonical_research_model_profile_schema(), encoding="utf-8")
+
+
+def research_model_profile_schema_matches(path: str | Path) -> bool:
+    return _matches(canonical_research_model_profile_schema(), path)

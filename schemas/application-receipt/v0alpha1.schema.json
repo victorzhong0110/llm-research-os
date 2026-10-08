@@ -88,6 +88,14 @@
     },
     "operation": {
       "enum": [
+        "research.draft",
+        "research.submit",
+        "research.record",
+        "evidence.import",
+        "model.generate",
+        "model.inspect",
+        "model.observe",
+        "research.budget",
         "spec.validate",
         "spec.diff",
         "plan.dry-run",

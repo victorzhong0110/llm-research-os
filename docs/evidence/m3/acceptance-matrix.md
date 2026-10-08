@@ -1412,3 +1412,18 @@ continuation while separately performing Mac and human work. See
   is required in the designated CI gate before integration.
 - Full B/C/D acceptance, selected-host/GPU proof and independent human trials stay
   open. This candidate does not change historical acceptance or package meaning.
+
+
+## R12 engineering continuation — 2026-10-07 candidate
+
+Sequential base: `5a99c71e4ac61300e26c49fab8a9401c162d0585` (#141), whose final-head CI 37627514776 passed all applicable Python/browser/Ray/native/OCI gates. This candidate preserves #134 review fixes while adding [the browser research workflow](../../guides/m3-research-workflow.md).
+
+- Operator-installed Mock/compatible profiles, inspected material binding, durable per-call reservation, first-fact caller-head CAS and observation-only recovery. Actual local HTTP contract tests require no paid model.
+- Dedicated frozen inbox imports with versioned source, bounded extraction and distinct reading/training rights. Imported text and model output grant no tool or launch authority.
+- Typed proposals bind actual base/candidate CAS specs and a recomputed semantic diff; unresolved citations, stale base, invalid/extra output and actor mismatch cannot become validated drafts. Human edits preserve generated CAS evidence and are human-attributed.
+- Shared research facts support accept/reject/amendment, supplied questions, human answers and dissent. Rejection creates no Run; explicit dissent overrides and rationale survive refresh.
+- Budget folds report approved/consumed/outstanding/open reservations; uncertain dispatch is not released or repeated and provider invoice cost remains unknown.
+
+Local verification: 139 focused tests and a subsequent 49-test contract rerun passed; schema/catalog/digest, lint/type/format, frontend build and fresh installed-wheel checks passed. Full local suite retained 12 POSIX/process/socket failures (2412 passed, 21 skipped, 15 deselected); unrounded coverage was 31067/36360 = 85.442794%. Neither local full-suite success nor local browser success is claimed.
+
+Validation is factual candidate evidence, with exact submitted head/final CI recorded in the PR and collaboration log. Local Chromium executable is absent, so no local browser pass is claimed. The synthetic offline demonstration stages zero calls/Runs and does not prove product or research improvement. **Full R12, real human workflow and Checkpoint C acceptance remain separate and open.** The canonical package meanings, accepted M1/M2 evidence, B/live and D/human gaps are unchanged.

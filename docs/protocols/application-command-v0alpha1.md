@@ -88,3 +88,7 @@ No Web API, native user-code launch, SSH, new authority store, or workflow
 engine. A simulated `completed` status remains a simulation result, not a
 scientific conclusion and not a launch credential. Audit signatures are not
 accepted as launch input.
+
+## Evidence-linked research continuation
+
+The [research workflow protocol](research-workflow-v0alpha1.md) adds installed-profile model inspection/generation/observation, frozen inbox import, project budget inspection and inline research intents. Path-based proposal validation/submission now also require base/candidate CAS bindings and recompute their actual semantic difference. Historical M1 event/CLI contracts remain unchanged.

@@ -65,10 +65,10 @@ try {
   await page.getByText(/browser smoke fixture only/).waitFor();
   await page.getByRole("button", {name:"Research",exact:true}).click();
   await page.getByRole("heading", {name:"Research",exact:true}).waitFor();
-  await page.getByText("reject", {exact:true}).waitFor();
+  await page.getByRole("cell").filter({hasText:/^reject$/}).waitFor();
   await page.reload();
   await page.getByRole("button", {name:"Research",exact:true}).click();
-  await page.getByText("reject", {exact:true}).waitFor();
+  await page.getByRole("cell").filter({hasText:/^reject$/}).waitFor();
   for (const tab of ["Project","Spec revisions","Logs","Artifacts","Environment","How to read this"]) {
     await page.getByRole("button", {name:tab,exact:true}).click();
     await page.locator("main section").first().waitFor();
@@ -129,8 +129,49 @@ try {
   await page.getByRole("textbox", {name:"New restored workspace ID",exact:true}).fill("copy1");
   await page.getByRole("button", {name:"Restore backup to new workspace",exact:true}).click();
   await page.getByText(/"relaunchPolicy": "not-relaunched"/).waitFor();
+  await stopServer();
+  fixture = await startServer("tests/research_browser_server.py", join(fixtureRoot, "research"));
+  await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
+  await page.getByRole("button", {name:"Research",exact:true}).click();
+  await page.getByRole("heading", {name:"Research workflow",exact:true}).waitFor();
+  await page.getByRole("textbox", {name:"Installed model profile",exact:true}).fill(fixture.profile);
+  assert.equal(await page.getByRole("button", {name:"Generate draft",exact:true}).isEnabled(), false);
+  await page.getByRole("button", {name:"Inspect model and budget",exact:true}).click();
+  await page.getByText(/"materialDigest":/).waitFor();
+  let modelLost = false;
+  await page.route("**/api/v0alpha1/commands", async route => {
+    if (!modelLost) {modelLost = true; await route.fetch(); await route.abort();}
+    else await route.continue();
+  });
+  await page.getByRole("button", {name:"Generate draft",exact:true}).click();
+  await page.getByRole("status").filter({hasText:/exact intent/}).waitFor();
+  await page.getByRole("button", {name:"Retry exact research intent",exact:true}).click();
+  await page.getByText(/"observation": "completed-validated-draft"/).waitFor();
+  await page.unroute("**/api/v0alpha1/commands");
+  const draftEditor = page.getByRole("textbox", {name:/Editable proposal:/});
+  const draft = JSON.parse(await draftEditor.inputValue());
+  draft.rationale = "Browser synthetic amendment preserved after refresh.";
+  await draftEditor.fill(JSON.stringify(draft, null, 2));
+  assert.equal(await page.getByRole("button", {name:"Record validated proposal",exact:true}).isEnabled(), false);
+  await page.getByRole("button", {name:"Validate draft and recompute difference",exact:true}).click();
+  await page.getByText(/"disposition": "validated-draft"/).waitFor();
+  await page.getByRole("button", {name:"Record validated proposal",exact:true}).click();
+  await page.getByText(/"disposition": "recorded"/).waitFor();
+  await page.getByRole("textbox", {name:"Rationale or objection",exact:true}).fill("Synthetic dissent remains visible.");
+  await page.getByRole("button", {name:"Preserve dissent",exact:true}).click();
+  await page.getByRole("cell", {name:"dissent",exact:true}).waitFor();
+  await page.getByRole("textbox", {name:"Rationale or objection",exact:true}).fill("Synthetic rejection: no real research evidence.");
+  await page.getByRole("button", {name:"Record human decision",exact:true}).click();
+  await page.getByRole("cell", {name:/Synthetic rejection:/}).waitFor();
+  await page.reload();
+  await page.getByRole("button", {name:"Research",exact:true}).click();
+  await page.getByRole("cell", {name:/Synthetic rejection:/}).waitFor();
+  await page.getByRole("cell", {name:"dissent",exact:true}).waitFor();
+  await page.getByRole("textbox", {name:"Installed model profile",exact:true}).fill(fixture.profile);
+  await page.getByRole("button", {name:"Observe model call",exact:true}).click();
+  await page.getByText(/"observation": "completed-validated-draft"/).waitFor();
   assert.deepEqual(consoleErrors.filter(text => !text.includes("net::ERR_FAILED") && !text.includes("409 (Conflict)")), []);
-  console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh, persisted-store restart, real CPU start with lost-response replay, reconnect and backup restore.");
+  console.log("Browser smoke passed: bootstrap, scoped late Run, cancellation, topology, lineage, 11 views, keyboard, offline, refresh, persisted-store restart, real CPU start with lost-response replay, reconnect and backup restore; offline research generation with lost-response replay, human amendment, dissent, rejection and refreshed observation.");
 } finally {
   if (browser) await browser.close();
   await stopServer();

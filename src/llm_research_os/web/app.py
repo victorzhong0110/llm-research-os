@@ -417,6 +417,14 @@ class LocalApi:
             "backup.restore",
             "run.cancel",
             "authorization.revoke",
+            "research.draft",
+            "research.submit",
+            "research.record",
+            "evidence.import",
+            "model.inspect",
+            "model.observe",
+            "model.generate",
+            "research.budget",
             "proposal.validate",
             "proposal.submit",
             "research.decision",
@@ -431,6 +439,8 @@ class LocalApi:
         operation = command.operation.model_dump(mode="json", by_alias=True)
         for key in ("document", "request", "old", "new", "registry"):
             value = operation.get(key)
+            if isinstance(value, dict):
+                continue  # Inline typed research documents are not host paths.
             paths = value if isinstance(value, list) else ([] if value is None else [value])
             for name in paths:
                 path = Path(name)

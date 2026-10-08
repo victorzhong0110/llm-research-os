@@ -31,8 +31,9 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 ## Current snapshot
 
 Snapshot date: **2026-10-07, maintainer-assigned engineering completion**. Current main:
-`a32493efb800a3c573ad49aef7077b006d6569ca` (#140); final-head CI 37456094346
-passed all supported Python and actual browser/Ray/native/OCI gates.
+`5a99c71e4ac61300e26c49fab8a9401c162d0585` (#141); final-head CI 37627514776
+passed all five Python/platform and actual browser/Ray/native/OCI gates. Reviewed
+R11 tree `f7c47ffbc0c64664935f7576d0a0cc9511c90ffb` exactly matches integrated main.
 Historical sequential PR integration review: Verified reviewed integration:
 `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
 passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
@@ -44,7 +45,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #133–#136 and reviewed #139/#140 are integrated. R11 engineering continuation is in progress under REVIEW-20261007-R11. Full-package and B/C/D acceptance gaps remain open. |
+| Current package | #141 R11 engineering continuation is integrated and verified. R12 continuation is in progress under REVIEW-20261007-R12 on a sequential branch based on that actual main. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -936,3 +937,23 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next action/owner: Codex verifies this slice, integrates with standing merge
   authorization, then starts R12 from actual main. Maintainer owns parallel Mac,
   private environment/provider and human acceptance observations.
+
+
+### REVIEW-20261007-R12 — Evidence-linked browser research continuation
+
+- Date: 2026-10-07 UTC. From: Codex, planning/review and implementation under the maintainer's continuing assignment. Reply to REVIEW-20261007-R11.
+- State: R11 #141 integrated at `5a99c71e4ac61300e26c49fab8a9401c162d0585` after final-head CI 37627514776 passed all applicable jobs. Linux Python 3.12: 2430 passed; unrounded coverage 30996/35885 = 86.375923%. Reviewed and integrated trees match.
+- Branch/base: `work/20261007-r12-completion`, based on that verified main. No R13/R14 branch started.
+- Scope: Complete shared-service/browser evidence import, Mock/compatible-provider generation, conservative model observation, explicit budget, artifact-bound semantic diff, validated/editable drafts and human decisions/questions/dissent. Reuse existing M1 objects and preserve reviewed R12 receipt/head repairs.
+- Contract difference: Path-based application proposal operations now also require base/candidate CAS bindings; asserted diff hashes alone are refused. Historical M1 CLI/event contracts and accepted evidence remain unchanged. New contracts and exact behavior are documented in the research workflow protocol. No execution or acceptance authority is added.
+- Candidate evidence: Actual loopback HTTP and injected remote-budget fault regression (no paid call), Mock generation, frozen inbox/symlink checks, forged diff/citation refusal, caller-head CAS, lost receipt recovery/observation and preserved rejection/questions/dissent. Frontend type/build and schema checks are recorded with this PR. Local Chromium executable is unavailable; committed-bundle browser CI remains required evidence.
+- Local verification: 139 focused regressions passed; final application/CLI contract rerun: 49 passed. Ruff, formatting (626 files), mypy (269 source files), generated schemas, catalogs/status, digest vectors, frontend type/build, package build and a fresh installed wheel without training extras passed. Full local suite: 2412 passed, 12 failed, 21 skipped, 15 deselected. Failures are the same POSIX/process/socket cases observed on the R11 base; they remain failures, without test changes or waivers. Unrounded coverage: 31067/36360 = 85.442794%, passing the 85% gate. Actual final-head CI/browser results must be recorded before integration.
+- Gaps: Actual private provider/environment use, selected GPU/two-host work, human research journeys and Checkpoint C remain pending. Synthetic test decisions do not represent a real person's acceptance.
+- Next owner/action: Codex verifies final-head checks, integrates under standing merge authorization, then starts R13 from actual verified main. The maintainer owns concurrent Mac/private-environment/human evidence.
+
+### REVIEW-20261007-R12-REPAIRS — Final-head review feedback
+
+- Reply to REVIEW-20261007-R12. Initial published head `3aacbc9b779caa0f79956c26b7cfa9edd9e295b1`, PR #142, passed all applicable CI jobs in 37678483983, including actual browser chain and all Python/macOS/native/OCI/Ray checks. Linux 3.12: 2445 passed, unrounded coverage 31428/36360 = 86.435644%.
+- Three automated review findings were reproduced and fixed before integration: validate/report recorded model failure rather than unknown; map expected evidence extraction/media failures to safe application refusals; recover an identical committed proposal after a subsequent spec revision without treating the old base as newly valid. Both inline and legacy submission recover the historical fact.
+- New regressions cover dispatched/non-dispatched failure observation and identity conflicts, empty/non-UTF-8/over-limit/malformed PDF/unsupported inbox inputs, and receipt loss plus a subsequent recorded revision for both proposal interfaces. Exact counts/final-head CI are recorded in the PR. Initial CI is historical evidence, not the repair head's green light.
+- Human/private-provider/Checkpoint C acceptance gaps remain open. No test gate or acceptance rule was relaxed.

@@ -84,6 +84,11 @@ def _command(
     model to infer it.
     """
 
+    if operation["kind"] in {"proposal.validate", "proposal.submit"}:
+        operation = {
+            **operation,
+            **json.loads(Path(operation["request"]).with_suffix(".materials.json").read_text()),
+        }
     document: dict[str, Any] = {
         "apiVersion": "researchos.dev/application/v0alpha1",
         "kind": "ApplicationCommand",
@@ -452,7 +457,36 @@ def _proposal_document(
     }
     document["evidenceRefs"] = list(evidence_ids)
     document["rationale"] = rationale
+    from llm_research_os.application.research import spec_identity
+    from llm_research_os.artifacts.store import LocalArtifactStore
+    from llm_research_os.canonical import canonical_json, content_digest
+    from llm_research_os.spec.diff import semantic_diff
+    from llm_research_os.spec.io import load_spec
+    from llm_research_os.spec.models import ResearchSpec
+
+    base = load_spec(EXAMPLES / "spec.yaml")
+    raw = base.model_dump(mode="json", by_alias=True, exclude_none=True)
+    raw["metadata"]["revision"] = 2
+    raw["metadata"]["title"] = "Corrected evaluation candidate"
+    candidate = ResearchSpec.model_validate(raw)
+    changes = [change.as_dict() for change in semantic_diff(base, candidate)]
+    document["proposedSpecDigest"] = spec_identity(candidate)
+    document["specDiffDigest"] = content_digest(
+        {
+            "baseSpecDigest": spec_identity(base),
+            "candidateSpecDigest": spec_identity(candidate),
+            "changes": changes,
+        }
+    )
+    cas = LocalArtifactStore(tmp_path / "cas")
+    base_id = cas.put_bytes(
+        canonical_json(base.model_dump(mode="json", by_alias=True, exclude_none=True)).encode()
+    ).digest
+    candidate_id = cas.put_bytes(canonical_json(raw).encode()).digest
     path = tmp_path / f"{proposal_id}.json"
+    path.with_suffix(".materials.json").write_text(
+        json.dumps({"baseArtifact": base_id, "candidateArtifact": candidate_id})
+    )
     path.write_text(json.dumps(document, indent=2), encoding="utf-8")
 
     from llm_research_os.research.requests import load_proposal_submit_request

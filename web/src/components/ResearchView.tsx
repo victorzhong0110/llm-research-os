@@ -18,9 +18,16 @@ interface Row {
   readonly entry: LedgerEntry;
 }
 
+import { ResearchActions } from "./ResearchActions";
+
 const LIST_CAP = 200;
 
 export function ResearchView() {
+  const [version, setVersion] = useState(0);
+  return <><ResearchActions onRecorded={() => setVersion((value) => value + 1)} /><ResearchLedger key={version} /></>;
+}
+
+function ResearchLedger() {
   const [withheld, setWithheld] = useState(0);
   const load = useCallback(
     async (): Promise<Paged<Row>> => {

@@ -9,6 +9,8 @@ authorized release.
 
 ## Unreleased
 
+- Complete R12 browser research drafts using installed Mock/compatible profiles, confined frozen evidence import, explicit budget/observation, recomputed CAS spec differences, human amendment and preserved decisions/questions/dissent. No automatic execution or acceptance.
+
 - Add material-bound browser native start/checkpoint restore, conservative
   observation/reconnect and verified new-root backup recovery through shared commands.
 

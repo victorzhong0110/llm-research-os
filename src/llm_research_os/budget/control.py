@@ -96,10 +96,16 @@ class BudgetControl:
         self,
         reserved_document: dict[str, Any],
         exceeded_document: dict[str, Any],
+        *,
+        expected_last_sequence: int | None = None,
     ) -> StoredEvent:
         """Atomically reserve or record exceeded on one frozen head. Do not retry CAS."""
 
         head = self.rebuild()
+        if expected_last_sequence is not None and head.last_sequence != expected_last_sequence:
+            from llm_research_os.storage.errors import EventSequenceConflictError
+
+            raise EventSequenceConflictError(expected_last_sequence, head.last_sequence)
         reserved_event = self._preflight_event(head, reserved_document)
         payload = parse_budget_payload(reserved_event)
         if (

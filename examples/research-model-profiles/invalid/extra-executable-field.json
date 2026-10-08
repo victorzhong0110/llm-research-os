@@ -1,0 +1,9 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ResearchModelProfile",
+  "request": "request.json",
+  "fixture": "fixture.json",
+  "baseArtifact": "sha256:437cfabc3cd0766556ebd4dc5995685c602b9174e33936e647976f2dfd0c77fc",
+  "candidateArtifact": "sha256:6494a9950f1241ec8435886f813d6459105148154e040b2195a8c543c677571f",
+  "runCommand": "forbidden"
+}
