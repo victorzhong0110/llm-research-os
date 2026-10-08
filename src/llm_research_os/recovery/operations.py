@@ -107,6 +107,8 @@ def capture_operation_state(workspace: Workspace) -> OperationState | None:
                 "intents": intents,
             }
         )
+    except RecoveryError:
+        raise
     except (sqlite3.Error, ValueError, TypeError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation state failed validation"
@@ -167,13 +169,17 @@ def operation_references(
                 provenance = TrainingProvenance.model_validate(result["provenance"])
                 if provenance.project_id != project_id:
                     raise ValueError("training result belongs to another project")
-                digests.update((provenance.request_artifact, provenance.output_artifact))
+                digests.update((
+                    provenance.request_artifact, provenance.output_artifact, provenance.source_digest
+                ))
             for comparison in comparisons:
                 digests.update((comparison.baseline_artifact, comparison.candidate_artifact))
                 for provenance in (comparison.baseline, comparison.candidate):
                     if provenance.project_id != project_id:
                         raise ValueError("training provenance belongs to another project")
-                    digests.update((provenance.request_artifact, provenance.output_artifact))
+                    digests.update((
+                    provenance.request_artifact, provenance.output_artifact, provenance.source_digest
+                ))
         if len(digests) > MAX_OPERATION_ROWS:
             raise ValueError("too many receipt-backed objects")
         # Result fields are dictionaries. Validate every derived object id before

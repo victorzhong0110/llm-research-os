@@ -398,7 +398,8 @@ def load_manifest(image: Path) -> BackupManifest:
             return BackupManifestV2.model_validate(document)
         if (
             type(document) is not dict
-            or document.get("apiVersion") != "researchos.dev/recovery/v0alpha1"
+            or document.get("apiVersion", "researchos.dev/recovery/v0alpha1")
+            != "researchos.dev/recovery/v0alpha1"
         ):
             raise ValueError("unsupported recovery manifest version")
         return BackupManifest.model_validate(document)
@@ -514,6 +515,8 @@ def _verified_operations(
             state, store, project_id=manifest.project_id, high_water=manifest.high_water
         )
         return state
+    except RecoveryError:
+        raise
     except (OSError, ValueError, TypeError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation snapshot failed validation"

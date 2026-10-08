@@ -154,12 +154,16 @@ def test_corrupt_receipt_aware_images_fail_before_restore(tmp_path: Path, altera
         from llm_research_os.artifacts.store import storage_key_for
 
         (image / "cas" / storage_key_for(published["reportArtifact"])).unlink()
-    with pytest.raises(RecoveryError, match=r"operation|object"):
+    with pytest.raises(RecoveryError, match=r"operation|object|backup file"):
         verify_backup(image)
     target = tmp_path / "refused"
-    with pytest.raises(RecoveryError, match=r"operation|object"):
+    with pytest.raises(RecoveryError, match=r"operation|object|backup file"):
         restore_backup(image, target)
     assert not target.exists()
+    if alteration == "object":
+        with pytest.raises(RecoveryError, match="backup file") as missing:
+            verify_backup(image)
+        assert missing.value.code == "backup-object-missing"
 
 
 def test_operation_result_tampering_is_refused_even_with_rehashed_receipt(tmp_path: Path) -> None:
@@ -233,7 +237,9 @@ def test_receipt_backup_contract_examples_and_generators(tmp_path: Path, name: s
         model.model_validate(invalid)
 
 
-@pytest.mark.parametrize("guard", ["MAX_OPERATION_BYTES", "MAX_RECEIPT_BYTES", "MAX_OPERATION_ROWS"])
+@pytest.mark.parametrize(
+    "guard", ["MAX_OPERATION_BYTES", "MAX_RECEIPT_BYTES", "MAX_OPERATION_ROWS"]
+)
 def test_source_operation_bounds_fail_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, guard: str
 ) -> None:
@@ -241,8 +247,9 @@ def test_source_operation_bounds_fail_closed(
 
     service, _result, _intent, _published = published_workspace(tmp_path)
     monkeypatch.setattr(module, guard, 1)
-    with pytest.raises(RecoveryError, match=r"bounds|too many"):
+    with pytest.raises(RecoveryError, match=r"bounds|too many") as refusal:
         create_backup(service.workspace, tmp_path / "refused", now=NOW)
+    assert refusal.value.code == "backup-operations-too-large"
     assert not (tmp_path / "refused").exists()
 
 
@@ -264,3 +271,19 @@ def test_changed_operation_snapshot_during_restore_is_refused(
     with pytest.raises(RecoveryError, match="operation"):
         restore_backup(image, tmp_path / "refused")
     assert not (tmp_path / "refused").exists()
+
+
+def test_original_manifest_default_version_remains_restorable(tmp_path: Path) -> None:
+    from test_recovery_backup import _workspace
+
+    workspace = _workspace(tmp_path)
+    with EventStore(workspace.control_db):
+        pass
+    image = tmp_path / "original"
+    create_backup(workspace, image, now=NOW)
+    path = image / "backup-manifest.json"
+    manifest = json.loads(path.read_bytes())
+    assert manifest.pop("apiVersion") == "researchos.dev/recovery/v0alpha1"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert verify_backup(image).verified
+    assert restore_backup(image, tmp_path / "restored").appended_events == 0
