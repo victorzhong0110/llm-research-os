@@ -40,6 +40,7 @@ _MUTATING = frozenset(
     {
         "authorization.revoke",
         "conclusion.record",
+        "conclusion.publish",
         "research.submit",
         "research.record",
         "evidence.import",
@@ -69,6 +70,9 @@ _REVISION_BOUND = frozenset(
         "proposal.validate",
         "proposal.submit",
         "evaluation.run",
+        "evaluation.collect",
+        "evaluation.report",
+        "conclusion.publish",
         "conclusion.record",
         "native.start",
         "native.restore",
@@ -356,13 +360,7 @@ class ResearchBudgetOperation(ApplicationModel):
 
 
 class EvaluationRunOperation(ApplicationModel):
-    """Compute one real evaluation over the fixed held-out set.
-
-    Reads the committed dataset and the registered predictors, writes a detail
-    artifact, and appends no per-sample events. A caller may add their own
-    predictor later by registering it; this slice evaluates the baseline and the
-    threshold candidate only, and says so.
-    """
+    """Compute the labelled synthetic CPU contract fixture, without training."""
 
     kind: Literal["evaluation.run"]
     mode: Literal["candidate", "majority", "threshold"]
@@ -389,6 +387,49 @@ class ConclusionRecordOperation(ApplicationModel):
     conclusion_id: str = Field(alias="conclusionId")
 
 
+ArtifactDigest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+
+
+class EvaluationCollectOperation(ApplicationModel):
+    kind: Literal["evaluation.collect"]
+    profile_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")] = Field(
+        alias="profileId"
+    )
+    output_artifact: ArtifactDigest = Field(alias="outputArtifact")
+    decision_id: EventIdentifier | None = Field(default=None, alias="decisionId")
+
+
+class EvaluationReportOperation(ApplicationModel):
+    kind: Literal["evaluation.report"]
+    baseline: ArtifactDigest
+    candidate: ArtifactDigest
+
+
+class ConclusionPublishOperation(ApplicationModel):
+    kind: Literal["conclusion.publish"]
+    baseline: ArtifactDigest
+    candidate: ArtifactDigest
+    comparison_digest: Annotated[str, Field(pattern=SEMANTIC_DIGEST_PATTERN)] = Field(
+        alias="comparisonDigest"
+    )
+    report_id: EventIdentifier = Field(alias="reportId")
+    narrative: str = Field(min_length=1, max_length=12000)
+    verdict: Literal["insufficient-evidence", "supported", "unsupported"]
+    rationale: str = Field(min_length=1, max_length=4000)
+    evidence_refs: list[EventIdentifier] = Field(
+        default_factory=list, alias="evidenceRefs", max_length=32
+    )
+
+
+class ConclusionListOperation(ApplicationModel):
+    kind: Literal["conclusion.list"]
+
+
+class ConclusionInspectOperation(ApplicationModel):
+    kind: Literal["conclusion.inspect"]
+    report_artifact: ArtifactDigest = Field(alias="reportArtifact")
+
+
 class AuthorizationRevokeOperation(ApplicationModel):
     """Revoke an unused Worker grant. Revocation never launches or completes work."""
 
@@ -409,6 +450,11 @@ ApplicationOperation = Annotated[
     | RunSimulateOperation
     | WorkspaceShowOperation
     | ConclusionRecordOperation
+    | EvaluationCollectOperation
+    | EvaluationReportOperation
+    | ConclusionPublishOperation
+    | ConclusionListOperation
+    | ConclusionInspectOperation
     | EvaluationCompareOperation
     | EvaluationRunOperation
     | PlanPreflightOperation
@@ -489,6 +535,11 @@ class ApplicationReceipt(ApplicationModel):
         "workspace.show",
         "authorization.revoke",
         "conclusion.record",
+        "evaluation.collect",
+        "evaluation.report",
+        "conclusion.publish",
+        "conclusion.list",
+        "conclusion.inspect",
         "evaluation.compare",
         "evaluation.run",
         "plan.preflight",

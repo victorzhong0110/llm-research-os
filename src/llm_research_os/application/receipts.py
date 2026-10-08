@@ -11,6 +11,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from llm_research_os.application.errors import ApplicationError
 
@@ -103,6 +104,30 @@ class ReceiptLog:
             raise ApplicationError(
                 "receipt-unwritable", "dispatch intent could not be recorded"
             ) from exc
+        finally:
+            connection.close()
+
+    def published_reports(
+        self, *, report_artifact: str | None = None
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Bounded workspace-local discovery; receipts remain operation state."""
+        connection = self._connect()
+        values = (report_artifact, report_artifact)
+        try:
+            count = connection.execute(
+                """SELECT count(*) FROM operation_receipts
+                WHERE json_extract(receipt_json, '$.operation') = 'conclusion.publish'
+                AND (? IS NULL OR json_extract(receipt_json, '$.result.reportArtifact') = ?)""",
+                values,
+            ).fetchone()[0]
+            rows = connection.execute(
+                """SELECT receipt_json FROM operation_receipts
+                WHERE json_extract(receipt_json, '$.operation') = 'conclusion.publish'
+                AND (? IS NULL OR json_extract(receipt_json, '$.result.reportArtifact') = ?)
+                ORDER BY rowid DESC LIMIT 10""",
+                values,
+            ).fetchall()
+            return [json.loads(row[0]) for row in rows], count
         finally:
             connection.close()
 

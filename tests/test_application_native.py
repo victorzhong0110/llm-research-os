@@ -25,8 +25,12 @@ from llm_research_os.web.app import LocalApi
 from llm_research_os.web.sessions import SessionStore
 
 
-def setup_native(tmp_path: Path, *, task_source: bytes = TASK):  # type: ignore[no-untyped-def]
-    world, plane, spec, _registry = _world(tmp_path / "fixture", task_source=task_source)
+def setup_native(
+    tmp_path: Path, *, task_source: bytes = TASK, stdout_bytes: int = 4096, revision: int = 1
+):  # type: ignore[no-untyped-def]
+    world, plane, spec, _registry = _world(
+        tmp_path / "fixture", task_source=task_source, stdout_bytes=stdout_bytes, revision=revision
+    )
     world.prepare()
     plane.store.close()
     root = tmp_path / "controller"

@@ -9,6 +9,11 @@ authorized release.
 
 ## Unreleased
 
+- Add actual reviewed CPU Iris centroid/baseline training provenance, fixed held-out
+  detail replay, failure cases and comparisons; editable evidence-linked v0alpha2
+  human reports with exact retry and durable discovery. Preserve the labelled
+  synthetic fixture and explicit execution/human acceptance boundaries.
+
 - Complete R12 browser research drafts using installed Mock/compatible profiles, confined frozen evidence import, explicit budget/observation, recomputed CAS spec differences, human amendment and preserved decisions/questions/dissent. No automatic execution or acceptance.
 
 - Add material-bound browser native start/checkpoint restore, conservative

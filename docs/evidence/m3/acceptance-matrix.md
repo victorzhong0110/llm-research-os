@@ -38,9 +38,9 @@ Mock, config file, or local test cannot substitute for the missing evidence.
 | R08 | Two-host artifact transfer and fault acceptance | Local foundation merged in #117 at `c9e1d3e55e5eb63a597c5cb01460dab76b6ef338`; HTTPS input slice merged in #118 at `65304b0659168d9661dde010ae751c35dedc81b5`; HTTPS output slice merged in #120 at `575a091d41034a758bcac0c4f8bdf737c7157040` | [Main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36850636460) passed for the foundation; [HTTPS input main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/36984410531) passed. [HTTPS output main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37077796349) passed. Remote material preparation merged in #122 at `9ae3a0ccd751543fcf1086f9fe530c3d1191e0a0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37120726534) passed). Remote executor/recovery merged in #126 at `c6903c3d795fbef3705d966bec84c1a212c491fe`; CLI merged in #127 at `35eda8cc9d9c71f251e35a41a2a231174f40c9e0` ([main CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/37141821193) passed). Actual selected two-host and GPU evidence remain pending-live | [R08 candidate](#r08-candidate-evidence), [review corrections](#r08-review-corrections), [HTTPS input candidate](#r08-https-input-candidate) |
 | R09 | Local API and browser authority boundaries | Merged #131 at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93` | Final-head CI 37209190785 passed; B live evidence remains open | [R09 candidate](#r09-candidate-evidence) |
 | R10 | Read-only research workbench | Reviewed repair in #132; exact integration state/SHA at the PR | Final-head browser/type/build/full-suite CI is the integration gate | [R10 candidate](#r10-candidate-evidence) |
-| R11 | Browser approval, execution, cancellation, and restore | Partial operations slice merged #133 at `b3a351c690597dc430a713c9a5b8ebf5f6bf3648` | Final-head CI 37224701233 passed; start/restore and B remain open | [R11 review](../../reviews/pr134-136-2026-10-05.md) |
-| R12 | AI proposals, citations, and researcher decisions | Partial ledger/proposal slice merged in #134 at `89b9ab4`; final-head CI 37230774848 passed | Integration is not full acceptance; provider generation/evidence import/budget UI remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
-| R13 | Real evaluation, comparison, and conclusions | Partial computed-fixture mechanics merged in #135 at `bc0bcbc`; final-head CI 37232561416 passed | Real-model/report/Checkpoint C acceptance remains open | [Review](../../reviews/pr134-136-2026-10-05.md) |
+| R11 | Browser approval, execution, cancellation, and restore | Engineering continuation merged #141 at `5a99c71`; final-head CI 37627514776 passed | Real human/selected-host/full R11 and B acceptance remain open; historical #133 evidence preserved | [R11 continuation](#r11-engineering-continuation--2026-10-07-candidate) |
+| R12 | AI proposals, citations, and researcher decisions | Engineering continuation merged #142 at `0a8a3f0`; final repair-head CI 37680752180 passed all applicable gates | Actual provider/human/full R12 and C acceptance remain open; historical #134 evidence preserved below | [R12 continuation](#r12-engineering-continuation--2026-10-07-candidate) |
+| R13 | Real evaluation, comparison, and conclusions | Trained model/report engineering candidate on verified #142 main; historical #135 fixture evidence preserved | Final-head integration gates and real human/full R13/Checkpoint C acceptance remain open | [R13 continuation](#r13-maintainer-assigned-trained-evaluation-continuation) |
 | R14 | Minimal extension mechanism and permission boundary | Partial Python boundary merged #136 at `bf8a45a`; final-head CI 37233415368 passed | Typed third-party integration/CLI/full R14 and D remain open | [Review](../../reviews/pr134-136-2026-10-05.md) |
 | R15 | Installation, startup, backup, and recovery | Reviewed recovery slice in #139; final repair head `d50aff3` and CI 37454556583; exact integration at the PR | Not accepted; no replication, encryption, scheduling, retention, or downgrade support | [R15 candidate](#r15-candidate-evidence) |
 | R16 | Independent trials and phase acceptance | Reviewed and repaired trial tooling in #140; final head/checks/integration recorded at the PR | **Not accepted; no trial performed, Checkpoint D open** | [R16 candidate](#r16-candidate-evidence) |
@@ -1427,3 +1427,24 @@ Sequential base: `5a99c71e4ac61300e26c49fab8a9401c162d0585` (#141), whose final-
 Local verification: 139 focused tests and a subsequent 49-test contract rerun passed; schema/catalog/digest, lint/type/format, frontend build and fresh installed-wheel checks passed. Full local suite retained 12 POSIX/process/socket failures (2412 passed, 21 skipped, 15 deselected); unrounded coverage was 31067/36360 = 85.442794%. Neither local full-suite success nor local browser success is claimed.
 
 Validation is factual candidate evidence, with exact submitted head/final CI recorded in the PR and collaboration log. Local Chromium executable is absent, so no local browser pass is claimed. The synthetic offline demonstration stages zero calls/Runs and does not prove product or research improvement. **Full R12, real human workflow and Checkpoint C acceptance remain separate and open.** The canonical package meanings, accepted M1/M2 evidence, B/live and D/human gaps are unchanged.
+
+
+## R13 maintainer-assigned trained evaluation continuation
+
+Engineering candidate on `work/20261008-r13-completion`, based on verified main
+`0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142). Exact reviewed/submitted
+head/tree and final CI results are in the related PR and collaboration record.
+
+| Requirement | Implemented engineering evidence | Acceptance boundary |
+| --- | --- | --- |
+| Fixed evaluator/data/metric/config/seed/version/provenance | Attributed UCI Iris binary source, deterministic 80/20 split, trained majority/centroids, recorded config, six-decimal accuracy/macro F1/MAE and source/training/model/Run CAS identities | Public development data, not untouched validation |
+| Supported real model path | Actual existing reviewed native CPU adapter; verified Worker completion and successful actual Run/Attempt; full fitted parameter and prediction replay | No second framework, paid API, GPU or selected-host evidence inferred |
+| Comparison/recomputation/failures | Typed full details, all 20 predictions, failure IDs, immutable whole-detail comparison digests; unsupported/altered/mixed or incompatible setups refuse | No variance/significance or improvement finding |
+| Editable evidence-linked report | New v0alpha2 explicit human-labelled verdict/rationale/narrative; verified same-project citations, CAS receipt exact replay, bounded report list and historical read | Caller actor claim does not prove a real participant |
+| Checkpoint C chain | Source-checkout synthetic proposal/accepted decision tied to exact actual CPU Run spec; comparison, edited conclusion, lost response retry and preserved report restart through committed browser UI | Real human Checkpoint C/phase acceptance remains open |
+
+Historical #135 synthetic fixture evidence and its limits remain attributable to
+the original SHA/platform. Required final-head cross-platform/native/OCI/Ray and
+browser gates remain mandatory; pending or local environment failures are
+reported, never rewritten as acceptance. No canonical package meaning, authority
+boundary, or live/human acceptance criterion changes.

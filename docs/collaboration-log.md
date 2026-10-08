@@ -30,10 +30,14 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-07, maintainer-assigned engineering completion**. Current main:
-`5a99c71e4ac61300e26c49fab8a9401c162d0585` (#141); final-head CI 37627514776
-passed all five Python/platform and actual browser/Ray/native/OCI gates. Reviewed
-R11 tree `f7c47ffbc0c64664935f7576d0a0cc9511c90ffb` exactly matches integrated main.
+Snapshot date: **2026-10-08, maintainer-assigned engineering completion**. Current main:
+`0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142); final repair-head CI
+37680752180 passed all 11 applicable jobs, including actual browser/native/OCI/Ray
+and five Python/platform jobs. Linux 3.12: 2455 passed, 15 deselected, unrounded
+coverage 31465/36400 = 86.442308%. Reviewed R12 tree
+`e55926e3cc3e2438396b96fa425c8e613c4cf9c8` exactly matches fetched main. R11 #141
+remains integrated at `5a99c71e4ac61300e26c49fab8a9401c162d0585`, with its evidence
+at the historical platform/SHA. Full human/live phase acceptance remains open.
 Historical sequential PR integration review: Verified reviewed integration:
 `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
 passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
@@ -45,7 +49,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #141 R11 engineering continuation is integrated and verified. R12 continuation is in progress under REVIEW-20261007-R12 on a sequential branch based on that actual main. Full-package and B/C/D acceptance gaps remain open. |
+| Current package | #142 R12 continuation is merged and verified. R13 engineering continuation is the sole active R package on `work/20261008-r13-completion`, based on that actual main. See REVIEW-20261008-R13. Full-package and B/C/D acceptance gaps remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -957,3 +961,37 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Three automated review findings were reproduced and fixed before integration: validate/report recorded model failure rather than unknown; map expected evidence extraction/media failures to safe application refusals; recover an identical committed proposal after a subsequent spec revision without treating the old base as newly valid. Both inline and legacy submission recover the historical fact.
 - New regressions cover dispatched/non-dispatched failure observation and identity conflicts, empty/non-UTF-8/over-limit/malformed PDF/unsupported inbox inputs, and receipt loss plus a subsequent recorded revision for both proposal interfaces. Exact counts/final-head CI are recorded in the PR. Initial CI is historical evidence, not the repair head's green light.
 - Human/private-provider/Checkpoint C acceptance gaps remain open. No test gate or acceptance rule was relaxed.
+
+
+### REVIEW-20261008-R13 — Real CPU evaluation and human reports
+
+- Date: 2026-10-08 (Asia/Taipei). From: Codex. To: maintainer.
+- State: R13 engineering candidate; final submitted head/tree and CI are recorded
+  at its PR. No full-package or Checkpoint C acceptance is asserted.
+- Base: actual fetched main `0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142),
+  verified tree `e55926e3cc3e2438396b96fa425c8e613c4cf9c8`. No R14 branch started.
+- R12 integration: repair head `bd211c3b4e599633bf72b23bd6ce28c154b4678e`,
+  all 11 applicable final CI jobs passed; three automated P2 findings repaired,
+  covered and resolved. Squash merge and fetched main tree match verified.
+- Deliverable: existing reviewed native CPU adapter runs the fixed attributed
+  public Iris centroid/training-majority task, with 80 training and 20 held-out
+  rows, seed/version/config/source/model provenance, verified actual Run/Attempt
+  and Worker completion, prediction/parameter replay and bounded failure cases.
+- Optional accepted decision links precede the exact Run spec; a research
+  decision still supplies no launch authority. Preserved synthetic v0alpha1
+  fixture mechanics remain separately labelled.
+- New v0alpha2 editable reports bind the whole comparison, explicit human-labelled
+  verdict/rationale, same-project evidence references and immutable CAS receipt
+  identity; bounded discovery and historical reads survive restart.
+- Verification: actual CPU/forged-material/head/receipt/report/contract regressions,
+  lint/type/schema/catalog/status/digest/type/build/package checks and final-head
+  committed-bundle browser CI are the gate. Exact local/full-suite and final CI
+  results are reported at the PR; a queued or failed gate is not a pass.
+- Demo: source-checkout synthetic actors/grants, actual public CPU training,
+  proposal -> accepted decision -> exact-spec Run -> comparison -> edited
+  explicit conclusion -> response-loss replay -> restart/read. The fixture is
+  not a production grant provisioner or real participant acceptance evidence.
+- Gaps: private-provider/selected-host/GPU and actual human Checkpoint C/phase
+  acceptance remain open. Public development results establish no independent
+  research improvement or statistical significance. R14 starts only after
+  this slice is independently verified and merged. Normative scope changes: none.

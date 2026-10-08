@@ -1,8 +1,7 @@
 """R13 through the shared service: evaluate, compare, and record a conclusion.
 
-This is the Checkpoint C loop the plan names — proposal, decision, evaluation,
-comparison, human conclusion — exercised through the same command path the
-browser and the CLI use.
+Historical synthetic fixture mechanics through the shared command path.
+The actual trained Checkpoint C engineering chain is in test_trained_evaluation.
 """
 
 from __future__ import annotations

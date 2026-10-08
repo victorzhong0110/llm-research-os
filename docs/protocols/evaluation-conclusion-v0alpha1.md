@@ -4,6 +4,10 @@ Status: Partial fixture mechanics integrated through #135 at `bc0bcbc` after
 CI 37232561416 passed. Full R13 and Checkpoint C are not accepted.
 Requirements: [M3 plan R13](../plans/m3-development-plan.md#r13-real-evaluation-comparison-and-conclusions).
 
+The trained continuation and human report contract are documented separately in
+[trained evaluation v0alpha2](trained-evaluation-v0alpha2.md). This historical
+v0alpha1 contract remains unchanged and explicitly synthetic.
+
 ## What "real" means here
 
 The evaluation is actually computed from a committed, synthetic 12-example

@@ -54,6 +54,15 @@ from llm_research_os.evaluation.schema import (
 from llm_research_os.evaluation.schema import (
     write_schema as write_evaluation_schema,
 )
+from llm_research_os.evaluation.trained_schema import (
+    canonical_schema as canonical_trained_evaluation_schema,
+)
+from llm_research_os.evaluation.trained_schema import (
+    schema_matches as trained_evaluation_schema_matches,
+)
+from llm_research_os.evaluation.trained_schema import (
+    write_schema as write_trained_evaluation_schema,
+)
 from llm_research_os.events.schema import canonical_schema as canonical_event_schema
 from llm_research_os.events.schema import schema_matches as event_schema_matches
 from llm_research_os.events.schema import write_schema as write_event_schema
@@ -377,6 +386,12 @@ SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
         evaluation_schema_matches,
         write_evaluation_schema,
         "schemas/evaluation-document/v0alpha1.schema.json",
+    ),
+    "trained-evaluation-document": _contract(
+        canonical_trained_evaluation_schema,
+        trained_evaluation_schema_matches,
+        write_trained_evaluation_schema,
+        "schemas/trained-evaluation-document/v0alpha1.schema.json",
     ),
     "local-api-response": _contract(
         canonical_local_api_response_schema,

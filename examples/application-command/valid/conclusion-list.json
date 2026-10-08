@@ -1,0 +1,12 @@
+{
+  "actorId": "operator",
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "commandId": "example.conclusion.list",
+  "expectedHead": 14,
+  "expectedRevision": 1,
+  "kind": "ApplicationCommand",
+  "operation": {
+    "kind": "conclusion.list"
+  },
+  "submittedAt": "2026-10-04T10:00:00+08:00"
+}

@@ -19,12 +19,13 @@ interface Row {
 }
 
 import { ResearchActions } from "./ResearchActions";
+import { EvaluationActions } from "./EvaluationActions";
 
 const LIST_CAP = 200;
 
 export function ResearchView() {
   const [version, setVersion] = useState(0);
-  return <><ResearchActions onRecorded={() => setVersion((value) => value + 1)} /><ResearchLedger key={version} /></>;
+  return <><ResearchActions onRecorded={() => setVersion((value) => value + 1)} /><EvaluationActions /><ResearchLedger key={version} /></>;
 }
 
 function ResearchLedger() {

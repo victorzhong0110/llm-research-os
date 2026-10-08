@@ -46,8 +46,10 @@ def main():
 """
 
 
-def _world(tmp_path: Path, *, task_source: bytes = TASK):  # type: ignore[no-untyped-def]
-    base = _build(tmp_path, brick=task_source)
+def _world(
+    tmp_path: Path, *, task_source: bytes = TASK, stdout_bytes: int = 4096, revision: int = 1
+):  # type: ignore[no-untyped-def]
+    base = _build(tmp_path, brick=task_source, stdout_bytes=stdout_bytes)
     block = json.loads((ROOT / "examples/m2-checkpoint/block.json").read_text())
     block["metadata"]["id"] = "researchos.native-reviewed"
     block["runtime"]["entrypoint"] = "researchos.native-reviewed"
@@ -63,6 +65,7 @@ def _world(tmp_path: Path, *, task_source: bytes = TASK):  # type: ignore[no-unt
         by_alias=True,
     )
     spec_document["metadata"]["id"] = PROJECT
+    spec_document["metadata"]["revision"] = revision
     spec_document["workflows"][0]["id"] = "workflow.reviewed"
     task = spec_document["workflows"][0]["graph"]["nodes"][0]
     task["id"] = "task.brick"
@@ -90,18 +93,16 @@ def _world(tmp_path: Path, *, task_source: bytes = TASK):  # type: ignore[no-unt
             "registry_digest": report.digests.registry,
             "plan_digest": report.digests.plan,
             "decision_digest": decision.decision_digest,
+            "revision_id": str(revision),
         }
     )
     database = tmp_path / "actual.sqlite"
     store = EventStore(database)
-    store.append(
-        _authorization_event(
-            request.spec_digest,
-            request.registry_digest,
-            request.plan_digest,
-            "execute.native",
-        )
+    authorization = _authorization_event(
+        request.spec_digest, request.registry_digest, request.plan_digest, "execute.native"
     )
+    authorization["data"]["experimentRevision"] = revision
+    store.append(authorization)
     plane = WorkerPlane(
         store=store,
         artifacts=LocalArtifactStore(base.artifacts),
@@ -109,6 +110,7 @@ def _world(tmp_path: Path, *, task_source: bytes = TASK):  # type: ignore[no-unt
         project_id=PROJECT,
         source=SOURCE,
         clock=lambda: NOW,
+        experiment_revision=revision,
     )
     plane.register(
         worker_id=request.worker_id,
