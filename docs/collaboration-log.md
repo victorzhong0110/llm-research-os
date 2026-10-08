@@ -30,14 +30,19 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-08, maintainer-assigned engineering completion**. Current main:
-`0a8a3f0ee0ccab8d0aa18e0ae509920d9eea4372` (#142); final repair-head CI
-37680752180 passed all 11 applicable jobs, including actual browser/native/OCI/Ray
-and five Python/platform jobs. Linux 3.12: 2455 passed, 15 deselected, unrounded
-coverage 31465/36400 = 86.442308%. Reviewed R12 tree
-`e55926e3cc3e2438396b96fa425c8e613c4cf9c8` exactly matches fetched main. R11 #141
-remains integrated at `5a99c71e4ac61300e26c49fab8a9401c162d0585`, with its evidence
-at the historical platform/SHA. Full human/live phase acceptance remains open.
+Snapshot date: **2026-10-09, maintainer-assigned maintenance continuation**.
+Current base main: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
+#147 cryptography 50.0.2, #145 pinned setup-node 7.0.0 and #146 development
+locks (mypy 2.4.0/librt 0.16.0, Ruff 0.16.10, Hypothesis 6.168.4).
+Each dependency PR passed all 11 applicable jobs at its original head; combined
+main push CI 37855763290 is still running at this candidate snapshot.
+R14 #144 is merged at `196eff74c5ad82d3b51627953849845ee4c56cfe`, verified tree
+`1a0b4eb83516a90e437db6af9a995d47a4adfe95`; its exact-head CI 37811109932
+passed all 11 applicable jobs (Linux/Mac 2514 passed, 15 deselected).
+R13 #143 is integrated at `b1962d5ae8cc97f6237f1c05b1bf742cfe1d5fa1`, and
+R12/R11 evidence remains at its recorded historical SHA/platform. No complete
+human/live phase acceptance is inferred. Current maintenance stages both actual
+budget CAS schedules for #108 without changing production code or contracts.
 Historical sequential PR integration review: Verified reviewed integration:
 `bc0bcbcc229aa0cc74648f798c49a0f1bcaebad6` (#135), final-head CI 37232561416
 passed. #134 integrated at `89b9ab4f021ff8e3d1e53ef041989ab11605da57` after
@@ -49,7 +54,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | #143 R13 engineering is merged at `b1962d5ae8cc97f6237f1c05b1bf742cfe1d5fa1`, verified tree `b9f6a6968bdfd7ebbc6487fcb78a0d29c5d24803`. R14 continuation is the sole active R package based on that actual main. Human/full-package B/C/D acceptance remains open. |
+| Current package | R11–R14 assigned engineering is integrated. #108 maintenance is the sole active slice on actual dependency-updated main; no new R package or human acceptance is claimed. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1134,3 +1139,40 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Candidate 64478e4eed68484f381deb44396e55fa8f474ae3 / CI 37810420738 had a browser-smoke failure: console net::ERR_EMPTY_RESPONSE at the final unchanged error assertion after all functional checks. The smoke script stopped API fixtures beneath an active browser document. This is a fixture-lifecycle race hypothesis grounded in its restart ordering, not a proven product defect or waived test.
 - The smoke now navigates to about:blank before stopping each old API fixture, so requests are retired while the server is alive. All five restart/read/replay checks and the unexpected-console-error assertion remain. No new ignored error, skip or product permission change.
 - Prior local 84 selected tests precede the last registry repair; local execution later disconnected. Final head must independently pass the complete matrix and actual browser check; superseded failures remain historical evidence. Human/full R14/Checkpoint D acceptance stays open.
+
+
+### REVIEW-20261009-BUDGET-CAS — 2026-10-09T06:52:12+08:00
+
+- Sender: Codex planning/review assistant and assigned implementer.
+- Recipient: Maintainer and future sequential implementer.
+- State: Maintenance candidate under the maintainer's continuing fix/merge
+  authorization; issue #108 stays open until final validation and integration.
+- Branch `work/20261009-budget-stability`, base
+  `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`; worktree
+  `/workspace/scratch/72c9c856db61/research-maintenance`, Linux Python 3.12.14.
+- Real EventStore append gates reproduce the zero-dispatch interleaving:
+  reserve at sequence 2, freeze ai.call.started CAS, second request records
+  budget.exceeded at 3, real CAS fails (expected 2 / actual 3), then exact
+  original reservation is released at 4. No production method fabricates a
+  conflict, fact, transport result, automatic retry or successful model call.
+- Independent frozen reservation heads require exactly one successful transport
+  and one genuine CAS loser. Every budget prefix remains within cap; completed
+  remote cost stays unknown/open rather than being consumed or released.
+  Both folds and exact fact counts survive database reopen. The pre-existing
+  independent frozen-head success test remains unchanged.
+- Local: 21 HTTP adapter tests and 14 budget tests passed. The three concurrent
+  cases passed 20 repetitions (60 test executions). Ruff/global format, strict
+  mypy (277 source files), schema/catalog/status checks, digest conformance and
+  package build passed. Full local protocol/coverage run is in progress; no
+  result is claimed before it completes. Initial test draft used costKnown from
+  the completion payload rather than the started payload and correctly failed;
+  that test assertion was corrected before these results.
+- CI now requires 20 repetitions of all three concurrent cases on every protocol
+  Python/platform job in addition to unchanged full suites and all execution/
+  browser/wheel gates. Exact final head and results are recorded in the PR.
+- Scope: tests, CI regression repetition, factual collaboration update only.
+  No budget CAS relaxation, production retries, dependency scope, live/human
+  acceptance, #53 closure, provider credentials/spend or release.
+- Next owner: Codex verifies final CI, fixes genuine findings, integrates this
+  maintenance and closes #108 only with recorded evidence. Human/Mac/private
+  acceptance stays with the maintainer; no collaborator acknowledgement invented.

@@ -55,6 +55,13 @@ jobs:
         run: uv run mypy src
       - name: Verify RFC 8785 digest conformance
         run: node conformance/digest/verify.mjs
+      - name: Repeat deterministic budget CAS schedules
+        run: |
+          set -euo pipefail
+          for attempt in {1..20}; do
+            echo "Budget CAS repetition ${attempt}/20"
+            uv run pytest tests/test_openai_compat.py -k concurrent -q
+          done
       - name: Count selected tests
         run: >
           uv run pytest --collect-only -q

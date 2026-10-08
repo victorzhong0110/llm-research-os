@@ -3,15 +3,17 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Barrier, Lock, Thread
+from threading import Barrier, Event, Lock, Thread
+from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
-from llm_research_os.budget.control import BudgetControl
+from llm_research_os.budget.control import BudgetControl, BudgetFold, BudgetHead, apply_budget_fold
 from llm_research_os.budget.errors import BudgetCallError, BudgetExceededError
 from llm_research_os.budget.requests import budget_limit_draft
 from llm_research_os.canonical import content_digest
@@ -34,6 +36,7 @@ from llm_research_os.providers.requests import load_model_fixture
 from llm_research_os.providers.schema import openai_compat_generate_request_schema_matches
 from llm_research_os.spec.io import load_document
 from llm_research_os.storage import EventSequenceConflictError, EventStore
+from llm_research_os.storage.models import StoredEvent
 
 ROOT = Path(__file__).parents[1]
 REQUESTS = ROOT / "examples" / "openai-compat-requests"
@@ -469,8 +472,9 @@ def test_digest_mismatch_after_http_does_not_release(
         assert str(fold.outstanding) == "0.60"
 
 
+@pytest.mark.parametrize("schedule", ["frozen-reserve-head", "exceeded-before-start-append"])
 def test_concurrent_reservations_only_affordable_call_hits_transport(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, schedule: str
 ) -> None:
     monkeypatch.setenv("RESEARCHOS_TEST_MODEL_KEY", SECRET)
     database = tmp_path / "research.db"
@@ -480,7 +484,46 @@ def test_concurrent_reservations_only_affordable_call_hits_transport(
     fixture = load_model_fixture(FIXTURE)
     transports: list[str] = []
     lock = Lock()
-    start = Barrier(2, timeout=5)
+    starting = Event()
+    exceeded = Event()
+    conflicts: list[tuple[int, int]] = []
+    if schedule == "frozen-reserve-head":
+        original_rebuild = BudgetControl.rebuild
+        start = Barrier(2, timeout=10)
+        rebuild_count = 0
+
+        def frozen_rebuild(self: BudgetControl) -> BudgetHead:
+            nonlocal rebuild_count
+            head = original_rebuild(self)
+            with lock:
+                rebuild_count += 1
+                count = rebuild_count
+            if count <= 2:
+                start.wait()
+            return head
+
+        monkeypatch.setattr(BudgetControl, "rebuild", frozen_rebuild)
+    else:
+        original_append = EventStore.append
+
+        def intervening_append(
+            self: EventStore,
+            document: dict[str, Any],
+            *,
+            expected_last_sequence: int | None = None,
+        ) -> StoredEvent:
+            # Freeze the real started-event CAS before the other request advances
+            # the global head. No conflict or budget fact is fabricated.
+            if document["type"] == "ai.call.started":
+                assert expected_last_sequence == 2
+                starting.set()
+                assert exceeded.wait(10), "second request never recorded budget.exceeded"
+            result = original_append(self, document, expected_last_sequence=expected_last_sequence)
+            if document["type"] == "budget.exceeded":
+                exceeded.set()
+            return result
+
+        monkeypatch.setattr(EventStore, "append", intervening_append)
 
     def transport(url: str, payload: bytes, headers: dict[str, str]) -> dict[str, object]:
         with lock:
@@ -498,7 +541,8 @@ def test_concurrent_reservations_only_affordable_call_hits_transport(
             transport=transport,
         )
         with EventStore(database, require_existing=True) as store:
-            start.wait()
+            if schedule == "exceeded-before-start-append" and suffix == "b":
+                assert starting.wait(10), "first request never reached the started-event CAS"
             try:
                 ModelCallControl(store, project_id=request.project_id).record_http_generate(
                     request,
@@ -507,15 +551,61 @@ def test_concurrent_reservations_only_affordable_call_hits_transport(
                 )
             except BudgetExceededError:
                 return "exceeded"
-            except EventSequenceConflictError:
+            except EventSequenceConflictError as exc:
+                with lock:
+                    conflicts.append((exc.expected_last_sequence, exc.actual_last_sequence))
                 return "conflict"
         return "ok"
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         outcomes = list(executor.map(run_one, ("a", "b")))
-    assert outcomes.count("ok") == 1
-    assert len(transports) == 1
-    assert "exceeded" in outcomes or "conflict" in outcomes
+    zero_dispatch = schedule == "exceeded-before-start-append"
+    if zero_dispatch:
+        assert outcomes == ["conflict", "exceeded"]
+        assert conflicts == [(2, 3)]
+    else:
+        assert sorted(outcomes) == ["conflict", "ok"]
+        assert len(conflicts) == 1
+        assert conflicts[0][0] == 1
+        assert 2 <= conflicts[0][1] <= 4
+    assert len(transports) == (0 if zero_dispatch else 1)
+    with EventStore(database, require_existing=True) as store:
+        events = store.read_events(limit=10)
+        assert [item.event.type for item in events] == (
+            ["budget.limit.recorded", "budget.reserved", "budget.exceeded", "budget.released"]
+            if zero_dispatch
+            else [
+                "budget.limit.recorded",
+                "budget.reserved",
+                "ai.call.started",
+                "ai.call.completed",
+            ]
+        )
+        folded = BudgetFold()
+        for item in events:
+            folded = apply_budget_fold(folded, item.event, project_id="example-minimal")
+            assert folded.consumed + folded.outstanding <= Decimal("1.00")
+        assert folded == BudgetControl(store, project_id="example-minimal").rebuild().fold
+        assert folded.consumed == Decimal("0.00")
+        assert folded.outstanding == Decimal("0.00" if zero_dispatch else "0.60")
+        call_fold = ModelCallControl(store, project_id="example-minimal").rebuild().fold
+        assert call_fold.open_calls == frozenset()
+        assert len(call_fold.closed_calls) == (0 if zero_dispatch else 1)
+        if zero_dispatch:
+            reserved_payload = events[1].event.data.payload
+            released_payload = events[-1].event.data.payload
+            for key in ("budgetId", "callId", "amount", "cap", "currency"):
+                assert released_payload[key] == reserved_payload[key]
+            assert released_payload["reasonCode"] == "call-start-failed"
+            assert folded.open_ids == frozenset()
+            assert len(folded.closed_ids) == 2
+        else:
+            # Remote invoice cost is unknown; completion must not free the cap.
+            assert events[2].event.data.payload["costKnown"] is False
+            assert len(folded.open_ids) == 1
+    with EventStore(database, require_existing=True) as reopened:
+        assert BudgetControl(reopened, project_id="example-minimal").rebuild().fold == folded
+        assert reopened.last_sequence() == len(events)
 
 
 def test_remote_zero_budget_is_rejected_before_socket() -> None:
