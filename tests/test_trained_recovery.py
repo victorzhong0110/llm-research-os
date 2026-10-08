@@ -229,7 +229,7 @@ def test_receipt_backup_contract_examples_and_generators(tmp_path: Path, name: s
     model.model_validate(valid)
     invalid = json.loads((root / "invalid" / f"{name}.json").read_bytes())
     assert list(validator.iter_errors(invalid))
-    with pytest.raises(ValidationError, match="digest|SnapshotDigest"):
+    with pytest.raises(ValidationError, match=r"digest|SnapshotDigest"):
         model.model_validate(invalid)
 
 
@@ -241,7 +241,7 @@ def test_source_operation_bounds_fail_closed(
 
     service, _result, _intent, _published = published_workspace(tmp_path)
     monkeypatch.setattr(module, guard, 1)
-    with pytest.raises(RecoveryError, match="bounds|too many"):
+    with pytest.raises(RecoveryError, match=r"bounds|too many"):
         create_backup(service.workspace, tmp_path / "refused", now=NOW)
     assert not (tmp_path / "refused").exists()
 
