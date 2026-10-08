@@ -44,7 +44,7 @@ def published_workspace(tmp_path: Path):
             **pair,
             "comparisonDigest": preview["comparisonDigest"],
             "reportId": "report.restorable",
-            "narrative": "Human-edited public benchmark report; independent evidence remains pending.",
+            "narrative": "Human-edited public benchmark; independent evidence remains pending.",
             "verdict": "insufficient-evidence",
             "rationale": "This fixed development split cannot establish an independent finding.",
         },
@@ -149,10 +149,10 @@ def test_corrupt_receipt_aware_images_fail_before_restore(tmp_path: Path, altera
         from llm_research_os.artifacts.store import storage_key_for
 
         (image / "cas" / storage_key_for(published["reportArtifact"])).unlink()
-    with pytest.raises(RecoveryError, match="operation|object"):
+    with pytest.raises(RecoveryError, match=r"operation|object"):
         verify_backup(image)
     target = tmp_path / "refused"
-    with pytest.raises(RecoveryError, match="operation|object"):
+    with pytest.raises(RecoveryError, match=r"operation|object"):
         restore_backup(image, target)
     assert not target.exists()
 
