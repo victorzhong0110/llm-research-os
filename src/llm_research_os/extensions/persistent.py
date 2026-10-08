@@ -38,8 +38,15 @@ class PersistentExtensions:
             raise ExtensionError("registry-invalid", "the extension registry cannot be opened")
         self.project_id = workspace.project_id
         with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
             tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if not tables:
+                if db.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone() or (
+                    db.execute("PRAGMA user_version").fetchone()[0] != 0
+                ):
+                    raise ExtensionError(
+                        "registry-invalid", "unrecognized extension registry structure"
+                    )
                 db.execute(REGISTRY_DDL)
                 db.execute("PRAGMA user_version=1")
             elif tables != {"extensions"} or db.execute("PRAGMA user_version").fetchone()[0] != 1:

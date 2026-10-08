@@ -194,3 +194,20 @@ def test_fifo_package_refused_without_writer_or_indefinite_wait(root: Path) -> N
     assert result.returncode != 0
     assert "the package could not be read" in result.stderr
     assert not (root / "extensions.sqlite").exists()
+
+
+@pytest.mark.parametrize("foreign_sql", ["CREATE VIEW foreign_view AS SELECT 1", "PRAGMA user_version=41"])
+def test_tableless_foreign_registry_refused_without_ddl_or_stamp_changes(
+    root: Path, foreign_sql: str
+) -> None:
+    import sqlite3
+
+    path = root / "extensions.sqlite"
+    with sqlite3.connect(path) as db:
+        db.execute(foreign_sql)
+    before = path.read_bytes()
+    with pytest.raises(ExtensionError, match="structure"):
+        PersistentExtensions(root)
+    assert path.read_bytes() == before
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT name FROM sqlite_master WHERE name='extensions'").fetchone() is None
