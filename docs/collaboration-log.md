@@ -1127,4 +1127,10 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Original-head Linux CI ran 2507 tests successfully (15 deselected); its Mac 3.13 job was cancelled, so this is not an all-platform accepted candidate. Final repair head must receive its own complete CI; old green results are historical evidence only.
 - Human/full R14/Checkpoint D acceptance remains open. No auto trust, malicious-code sandbox claim, release or paid/private activity.
 
-- Additional final self-review: a tableless foreign registry (view or nonzero schema stamp) could be initialized before its complete structure was refused. Initialization now takes an explicit transaction and rejects foreign schema objects/stamps before DDL. Two byte-preservation regressions run on the final-head matrix. Local 84-test results above precede this additional repair; local execution subsequently disconnected, so only final-head CI can establish its validation. Human acceptance remains pending.
+
+### REVIEW-20261008-R14-FINAL — Remaining initialization and browser restart boundaries
+
+- Final self-review refuses tableless foreign extension registries (views or unknown nonzero schema stamps) before initialization writes, inside an explicit transaction; two regressions assert original file bytes and absence of new extension tables.
+- Candidate 64478e4eed68484f381deb44396e55fa8f474ae3 / CI 37810420738 had a browser-smoke failure: console net::ERR_EMPTY_RESPONSE at the final unchanged error assertion after all functional checks. The smoke script stopped API fixtures beneath an active browser document. This is a fixture-lifecycle race hypothesis grounded in its restart ordering, not a proven product defect or waived test.
+- The smoke now navigates to about:blank before stopping each old API fixture, so requests are retired while the server is alive. All five restart/read/replay checks and the unexpected-console-error assertion remain. No new ignored error, skip or product permission change.
+- Prior local 84 selected tests precede the last registry repair; local execution later disconnected. Final head must independently pass the complete matrix and actual browser check; superseded failures remain historical evidence. Human/full R14/Checkpoint D acceptance stays open.
