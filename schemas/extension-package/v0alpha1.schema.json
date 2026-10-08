@@ -1,0 +1,285 @@
+{
+  "$defs": {
+    "AdapterInput": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "BrickInput",
+            "EvaluationInput",
+            "ProviderInput"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "maxProperties": 1024,
+          "title": "Payload",
+          "type": "object"
+        },
+        "version": {
+          "const": "v0alpha1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "version",
+        "payload"
+      ],
+      "title": "AdapterInput",
+      "type": "object"
+    },
+    "AdapterOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "BrickOutput",
+            "EvaluationOutput",
+            "ProviderOutput"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "maxProperties": 1024,
+          "title": "Payload",
+          "type": "object"
+        },
+        "version": {
+          "const": "v0alpha1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "version",
+        "payload"
+      ],
+      "title": "AdapterOutput",
+      "type": "object"
+    },
+    "Dependency": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "Dependency",
+      "type": "object"
+    },
+    "ExtensionDeclaration": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "contractVersion": {
+          "const": "v0alpha1",
+          "title": "Contractversion",
+          "type": "string"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "entryModule": {
+          "anyOf": [
+            {
+              "maxLength": 262144,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entrymodule"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "Extension",
+          "title": "Kind",
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "enum": [
+              "artifacts.read",
+              "events.read",
+              "evidence.read",
+              "ledger.read",
+              "metrics.read"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Permissions",
+          "type": "array"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "id",
+        "version",
+        "contractVersion"
+      ],
+      "title": "ExtensionDeclaration",
+      "type": "object"
+    },
+    "ExtensionPackage": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/extension-package/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/Dependency"
+          },
+          "maxItems": 16,
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "hostContracts": {
+          "items": {
+            "const": "v0alpha1",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Hostcontracts",
+          "type": "array"
+        },
+        "interfaces": {
+          "items": {
+            "$ref": "#/$defs/Interface"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Interfaces",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ExtensionPackage",
+          "title": "Kind",
+          "type": "string"
+        },
+        "manifest": {
+          "$ref": "#/$defs/ExtensionDeclaration"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "manifest",
+        "interfaces",
+        "hostContracts"
+      ],
+      "title": "ExtensionPackage",
+      "type": "object"
+    },
+    "Interface": {
+      "additionalProperties": false,
+      "properties": {
+        "requestKind": {
+          "enum": [
+            "BrickInput",
+            "EvaluationInput",
+            "ProviderInput"
+          ],
+          "title": "Requestkind",
+          "type": "string"
+        },
+        "responseKind": {
+          "enum": [
+            "BrickOutput",
+            "EvaluationOutput",
+            "ProviderOutput"
+          ],
+          "title": "Responsekind",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "brick",
+            "evaluator",
+            "provider"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "version": {
+          "const": "v0alpha1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "version",
+        "requestKind",
+        "responseKind"
+      ],
+      "title": "Interface",
+      "type": "object"
+    }
+  },
+  "$id": "https://researchos.dev/schemas/extension-package/v0alpha1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/ExtensionPackage"
+    },
+    {
+      "$ref": "#/$defs/AdapterInput"
+    },
+    {
+      "$ref": "#/$defs/AdapterOutput"
+    }
+  ]
+}

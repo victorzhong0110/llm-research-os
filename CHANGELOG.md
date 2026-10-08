@@ -671,3 +671,11 @@ authorized release.
   the matching Run; they cite spec/runtime/image/config/output digests.
   High-frequency metrics go to CAS chunks, not one EventStore fact per
   step ([ADR-0047](docs/adr/0047-eventstore-performance-and-metric-sampling.md)).
+
+### R14 engineering continuation — 2026-10-08
+
+- Add explicit versioned brick/evaluator/provider package envelopes, exact
+  dependencies and host compatibility, without changing v1 manifests.
+- Persist inert/reviewed extension lifecycle and diagnostics through the CLI;
+  demonstrate the existing CPU evaluator under the existing subprocess bounds.
+- Keep untrusted code refused and backup restore free of executable trust.

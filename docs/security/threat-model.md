@@ -1022,3 +1022,17 @@ operator licensing assertions, generalization and malicious-code isolation remai
 outside this boundary. Gate: actual CPU and refusal regressions in
 `test_trained_evaluation.py`, existing native/Worker gates, generated contract
 checks and the full committed-bundle Checkpoint C engineering browser chain.
+
+## TM-099 — Persistent reviewed extension packages (R14 continuation)
+
+A local declaration remains inert. Exact host/interface/dependency compatibility
+and every installed digest are checked before dispatch, with bounded registry,
+input, output and subprocess lifetime. Persistent trust is explicit, default
+inert; untrusted code is refused. No control connection, Worker credential or
+model key is passed. Reviewed same-user code retains ambient file/network access:
+resource limits are not a sandbox. Disable affects future dispatch, not an
+already-started process. Uninstall preserves operator files; backup restore does
+not restore executable declarations or their trust. Tests exercise inert loads,
+wrong interfaces/permissions, missing/disabled dependencies, unknown registry
+structure, exact CPU adapter output and unchanged control/CAS; earlier crash,
+hang, descendant, stderr-bound and Darwin cleanup regressions remain required.

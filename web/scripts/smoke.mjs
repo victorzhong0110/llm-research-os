@@ -31,6 +31,14 @@ async function stopServer() {
   const exited = new Promise(ok => server.once("exit", ok));
   server.kill("SIGTERM"); await exited;
 }
+async function restartServer(page, script, directory) {
+  // Retire browser requests while the old API is still alive. Stopping a server
+  // under an active document can turn intentional restart into ERR_EMPTY_RESPONSE.
+  // Unexpected browser errors remain subject to the unchanged assertion below.
+  await page.goto("about:blank");
+  await stopServer();
+  return await startServer(script, directory);
+}
 try {
   let fixture = await startServer();
   browser = await chromium.launch({headless:true});
@@ -93,14 +101,12 @@ try {
   await page.getByRole("button", {name:"Events and logs",exact:true}).click();
   await page.getByRole("heading", {name:"Local API unreachable",exact:true}).waitFor();
   await page.unroute("**/api/v0alpha1/events*");
-  await stopServer();
-  fixture = await startServer();
+  fixture = await restartServer(page);
   await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
   await page.getByRole("heading", {name:"Research workbench"}).waitFor();
   await page.getByRole("button", {name:"Runs",exact:true}).click();
   await page.getByText("Cancellation requested", {exact:true}).waitFor();
-  await stopServer();
-  fixture = await startServer("tests/native_browser_server.py", join(fixtureRoot, "native"));
+  fixture = await restartServer(page, "tests/native_browser_server.py", join(fixtureRoot, "native"));
   await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
   await page.getByRole("button", {name:"Operations",exact:true}).click();
   await page.getByRole("textbox", {name:"Installed native profile ID",exact:true}).fill("cpu");
@@ -129,8 +135,7 @@ try {
   await page.getByRole("textbox", {name:"New restored workspace ID",exact:true}).fill("copy1");
   await page.getByRole("button", {name:"Restore backup to new workspace",exact:true}).click();
   await page.getByText(/"relaunchPolicy": "not-relaunched"/).waitFor();
-  await stopServer();
-  fixture = await startServer("tests/research_browser_server.py", join(fixtureRoot, "research"));
+  fixture = await restartServer(page, "tests/research_browser_server.py", join(fixtureRoot, "research"));
   await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
   await page.getByRole("button", {name:"Research",exact:true}).click();
   await page.getByRole("heading", {name:"Research workflow",exact:true}).waitFor();
@@ -170,8 +175,7 @@ try {
   await page.getByRole("textbox", {name:"Installed model profile",exact:true}).fill(fixture.profile);
   await page.getByRole("button", {name:"Observe model call",exact:true}).click();
   await page.getByText(/"observation": "completed-validated-draft"/).waitFor();
-  await stopServer();
-  fixture = await startServer("tests/trained_browser_server.py", join(fixtureRoot, "trained"));
+  fixture = await restartServer(page, "tests/trained_browser_server.py", join(fixtureRoot, "trained"));
   await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
   await page.getByRole("button", {name:"Research",exact:true}).click();
   await page.getByRole("textbox", {name:"Installed model profile",exact:true}).fill("mock");
@@ -215,8 +219,7 @@ try {
   await page.unroute("**/api/v0alpha1/commands");
   const savedReport = await page.getByRole("textbox", {name:"Recorded report artifact",exact:true}).inputValue();
   assert.match(savedReport, /^sha256:[a-f0-9]{64}$/);
-  await stopServer();
-  fixture = await startServer("tests/trained_browser_server.py", join(fixtureRoot, "trained"));
+  fixture = await restartServer(page, "tests/trained_browser_server.py", join(fixtureRoot, "trained"));
   await page.goto(`${fixture.url}/#bootstrap=smoke-only-bootstrap`);
   await page.getByRole("button", {name:"Research",exact:true}).click();
   await page.getByRole("button", {name:"List recorded human reports",exact:true}).click();

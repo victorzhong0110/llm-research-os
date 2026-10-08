@@ -13,6 +13,7 @@ from llm_research_os.cli.blocks_commands import run_blocks
 from llm_research_os.cli.budget_commands import run_budget
 from llm_research_os.cli.events_commands import run_events
 from llm_research_os.cli.evidence_commands import run_evidence
+from llm_research_os.cli.extension_commands import run_extensions
 from llm_research_os.cli.m1_commands import run_m1
 from llm_research_os.cli.m2_commands import run_m2
 from llm_research_os.cli.models_commands import run_models
@@ -42,6 +43,7 @@ def _run_training(args: argparse.Namespace) -> int:
 
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "app": run_app,
+    "extensions": run_extensions,
     "validate": run_validate,
     "schema": run_schema,
     "diff": run_diff,
