@@ -1021,7 +1021,7 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Final repair head/tree and CI are recorded at #143. R14 remains unstarted.
 
 
-### REVIEW-20261008-R13-RECOVERY — 2026-10-08T01:00:00Z
+### REVIEW-20261008-R13-RECOVERY — 2026-10-08T01:14:10Z
 
 - Sender: Codex planning/review assistant and assigned implementer.
 - Recipient: Maintainer and future sequential implementer.
@@ -1048,3 +1048,28 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next owner: Codex completes the review repair and final-head verification,
   merges under the maintainer's existing authorization, fetches actual main,
   then begins R14 sequentially. Human/phase/live acceptance remains open.
+
+
+### REVIEW-20261008-R13-RECOVERY-VERIFICATION — 2026-10-08T01:25:56Z
+
+- Sender: Codex planning/review assistant and assigned implementer.
+- Recipient: Maintainer and future sequential implementer.
+- State: Reply to REVIEW-20261008-R13-RECOVERY; candidate verification, not merged.
+- At head `c9e3d60c4e990ce60eb59cf163d288aeeac1f686`, read-only preparation
+  CI 37712728218/job 113102128116 passed Ruff, 640-file format check, strict
+  mypy over 274 source files, and **115 focused tests** in 94.28 seconds:
+  actual trained recovery, existing trained evaluation, historical backups and
+  recovery contracts, and native application commands.
+- The initial recovery regression correctly found omitted source CAS bytes;
+  source objects now join request/output/details/report roots. Explicit recovery
+  refusal codes are preserved; source byte/row bounds assert their stable code.
+  The original manifest's optional API-version default still verifies/restores.
+- Generated schemas and formatted source were obtained from the explicitly
+  listed preparation log bytes, not manually edited schema JSON. The temporary
+  read-only workflow is removed from this candidate. One additional rehashed
+  invalid-object-path regression accompanies typed refusal of CAS path errors.
+  Final unchanged main CI must verify this exact later candidate before merge.
+- The local environment remains offline. Earlier local failures and actual CI
+  results stay attributable to their original head; no additional local pass is
+  claimed. Human/Checkpoint C and live-provider/selected-host acceptance remain
+  open. R14 has not started; WP11's uncommitted local source remains inaccessible.

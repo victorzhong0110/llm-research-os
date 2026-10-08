@@ -23,7 +23,7 @@ provider credential, or Worker directory is copied.
 
 The object set is re-derived from **both** the verified events and validated
 receipts. Receipt-backed roots include collected baseline/candidate details,
-their request/output provenance, comparison artifacts, and immutable human
+their request/output/source provenance, comparison artifacts, and immutable human
 reports with their embedded comparison lineage. A semantic JCS identity is not
 mistaken for a byte-addressed CAS object. Every copied object retains its actual
 byte digest, size and derived path. Dropping a receipt-backed manifest entry

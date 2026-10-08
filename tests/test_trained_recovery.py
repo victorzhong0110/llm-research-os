@@ -287,3 +287,19 @@ def test_original_manifest_default_version_remains_restorable(tmp_path: Path) ->
     path.write_text(json.dumps(manifest), encoding="utf-8")
     assert verify_backup(image).verified
     assert restore_backup(image, tmp_path / "restored").appended_events == 0
+
+
+def test_rehashed_receipt_cannot_introduce_an_invalid_object_path(tmp_path: Path) -> None:
+    service, _result, _intent, _published = published_workspace(tmp_path)
+    image = tmp_path / "image"
+    create_backup(service.workspace, image, now=NOW)
+
+    def mutate(state):
+        receipt = next(r for r in state["receipts"] if r["operation"] == "evaluation.collect")
+        receipt["result"]["baselineArtifact"] = "../outside"
+        receipt["resultDigest"] = content_digest(receipt["result"])
+
+    rewrite_operations(image, mutate)
+    with pytest.raises(RecoveryError, match="operation") as refusal:
+        verify_backup(image)
+    assert refusal.value.code == "backup-operations-invalid"

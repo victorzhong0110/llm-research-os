@@ -12,6 +12,7 @@ from pydantic import Field, model_validator
 from llm_research_os.application.models import ApplicationModel, ApplicationReceipt
 from llm_research_os.application.receipts import ReceiptLog
 from llm_research_os.application.workspace import Workspace
+from llm_research_os.artifacts.errors import ArtifactPathError
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN, canonical_json, content_digest
 from llm_research_os.evaluation.trained_contracts import (
     ResearchReport,
@@ -169,17 +170,25 @@ def operation_references(
                 provenance = TrainingProvenance.model_validate(result["provenance"])
                 if provenance.project_id != project_id:
                     raise ValueError("training result belongs to another project")
-                digests.update((
-                    provenance.request_artifact, provenance.output_artifact, provenance.source_digest
-                ))
+                digests.update(
+                    (
+                        provenance.request_artifact,
+                        provenance.output_artifact,
+                        provenance.source_digest,
+                    )
+                )
             for comparison in comparisons:
                 digests.update((comparison.baseline_artifact, comparison.candidate_artifact))
                 for provenance in (comparison.baseline, comparison.candidate):
                     if provenance.project_id != project_id:
                         raise ValueError("training provenance belongs to another project")
-                    digests.update((
-                    provenance.request_artifact, provenance.output_artifact, provenance.source_digest
-                ))
+                    digests.update(
+                        (
+                            provenance.request_artifact,
+                            provenance.output_artifact,
+                            provenance.source_digest,
+                        )
+                    )
         if len(digests) > MAX_OPERATION_ROWS:
             raise ValueError("too many receipt-backed objects")
         # Result fields are dictionaries. Validate every derived object id before
@@ -189,7 +198,7 @@ def operation_references(
         for digest in digests:
             storage_key_for(digest)
         return tuple(sorted(digests))
-    except (ValueError, TypeError, KeyError, RecursionError) as exc:
+    except (ArtifactPathError, ValueError, TypeError, KeyError, RecursionError) as exc:
         raise BackupIntegrityError(
             "backup-operations-invalid", "operation receipts do not match the verified prefix"
         ) from exc
