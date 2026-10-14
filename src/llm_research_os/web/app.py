@@ -431,6 +431,7 @@ class LocalApi:
             "evaluation.run",
             "evaluation.compare",
             "evaluation.collect",
+            "evaluation.list",
             "evaluation.report",
             "conclusion.publish",
             "conclusion.list",

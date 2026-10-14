@@ -1,0 +1,10 @@
+{
+  "apiVersion": "researchos.dev/application/v0alpha1",
+  "kind": "ApplicationCommand",
+  "commandId": "example.evaluation.list",
+  "actorId": "example.operator",
+  "submittedAt": "2026-10-15T05:26:00+08:00",
+  "operation": {
+    "kind": "evaluation.list"
+  }
+}

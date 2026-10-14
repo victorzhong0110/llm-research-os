@@ -225,6 +225,21 @@ def test_trained_workflow_through_actual_local_api(tmp_path: Path) -> None:
     )
     client = Client(api)
     client.bootstrap("training-test")
+    listed = command(service, {"kind": "evaluation.list"}, "http.list").model_copy(
+        update={"expected_revision": None, "expected_head": None}
+    )
+    status, _, listing = client.request(
+        "POST",
+        "/api/v0alpha1/commands",
+        body=listed.model_dump_json(by_alias=True).encode(),
+        content_type="application/json",
+        origin=ORIGIN,
+    )
+    assert status == 200, listing
+    assert (
+        listing["result"]["evaluations"][0]["candidateArtifact"]
+        == receipt["result"]["candidateArtifact"]
+    )
     pair = {
         "baseline": receipt["result"]["baselineArtifact"],
         "candidate": receipt["result"]["candidateArtifact"],

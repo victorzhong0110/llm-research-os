@@ -5,12 +5,13 @@ import { api, exchangeBootstrap, SessionExpiredError, takeBootstrapSecret } from
 import type { WorkspaceView } from "./generated/local-api";
 import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
 import { OperationsView } from "./components/OperationsView";
+import { EvaluationActions } from "./components/EvaluationActions";
 import { ResearchView } from "./components/ResearchView";
 import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
 import { ObjectInspectionView } from "./components/Inspection";
 import { Failure, Loading } from "./components/Primitives";
 
-type ViewId = "operations" | "research" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
+type ViewId = "results" | "operations" | "research" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "project", label: "Project" },
@@ -19,6 +20,7 @@ const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
   { id: "runs", label: "Runs" },
   { id: "operations", label: "Operations" },
   { id: "research", label: "Research" },
+  { id: "results", label: "Results and conclusions" },
   { id: "events", label: "Events and logs" },
   { id: "history", label: "Decisions and authority" },
   { id: "logs", label: "Logs" },
@@ -136,6 +138,7 @@ export function App() {
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}
+        {view === "results" ? <EvaluationActions /> : null}
         {view === "research" ? <ResearchView /> : null}
         {view === "operations" && expectedHead !== undefined ? (
           <OperationsView expectedHead={expectedHead} />

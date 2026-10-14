@@ -91,6 +91,10 @@ def test_backup_restore_preserves_real_details_reports_and_unknown_reservations(
         "result"
     ]
     assert listed["reports"][0]["reportArtifact"] == published["reportArtifact"]
+    evaluations = reopened.execute(
+        command(reopened, {"kind": "evaluation.list"}, "restored.evaluations")
+    )["result"]
+    assert evaluations["evaluations"][0]["candidateArtifact"] == result["candidateArtifact"]
     inspected = reopened.execute(
         command(
             reopened,

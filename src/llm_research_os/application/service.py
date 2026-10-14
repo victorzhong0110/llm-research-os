@@ -31,6 +31,7 @@ from llm_research_os.application.models import (
     ConclusionRecordOperation,
     EvaluationCollectOperation,
     EvaluationCompareOperation,
+    EvaluationListOperation,
     EvaluationReportOperation,
     EvaluationRunOperation,
     EvidenceImportOperation,
@@ -326,6 +327,7 @@ class ApplicationService:
             return self._conclusion_record(command)
         if kind in {
             "evaluation.collect",
+            "evaluation.list",
             "evaluation.report",
             "conclusion.publish",
             "conclusion.list",
@@ -651,12 +653,50 @@ class ApplicationService:
     def _trained_evaluation(
         self, command: ApplicationCommand, frozen: _FrozenOperation
     ) -> _Outcome:
-        from llm_research_os.evaluation.trained import comparison_document, detail_documents
+        from llm_research_os.evaluation.trained import comparison_material, detail_documents
         from llm_research_os.evaluation.trained_contracts import ResearchReport, TrainedComparison
 
         operation = command.operation
         cas = LocalArtifactStore(self._workspace.cas_root)
         try:
+            if isinstance(operation, EvaluationListOperation):
+                receipts, count = self._receipts.collected_evaluations()
+                summaries = []
+                for stored_receipt in receipts:
+                    receipt = ApplicationReceipt.model_validate(stored_receipt)
+                    if (
+                        receipt.operation != "evaluation.collect"
+                        or content_digest(receipt.result) != receipt.result_digest
+                    ):
+                        raise ApplicationError("evaluation-invalid", "evaluation receipt differs")
+                    result = receipt.result
+                    comparison, left, right = comparison_material(
+                        self._workspace,
+                        result["baselineArtifact"],
+                        result["candidateArtifact"],
+                        self._read_artifact,
+                    )
+                    if (
+                        result["baselineMetrics"] != left["detail"]["metrics"]
+                        or result["candidateMetrics"] != right["detail"]["metrics"]
+                        or result["provenance"] != right["provenance"]
+                    ):
+                        raise ApplicationError("evaluation-invalid", "collected evidence differs")
+                    summaries.append(
+                        {
+                            "commandId": receipt.command_id,
+                            "baselineArtifact": comparison["baselineArtifact"],
+                            "candidateArtifact": comparison["candidateArtifact"],
+                            "provenance": right["provenance"],
+                            "baselineMetrics": left["detail"]["metrics"],
+                            "candidateMetrics": right["detail"]["metrics"],
+                            "exampleCount": right["detail"]["exampleCount"],
+                            "label": right["label"],
+                        }
+                    )
+                return _Outcome(
+                    result={"evaluations": summaries, "withheld": max(0, count - len(summaries))}
+                )
             if isinstance(operation, (ConclusionInspectOperation, ConclusionListOperation)):
                 receipts, count = self._receipts.published_reports(
                     report_artifact=operation.report_artifact
@@ -748,7 +788,7 @@ class ApplicationService:
                 raise ApplicationError(
                     "operation-unsupported", "trained evaluation operation required"
                 )
-            comparison = comparison_document(
+            comparison, baseline_detail, candidate_detail = comparison_material(
                 self._workspace, operation.baseline, operation.candidate, self._read_artifact
             )
             TrainedComparison.model_validate(comparison)
@@ -772,6 +812,8 @@ class ApplicationService:
                 return _Outcome(
                     result={
                         "comparison": comparison,
+                        "baselineDetail": baseline_detail,
+                        "candidateDetail": candidate_detail,
                         "comparisonDigest": digest,
                         "comparisonArtifact": stored.digest,
                         "narrative": narrative,

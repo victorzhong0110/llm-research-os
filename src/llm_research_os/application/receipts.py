@@ -131,6 +131,23 @@ class ReceiptLog:
         finally:
             connection.close()
 
+    def collected_evaluations(self) -> tuple[list[dict[str, Any]], int]:
+        """Newest ten collected pairs; never discover arbitrary CAS contents."""
+        connection = self._connect()
+        try:
+            count = connection.execute(
+                """SELECT count(*) FROM operation_receipts
+                WHERE json_extract(receipt_json, '$.operation') = 'evaluation.collect'"""
+            ).fetchone()[0]
+            rows = connection.execute(
+                """SELECT receipt_json FROM operation_receipts
+                WHERE json_extract(receipt_json, '$.operation') = 'evaluation.collect'
+                ORDER BY rowid DESC LIMIT 10"""
+            ).fetchall()
+            return [json.loads(row[0]) for row in rows], count
+        finally:
+            connection.close()
+
     def append(self, command_id: str, request_digest: str, document: dict[str, object]) -> None:
         payload = json.dumps(document, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         connection = self._connect()

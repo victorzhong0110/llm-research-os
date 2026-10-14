@@ -20,11 +20,23 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from llm_research_os.evaluation.trained_contracts import (  # noqa: E402
+    ResearchReport,
+    TrainedComparison,
+    TrainedEvaluationDetail,
+)
 from llm_research_os.web.contracts import (  # noqa: E402
     CONTRACT_MODELS,
     LOCAL_API_CONTRACT_VERSION,
     LOCAL_API_VERSION,
 )
+
+TYPE_MODELS = {
+    **CONTRACT_MODELS,
+    "ResearchReport": ResearchReport,
+    "TrainedComparison": TrainedComparison,
+    "TrainedEvaluationDetail": TrainedEvaluationDetail,
+}
 
 OUTPUT = ROOT / "web" / "src" / "generated" / "local-api.ts"
 
@@ -114,7 +126,7 @@ def _model_for(name: str, owner: type[Any], definitions: dict[str, Any]) -> type
 
 def _all_models() -> list[type[Any]]:
     seen: dict[str, type[Any]] = {}
-    for model in CONTRACT_MODELS.values():
+    for model in TYPE_MODELS.values():
         for nested in _nested(model):
             seen.setdefault(nested.__name__, nested)
     return list(seen.values())
@@ -146,7 +158,7 @@ def _annotations(annotation: Any) -> list[Any]:
 def render() -> str:
     blocks = [_HEADER]
     emitted: set[str] = set()
-    for name, model in CONTRACT_MODELS.items():
+    for name, model in TYPE_MODELS.items():
         block = _interface(name, model, emitted)
         if block:
             blocks.append(block)

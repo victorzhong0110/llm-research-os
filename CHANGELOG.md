@@ -9,6 +9,11 @@ authorized release.
 
 ## Unreleased
 
+- Add a Results and conclusions workbench: verified recent evaluation discovery,
+  metric tables, paired error review, provenance/limitations, readable immutable
+  human reports and direct result selection after restart or backup restore.
+  Preserve exact retry, comparison identity and explicit human interpretation.
+
 - Add actual reviewed CPU Iris centroid/baseline training provenance, fixed held-out
   detail replay, failure cases and comparisons; editable evidence-linked v0alpha2
   human reports with exact retry and durable discovery. Preserve the labelled

@@ -35,8 +35,9 @@ All commands use `researchos app execute` / the shared browser command endpoint.
 
 | Operation | Inputs and behavior |
 | --- | --- |
+| `evaluation.list` | Latest ten collected baseline/candidate pairs, newest first with an explicit withheld count. Revalidates receipt digest and replays both typed details; no profile or revision is required. Never dispatches. |
 | `evaluation.collect` | Installed `profileId`, completed `outputArtifact`, expected revision; optional accepted `decisionId`. Never dispatches. |
-| `evaluation.report` | Baseline/candidate trained artifact IDs and expected candidate revision. Replays both models and emits editable narrative with **null verdict**. |
+| `evaluation.report` | Baseline/candidate trained artifact IDs and expected candidate revision. Replays both models and emits editable narrative with **null verdict**, plus `baselineDetail` and `candidateDetail` for setup and per-example inspection. The comparison digest remains bound to the unchanged `TrainedComparison` document. |
 | `conclusion.publish` | Exact preview `comparisonDigest`, baseline/candidate IDs, `reportId`, edited narrative, explicit verdict/rationale and optional imported evidence IDs. Requires caller head/revision. |
 | `conclusion.list` | Latest ten recorded report summaries, with an explicit withheld count. Workspace-local durable receipt discovery. |
 | `conclusion.inspect` | Recorded report artifact; checks typed bytes, project, receipt and result digest. Reads historical human judgement without recomputing a new judgement or dispatching. |
@@ -83,3 +84,32 @@ command identity and content digest bind exact replay and immutable versions.
 There is no automatic training, redispatch, human acceptance, publication to a
 remote service, new training framework, leaderboard or model-judge service.
 Unknown execution outcomes retain the R11 observation-only boundary.
+
+## Workbench result inspection
+
+The **Results and conclusions** view and the existing Research panel share the
+same commands. Discovery follows only collected receipts in this workspace;
+it never enumerates arbitrary CAS objects. Missing/corrupt or rehashed mismatched
+receipt results refuse the listing. Reading or listing records may preserve a
+command receipt, but appends no research/Run event and supplies no launch authority.
+Recorded pairs survive verified backup/restore without re-installing native profiles.
+
+Selecting a pair sets its experiment revision and requests a fresh comparison.
+Metric values are displayed as percentages and changes as percentage points;
+full six-decimal strings remain in the receipt. Higher is better for accuracy
+and macro F1; lower is better for MAE. Directions describe observations, never
+preselect a verdict. The evidence panel retains limitations, evaluator/split/seed,
+Run/Attempt, source, data, model and optional decision provenance.
+
+Paired predictions can be filtered by errors in either model, new candidate
+errors, fixed baseline errors, or all examples. At most 100 matching rows are
+rendered with an explicit truncation notice. Editing artifact IDs or revision
+hides the old preview and disables publishing until the selected pair matches
+its preview. Incomplete/incomparable evidence disables supported/unsupported
+choices while preserving an explicit insufficient-evidence option.
+
+Recorded report summaries open their immutable narrative, human verdict,
+rationale, comparison and evidence references. Historical reading does not
+populate or overwrite the editable conclusion draft. Raw receipts are available
+in a collapsed technical section. These UI changes add no evaluation framework,
+variance estimator, model judge, automatic conclusion, or human acceptance claim.

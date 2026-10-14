@@ -31,15 +31,20 @@ local bootstrap URL. The installed control plane remains free of training extras
    proposal, review the actual base-1/candidate-2 difference, record it, and record
    an explicit accepted decision with a reason. Keep the returned decision ID.
 2. In **Real evaluation and human report**, set training revision **2** and native
-   profile `cpu`. Inspect material, then explicitly start authorized training.
+   profile `cpu` under **Run and collect a reviewed CPU evaluation**. Inspect
+   material, then explicitly start authorized training.
    These are separate human actions; the research decision does not launch it.
 3. Keep the completed output artifact. Supply the accepted decision ID and choose
    **Recompute completed baseline and candidate**. The server checks the actual
    Run and exact accepted spec, then records two typed detail artifacts.
-4. Preview the evidence-linked report. Inspect failure cases and limitations,
+4. Choose **Load recent evaluations**, then **Compare** beside the completed Run.
+   Inspect the metric table, individual predictions (errors, new errors, fixed
+   errors or all examples), evaluator setup, provenance and limitations,
    edit the narrative, explicitly choose a verdict and write the rationale, then
    record the report. A numeric improvement does not pre-select a conclusion.
-5. After refresh/restart, list recorded reports and read the saved report artifact.
+5. After refresh/restart, open **Results and conclusions**, load evaluations and
+   select a pair without copying digests. Choose **List recorded human reports**
+   and **Read** beside a report to see its preserved judgement and evidence.
    Exact retry preserves the original command and judgement. For a lost training
    response, retry that exact intent or observe the Run; do not dispatch a new Run.
 
@@ -55,7 +60,7 @@ uv run researchos app execute command.json --root /path/to/workspace
 ```
 
 Use `evaluation.collect` with the installed profile and actual output CAS ID;
-`evaluation.report` with its baseline/candidate IDs; `conclusion.publish` with
+`evaluation.list` to discover replayed pairs; `evaluation.report` with its baseline/candidate IDs; `conclusion.publish` with
 the exact preview digest and explicit human fields. Read the versioned
 [protocol](../protocols/trained-evaluation-v0alpha2.md) and
 [examples](../../examples/trained-evaluation/README.md). CAS artifact IDs are

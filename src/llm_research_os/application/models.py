@@ -399,6 +399,10 @@ class EvaluationCollectOperation(ApplicationModel):
     decision_id: EventIdentifier | None = Field(default=None, alias="decisionId")
 
 
+class EvaluationListOperation(ApplicationModel):
+    kind: Literal["evaluation.list"]
+
+
 class EvaluationReportOperation(ApplicationModel):
     kind: Literal["evaluation.report"]
     baseline: ArtifactDigest
@@ -451,6 +455,7 @@ ApplicationOperation = Annotated[
     | WorkspaceShowOperation
     | ConclusionRecordOperation
     | EvaluationCollectOperation
+    | EvaluationListOperation
     | EvaluationReportOperation
     | ConclusionPublishOperation
     | ConclusionListOperation
@@ -536,6 +541,7 @@ class ApplicationReceipt(ApplicationModel):
         "authorization.revoke",
         "conclusion.record",
         "evaluation.collect",
+        "evaluation.list",
         "evaluation.report",
         "conclusion.publish",
         "conclusion.list",
