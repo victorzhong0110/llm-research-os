@@ -21,6 +21,22 @@ assistant; implementation belongs to the assigned implementer. See
 [ADR-0064](../adr/0064-planning-and-implementation-ownership.md).
 There is no personal calendar, effort-duration estimate, or delivery deadline.
 
+## Current priority: first-use research dashboard, 2026-10-15
+
+The maintainer paused the existing checkpoint trial campaign after finding that
+the workbench could not support a newcomer's understanding and first useful task.
+The agreed direction is a dashboard-centered research map with meaningful spatial
+relationships, human arrangement, AI-maintained components, and interchangeable
+black/white and warm-paper skins. See the
+[design and sequential delivery plan](research-dashboard.md) and
+[ADR-0066](../adr/0066-semantic-research-dashboard.md).
+
+This direction takes priority over earlier instructions below to continue the
+live campaign. It does not waive required engineering checks, resume external
+execution, renumber R01–R16, or change checkpoint acceptance. Outstanding evidence
+remains pending-live. The dashboard plan subdivides the product continuation;
+its proposed slices are not completed work or a replacement acceptance matrix.
+
 ## Maintainer execution direction: complete sequentially through R16
 
 On 2026-10-04 at 18:41:11 Asia/Taipei, the maintainer instructed: complete all

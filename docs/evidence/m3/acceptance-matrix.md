@@ -4,6 +4,12 @@ Status: **R01–R07 integrated; R08 CPU native/Ray execution and transfer slices
 Canonical package definitions: [M3 plan](../../plans/m3-development-plan.md).
 Ownership and review: [development governance](../../development-governance.md).
 
+Current priority, 2026-10-15: the maintainer paused the existing checkpoint trial
+campaign and confirmed the [research dashboard direction](../../plans/research-dashboard.md).
+This supersedes earlier campaign-continuation instructions below. Required
+engineering checks remain applicable; no missing evidence is waived and no
+checkpoint is closed. Design agreement is not implementation or trial evidence.
+
 The maintainer's 2026-10-04 direction supersedes the former B freeze in historical
 candidate entries below; their implementation identities and evidence gaps are
 unchanged. Use the [live runbook](../../guides/r08-live-acceptance.md) and
@@ -916,7 +922,7 @@ authorized sequentially and does not close that gate.
 
 | Area | What exists | Where |
 | --- | --- | --- |
-| Install | Wheel carries the built workbench bundle and a minimal research corpus; `researchos workspace demo` builds a working workspace from packaged data in one command, with no key, no GPU, no Node and no training extras | [`wheel_smoke.py`](../../scripts/wheel_smoke.py), `src/llm_research_os/recovery/demo.py` |
+| Install | Wheel carries the built workbench bundle and a minimal research corpus; `researchos workspace demo` builds a working workspace from packaged data in one command, with no key, no GPU, no Node and no training extras | [`wheel_smoke.py`](../../../scripts/wheel_smoke.py), `src/llm_research_os/recovery/demo.py` |
 | Initialize | `app init` plus `workspace doctor`, `workspace migrate` | [`r15-installation-and-recovery.md`](../../guides/r15-installation-and-recovery.md) |
 | Startup | `web serve` reports a taken port as a closed `listener-unavailable` code and exits `2` instead of raising a traceback — **already delivered by merged R14**, so R15 proposes no change here; a missing bundle is a startup failure | `src/llm_research_os/web/serve.py` (merged) |
 | Backup | Verified high-water prefix plus referenced immutable objects, online-backup snapshot, closed codes | [`backup-restore-v0alpha1.md`](../../protocols/backup-restore-v0alpha1.md) |
@@ -1141,7 +1147,7 @@ makes such a trial measurable and the record that makes its absence visible.
 | Item | Where |
 | --- | --- |
 | Fixed trial tasks T1–T5 and REMOTE, offline, no key, no GPU | [`r16-independent-trials.md`](r16-independent-trials.md) |
-| A validated `TrialRecord` / `TrialKit` contract and published schemas | [`trial-record`](../../schemas/trial-record/v0alpha1.schema.json), [`trial-kit`](../../schemas/trial-kit/v0alpha1.schema.json) |
+| A validated `TrialRecord` / `TrialKit` contract and published schemas | [`trial-record`](../../../schemas/trial-record/v0alpha1.schema.json), [`trial-kit`](../../../schemas/trial-kit/v0alpha1.schema.json) |
 | `researchos trial scaffold/validate/aggregate` | `src/llm_research_os/cli/trial_commands.py` |
 | TRIAL-01..05 pending table with owners | same |
 | Aggregated per-package roll-up, checkpoint status, and BACKLOG-01..12 | [`m3-closure-record.md`](m3-closure-record.md) |

@@ -30,18 +30,26 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-15, maintainer-assigned PR review and integration**.
-Verified feature integration: #149 merged at
-`9732958e0383c4b568081224a20b44c6e8d42895` after all 11 applicable final-head
-CI jobs passed at `4ae7c311dd2cdf0773beb09f4b0cd7b9d19688c5` and Codex
-independently reran 80 focused evaluation/discovery/recovery/web-asset tests
-(80 passed). Main push CI is tracked separately; no result is inferred here.
-#150 records partial operator-reported two-host CPU evidence executed against
-`c6b21b929ed35c853116fcd186559f9caad1e9ae`. Review corrects combined fault
-rows and the historical R09 authorization. This does not establish independent
-reproduction, complete R07/R08 acceptance, or Checkpoint B closure.
+Snapshot date: **2026-10-15, maintainer-confirmed dashboard direction**.
+Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
+[main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
+passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
+all 11 applicable final-head CI jobs and 80 independent focused tests passing;
+[its main CI 38697958006](https://github.com/victorzhong0110/llm-research-os/actions/runs/38697958006)
+also passed. #150's corrected head
+`19841e947390d417afa419b4936cfd34bbd56b4d` passed all 11 applicable CI jobs
+before squash integration at the current main above. Its partial operator-reported
+two-host CPU evidence remains attributed to execution base
+`c6b21b929ed35c853116fcd186559f9caad1e9ae`; no independent rerun or Checkpoint B
+closure is claimed.
+
+The maintainer paused the existing checkpoint trial campaign and confirmed the
+[research dashboard direction](plans/research-dashboard.md). Current work records
+that design and proposed sequential delivery slices. It does not implement the
+dashboard or establish first-use acceptance. See DESIGN-20261015-01 below.
+
 Historical maintenance snapshot follows:
-Current base main: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
+Historical maintenance base: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
 #147 cryptography 50.0.2, #145 pinned setup-node 7.0.0 and #146 development
 locks (mypy 2.4.0/librt 0.16.0, Ruff 0.16.10, Hypothesis 6.168.4).
 Each dependency PR passed all 11 applicable jobs at its original head; combined
@@ -64,20 +72,21 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R13 result usability continuation on #148 main: recorded evaluation selection, metric/prediction comparison and readable preserved conclusions. Historical maintenance and acceptance evidence remains at its recorded identity. |
+| Current package | Record the confirmed semantic research dashboard direction and proposed delivery plan from verified #150 main. Product usability is the priority; runtime implementation and first-user evidence remain pending. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | #150 records partial two-host CPU execution/transfer/reconnect/cancel evidence at c6b21b9. R07 onboarding/refusals, transfer interruption, claim/completion-response loss, unavailable identity, bounds, restore and GPU/Kaggle remain pending-live; B remains open. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Maintainer explicitly assigned Codex on 2026-10-07 to complete independently executable engineering work while the maintainer handles Mac and human work. Complete R11–R14 sequentially from verified main, preserving earlier review repairs. |
-| Downstream gate | Engineering continuation is assigned. Fetch current main before each slice; acceptance dependencies and pending-live inputs remain open, including COMM-0004. Human/Mac work is owned by the maintainer in parallel and must not be represented by synthetic fixtures. |
+| Responsibility | Codex records the maintainer's 2026-10-15 design direction and sequential product plan. Existing engineering assignment continues under that priority; the prior checkpoint trial campaign is paused. |
+| Downstream gate | Fetch verified main before each implementation slice. Preserve existing authority and acceptance semantics; pending-live and first-user evidence stay open. No synthetic fixture substitutes for real participant/host evidence. |
 
 ## Open handoffs
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
-| COMM-0004 | Maintainer / resource owner | Partially addressed by #150; remaining live input/evidence open | Selected CPU hosts were used for reported s1–s4. Resource owner / assigned operator supplies remaining R07/fault/GPU evidence under existing authorization; this review has not received reusable private connection configuration. See REVIEW-20261015-PR150. |
+| COMM-0004 | Maintainer / resource owner | Partially addressed by merged #150; remaining campaign paused, evidence open | Preserve reported s1–s4 and remaining R07/fault/GPU gaps. Resume the campaign only under a subsequent maintainer direction; no reusable private connection configuration was received. See DESIGN-20261015-01. |
+| DESIGN-20261015-01 | Planning/review assistant and next assigned implementer | Design recorded; implementation handoff open | Use the dashboard plan for the next sequential product slice. Detailed contracts and usability evidence are pending; no collaborator acknowledgement is inferred. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
 | COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
@@ -1249,3 +1258,44 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   evidence record after checks; assigned operator completes remaining live
   faults/onboarding/GPU rows, maintainer reviews complete acceptance separately.
 - Proposed normative changes: none.
+
+
+### DESIGN-20261015-01 — Confirm the semantic research dashboard direction
+
+- Date/time: 2026-10-15T08:32:19Z (documentation session).
+- From: Codex planning/review assistant. To: maintainer and next assigned implementer.
+- Reply to: REVIEW-20261015-PR150 and the maintainer's subsequent product direction.
+- State: Product direction confirmed by the maintainer; documentation candidate.
+  Runtime implementation and first-user acceptance remain pending.
+- Integration follow-up: corrected #150 head
+  `19841e947390d417afa419b4936cfd34bbd56b4d` passed all 11 applicable CI jobs
+  and merged at `fe61937072db21258e01e2ca685ef1d07afa0a0c`.
+  Main CI 38699740458 completed successfully at that merge SHA. This closes the
+  integration action in REVIEW-20261015-PR150, not its remaining acceptance gaps.
+- Base: verified main `fe61937072db21258e01e2ca685ef1d07afa0a0c`; branch
+  `docs/semantic-research-dashboard`. Documentation delivery only; no runtime
+  branch, new execution capability, or checkpoint trial is introduced.
+- Maintainer direction: pause the existing checkpoint trial campaign and address
+  first-use comprehension and useful work. The confirmed surface is a spatial
+  research map, with black/white and warm-paper skins plus customization, built-in
+  and custom components maintained by the user's AI, and progressive detail.
+  Containment, subordination, peers, dependencies and shared references need
+  distinct expression. Human arrangement conveys intent; plain dragging does
+  not change domain facts or grant authority.
+- Deliverables: [ADR-0066](adr/0066-semantic-research-dashboard.md),
+  [design and proposed delivery plan](plans/research-dashboard.md), current
+  priority links in the M3 plan/matrix, and refreshed collaboration handoffs.
+  Detailed schemas, rendering libraries and usability thresholds remain proposed
+  implementation work, not accepted capability claims.
+- Validation: documentation whitespace and local link-target checks; three
+  pre-existing relative links in the touched acceptance matrix are corrected.
+  No full local engineering suite, live checkpoint test, or participant trial
+  is run for this planning change. Required implementation/merge checks are not
+  waived by the campaign pause.
+- Normative change: the confirmed product priority and semantic-layout constraint
+  are recorded explicitly. R01–R16 identities, historical evidence, security and
+  execution authority, and checkpoint acceptance criteria are preserved.
+- Next action / owner: the next assigned implementer starts with the plan's
+  representative interaction map and source inventory, then a real overview and
+  complete first-use workflow. Work remains sequential. COMM-0004 stays open
+  with its trial campaign paused; no collaborator acknowledgement is invented.
