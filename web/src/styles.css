@@ -342,3 +342,33 @@ input {
   color: var(--fg);
   min-width: 18rem;
 }
+
+.evaluation-workbench { overflow-wrap: anywhere; }
+.evaluation-workbench fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 1rem 0;
+  padding: 1rem;
+  min-width: 0;
+}
+.evaluation-workbench legend { font-weight: 600; }
+.evaluation-workbench label { display: grid; gap: 0.25rem; margin: 0.75rem 0; }
+.evaluation-workbench input, .evaluation-workbench textarea, .evaluation-workbench select {
+  width: 100%; min-width: 0; max-width: 100%; font: inherit;
+  padding: 0.5rem; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+.evaluation-workbench textarea { resize: vertical; }
+.evaluation-workbench details { margin: 0.75rem 0; }
+.evaluation-workbench summary { cursor: pointer; color: var(--accent); }
+.evaluation-workbench button { margin: 0.25rem 0.5rem 0.25rem 0; }
+.evaluation-card { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; background: var(--panel); }
+.evaluation-card small, .evaluation-table small { display: block; font-weight: 400; color: var(--muted); }
+.evaluation-table { overflow-x: auto; }
+.evaluation-table caption { text-align: left; font-weight: 600; padding: 0.5rem 0; }
+.evaluation-prose { white-space: pre-wrap; overflow-wrap: anywhere; }
+.evaluation-workbench pre { max-height: 24rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .evaluation-workbench .kv__row { grid-template-columns: 1fr; gap: 0.125rem; }
+  .evaluation-card, .evaluation-workbench fieldset { padding: 0.75rem; }
+}

@@ -30,7 +30,17 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-09, maintainer-assigned maintenance continuation**.
+Snapshot date: **2026-10-15, maintainer-assigned PR review and integration**.
+Verified feature integration: #149 merged at
+`9732958e0383c4b568081224a20b44c6e8d42895` after all 11 applicable final-head
+CI jobs passed at `4ae7c311dd2cdf0773beb09f4b0cd7b9d19688c5` and Codex
+independently reran 80 focused evaluation/discovery/recovery/web-asset tests
+(80 passed). Main push CI is tracked separately; no result is inferred here.
+#150 records partial operator-reported two-host CPU evidence executed against
+`c6b21b929ed35c853116fcd186559f9caad1e9ae`. Review corrects combined fault
+rows and the historical R09 authorization. This does not establish independent
+reproduction, complete R07/R08 acceptance, or Checkpoint B closure.
+Historical maintenance snapshot follows:
 Current base main: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
 #147 cryptography 50.0.2, #145 pinned setup-node 7.0.0 and #146 development
 locks (mypy 2.4.0/librt 0.16.0, Ruff 0.16.10, Hypothesis 6.168.4).
@@ -54,11 +64,11 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R11–R14 assigned engineering is integrated. #108 maintenance is the sole active slice on actual dependency-updated main; no new R package or human acceptance is claimed. |
+| Current package | R13 result usability continuation on #148 main: recorded evaluation selection, metric/prediction comparison and readable preserved conclusions. Historical maintenance and acceptance evidence remains at its recorded identity. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
-| Acceptance gaps | GPU/Kaggle runtime evidence and newly selected actual two-host native/fault evidence remain pending-live. CPU integration does not close these gaps or B. |
+| Acceptance gaps | #150 records partial two-host CPU execution/transfer/reconnect/cancel evidence at c6b21b9. R07 onboarding/refusals, transfer interruption, claim/completion-response loss, unavailable identity, bounds, restore and GPU/Kaggle remain pending-live; B remains open. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
 | Responsibility | Maintainer explicitly assigned Codex on 2026-10-07 to complete independently executable engineering work while the maintainer handles Mac and human work. Complete R11–R14 sequentially from verified main, preserving earlier review repairs. |
 | Downstream gate | Engineering continuation is assigned. Fetch current main before each slice; acceptance dependencies and pending-live inputs remain open, including COMM-0004. Human/Mac work is owned by the maintainer in parallel and must not be represented by synthetic fixtures. |
@@ -67,7 +77,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
-| COMM-0004 | Maintainer / resource owner | Blocked on missing input | Supply existing private host connection configuration and GPU/Kaggle execution access so Codex can collect actual R07/R08 evidence. |
+| COMM-0004 | Maintainer / resource owner | Partially addressed by #150; remaining live input/evidence open | Selected CPU hosts were used for reported s1–s4. Resource owner / assigned operator supplies remaining R07/fault/GPU evidence under existing authorization; this review has not received reusable private connection configuration. See REVIEW-20261015-PR150. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
 | COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
@@ -1176,3 +1186,66 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next owner: Codex verifies final CI, fixes genuine findings, integrates this
   maintenance and closes #108 only with recorded evidence. Human/Mac/private
   acceptance stays with the maintainer; no collaborator acknowledgement invented.
+
+
+### REVIEW-20261015-RESULTS — Research result usability continuation
+
+- Date/time: 2026-10-15T05:26:00+08:00 (maintainer assignment).
+- From: Codex planning/review assistant and assigned implementer. To: maintainer.
+- Reply to: REVIEW-20261008-R13; the maintainer now explicitly asks to make
+  experiment comparison, evaluation results and conclusions usable.
+- Base: verified checkout of actual main
+  `c6b21b929ed35c853116fcd186559f9caad1e9ae`; branch
+  `feat/research-results-workbench`. One sequential slice, no delegation.
+- Behavior: bounded `evaluation.list` discovers collected pairs from durable
+  workspace receipts and replays both models; report previews include the
+  existing verified typed details without changing comparison/report identity.
+  Result selection restores revision, readable metrics and paired errors;
+  historical human reports render their narrative/rationale and evidence.
+- Validation: final local/CI evidence is recorded with the PR. Regressions cover
+  empty and bounded discovery, corrupted and rehashed receipts, restart,
+  restore, stale preview visibility, error filters, lost-response exact retry,
+  and recorded report reading. Actual public CPU fixtures are engineering
+  evidence; synthetic browser actors are not real human acceptance.
+- Contract additions: closed read-only `evaluation.list` command/receipt literal;
+  additive verified detail fields in preview results. Generated application
+  and operations-backup schemas/types are updated. EventStore, Worker grants,
+  historical report versions and comparison digests are unchanged.
+- Gaps: independent human research-efficiency trials, private providers,
+  selected-host/GPU and full B/C/D acceptance remain open. No LLaMA-Factory
+  adapter, new model framework, paid work or publication is introduced.
+- Next owner: Codex completes reviewable implementation and exact-head checks;
+  maintainer owns real participant/live acceptance and merge decision for this
+  feature continuation. No collaborator acknowledgement is invented.
+
+
+### REVIEW-20261015-PR150 — Correct partial live evidence and reconcile handoffs
+
+- Date/time: 2026-10-15T15:16:44+08:00 (maintainer assignment).
+- From: Codex planning/review assistant. To: maintainer and assigned operator.
+- Reply to: COMM-0004 and REVIEW-20261015-RESULTS.
+- State: #149 integrated; #150 corrected evidence candidate, acceptance open.
+- Assignment: review open PRs, fix required changes and merge suitable work.
+- #149: reviewed head `4ae7c311dd2cdf0773beb09f4b0cd7b9d19688c5`;
+  all 11 applicable CI jobs passed (fork-only DCO skipped). Independent Linux
+  Python 3.12.14 rerun of discovery/trained-evaluation/recovery/web-assets:
+  80 passed. Squash integration `9732958e0383c4b568081224a20b44c6e8d42895`.
+- #150: original head `5b7946b9001d4360d26f8df2ecce14d231fd1f5f`;
+  original execution base `c6b21b929ed35c853116fcd186559f9caad1e9ae`.
+  Correction is based on integrated #149 main; final head/checks and merge
+  identity belong to #150. Source/runtime contracts are unchanged.
+- Review result: ordinary completed-receipt replay is not completion-response
+  loss; available process identity followed by unharvested exit is not an
+  unavailable-identity fault; pre-claim disconnect is not post-claim response
+  loss. Those designated faults remain pending-live. s1–s4 remain attributed
+  to the original operator/platform/SHA, not claimed as rerun by this reviewer.
+- R09 already merged in #131 under the plan's explicit maintainer exception;
+  the contrary prohibition in the candidate is corrected. B remains open.
+- COMM-0004: reported CPU host execution partially addresses the former blanket
+  host blocker. Remaining live rows/access stay with the resource owner and
+  assigned operator; no credentials, renewed resource permission, new spend,
+  or acknowledgement by another collaborator is inferred.
+- Next action / owner: Codex validates corrected #150 and merges the partial
+  evidence record after checks; assigned operator completes remaining live
+  faults/onboarding/GPU rows, maintainer reviews complete acceptance separately.
+- Proposed normative changes: none.

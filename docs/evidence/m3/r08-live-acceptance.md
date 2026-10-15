@@ -2,7 +2,7 @@
 
 Status: **Partial live evidence recorded 2026-10-15 (UTC+8). Two-host native CPU
 execution, verified transfer, reconnect observation, disconnected cancellation, and
-lost-claim unknown are recorded below. SSH onboarding/install, GPU probe/task, and
+pre-claim retained intent are recorded below. SSH onboarding/install, GPU probe/task, and
 Checkpoint B acceptance remain open.**
 Instructions: [R08 live acceptance runbook](../../guides/r08-live-acceptance.md).
 Requirements: [plan](../../plans/m3-development-plan.md) and
@@ -48,14 +48,14 @@ its actual implementation/platform; explicitly supersede corrections.
 | TLS and actual authenticated Worker registration | Observed (partial) | Controller loopback HTTPS with pinned CA fingerprint; Worker `run-native` authenticated and claimed work. Not a packed `ssh-doctor verify-worker` record. |
 | SSH key/certificate, prerequisites, permissions and disk/port refusals | Pending-live | Not exercised |
 | CPU native task: input, claim/start, actual process, output and Run facts | **Pass** | Scenario s1 (`ctl-linux-a` serve + `wrk-darwin-a` `workers run-native`). Receipt disposition `completed`, sequence 14, `launchAllowed: false`, eventId `evt.native.remote.run.1.attempt.1.run.completed`. Controller high-water 14 / `runStatus=completed`. Event prefix includes `work.claimed` → `authorization.grant.consumed` → `attempt.started` → `work.completed` → `attempt.succeeded` → `run.completed`. Worker retained `.intent/.claim/.identity/.start/.result/.outcome`. |
-| Disconnect before claim / lost claim response | **Pass** | Scenario s4. Intent written then tunnel dropped before `.claim`. Worker error `http-disconnect`. Controller remained sequence 4 (grant not consumed; no `work.leased`/`work.claimed`). State retained only `.intent`+`.lock`. `reconcile-native` → `native-outcome-unrecorded` (observation only). Immediate `run-native` retry → `native-intent-exists` (no replacement launch). Replay identical. |
+| Disconnect before claim / lost claim response | Partial; pre-claim disconnect observed | Scenario s4. Intent written then tunnel dropped before `.claim`. Worker error `http-disconnect`. Controller remained sequence 4 (grant not consumed; no `work.leased`/`work.claimed`). State retained only `.intent`+`.lock`. `reconcile-native` → `native-outcome-unrecorded` (observation only). Immediate `run-native` retry → `native-intent-exists` (no replacement launch). Replay identical. Loss of a response after a successful claim was not exercised and remains pending-live. |
 | Tunnel loss during execution | **Pass** | Scenario s2. After `.identity` and workspace `started`, tunnel and Worker client killed; child pid/pgid remained alive on Worker. Controller later restarted. |
 | Controller restart | **Pass** | Scenario s2. Controller stopped and restarted against the same database/TLS/native context; subsequent reconcile observed the original Attempt (sequence advanced from retained facts, no duplicate start). |
 | Worker client restart and existing-process recovery | **Pass** | Scenario s2. After Worker SIGKILL, `reconcile-native` returned disposition `running` (sequence 11, `attempt.started`, `launchAllowed: false`) while original `posix-pg` child still matched saved identity. No new child launch. Later unsupervised exit without harvested `.result` settled as conservative `unknown` (sequence 12); identical replay; no fabricated completion. |
 | Interrupted input/output transfer | Pending-live | Not separately fault-injected in this run (s1 completed transfer without mid-upload interrupt) |
-| Lost completion response / identical receipt replay | **Pass** | Scenario s1. Immediate `reconcile-native` after completed `run-native` reproduced the exact receipt bytes (`cmp` identical); controller sequence remained 14 (no duplicate facts). |
+| Lost completion response / identical receipt replay | Partial; fault pending-live | Scenario s1. Immediate `reconcile-native` after completed `run-native` reproduced the exact receipt bytes (`cmp` identical); controller sequence remained 14 (no duplicate facts). The completion response was received; response-loss injection was not exercised. |
 | Disconnected cancellation / verified group stop | **Pass** | Scenario s3. Long-running child started; tunnel/Worker killed while child alive; controller appended `run.cancel.requested` while disconnected (sequence 12, `runStatus=running`). After reconnect, `reconcile-native` returned disposition `cancelled` (sequence 15, eventId `…run.cancelled`); child process exited; `.cancelled` retained; identical receipt replay. Controller events: `run.cancel.requested` → `work.failed` → `attempt.cancelled` → `run.cancelled`. |
-| Unavailable process identity / conservative unknown | **Pass (related)** | Scenario s2 terminal `unknown` after unsupervised exit without `.result`, and scenario s4 pre-claim unknown. No PID-reuse claim or invented terminal completion. |
+| Unavailable process identity / conservative unknown | Pending-live; related unknown observations only | Scenario s2 terminal `unknown` after unsupervised exit without `.result`, and scenario s4 pre-claim unknown. s2 had an available `darwin-lstart` identity; s4 never launched a process. Neither exercises unavailable identity. No PID-reuse claim or invented terminal completion. |
 | Corrupt or unauthorized paths and resource bounds | Pending-live | Not exercised on selected hosts in this run |
 | Checkpoint restore / explicit unsupported refusal | Pending-live | Not exercised |
 | Candidate GPU resource probe, including Kaggle compatibility if selected | Pending-live | No candidate-environment execution |
@@ -86,7 +86,7 @@ Private URLs, credential bytes, host addresses, and absolute operator paths are 
 - Reconcile after reconnect: disposition `cancelled`, sequence `15`, bindingDigest `jcs-sha256:e1d0f5c9f95e4fbf1ff926e58a2fcca52dd38a68e6e4d2ee6228d3737583938c`; identical replay; process group stopped.
 - Times (UTC): ~2026-10-14T22:28:42Z–2026-10-14T22:29:06Z.
 
-### s4 — lost claim → unknown
+### s4 — pre-claim disconnect; retained intent
 
 - After disconnect: Worker ProblemReport `http-disconnect`; state has intent only.
 - Controller unchanged at sequence 4 (grant not consumed).
@@ -96,12 +96,19 @@ Private URLs, credential bytes, host addresses, and absolute operator paths are 
 ## Review and integration
 
 - Candidate evidence: this checklist now records selected two-host native CPU
-  execution, transfer, reconnect observation, disconnected cancel, and lost-claim
-  unknown. Remaining R07 onboarding faults, transfer-interrupt injection, bounds
-  corruption, checkpoint restore, and all GPU rows stay pending-live.
+  execution, transfer, reconnect observation, disconnected cancel, and pre-claim
+  retained intent. Remaining R07 onboarding faults, transfer-interrupt injection, bounds
+  corruption, checkpoint restore, completion-response loss, post-claim response
+  loss, unavailable-identity injection, and all GPU rows stay pending-live.
 - Implementation integration: CPU native/Ray slices are already merged; see the
   [collaboration snapshot](../../collaboration-log.md#current-snapshot).
-- Evidence PR/head/base, merge SHA and post-merge CI: record only after they exist.
+- Evidence PR: #150, original head `5b7946b9001d4360d26f8df2ecce14d231fd1f5f`,
+  execution base `c6b21b929ed35c853116fcd186559f9caad1e9ae`. Review corrected
+  overclaimed combined rows on 2026-10-15; this is integration of a partial
+  operator report, not independent reproduction or complete live acceptance.
+  Final correction head/checks and merge identity are tracked in #150.
 - R07/R08 acceptance and B review: still pending maintainer review; GPU and
   onboarding gaps prevent claiming Checkpoint B closed.
-- Next package: R09 remains unauthorized until R08 is integrated and accepted.
+- R09 was integrated in #131 at `73e1386cd5c3d6cafbc91798b62a5b04460cfc93`
+  under the recorded maintainer authorization for sequential implementation and
+  merges. This evidence does not close B or change that authorization.

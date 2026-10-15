@@ -22,3 +22,9 @@ no generalization, novelty, statistical significance or phase acceptance follows
 Invalid cases: `detail.invalid-missing-metric.json` omits required macro F1;
 `report.invalid-automatic-verdict.json` claims system-derived judgement;
 `report.invalid-extra-authority.json` adds execution permission not in the contract.
+
+`commands/list.valid.json` is an application command for workspace-local discovery;
+it needs neither a training profile nor an experiment revision. Execute it with
+`researchos app execute ... --root WORKSPACE`. The invalid
+`commands/list.invalid-extra-path.json` adds an arbitrary path that the closed
+operation must refuse; it cannot select a different workspace's result store.
