@@ -108,6 +108,7 @@
         "authorization.revoke",
         "conclusion.record",
         "evaluation.collect",
+        "evaluation.list",
         "evaluation.report",
         "conclusion.publish",
         "conclusion.list",

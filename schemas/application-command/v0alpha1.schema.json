@@ -683,6 +683,21 @@
       "title": "EvaluationCompareOperation",
       "type": "object"
     },
+    "EvaluationListOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "evaluation.list",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "EvaluationListOperation",
+      "type": "object"
+    },
     "EvaluationReportOperation": {
       "additionalProperties": false,
       "properties": {
@@ -2278,6 +2293,7 @@
           "conclusion.record": "#/$defs/ConclusionRecordOperation",
           "evaluation.collect": "#/$defs/EvaluationCollectOperation",
           "evaluation.compare": "#/$defs/EvaluationCompareOperation",
+          "evaluation.list": "#/$defs/EvaluationListOperation",
           "evaluation.report": "#/$defs/EvaluationReportOperation",
           "evaluation.run": "#/$defs/EvaluationRunOperation",
           "evidence.import": "#/$defs/EvidenceImportOperation",
@@ -2341,6 +2357,9 @@
         },
         {
           "$ref": "#/$defs/EvaluationCollectOperation"
+        },
+        {
+          "$ref": "#/$defs/EvaluationListOperation"
         },
         {
           "$ref": "#/$defs/EvaluationReportOperation"

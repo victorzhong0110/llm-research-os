@@ -30,7 +30,13 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-09, maintainer-assigned maintenance continuation**.
+Snapshot date: **2026-10-15 (Asia/Taipei), maintainer-assigned result usability**.
+Current feature base: `c6b21b929ed35c853116fcd186559f9caad1e9ae` (#148).
+Branch: `feat/research-results-workbench`. The maintainer explicitly requested
+usable experiment comparisons, evaluation results and research conclusions.
+This is a sequential R13 usability continuation; no new R identity or phase
+acceptance is created. Final head, validation and PR remain attributable to
+this candidate. Historical maintenance snapshot follows:
 Current base main: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
 #147 cryptography 50.0.2, #145 pinned setup-node 7.0.0 and #146 development
 locks (mypy 2.4.0/librt 0.16.0, Ruff 0.16.10, Hypothesis 6.168.4).
@@ -54,7 +60,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R11–R14 assigned engineering is integrated. #108 maintenance is the sole active slice on actual dependency-updated main; no new R package or human acceptance is claimed. |
+| Current package | R13 result usability continuation on #148 main: recorded evaluation selection, metric/prediction comparison and readable preserved conclusions. Historical maintenance and acceptance evidence remains at its recorded identity. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1176,3 +1182,34 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next owner: Codex verifies final CI, fixes genuine findings, integrates this
   maintenance and closes #108 only with recorded evidence. Human/Mac/private
   acceptance stays with the maintainer; no collaborator acknowledgement invented.
+
+
+### REVIEW-20261015-RESULTS — Research result usability continuation
+
+- Date/time: 2026-10-15T05:26:00+08:00 (maintainer assignment).
+- From: Codex planning/review assistant and assigned implementer. To: maintainer.
+- Reply to: REVIEW-20261008-R13; the maintainer now explicitly asks to make
+  experiment comparison, evaluation results and conclusions usable.
+- Base: verified checkout of actual main
+  `c6b21b929ed35c853116fcd186559f9caad1e9ae`; branch
+  `feat/research-results-workbench`. One sequential slice, no delegation.
+- Behavior: bounded `evaluation.list` discovers collected pairs from durable
+  workspace receipts and replays both models; report previews include the
+  existing verified typed details without changing comparison/report identity.
+  Result selection restores revision, readable metrics and paired errors;
+  historical human reports render their narrative/rationale and evidence.
+- Validation: final local/CI evidence is recorded with the PR. Regressions cover
+  empty and bounded discovery, corrupted and rehashed receipts, restart,
+  restore, stale preview visibility, error filters, lost-response exact retry,
+  and recorded report reading. Actual public CPU fixtures are engineering
+  evidence; synthetic browser actors are not real human acceptance.
+- Contract additions: closed read-only `evaluation.list` command/receipt literal;
+  additive verified detail fields in preview results. Generated application
+  and operations-backup schemas/types are updated. EventStore, Worker grants,
+  historical report versions and comparison digests are unchanged.
+- Gaps: independent human research-efficiency trials, private providers,
+  selected-host/GPU and full B/C/D acceptance remain open. No LLaMA-Factory
+  adapter, new model framework, paid work or publication is introduced.
+- Next owner: Codex completes reviewable implementation and exact-head checks;
+  maintainer owns real participant/live acceptance and merge decision for this
+  feature continuation. No collaborator acknowledgement is invented.

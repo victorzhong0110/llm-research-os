@@ -206,3 +206,113 @@ export interface WorkspaceView {
   readonly workerRoot: string;
   readonly highWaterMark: number;
 }
+
+export interface ResearchReport {
+  readonly apiVersion: "researchos.dev/conclusion/v0alpha2";
+  readonly kind: "ResearchReport";
+  readonly contractVersion: "v0alpha2";
+  readonly reportId: string;
+  readonly projectId: string;
+  readonly experimentRevision: number;
+  readonly actorId: string;
+  readonly actorKind: "human";
+  readonly submittedAt: string;
+  readonly comparisonDigest: string;
+  readonly comparison: TrainedComparison;
+  readonly narrative: string;
+  readonly verdict: "insufficient-evidence" | "supported" | "unsupported";
+  readonly rationale: string;
+  readonly evidenceRefs: ReadonlyArray<string>;
+  readonly systemDerived: false;
+}
+
+export interface TrainedComparison {
+  readonly apiVersion: "researchos.dev/evaluation/v0alpha2";
+  readonly kind: "TrainedComparison";
+  readonly baselineArtifact: string;
+  readonly candidateArtifact: string;
+  readonly baseline: TrainingProvenance;
+  readonly candidate: TrainingProvenance;
+  readonly comparison: EvaluationComparisonDocument;
+  readonly limitations: ReadonlyArray<string>;
+  readonly systemDerivedConclusion: false;
+}
+
+export interface EvaluationComparisonDocument {
+  readonly apiVersion: "researchos.dev/evaluation/v0alpha1";
+  readonly kind: "EvaluationComparison";
+  readonly outcome: "improved" | "regressed" | "unchanged" | "incomparable";
+  readonly baselineDetailDigest: string;
+  readonly candidateDetailDigest: string;
+  readonly requiredMetrics: ReadonlyArray<"accuracy" | "macro_f1" | "mean_absolute_error">;
+  readonly deltas: ReadonlyArray<MetricDeltaDocument>;
+  readonly missingMetrics: ReadonlyArray<"accuracy" | "macro_f1" | "mean_absolute_error">;
+  readonly supportsAConclusion: boolean;
+  readonly refusal: string | null;
+  readonly limitations: ReadonlyArray<string>;
+}
+
+export interface MetricDeltaDocument {
+  readonly metric: "accuracy" | "macro_f1" | "mean_absolute_error";
+  readonly baseline: string;
+  readonly candidate: string;
+  readonly change: string;
+  readonly direction: "better" | "same" | "worse" | "incomparable";
+}
+
+export interface TrainingProvenance {
+  readonly projectId: string;
+  readonly experimentRevision: number;
+  readonly runId: string;
+  readonly attemptId: string;
+  readonly taskId: string;
+  readonly outputArtifact: string;
+  readonly requestArtifact: string;
+  readonly requestDigest: string;
+  readonly sourceDigest: string;
+  readonly trainingDatasetDigest: string;
+  readonly configDigest: string;
+  readonly modelDigest: string;
+  readonly completedEventId: string;
+  readonly completedSequence: number;
+  readonly proposalId: string | null;
+  readonly decisionId: string | null;
+}
+
+export interface TrainedEvaluationDetail {
+  readonly apiVersion: "researchos.dev/evaluation/v0alpha2";
+  readonly kind: "TrainedEvaluationDetail";
+  readonly label: "real-trained-public-development-benchmark";
+  readonly modelRole: "baseline" | "candidate";
+  readonly provenance: TrainingProvenance;
+  readonly detail: EvaluationDetailDocument;
+  readonly failureExampleIds: ReadonlyArray<string>;
+  readonly limitations: ReadonlyArray<string>;
+}
+
+export interface EvaluationDetailDocument {
+  readonly apiVersion: "researchos.dev/evaluation/v0alpha1";
+  readonly kind: "EvaluationDetail";
+  readonly datasetDigest: string;
+  readonly evaluatorName: string;
+  readonly evaluatorVersion: string;
+  readonly split: string;
+  readonly seed: number;
+  readonly exampleCount: number;
+  readonly metrics: Metrics;
+  readonly examples: ReadonlyArray<ExampleDetail>;
+}
+
+export interface ExampleDetail {
+  readonly exampleId: string;
+  readonly predicted: 0 | 1;
+  readonly expected: 0 | 1;
+  readonly correct: boolean;
+  readonly absoluteError: string;
+}
+
+export interface Metrics {
+  readonly accuracy: string;
+  readonly macro_f1: string;
+  readonly mean_absolute_error: string;
+}

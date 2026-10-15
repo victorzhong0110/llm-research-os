@@ -245,6 +245,13 @@ def load_detail(workspace: Workspace, digest: str, read: Any) -> dict[str, Any]:
 def comparison_document(
     workspace: Workspace, baseline: str, candidate: str, read: Any
 ) -> dict[str, Any]:
+    return comparison_material(workspace, baseline, candidate, read)[0]
+
+
+def comparison_material(
+    workspace: Workspace, baseline: str, candidate: str, read: Any
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Replay both details once for a comparison and its inspectable examples."""
     left, right = load_detail(workspace, baseline, read), load_detail(workspace, candidate, read)
     if left["modelRole"] != "baseline" or right["modelRole"] != "candidate":
         raise ApplicationError(
@@ -268,7 +275,7 @@ def comparison_document(
         baseline_detail_digest=content_digest(left),
         candidate_detail_digest=content_digest(right),
     )
-    return {
+    document = {
         "apiVersion": "researchos.dev/evaluation/v0alpha2",
         "kind": "TrainedComparison",
         "baselineArtifact": baseline,
@@ -279,3 +286,4 @@ def comparison_document(
         "limitations": list(LIMITATIONS),
         "systemDerivedConclusion": False,
     }
+    return document, left, right
