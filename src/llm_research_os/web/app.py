@@ -28,6 +28,8 @@ from llm_research_os.application.service import ApplicationService
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.canonical import content_digest
+from llm_research_os.dashboard.models import DashboardWrite
+from llm_research_os.dashboard.store import DashboardStore
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
 from llm_research_os.web.assets import AssetError
@@ -190,6 +192,8 @@ class LocalApi:
         self._sessions.check_csrf(
             session, csrf_header if isinstance(csrf_header, str) else None, method=method
         )
+        if route == "/dashboard":
+            return self._dashboard(environ, method)
         if route == "/stream":
             if method != "GET":
                 raise LocalApiError("method-not-allowed", "Stream with GET.", status=405)
@@ -211,6 +215,38 @@ class LocalApi:
                 status=405,
             )
         return self._read(environ, route, session)
+
+    def _dashboard(self, environ: dict[str, Any], method: str) -> Response:
+        try:
+            store = DashboardStore(self._workspace)
+            if method == "GET":
+                revision = _query(environ).get("revision")
+                if revision is not None and (
+                    not revision.isascii() or not revision.isdigit() or len(revision) > 12
+                ):
+                    raise bad_request("parameter-invalid", "Invalid map revision.")
+                result = store.read(None if revision is None else int(revision))
+            elif method == "POST":
+                if str(environ.get("CONTENT_TYPE", "")).split(";", 1)[0] != "application/json":
+                    raise bad_request("content-type-unsupported", "Use application/json.")
+                raw = read_bounded_body(
+                    environ["wsgi.input"],
+                    content_length=environ.get("CONTENT_LENGTH"),
+                    limits=self._limits,
+                )
+                decoded = decode_bounded_json(raw, limits=self._limits)
+                result = store.write(DashboardWrite.model_validate_json(json.dumps(decoded)))
+            else:
+                raise LocalApiError("method-not-allowed", "Use GET or POST for maps.", status=405)
+        except ValidationError as exc:
+            raise bad_request("document-invalid", "The map document is invalid.") from exc
+        except (OSError, ValueError) as exc:
+            raise LocalApiError(
+                "command-refused",
+                "Map refused. Reload and check its revision, project and pinned components.",
+                status=409,
+            ) from exc
+        return self._json(result.model_dump(mode="json", by_alias=True))
 
     def _asset(self, environ: dict[str, Any], path: str, method: str) -> Response | Stream:
         """Serve the built workbench bundle.
@@ -283,6 +319,10 @@ class LocalApi:
                     "session": session.document(),
                     "pollFallbackSeconds": self._stream_poll_seconds,
                 }
+            )
+        if route == "/workspace" and not self._workspace.control_db.exists():
+            return self._json(
+                {"kind": "WorkspaceView", **self._workspace.describe(), "highWaterMark": 0}
             )
         with self._open_store() as store, store.query_budget():
             views = ReadProjections(

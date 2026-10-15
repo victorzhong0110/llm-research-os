@@ -1036,3 +1036,16 @@ not restore executable declarations or their trust. Tests exercise inert loads,
 wrong interfaces/permissions, missing/disabled dependencies, unknown registry
 structure, exact CPU adapter output and unchanged control/CAS; earlier crash,
 hang, descendant, stderr-bound and Darwin cleanup regressions remain required.
+
+## TM-100 — Workspace map composition
+
+Map documents are untrusted local view input. Closed Pydantic contracts reject
+executable renderer types, arbitrary fetch URLs, CSS strings, nonfinite geometry,
+cyclic/missing parents and dangling edges. Existing API Host/Origin/session/CSRF
+and bounded parsing guard reads/writes. SQLite transactions enforce project and
+revision binding, request replay and a 30-revision retention bound. Agent writes
+respect human pins, including ancestor movement. View writes cannot append
+EventStore facts, grant execution authority, invoke models or allocate resources.
+Tests: `tests/test_dashboard.py`. Author kind is cooperative metadata, not a
+security boundary against another process with the same filesystem access.
+Existing backup formats omit the new sidecar; explicit export is required.

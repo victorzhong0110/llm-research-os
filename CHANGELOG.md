@@ -684,3 +684,5 @@ authorized release.
 - Persist inert/reviewed extension lifecycle and diagnostics through the CLI;
   demonstrate the existing CPU evaluator under the existing subprocess bounds.
 - Keep untrusted code refused and backup restore free of executable trust.
+
+- Add revision-bound workspace map composition through the local API and CLI.

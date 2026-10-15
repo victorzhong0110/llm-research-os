@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from llm_research_os.canonical import SEMANTIC_DIGEST_PATTERN
+from llm_research_os.dashboard.models import DashboardDocument, DashboardWrite
 from llm_research_os.web.errors import ApiErrorCode
 
 LOCAL_API_VERSION = "researchos.dev/local-api/v0alpha1"
@@ -290,6 +291,8 @@ class RunPageDocument(_Page):
 
 
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "DashboardDocument": DashboardDocument,
+    "DashboardWrite": DashboardWrite,
     "ArtifactView": ArtifactDocument,
     "Capabilities": CapabilitiesDocument,
     "CommandReceipt": CommandReceipt,

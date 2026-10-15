@@ -44,9 +44,10 @@ two-host CPU evidence remains attributed to execution base
 closure is claimed.
 
 The maintainer paused the existing checkpoint trial campaign and confirmed the
-[research dashboard direction](plans/research-dashboard.md). Current work records
-that design and proposed sequential delivery slices. It does not implement the
-dashboard or establish first-use acceptance. The follow-up adds a side toolbox
+[research dashboard direction](plans/research-dashboard.md). The maintainer subsequently authorized full implementation, including a unified
+one-person AI organization map spanning research, infrastructure, serving,
+reliability, costs and governance. The composition foundation is under development;
+first-use acceptance remains open. The follow-up adds a side toolbox
 with Browse/Edit/AI modes and contextual Agent markers. See DESIGN-20261015-01
 and DESIGN-20261016-02 below.
 
@@ -1324,3 +1325,16 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   contextual Agent markers in the representative interaction prototype. Preserve
   the existing evidence and authority boundaries; no collaborator acknowledgement
   is inferred.
+
+## BUILD-20261016-01 — Authorized semantic dashboard implementation
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- State: implementation in progress, replying to DESIGN-20261016-02.
+- Base: verified main fe61937072db21258e01e2ca685ef1d07afa0a0c.
+- Scope: one-person AI organization map, on-demand arrows, large-map navigation,
+  Browse/Edit/AI, themes, real-source bindings and cooperative Agent composition.
+- This foundation adds closed map contracts, CAS revision writes, retained history,
+  CLI/API parity and pin protection. Frontend delivery follows in the same workstream.
+- Existing checkpoint campaign remains paused; no live or first-user acceptance claimed.
+- Local validation: focused map/API/asset checks and strict typing; final immutable
+  candidate checks and PR evidence will be recorded before integration.

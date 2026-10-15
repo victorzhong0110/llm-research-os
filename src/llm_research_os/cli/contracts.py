@@ -45,6 +45,9 @@ from llm_research_os.budget.schema import (
     canonical_budget_limit_request_schema,
     write_budget_limit_request_schema,
 )
+from llm_research_os.dashboard.schema import canonical_schema as canonical_dashboard_schema
+from llm_research_os.dashboard.schema import schema_matches as dashboard_schema_matches
+from llm_research_os.dashboard.schema import write_schema as write_dashboard_schema
 from llm_research_os.evaluation.schema import (
     canonical_schema as canonical_evaluation_schema,
 )
@@ -374,6 +377,12 @@ def _contract(
 
 
 SCHEMA_CONTRACTS: dict[str, SchemaContract] = {
+    "dashboard-document": _contract(
+        canonical_dashboard_schema,
+        dashboard_schema_matches,
+        write_dashboard_schema,
+        "schemas/dashboard-document/v0alpha1.schema.json",
+    ),
     "extension-package": _contract(
         canonical_package_schema,
         package_schema_matches,

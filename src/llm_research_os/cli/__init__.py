@@ -11,6 +11,7 @@ from llm_research_os.cli.artifacts_commands import run_artifacts
 from llm_research_os.cli.authz_commands import run_authorizations, run_authorize
 from llm_research_os.cli.blocks_commands import run_blocks
 from llm_research_os.cli.budget_commands import run_budget
+from llm_research_os.cli.dashboard_commands import run_dashboard
 from llm_research_os.cli.events_commands import run_events
 from llm_research_os.cli.evidence_commands import run_evidence
 from llm_research_os.cli.extension_commands import run_extensions
@@ -43,6 +44,7 @@ def _run_training(args: argparse.Namespace) -> int:
 
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "app": run_app,
+    "dashboard": run_dashboard,
     "extensions": run_extensions,
     "validate": run_validate,
     "schema": run_schema,
