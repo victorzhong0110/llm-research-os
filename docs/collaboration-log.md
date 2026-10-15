@@ -30,7 +30,7 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-15, maintainer-confirmed dashboard direction**.
+Snapshot date: **2026-10-16, dashboard toolbox follow-up**.
 Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
 [main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
 passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
@@ -46,7 +46,9 @@ closure is claimed.
 The maintainer paused the existing checkpoint trial campaign and confirmed the
 [research dashboard direction](plans/research-dashboard.md). Current work records
 that design and proposed sequential delivery slices. It does not implement the
-dashboard or establish first-use acceptance. See DESIGN-20261015-01 below.
+dashboard or establish first-use acceptance. The follow-up adds a side toolbox
+with Browse/Edit/AI modes and contextual Agent markers. See DESIGN-20261015-01
+and DESIGN-20261016-02 below.
 
 Historical maintenance snapshot follows:
 Historical maintenance base: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
@@ -86,7 +88,7 @@ passed). Documentation changes do not advance the execution baseline.
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Partially addressed by merged #150; remaining campaign paused, evidence open | Preserve reported s1–s4 and remaining R07/fault/GPU gaps. Resume the campaign only under a subsequent maintainer direction; no reusable private connection configuration was received. See DESIGN-20261015-01. |
-| DESIGN-20261015-01 | Planning/review assistant and next assigned implementer | Design recorded; implementation handoff open | Use the dashboard plan for the next sequential product slice. Detailed contracts and usability evidence are pending; no collaborator acknowledgement is inferred. |
+| DESIGN-20261015-01 / DESIGN-20261016-02 | Planning/review assistant and next assigned implementer | Design and toolbox follow-up recorded; implementation handoff open | Use the dashboard plan, including Browse/Edit/AI modes, for the next sequential product slice. Detailed contracts and usability evidence are pending; no collaborator acknowledgement is inferred. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
 | COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
@@ -1299,3 +1301,26 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   representative interaction map and source inventory, then a real overview and
   complete first-use workflow. Work remains sequential. COMM-0004 stays open
   with its trial campaign paused; no collaborator acknowledgement is invented.
+
+### DESIGN-20261016-02 — Add the side toolbox and contextual Agent entry points
+
+- Date/time: 2026-10-16T00:30:59+08:00 (maintainer continuation request).
+- From: Codex planning/review assistant. To: maintainer and next assigned implementer.
+- Reply to: DESIGN-20261015-01 and the maintainer's toolbox/sketch follow-up.
+- State: Requested modes incorporated into the design; detailed interaction
+  behavior is specified for prototype review, not claimed as implemented.
+- Base: documentation commit `75249660c997d585acbcf5190a3356426ef0ff3a` on
+  `docs/semantic-research-dashboard`; production baseline remains `fe619370`.
+- Change: default Browse opens details; Edit enables manual move/resize/group;
+  AI opens scoped conversation to modify the map. Active mode and target are
+  visible, context survives mode changes, and submitted requests retain their
+  original targets. Attached Agent markers expose the work's own task context.
+  The sketch's size/color/shape vocabulary expresses prominence, attention and
+  type without inventing quantitative telemetry or domain facts.
+- Validation: documentation whitespace and local link-target checks only.
+  No production UI, schema, runtime, checkpoint trial, or new authorization is
+  introduced; the previously paused campaign remains paused.
+- Next action / owner: include the three modes, explicit AI targeting and
+  contextual Agent markers in the representative interaction prototype. Preserve
+  the existing evidence and authority boundaries; no collaborator acknowledgement
+  is inferred.

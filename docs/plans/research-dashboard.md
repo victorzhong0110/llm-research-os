@@ -44,6 +44,15 @@ requests. State must also be expressed with text or shape, not color alone.
 Small activity marks belong near the work they describe. Animation should be
 subtle and respect reduced-motion settings.
 
+The maintainer's follow-up sketch adds a compact Agent marker attached to the
+component where it is working, plus size, color and shape as visual signals.
+Use size for relative prominence within a region, accent for current focus or
+attention, and a consistent shape/icon vocabulary for component types. Resizing
+expresses view intent; component area is not a measurement of compute, cost or
+importance in the underlying research. Quantitative charts retain their own
+labeled scales. Stable state labels and focus outlines distinguish attention
+from a warning, and the meaning survives theme changes.
+
 ## Spatial and relationship vocabulary
 
 The map combines semantic relationships with a user's view of the work. A region
@@ -73,10 +82,50 @@ highlights affected work when selected. No fixed global pipeline is required.
 
 ## Interaction and human intent
 
+### Side toolbox and interaction modes
+
+The maintainer requested a toolbox alongside the map with ordinary clicking,
+manual modification, and AI conversation as distinct modes. Use a compact edge
+toolbox with visible labels and a clear active state. Keep it available while
+inspecting details; a conversation panel must not replace the map. Exact edge,
+dimensions and icon treatment remain prototype decisions.
+
+| Mode | Pointer and keyboard behavior | Visible affordances |
+| --- | --- | --- |
+| Browse (default) | Hover/focus previews; click/tap opens details; drag empty canvas to pan | No component movement or resize handles; status and Agent markers remain inspectable |
+| Edit | Click selects; drag moves; handles resize; selection supports grouping, alignment and pinning | Selected bounds, resize handles and local edit controls; an explicit Details action remains available |
+| AI | Open conversation about the map, selected components or a named region | A visible target chip and selection highlight, plus proposed/applied view changes and undo |
+
+In AI mode the user can say, for example, "place these two experiments side by
+side," "add provider health beside this project," or "make the comparison more
+prominent." Keep the target scope visible and editable before submission. A
+request binds its target identities and view revision when submitted; later
+selection changes must not silently retarget an in-flight request. With no
+selection, explicitly show that the scope is the current map.
+
+Switching modes preserves selection, viewport and edit history. Switching back
+to Browse ends manual layout manipulation. Escape dismisses the active temporary
+interaction first, then returns to Browse; it does not silently discard a draft
+message or stop a running research task. Editing a component's layout does not
+activate its domain actions. Provide keyboard/non-drag equivalents.
+
+Keep component insertion, undo/redo, fit-to-view and appearance in a compact
+secondary toolbox area. Do not present every operation as a new global mode.
+Read-only details and source evidence remain accessible in all three modes.
+
+The attached Agent marker opens that Agent's recorded task/activity and relevant
+conversation. The toolbox AI opens composition assistance with explicit map or
+selection scope. These may use the same Agent infrastructure, but their entry
+points make the task context clear. A quiet or unavailable marker does not imply
+that no work is happening; show the last observation and freshness. A view-edit
+request is not authorization to launch, cancel, or reconfigure research work.
+
+### Interaction semantics
+
 | Interaction | Visible response | Persisted meaning |
 | --- | --- | --- |
 | Hover or keyboard focus | Brief status, current activity, freshness and next relevant action | No change to facts or layout |
-| Select / tap | Detail panel with visualization, values, evidence, activity and available actions | Selection; closing restores map context |
+| Select / tap | Browse opens details; Edit selects the component; AI makes the conversation target visible; Details remains available | Selection or explicit target scope; closing details restores map context |
 | Move / resize | Nearby layout adapts without moving the whole map | View position and preferred prominence, not a new dependency |
 | Pin / unpin | Clear anchor indicator | An explicit layout constraint respected by AI updates |
 | Create / name a visual group | Preview the members and title | Explicit organizational intent; domain membership unchanged |
@@ -173,7 +222,7 @@ Proceed sequentially from verified main, with independently reviewable changes.
 
 | Slice | Deliverable | Review evidence |
 | --- | --- | --- |
-| 1. Interaction model | A complete representative map with containment, peers, shared references, activity and review marks; both skins; source inventory and draft component/view contracts | Inspect overview, hover/focus, drilldown, move/group/pin and semantic-edit distinction using clearly labeled examples; resolve comprehension problems before production layout work |
+| 1. Interaction model | A complete representative map with containment, peers, shared references, activity and review marks; both skins; Browse/Edit/AI side toolbox; source inventory and draft component/view contracts | Inspect overview, hover/focus, drilldown, mode switching, move/group/pin, explicit AI targets and semantic-edit distinction using clearly labeled examples; resolve comprehension problems before production layout work |
 | 2. Real overview | Production map shell with the two themes, readable component states, existing project/run/result data, and evidence-linked detail | Follow a real recorded task from overview to its result; missing/stale/error cases and keyboard navigation remain usable; no fake resource telemetry |
 | 3. First useful workflow | Guided entry for an empty or existing project; choose a goal/template, review prerequisites, use existing approval/execution paths, inspect a result and record a conclusion | Complete one supported end-to-end workflow without raw JSON or internal-ID knowledge; errors explain the next action, authority and unknown-state semantics preserved |
 | 4. Durable human arrangement | Persist position, groups, pins, collapse and view revisions; undo and restore without changing domain facts | Reload preserves layout; shared references stay consistent; explicit semantic edits use domain operations; view undo cannot undo execution |
@@ -194,6 +243,9 @@ still to be specified. Do not turn these proposals into claimed acceptance.
   evidence. Missing telemetry and unsupported comparisons are understandable.
 - Moving two experiments together changes view intent only. An explicit
   dependency edit has a distinct preview and uses the domain operation.
+- Browse clicks open details without moving components. Edit exposes handles;
+  AI exposes its target scope. Switching modes preserves context, and a later
+  selection cannot redirect an already submitted AI request.
 - Two tasks sharing a dataset or Worker retain one authoritative identity.
   Grouping, collapse and multiple representations do not duplicate the facts.
 - New activity arrives without displacing pinned work or losing the current

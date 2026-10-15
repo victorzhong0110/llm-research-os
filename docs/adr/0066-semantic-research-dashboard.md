@@ -28,6 +28,13 @@ single top-to-bottom or left-to-right workflow. Hover provides a short preview;
 selection opens evidence, visualizations, AI interpretation, and relevant actions.
 Keyboard and touch users can reach the same information without hovering.
 
+A side toolbox separates Browse, Edit and AI conversation. Browse is the default
+for inspecting work; Edit exposes manual move/resize/group controls; AI assists
+with the current map or explicitly selected targets. Active mode and target scope
+are visible. Mode changes preserve spatial context and do not change execution
+authority. Agent activity markers attached to work open their task context;
+the toolbox AI provides the map-composition entry point.
+
 Represent containment with regions, subordinate activity with attached elements,
 peers with comparable treatment and grouping, dependencies with selective directed
 edges, and references/shared resources with explicit associations. Do not force
