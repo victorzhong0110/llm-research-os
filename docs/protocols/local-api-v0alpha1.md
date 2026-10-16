@@ -99,6 +99,7 @@ its cursor means "strictly older than this"; event and revision cursors mean
 | POST/GET/DELETE | `/api/v0alpha1/session` | Bootstrap, inspect, end a session |
 | GET | `/api/v0alpha1/capabilities` | API version, enforced limits, polling interval |
 | GET | `/api/v0alpha1/workspace` | Project identity, manifest-relative paths, high-water mark |
+| GET | `/api/v0alpha1/dashboard/activity` | Latest 100 verified project events, ascending within the snapshot; `olderAvailable` indicates truncation |
 | GET | `/api/v0alpha1/events` | Bounded, project-scoped event page |
 | GET | `/api/v0alpha1/revisions` | Bounded spec-revision page |
 | GET | `/api/v0alpha1/runs` | Bounded run index, newest first |

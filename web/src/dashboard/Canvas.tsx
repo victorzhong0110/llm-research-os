@@ -59,14 +59,25 @@ export function Canvas({
     if (!autoFit || fitted.current || !surface.current) return;
     fitted.current = true;
     const rect = surface.current.getBoundingClientRect();
+    const roots = state.components.filter((node) => !node.parentId);
+    const width =
+      Math.max(
+        100,
+        ...roots.map((node) => node.position.x + node.position.width),
+      ) + 40;
+    const height =
+      Math.max(
+        100,
+        ...roots.map((node) => node.position.y + node.position.height),
+      ) + 40;
     const zoom = Math.max(
       0.1,
-      Math.min(0.9, (rect.width - 60) / 1420, (rect.height - 80) / 1080),
+      Math.min(0.9, (rect.width - 48) / width, (rect.height - 70) / height),
     );
     onChange(
       {
         ...state,
-        viewport: { x: (rect.width - 1420 * zoom) / 2, y: 24, zoom },
+        viewport: { x: (rect.width - width * zoom) / 2, y: 24, zoom },
       },
       false,
     );
@@ -235,11 +246,11 @@ export function Canvas({
     return () => target.removeEventListener("wheel", wheel);
   }, [state, onChange]);
   const maxX = Math.max(
-    1450,
+    100,
     ...visible.map((n) => (positions.get(n.id)?.x ?? 0) + n.position.width),
   );
   const maxY = Math.max(
-    1100,
+    100,
     ...visible.map((n) => (positions.get(n.id)?.y ?? 0) + n.position.height),
   );
   return (

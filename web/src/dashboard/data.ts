@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { Paged } from "../api";
 import type {
+  ActivitySnapshot,
   EventItem,
   ResearchLedgerView,
   RunItem,
@@ -12,7 +13,7 @@ import type { Node } from "./model";
 export interface Sources {
   observations: ReadonlyArray<Observation>;
   runs: Paged<RunItem> | null;
-  events: Paged<EventItem> | null;
+  events: ActivitySnapshot | null;
   research: ResearchLedgerView | null;
   errors: Readonly<Record<string, string>>;
   sampledAt: string | null;
@@ -35,7 +36,7 @@ export function useSources(visible: boolean) {
     setBusy(true);
     const [runs, events, research, observations] = await Promise.allSettled([
       api.runs(null, 500),
-      api.events(null, 100),
+      api.activity(),
       api.research(),
       api.observations(),
     ]);
@@ -198,7 +199,9 @@ export function summary(node: Node, data: Sources): Summary {
     return {
       value: String(items.length),
       label: node.type === "agent" ? "Recorded AI events" : "Recorded events",
-      status: data.events.nextCursor ? "Partial snapshot" : "Recorded snapshot",
+      status: data.events.olderAvailable
+        ? "Partial snapshot"
+        : "Recorded snapshot",
       tone: "neutral",
       detail:
         node.type === "agent"

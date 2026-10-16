@@ -30,7 +30,8 @@ Use Graphite, Warm paper or a custom background/accent, text size and density.
 Search, zoom, pan, fit and the minimap navigate larger arrangements. Custom cards
 choose summary, metric, table, chart or timeline renderers and explicit bindings;
 they do not execute arbitrary frontend code. Run/research/event snapshots state
-their bounded coverage. Telemetry is missing until an observation is supplied.
+their bounded coverage. Activity contains the latest 100 project events, in append
+order, and explicitly marks older records outside the snapshot. Telemetry is missing until an observation is supplied.
 
 ## Connect your own Agent
 

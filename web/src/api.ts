@@ -6,6 +6,7 @@
  */
 
 import type {
+  ActivitySnapshot,
   ObservationList,
   AgentAsk,
   AgentTask,
@@ -157,6 +158,7 @@ export interface Paged<T> {
 }
 
 export const api = {
+  activity(): Promise<ActivitySnapshot> { return request<ActivitySnapshot>("/dashboard/activity"); },
   observations(): Promise<ObservationList> {
     return request<ObservationList>("/dashboard/observations");
   },

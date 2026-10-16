@@ -30,7 +30,7 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-16, dashboard toolbox follow-up**.
+Snapshot date: **2026-10-16, dashboard PR #156 review corrections**.
 Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
 [main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
 passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
@@ -46,8 +46,11 @@ closure is claimed.
 The maintainer paused the existing checkpoint trial campaign and confirmed the
 [research dashboard direction](plans/research-dashboard.md). The maintainer subsequently authorized full implementation, including a unified
 one-person AI organization map spanning research, infrastructure, serving,
-reliability, costs and governance. The composition foundation is under development;
-first-use acceptance remains open. The follow-up adds a side toolbox
+reliability, costs and governance. [PR #156](https://github.com/victorzhong0110/llm-research-os/pull/156)
+contains the composition UI, scoped Agent inbox and observation sources. Its
+initial head `4cb8011d4c13e9e2fb842663cce5aa014fa259ff` passed all 11 applicable
+CI jobs; review corrections are awaiting their own immutable-head CI.
+First-use acceptance remains open. The follow-up adds a side toolbox
 with Browse/Edit/AI modes and contextual Agent markers. See DESIGN-20261015-01
 and DESIGN-20261016-02 below.
 
@@ -1365,3 +1368,37 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   Existing paused checkpoint campaign and pending-live rows remain unchanged.
 - Next action/owner: Codex reviews the complete diff, resolves checks and publishes
   one coherent candidate PR. No collaborator acknowledgement or merge is inferred.
+
+
+## BUILD-20261016-03 — PR #156 review and regression corrections
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-02. State: reviewed candidate; integration pending final CI.
+- PR: https://github.com/victorzhong0110/llm-research-os/pull/156.
+  Initial head 4cb8011d4c13e9e2fb842663cce5aa014fa259ff passed all 11 applicable jobs
+  in CI 38845434468, including Linux/macOS full suites, browser and real execution
+  integration. The fork-only DCO job was inapplicable. Final corrections require
+  a new head and new CI; these results do not certify that future head.
+- Review corrections: recent activity now queries the newest 100 project events
+  before rendering them chronologically, with an explicit olderAvailable flag;
+  existing ascending event pagination is unchanged. Source-specific table
+  rendering no longer falls back to unrelated events. Manual relationship types
+  expose dependency/evidence/shared/peer/association, all view-only. The initial
+  map uses the available wide canvas more effectively.
+- Local correction checks: 121 focused API/map/asset/regression tests passed,
+  including empty/exact-limit/truncated activity and foreign-project exclusion.
+  Strict typing, lint/format, schema/contract generation, catalog/status checks,
+  package and browser bundle builds passed. The supplemental browser repeated
+  lost-save retry, scoped proposals, ingestion/charts, 1,000-component search and
+  culling, and mobile checks. Paper/graphite actual browser views were inspected.
+- Earlier local full suite: 2514 passed, 12 failed, 21 skipped, 15 deselected;
+  unrounded coverage 85.575691%. Failures concerned special-file permission and
+  process observation in this container. Three representative failing tests
+  reproduced on untouched main fe61937072db21258e01e2ca685ef1d07afa0a0c. This is
+  environmental evidence, not a waiver or a claim that all 12 were independently
+  reproduced. Formal CI at the initial PR head passed the platform gates.
+- Next action / owner: Codex publishes these corrections, waits for exact-head
+  CI, then merges under the maintainer's existing authorization and verifies main.
+  Backup integration, inbox archival, guided domain operations and actual
+  collector/Agent connections remain subsequent slices. Human first-use and the
+  paused checkpoint campaign remain unclaimed; no acknowledgement is inferred.

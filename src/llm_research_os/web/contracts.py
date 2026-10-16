@@ -282,6 +282,14 @@ class EventPageDocument(_Page):
     items: tuple[EventItem, ...]
 
 
+class ActivitySnapshot(Contract):
+    api_version: Literal["researchos.dev/local-api/v0alpha1"] = Field(alias="apiVersion")
+    kind: Literal["ActivitySnapshot"]
+    items: tuple[EventItem, ...] = Field(max_length=100)
+    high_water_mark: int = Field(alias="highWaterMark", ge=0)
+    older_available: bool = Field(alias="olderAvailable")
+
+
 class RevisionPageDocument(_Page):
     kind: Literal["RevisionPage"]
     items: tuple[RevisionItem, ...]
@@ -293,6 +301,7 @@ class RunPageDocument(_Page):
 
 
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "ActivitySnapshot": ActivitySnapshot,
     "Observation": Observation,
     "ObservationList": ObservationList,
     "AgentAsk": AgentAsk,

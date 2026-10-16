@@ -13,6 +13,7 @@ from llm_research_os.dashboard.models import DashboardDocument
 from llm_research_os.dashboard.observations import ObservationList
 from llm_research_os.spec.schema import SCHEMA_DIALECT
 from llm_research_os.web.contracts import (
+    ActivitySnapshot,
     ArtifactDocument,
     CapabilitiesDocument,
     CommandReceipt,
@@ -32,6 +33,7 @@ ResponseDocument = (
     | AgentInboxDocument
     | AgentTask
     | ObservationList
+    | ActivitySnapshot
     | ArtifactDocument
     | CapabilitiesDocument
     | CommandReceipt

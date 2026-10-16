@@ -9,6 +9,24 @@ export const API_PREFIX = "/api/v0alpha1";
 export const CONTRACT_VERSION = "v0alpha1";
 
 
+export interface ActivitySnapshot {
+  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
+  readonly kind: "ActivitySnapshot";
+  readonly items: ReadonlyArray<EventItem>;
+  readonly highWaterMark: number;
+  readonly olderAvailable: boolean;
+}
+
+export interface EventItem {
+  readonly sequence: number;
+  readonly eventId: string;
+  readonly type: string;
+  readonly occurredAt: string;
+  readonly projectId: string;
+  readonly runId?: string | null;
+  readonly attemptId?: string | null;
+}
+
 export interface Observation {
   readonly kind?: "DashboardObservation";
   readonly projectId: string;
@@ -255,16 +273,6 @@ export interface EventPage {
   readonly highWaterMark: number;
   readonly kind: "EventPage";
   readonly items: ReadonlyArray<EventItem>;
-}
-
-export interface EventItem {
-  readonly sequence: number;
-  readonly eventId: string;
-  readonly type: string;
-  readonly occurredAt: string;
-  readonly projectId: string;
-  readonly runId?: string | null;
-  readonly attemptId?: string | null;
 }
 
 export interface Health {

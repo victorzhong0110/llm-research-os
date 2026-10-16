@@ -1,5 +1,46 @@
 {
   "$defs": {
+    "ActivitySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EventItem"
+          },
+          "maxItems": 100,
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ActivitySnapshot",
+          "title": "Kind",
+          "type": "string"
+        },
+        "olderAvailable": {
+          "title": "Olderavailable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "items",
+        "highWaterMark",
+        "olderAvailable"
+      ],
+      "title": "ActivitySnapshot",
+      "type": "object"
+    },
     "AgentAsk": {
       "additionalProperties": false,
       "properties": {
@@ -1789,6 +1830,9 @@
     },
     {
       "$ref": "#/$defs/ObservationList"
+    },
+    {
+      "$ref": "#/$defs/ActivitySnapshot"
     },
     {
       "$ref": "#/$defs/ArtifactDocument"

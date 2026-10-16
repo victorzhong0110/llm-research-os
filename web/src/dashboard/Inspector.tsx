@@ -33,6 +33,8 @@ export function Inspector({
   const [error, setError] = useState("");
   const [target, setTarget] = useState("");
   const [label, setLabel] = useState("Related to");
+  const [relationType, setRelationType] =
+    useState<State["relations"][number]["type"]>("association");
   useEffect(() => {
     setEvidence(null);
     setError("");
@@ -270,6 +272,21 @@ export function Inspector({
             </select>
           </label>
           <label>
+            Relationship type
+            <select
+              value={relationType}
+              onChange={(event) =>
+                setRelationType(event.target.value as typeof relationType)
+              }
+            >
+              <option value="association">Association</option>
+              <option value="dependency">Dependency</option>
+              <option value="evidence">Evidence</option>
+              <option value="shared">Shared resource</option>
+              <option value="peer">Peer</option>
+            </select>
+          </label>
+          <label>
             Relationship label
             <input
               value={label}
@@ -289,7 +306,7 @@ export function Inspector({
                     id: crypto.randomUUID(),
                     source: node.id,
                     target,
-                    type: "association",
+                    type: relationType,
                     label,
                     scope: "view",
                   },

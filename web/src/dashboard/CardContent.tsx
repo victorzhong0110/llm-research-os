@@ -103,7 +103,24 @@ export function CardContent({
         <small>{info.status}</small>
       </span>
     );
-  const events = eventsFor(node, data).slice(-3).reverse();
+  if (node.binding?.source === "research" && data.research)
+    return (
+      <span className="map-card-table">
+        <span>
+          <span>Open questions</span>
+          <b>{data.research.openQuestionCount}</b>
+        </span>
+        <span>
+          <span>Decisions</span>
+          <b>{data.research.decisionCount}</b>
+        </span>
+        <small>{info.status}</small>
+      </span>
+    );
+  const events =
+    node.binding?.source === "events"
+      ? eventsFor(node, data).slice(-3).reverse()
+      : [];
   return (
     <span className="map-card-table">
       {events.map((event) => (

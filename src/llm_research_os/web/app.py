@@ -385,6 +385,8 @@ class LocalApi:
                         "highWaterMark": store.last_sequence(),
                     }
                 )
+            if route == "/dashboard/activity":
+                return self._json(views.activity_snapshot())
             if route == "/research":
                 return self._research()
             if route == "/events":
