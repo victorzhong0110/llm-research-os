@@ -1036,3 +1036,34 @@ not restore executable declarations or their trust. Tests exercise inert loads,
 wrong interfaces/permissions, missing/disabled dependencies, unknown registry
 structure, exact CPU adapter output and unchanged control/CAS; earlier crash,
 hang, descendant, stderr-bound and Darwin cleanup regressions remain required.
+
+## TM-100 — Workspace map composition
+
+Map documents are untrusted local view input. Closed Pydantic contracts reject
+executable renderer types, arbitrary fetch URLs, CSS strings, nonfinite geometry,
+cyclic/missing parents and dangling edges. Existing API Host/Origin/session/CSRF
+and bounded parsing guard reads/writes. SQLite transactions enforce project and
+revision binding, request replay and a 30-revision retention bound. Agent writes
+respect human pins, including ancestor movement. View writes cannot append
+EventStore facts, grant execution authority, invoke models or allocate resources.
+Tests: `tests/test_dashboard.py`. Author kind is cooperative metadata, not a
+security boundary against another process with the same filesystem access.
+Existing backup formats omit the new sidecar; explicit export is required.
+
+
+TM-100 composition extension: the Agent inbox stores bounded, frozen requests
+and immutable replies; a reply does not apply a proposal. Scope and pins are
+validated again at application. External observations are untrusted source
+assertions with explicit provenance, origin, expiry and author attribution.
+They cannot append Run facts, execute scripts, fetch arbitrary URLs or acquire
+credentials. The browser escapes explanations as text. Source replacement must
+advance time; fabricated same-user source assertions remain outside independent
+host verification. Agent task capacity is 100 and the current listing is 20;
+observation capacity is 100 at 32 KiB each. Tests include actual local API, CLI
+inbox/reply/observation and browser display with clearly synthetic fixtures.
+
+TM-100 CLI input follow-up: apply/reply/observe share a bounded nonblocking,
+no-follow regular-file reader and the existing strict JSON decoder. Duplicate
+keys at any nesting, excessive decoded depth/nodes, symlinks and special files
+are refused before storage. FIFO regressions use subprocess timeouts so a
+blocking-open regression fails instead of hanging the test runner.

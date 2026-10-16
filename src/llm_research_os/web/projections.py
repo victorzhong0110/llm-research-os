@@ -211,6 +211,37 @@ class ReadProjections:
             high_water_mark=high_water,
         )
 
+    def activity_snapshot(self) -> dict[str, Any]:
+        """Latest 100 project events; never mistake the first page for recent work."""
+        high_water = self._guarded(self._store.last_sequence)
+        rows = self._guarded(
+            self._store.read_events,
+            project_id=self._project_id,
+            until_sequence=high_water,
+            limit=101,
+            newest_first=True,
+        )
+        items = [
+            {
+                "sequence": row.sequence,
+                "eventId": str(row.event.id),
+                "type": str(row.event.type),
+                "occurredAt": str(row.event.time),
+                "projectId": str(row.event.data.project_id),
+                "runId": None if row.event.data.run_id is None else str(row.event.data.run_id),
+                "attemptId": None
+                if row.event.data.attempt_id is None
+                else str(row.event.data.attempt_id),
+            }
+            for row in reversed(rows[:100])
+        ]
+        return {
+            "kind": "ActivitySnapshot",
+            "items": items,
+            "highWaterMark": high_water,
+            "olderAvailable": len(rows) > 100,
+        }
+
     def revision_page(self, *, cursor: str | None, limit: int | None = None) -> Page:
         scope = self._project_id + "|revisions"
         after, high_water = self._bounds(cursor, scope)

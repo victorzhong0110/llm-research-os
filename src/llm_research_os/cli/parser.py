@@ -7,6 +7,7 @@ from pathlib import Path
 
 from llm_research_os.cli.application_commands import add_app_parser
 from llm_research_os.cli.contracts import DEFAULT_SCHEMA_CONTRACT, SCHEMA_CONTRACTS
+from llm_research_os.cli.dashboard_commands import add_dashboard_parser
 from llm_research_os.cli.recovery_commands import add_recovery_parser
 from llm_research_os.cli.signature_commands import add_signature_parsers
 from llm_research_os.cli.trial_commands import add_trial_parser
@@ -1074,6 +1075,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_event_format_argument(training_collect)
     add_app_parser(subparsers)
+    add_dashboard_parser(subparsers)
     add_web_parser(subparsers)
     from llm_research_os.cli.extension_commands import add_extension_parser
 

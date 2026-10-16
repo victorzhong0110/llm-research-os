@@ -1,0 +1,8 @@
+{
+  "kind": "DashboardAgentAsk",
+  "projectId": "demo",
+  "requestId": "request-1",
+  "expectedRevision": 1,
+  "scope": null,
+  "prompt": "Explain the map and suggest an arrangement."
+}

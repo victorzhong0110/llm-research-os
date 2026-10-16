@@ -746,8 +746,9 @@ class EventStore:
         project_id: str | None = None,
         run_id: str | None = None,
         event_id: str | None = None,
+        newest_first: bool = False,
     ) -> list[StoredEvent]:
-        """Read a bounded page in global append order, verifying every row.
+        """Read a bounded page in append order (optionally reversed), verifying every row.
 
         ``event_types`` is a fold filter after a verified high-water mark. It
         MAY skip sequences and is not a substitute for ``replay_events``.
@@ -763,6 +764,8 @@ class EventStore:
             or not 1 <= limit <= MAX_READ_PAGE_SIZE
         ):
             raise ValueError(f"limit must be an integer in 1..{MAX_READ_PAGE_SIZE}")
+        if type(newest_first) is not bool:
+            raise ValueError("newest_first must be a boolean")
         upper = _validate_until_sequence(until_sequence)
         types = _validate_event_types(event_types)
         clauses = ["sequence > ?"]
@@ -784,8 +787,10 @@ class EventStore:
             clauses.append(f"event_type IN ({placeholders})")
             params.extend(ordered)
         params.append(limit)
+        order = "DESC" if newest_first else "ASC"
         rows = self._connection.execute(
-            f"{_SELECT_EVENT_COLUMNS} WHERE {' AND '.join(clauses)} ORDER BY sequence LIMIT ?",
+            f"{_SELECT_EVENT_COLUMNS} WHERE {' AND '.join(clauses)} "
+            f"ORDER BY sequence {order} LIMIT ?",
             tuple(params),
         ).fetchall()
         return [self._stored_event_from_row(row) for row in rows]

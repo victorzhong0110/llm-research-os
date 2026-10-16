@@ -30,18 +30,32 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-15, maintainer-assigned PR review and integration**.
-Verified feature integration: #149 merged at
-`9732958e0383c4b568081224a20b44c6e8d42895` after all 11 applicable final-head
-CI jobs passed at `4ae7c311dd2cdf0773beb09f4b0cd7b9d19688c5` and Codex
-independently reran 80 focused evaluation/discovery/recovery/web-asset tests
-(80 passed). Main push CI is tracked separately; no result is inferred here.
-#150 records partial operator-reported two-host CPU evidence executed against
-`c6b21b929ed35c853116fcd186559f9caad1e9ae`. Review corrects combined fault
-rows and the historical R09 authorization. This does not establish independent
-reproduction, complete R07/R08 acceptance, or Checkpoint B closure.
+Snapshot date: **2026-10-17, dashboard PR #156 CLI review corrections**.
+Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
+[main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
+passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
+all 11 applicable final-head CI jobs and 80 independent focused tests passing;
+[its main CI 38697958006](https://github.com/victorzhong0110/llm-research-os/actions/runs/38697958006)
+also passed. #150's corrected head
+`19841e947390d417afa419b4936cfd34bbd56b4d` passed all 11 applicable CI jobs
+before squash integration at the current main above. Its partial operator-reported
+two-host CPU evidence remains attributed to execution base
+`c6b21b929ed35c853116fcd186559f9caad1e9ae`; no independent rerun or Checkpoint B
+closure is claimed.
+
+The maintainer paused the existing checkpoint trial campaign and confirmed the
+[research dashboard direction](plans/research-dashboard.md). The maintainer subsequently authorized full implementation, including a unified
+one-person AI organization map spanning research, infrastructure, serving,
+reliability, costs and governance. [PR #156](https://github.com/victorzhong0110/llm-research-os/pull/156)
+contains the composition UI, scoped Agent inbox and observation sources. Its
+initial head `4cb8011d4c13e9e2fb842663cce5aa014fa259ff` passed all 11 applicable
+CI jobs; review corrections are awaiting their own immutable-head CI.
+First-use acceptance remains open. The follow-up adds a side toolbox
+with Browse/Edit/AI modes and contextual Agent markers. See DESIGN-20261015-01
+and DESIGN-20261016-02 below.
+
 Historical maintenance snapshot follows:
-Current base main: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
+Historical maintenance base: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
 #147 cryptography 50.0.2, #145 pinned setup-node 7.0.0 and #146 development
 locks (mypy 2.4.0/librt 0.16.0, Ruff 0.16.10, Hypothesis 6.168.4).
 Each dependency PR passed all 11 applicable jobs at its original head; combined
@@ -64,20 +78,21 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | R13 result usability continuation on #148 main: recorded evaluation selection, metric/prediction comparison and readable preserved conclusions. Historical maintenance and acceptance evidence remains at its recorded identity. |
+| Current package | Semantic workspace Dashboard implementation candidate: map, themes, toolbox, Agent inbox and observation ingestion. See BUILD-20261016-02; PR integration and first-user acceptance remain pending. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
 | Acceptance gaps | #150 records partial two-host CPU execution/transfer/reconnect/cancel evidence at c6b21b9. R07 onboarding/refusals, transfer interruption, claim/completion-response loss, unavailable identity, bounds, restore and GPU/Kaggle remain pending-live; B remains open. |
 | Resource reporting | Controller/remote connectivity, CPU availability and GPU availability must be reported separately. |
-| Responsibility | Maintainer explicitly assigned Codex on 2026-10-07 to complete independently executable engineering work while the maintainer handles Mac and human work. Complete R11–R14 sequentially from verified main, preserving earlier review repairs. |
-| Downstream gate | Engineering continuation is assigned. Fetch current main before each slice; acceptance dependencies and pending-live inputs remain open, including COMM-0004. Human/Mac work is owned by the maintainer in parallel and must not be represented by synthetic fixtures. |
+| Responsibility | Codex records the maintainer's 2026-10-15 design direction and sequential product plan. Existing engineering assignment continues under that priority; the prior checkpoint trial campaign is paused. |
+| Downstream gate | Fetch verified main before each implementation slice. Preserve existing authority and acceptance semantics; pending-live and first-user evidence stay open. No synthetic fixture substitutes for real participant/host evidence. |
 
 ## Open handoffs
 
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
-| COMM-0004 | Maintainer / resource owner | Partially addressed by #150; remaining live input/evidence open | Selected CPU hosts were used for reported s1–s4. Resource owner / assigned operator supplies remaining R07/fault/GPU evidence under existing authorization; this review has not received reusable private connection configuration. See REVIEW-20261015-PR150. |
+| COMM-0004 | Maintainer / resource owner | Partially addressed by merged #150; remaining campaign paused, evidence open | Preserve reported s1–s4 and remaining R07/fault/GPU gaps. Resume the campaign only under a subsequent maintainer direction; no reusable private connection configuration was received. See DESIGN-20261015-01. |
+| DESIGN-20261015-01 / DESIGN-20261016-02 | Planning/review assistant and next assigned implementer | Design and toolbox follow-up recorded; implementation handoff open | Use the dashboard plan, including Browse/Edit/AI modes, for the next sequential product slice. Detailed contracts and usability evidence are pending; no collaborator acknowledgement is inferred. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
 | COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
@@ -1249,3 +1264,163 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   evidence record after checks; assigned operator completes remaining live
   faults/onboarding/GPU rows, maintainer reviews complete acceptance separately.
 - Proposed normative changes: none.
+
+
+### DESIGN-20261015-01 — Confirm the semantic research dashboard direction
+
+- Date/time: 2026-10-15T08:32:19Z (documentation session).
+- From: Codex planning/review assistant. To: maintainer and next assigned implementer.
+- Reply to: REVIEW-20261015-PR150 and the maintainer's subsequent product direction.
+- State: Product direction confirmed by the maintainer; documentation candidate.
+  Runtime implementation and first-user acceptance remain pending.
+- Integration follow-up: corrected #150 head
+  `19841e947390d417afa419b4936cfd34bbd56b4d` passed all 11 applicable CI jobs
+  and merged at `fe61937072db21258e01e2ca685ef1d07afa0a0c`.
+  Main CI 38699740458 completed successfully at that merge SHA. This closes the
+  integration action in REVIEW-20261015-PR150, not its remaining acceptance gaps.
+- Base: verified main `fe61937072db21258e01e2ca685ef1d07afa0a0c`; branch
+  `docs/semantic-research-dashboard`. Documentation delivery only; no runtime
+  branch, new execution capability, or checkpoint trial is introduced.
+- Maintainer direction: pause the existing checkpoint trial campaign and address
+  first-use comprehension and useful work. The confirmed surface is a spatial
+  research map, with black/white and warm-paper skins plus customization, built-in
+  and custom components maintained by the user's AI, and progressive detail.
+  Containment, subordination, peers, dependencies and shared references need
+  distinct expression. Human arrangement conveys intent; plain dragging does
+  not change domain facts or grant authority.
+- Deliverables: [ADR-0066](adr/0066-semantic-research-dashboard.md),
+  [design and proposed delivery plan](plans/research-dashboard.md), current
+  priority links in the M3 plan/matrix, and refreshed collaboration handoffs.
+  Detailed schemas, rendering libraries and usability thresholds remain proposed
+  implementation work, not accepted capability claims.
+- Validation: documentation whitespace and local link-target checks; three
+  pre-existing relative links in the touched acceptance matrix are corrected.
+  No full local engineering suite, live checkpoint test, or participant trial
+  is run for this planning change. Required implementation/merge checks are not
+  waived by the campaign pause.
+- Normative change: the confirmed product priority and semantic-layout constraint
+  are recorded explicitly. R01–R16 identities, historical evidence, security and
+  execution authority, and checkpoint acceptance criteria are preserved.
+- Next action / owner: the next assigned implementer starts with the plan's
+  representative interaction map and source inventory, then a real overview and
+  complete first-use workflow. Work remains sequential. COMM-0004 stays open
+  with its trial campaign paused; no collaborator acknowledgement is invented.
+
+### DESIGN-20261016-02 — Add the side toolbox and contextual Agent entry points
+
+- Date/time: 2026-10-16T00:30:59+08:00 (maintainer continuation request).
+- From: Codex planning/review assistant. To: maintainer and next assigned implementer.
+- Reply to: DESIGN-20261015-01 and the maintainer's toolbox/sketch follow-up.
+- State: Requested modes incorporated into the design; detailed interaction
+  behavior is specified for prototype review, not claimed as implemented.
+- Base: documentation commit `75249660c997d585acbcf5190a3356426ef0ff3a` on
+  `docs/semantic-research-dashboard`; production baseline remains `fe619370`.
+- Change: default Browse opens details; Edit enables manual move/resize/group;
+  AI opens scoped conversation to modify the map. Active mode and target are
+  visible, context survives mode changes, and submitted requests retain their
+  original targets. Attached Agent markers expose the work's own task context.
+  The sketch's size/color/shape vocabulary expresses prominence, attention and
+  type without inventing quantitative telemetry or domain facts.
+- Validation: documentation whitespace and local link-target checks only.
+  No production UI, schema, runtime, checkpoint trial, or new authorization is
+  introduced; the previously paused campaign remains paused.
+- Next action / owner: include the three modes, explicit AI targeting and
+  contextual Agent markers in the representative interaction prototype. Preserve
+  the existing evidence and authority boundaries; no collaborator acknowledgement
+  is inferred.
+
+## BUILD-20261016-01 — Authorized semantic dashboard implementation
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- State: implementation in progress, replying to DESIGN-20261016-02.
+- Base: verified main fe61937072db21258e01e2ca685ef1d07afa0a0c.
+- Scope: one-person AI organization map, on-demand arrows, large-map navigation,
+  Browse/Edit/AI, themes, real-source bindings and cooperative Agent composition.
+- This foundation adds closed map contracts, CAS revision writes, retained history,
+  CLI/API parity and pin protection. Frontend delivery follows in the same workstream.
+- Existing checkpoint campaign remains paused; no live or first-user acceptance claimed.
+- Local validation: focused map/API/asset checks and strict typing; final immutable
+  candidate checks and PR evidence will be recorded before integration.
+
+
+## BUILD-20261016-02 — Map, Agent inbox and observation candidate
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-01. State: candidate implementation, not merged/accepted.
+- Foundation remote head: 34f9fd170b6c6957a6d0a6512be045514145adc9 on
+  docs/semantic-research-dashboard; verified main remains fe61937072db21258e01e2ca685ef1d07afa0a0c.
+- Implemented: default semantic map; theme/custom controls; browse/edit/AI toolbox;
+  containment, view arrows, pin/resize/undo/history, search and large-map navigation;
+  real bounded run/event/research projections; scoped durable Agent requests,
+  immutable replies and reviewed proposals; observation CLI, provenance/expiry,
+  charts and attributed interpretation. Existing workbench operations remain reachable.
+- Actual local checks so far: 109 focused map/API/asset tests passed; strict mypy
+  (284 source files), Ruff, generated schemas, 13 digest vectors and wheel/sdist build
+  passed. Supplemental Chromium 153 exercised map persistence, theme reload,
+  manual editing/undo, Agent inbox/reply/proposal application, collector import,
+  time-series rendering and mobile layout with synthetic fixtures.
+- Final browser regression, scale/uncertain-save checks and full coverage are being
+  run on the candidate. CI uses its pinned Playwright browser; local Chromium is
+  supplemental evidence, not a replacement for that gate.
+- Gaps: own Agent must consume inbox; no automatic host/provider collector install;
+  older backups omit the sidecar; domain-operation onboarding, full conversation
+  archival, source-backed execution edges and human first-use acceptance remain.
+  Existing paused checkpoint campaign and pending-live rows remain unchanged.
+- Next action/owner: Codex reviews the complete diff, resolves checks and publishes
+  one coherent candidate PR. No collaborator acknowledgement or merge is inferred.
+
+
+## BUILD-20261016-03 — PR #156 review and regression corrections
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-02. State: reviewed candidate; integration pending final CI.
+- PR: https://github.com/victorzhong0110/llm-research-os/pull/156.
+  Initial head 4cb8011d4c13e9e2fb842663cce5aa014fa259ff passed all 11 applicable jobs
+  in CI 38845434468, including Linux/macOS full suites, browser and real execution
+  integration. The fork-only DCO job was inapplicable. Final corrections require
+  a new head and new CI; these results do not certify that future head.
+- Review corrections: recent activity now queries the newest 100 project events
+  before rendering them chronologically, with an explicit olderAvailable flag;
+  existing ascending event pagination is unchanged. Source-specific table
+  rendering no longer falls back to unrelated events. Manual relationship types
+  expose dependency/evidence/shared/peer/association, all view-only. The initial
+  map uses the available wide canvas more effectively.
+- Local correction checks: 121 focused API/map/asset/regression tests passed,
+  including empty/exact-limit/truncated activity and foreign-project exclusion.
+  Strict typing, lint/format, schema/contract generation, catalog/status checks,
+  package and browser bundle builds passed. The supplemental browser repeated
+  lost-save retry, scoped proposals, ingestion/charts, 1,000-component search and
+  culling, and mobile checks. Paper/graphite actual browser views were inspected.
+- Earlier local full suite: 2514 passed, 12 failed, 21 skipped, 15 deselected;
+  unrounded coverage 85.575691%. Failures concerned special-file permission and
+  process observation in this container. Three representative failing tests
+  reproduced on untouched main fe61937072db21258e01e2ca685ef1d07afa0a0c. This is
+  environmental evidence, not a waiver or a claim that all 12 were independently
+  reproduced. Formal CI at the initial PR head passed the platform gates.
+- Next action / owner: Codex publishes these corrections, waits for exact-head
+  CI, then merges under the maintainer's existing authorization and verifies main.
+  Backup integration, inbox archival, guided domain operations and actual
+  collector/Agent connections remain subsequent slices. Human first-use and the
+  paused checkpoint campaign remain unclaimed; no acknowledgement is inferred.
+
+- Protocol completeness follow-up: activity API includes valid/invalid published
+  examples and schema/model validation. Negative high-water marks are refused.
+
+
+## BUILD-20261017-01 — Resolve PR #156 CLI review findings
+
+- Date: 2026-10-17 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-03. State: final candidate corrections, not merged.
+- Head c78937fa84cc3b2037f47842973737e982d48415 passed all 11 applicable jobs in
+  CI 38873044330. Subsequent review identified blocking special-file opens and
+  inconsistent duplicate-key rejection in reply/observe. Both findings are valid.
+- Correction: apply/reply/observe share a bounded nonblocking no-follow reader,
+  verify regular-file descriptors and use the existing strict JSON decoder before
+  contract validation. The API depth/node limits and per-command byte caps hold.
+- Regression checks cover nested/top-level duplicate keys before storage and
+  subprocess-bounded FIFO/directory/symlink refusal for all three commands.
+  All 137 focused map/API/asset/regression checks passed locally, including real
+  FIFO cases; strict mypy, lint/format and generated-schema checks passed. Fresh
+  exact-head CI remains required before merging these corrections.
+- No authority, acceptance or checkpoint scope changes. Codex owns the final
+  verification and authorized merge; no collaborator acknowledgement inferred.

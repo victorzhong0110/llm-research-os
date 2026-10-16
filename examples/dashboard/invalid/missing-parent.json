@@ -1,0 +1,22 @@
+{
+  "projectId": "demo",
+  "requestId": "compose-1",
+  "expectedRevision": 0,
+  "author": "user-agent",
+  "authorKind": "agent",
+  "state": {
+    "components": [
+      {
+        "id": "question",
+        "type": "note",
+        "title": "Research question",
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "body": "What do we want to learn?",
+        "parentId": "missing"
+      }
+    ]
+  }
+}
