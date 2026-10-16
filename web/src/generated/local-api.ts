@@ -9,15 +9,71 @@ export const API_PREFIX = "/api/v0alpha1";
 export const CONTRACT_VERSION = "v0alpha1";
 
 
-export interface DashboardDocument {
-  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
-  readonly kind?: "DashboardDocument";
+export interface Observation {
+  readonly kind?: "DashboardObservation";
   readonly projectId: string;
-  readonly revision?: number;
-  readonly state?: MapState;
-  readonly author?: string;
-  readonly authorKind?: "human" | "agent" | "system";
-  readonly updatedAt?: string | null;
+  readonly sourceId: string;
+  readonly entityId: string;
+  readonly category: "resource" | "pool" | "provider" | "service" | "availability" | "cost" | "dataset" | "model" | "recovery" | "access" | "custom";
+  readonly title: string;
+  readonly reporter: string;
+  readonly provenance: string;
+  readonly observedAt: string;
+  readonly expiresAt: string;
+  readonly origin: "real" | "synthetic";
+  readonly status: "up" | "degraded" | "down" | "unknown";
+  readonly metrics?: ReadonlyArray<Metric>;
+  readonly explanation?: string;
+  readonly explanationAuthor?: string | null;
+}
+
+export interface Metric {
+  readonly name: string;
+  readonly value: number;
+  readonly unit?: string;
+  readonly meaning?: "observed" | "allocated" | "reserved" | "estimated";
+  readonly history?: ReadonlyArray<Sample>;
+}
+
+export interface Sample {
+  readonly at: string;
+  readonly value: number;
+}
+
+export interface ObservationList {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly kind?: "DashboardObservations";
+  readonly projectId: string;
+  readonly observations: ReadonlyArray<Observation>;
+}
+
+export interface AgentAsk {
+  readonly kind?: "DashboardAgentAsk";
+  readonly projectId: string;
+  readonly requestId: string;
+  readonly expectedRevision: number;
+  readonly scope?: ReadonlyArray<string> | null;
+  readonly prompt: string;
+}
+
+export interface AgentReply {
+  readonly kind?: "DashboardAgentReply";
+  readonly requestId: string;
+  readonly author: string;
+  readonly message: string;
+  readonly proposal?: DashboardWrite | null;
+}
+
+export interface DashboardWrite {
+  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
+  readonly kind?: "DashboardWrite";
+  readonly projectId: string;
+  readonly requestId: string;
+  readonly expectedRevision: number;
+  readonly author: string;
+  readonly authorKind: "human" | "agent";
+  readonly state: MapState;
+  readonly scope?: ReadonlyArray<string> | null;
 }
 
 export interface MapState {
@@ -76,15 +132,30 @@ export interface Viewport {
   readonly zoom?: number;
 }
 
-export interface DashboardWrite {
-  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
-  readonly kind?: "DashboardWrite";
+export interface AgentInboxDocument {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly kind?: "DashboardAgentInbox";
   readonly projectId: string;
-  readonly requestId: string;
-  readonly expectedRevision: number;
-  readonly author: string;
-  readonly authorKind: "human" | "agent";
-  readonly state: MapState;
+  readonly tasks: ReadonlyArray<AgentTask>;
+}
+
+export interface AgentTask {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly request: AgentAsk;
+  readonly snapshot: DashboardDocument;
+  readonly createdAt: string;
+  readonly reply?: AgentReply | null;
+}
+
+export interface DashboardDocument {
+  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
+  readonly kind?: "DashboardDocument";
+  readonly projectId: string;
+  readonly revision?: number;
+  readonly state?: MapState;
+  readonly author?: string;
+  readonly authorKind?: "human" | "agent" | "system";
+  readonly updatedAt?: string | null;
 }
 
 export interface ArtifactView {

@@ -130,7 +130,9 @@ jobs:
         run: npx --no-install playwright install --with-deps chromium
       - name: Browser inspection against real EventStore and CAS
         working-directory: web
-        run: npm run test:browser
+        run: |
+          npm run test:browser
+          npm run test:dashboard
 
 
   oci-linux:

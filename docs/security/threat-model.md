@@ -1049,3 +1049,15 @@ EventStore facts, grant execution authority, invoke models or allocate resources
 Tests: `tests/test_dashboard.py`. Author kind is cooperative metadata, not a
 security boundary against another process with the same filesystem access.
 Existing backup formats omit the new sidecar; explicit export is required.
+
+
+TM-100 composition extension: the Agent inbox stores bounded, frozen requests
+and immutable replies; a reply does not apply a proposal. Scope and pins are
+validated again at application. External observations are untrusted source
+assertions with explicit provenance, origin, expiry and author attribution.
+They cannot append Run facts, execute scripts, fetch arbitrary URLs or acquire
+credentials. The browser escapes explanations as text. Source replacement must
+advance time; fabricated same-user source assertions remain outside independent
+host verification. Agent task capacity is 100 and the current listing is 20;
+observation capacity is 100 at 32 KiB each. Tests include actual local API, CLI
+inbox/reply/observation and browser display with clearly synthetic fixtures.

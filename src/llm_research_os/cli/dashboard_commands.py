@@ -8,6 +8,9 @@ from pathlib import Path
 
 from llm_research_os.application.errors import ApplicationError
 from llm_research_os.application.workspace import load_workspace
+from llm_research_os.dashboard.agents import AgentInbox, AgentInboxDocument, AgentReply, AgentTask
+from llm_research_os.dashboard.models import DashboardDocument
+from llm_research_os.dashboard.observations import Observation, ObservationStore
 from llm_research_os.dashboard.store import DashboardStore, read_write_request
 
 
@@ -20,13 +23,40 @@ def add_dashboard_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
     apply = commands.add_parser("apply")
     apply.add_argument("--root", type=Path, required=True)
     apply.add_argument("document", type=Path)
+    inbox = commands.add_parser("inbox")
+    inbox.add_argument("--root", type=Path, required=True)
+    reply = commands.add_parser("reply")
+    reply.add_argument("--root", type=Path, required=True)
+    reply.add_argument("document", type=Path)
+    observe = commands.add_parser("observe")
+    observe.add_argument("--root", type=Path, required=True)
+    observe.add_argument("document", type=Path)
 
 
 def run_dashboard(args: argparse.Namespace) -> int:
     try:
+        result: DashboardDocument | AgentInboxDocument | AgentTask | Observation
         store = DashboardStore(load_workspace(args.root))
         if args.dashboard_command == "show":
             result = store.read(args.revision)
+        elif args.dashboard_command == "inbox":
+            result = AgentInbox(load_workspace(args.root)).list_tasks()
+        elif args.dashboard_command == "observe":
+            with args.document.open("rb") as stream:
+                raw = stream.read(32769)
+            if len(raw) > 32768:
+                raise ValueError("observation too large")
+            result = ObservationStore(load_workspace(args.root)).observe(
+                Observation.model_validate_json(raw)
+            )
+        elif args.dashboard_command == "reply":
+            with args.document.open("rb") as stream:
+                raw = stream.read(1048577)
+            if len(raw) > 1048576:
+                raise ValueError("Agent response too large")
+            result = AgentInbox(load_workspace(args.root)).reply(
+                AgentReply.model_validate_json(raw)
+            )
         else:
             result = store.write(read_write_request(args.document))
         print(result.model_dump_json(by_alias=True, indent=2))

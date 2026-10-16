@@ -8,7 +8,9 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
+from llm_research_os.dashboard.agents import AgentInboxDocument, AgentTask
 from llm_research_os.dashboard.models import DashboardDocument
+from llm_research_os.dashboard.observations import ObservationList
 from llm_research_os.spec.schema import SCHEMA_DIALECT
 from llm_research_os.web.contracts import (
     ArtifactDocument,
@@ -27,6 +29,9 @@ from llm_research_os.web.contracts import (
 
 ResponseDocument = (
     DashboardDocument
+    | AgentInboxDocument
+    | AgentTask
+    | ObservationList
     | ArtifactDocument
     | CapabilitiesDocument
     | CommandReceipt

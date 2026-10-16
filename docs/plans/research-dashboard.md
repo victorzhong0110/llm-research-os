@@ -1,7 +1,8 @@
 # Research dashboard: design direction and delivery plan
 
-Status: **Maintainer-confirmed product direction, 2026-10-15. Proposed sequential
-delivery slices; no dashboard implementation or usability acceptance claimed.**
+Status: **Maintainer-confirmed product direction, 2026-10-15; full implementation
+authorized 2026-10-16. Current map, composition and observation slice is a candidate,
+not merged or accepted. Human first-use evidence remains pending.**
 Constraint record: [ADR-0066](../adr/0066-semantic-research-dashboard.md).
 Canonical package and acceptance authority remains the
 [M3 plan](m3-development-plan.md) and its
@@ -28,6 +29,20 @@ all major work areas; it does not attempt to render every raw object at once.
 Groups, collapse, filtering, and zoom reveal detail while preserving orientation.
 AI conversation helps explain or change the map, but the map remains the primary
 work surface and usable without an active model connection.
+
+## One person, all responsibilities
+
+The maintainer clarified that this map brings together the functions and views
+normally spread across an AI company's roles: research, data, training,
+evaluation, model lifecycle, serving, infrastructure, scheduling/load balancing,
+provider availability, observability, cost, access and recovery. These are useful
+presets around shared entities, not independent departmental dashboards. Users
+and their own Agents may rearrange, extend and maintain the composition.
+
+Large maps require pan/zoom, search, collapse and an overview navigator. Arrows
+are optional and contextual. Distinguish containment and view annotations from
+source-backed dependencies. Never fill missing operational integrations with
+invented live status, costs, utilization or Agent activity.
 
 ## Confirmed visual direction
 

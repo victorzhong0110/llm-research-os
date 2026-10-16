@@ -112,7 +112,7 @@ class DashboardStore:
             if request.expected_revision != current.revision:
                 raise DashboardError("revision conflict")
             if request.author_kind == "agent":
-                check_agent_edit(current.state, request.state)
+                check_agent_edit(current.state, request.state, request.scope)
             document = DashboardDocument(
                 projectId=self.project_id,
                 revision=current.revision + 1,

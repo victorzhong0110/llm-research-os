@@ -41,7 +41,7 @@ async function restartServer(page, script, directory) {
 }
 try {
   let fixture = await startServer();
-  browser = await chromium.launch({headless:true});
+  browser = await chromium.launch({headless:true,...(process.env.RESEARCHOS_CHROMIUM_EXECUTABLE ? {executablePath:process.env.RESEARCHOS_CHROMIUM_EXECUTABLE,args:["--use-angle=swiftshader","--enable-unsafe-swiftshader"]} : {})});
   const page = await browser.newPage();
   const consoleErrors = [];
   page.on("pageerror", error => consoleErrors.push(String(error)));
@@ -79,7 +79,7 @@ try {
   await page.getByRole("cell").filter({hasText:/^reject$/}).waitFor();
   for (const tab of ["Project","Spec revisions","Logs","Artifacts","Environment","How to read this"]) {
     await page.getByRole("button", {name:tab,exact:true}).click();
-    await page.locator("main section").first().waitFor();
+    await page.locator("main section:visible").first().waitFor();
   }
   await page.getByRole("button", {name:"Operations",exact:true}).click();
   await page.getByRole("textbox", {name:"ResearchSpec path",exact:true}).fill(fixture.inputSpec);

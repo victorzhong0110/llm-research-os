@@ -218,3 +218,184 @@ def test_api_auth_revision_and_fresh_workspace(tmp_path):
     assert client.request("GET", "/api/v0alpha1/dashboard", query="revision=oops")[0] == 400
     assert client.request("DELETE", "/api/v0alpha1/dashboard", origin=ORIGIN)[0] == 405
     assert not ws.control_db.exists()
+
+
+def test_agent_inbox_scope_reply_and_apply(tmp_path):
+    from llm_research_os.dashboard.agents import AgentAsk, AgentInbox, AgentReply
+
+    ws = workspace(tmp_path)
+    store = DashboardStore(ws)
+    saved = store.write(request())
+    inbox = AgentInbox(ws)
+    ask = AgentAsk(
+        projectId="demo",
+        requestId="ask-1",
+        expectedRevision=1,
+        scope=("pinned",),
+        prompt="Explain this question",
+    )
+    task = inbox.ask(ask)
+    assert inbox.ask(ask) == task
+    assert inbox.list_tasks().tasks == (task,)
+    assert task.snapshot == saved
+    with pytest.raises(DashboardError, match="identity reused"):
+        inbox.ask(ask.model_copy(update={"prompt": "different"}))
+    with pytest.raises(DashboardError, match="revision conflict"):
+        inbox.ask(ask.model_copy(update={"request_id": "ask-stale", "expected_revision": 8}))
+    with pytest.raises(DashboardError, match="invalid Agent scope"):
+        inbox.ask(ask.model_copy(update={"request_id": "bad-scope", "scope": ("missing",)}))
+    data = payload(revision=1, request_id="agent-proposal", author="agent")
+    data["scope"] = ["pinned"]
+    data["state"]["components"][1]["body"] = "A scoped explanation"
+    proposal = DashboardWrite.model_validate_json(json.dumps(data))
+    reply = AgentReply(
+        requestId="ask-1", author="my-agent", message="Added context", proposal=proposal
+    )
+    answered = inbox.reply(reply)
+    assert inbox.reply(reply) == answered
+    assert store.read() == saved
+    assert inbox.list_tasks().tasks[0].reply == reply
+    with pytest.raises(DashboardError, match="already recorded"):
+        inbox.reply(reply.model_copy(update={"message": "different"}))
+    applied = store.write(proposal)
+    assert applied.revision == 2
+    assert applied.state.components[1].body == "A scoped explanation"
+    assert not ws.control_db.exists()
+
+
+def test_agent_scope_rejects_unrelated_and_stale_changes(tmp_path):
+    store = DashboardStore(workspace(tmp_path))
+    store.write(request())
+    data = payload(revision=1, request_id="out-of-scope", author="agent")
+    data["scope"] = ["pinned"]
+    data["state"]["components"][0]["title"] = "Unrelated edit"
+    with pytest.raises(ValueError, match="frozen scope"):
+        store.write(DashboardWrite.model_validate_json(json.dumps(data)))
+    data["state"]["components"][0]["title"] = "Research"
+    data["state"]["appearance"] = {"skin": "paper"}
+    with pytest.raises(ValueError, match="global appearance"):
+        store.write(DashboardWrite.model_validate_json(json.dumps(data)))
+
+
+def test_timestamped_observations_are_not_run_facts(tmp_path):
+    from datetime import UTC, datetime, timedelta
+
+    from llm_research_os.dashboard.observations import Observation, ObservationStore
+
+    ws = workspace(tmp_path)
+    store = ObservationStore(ws)
+    assert not store.observations().observations
+    now = datetime.now(UTC)
+    value = {
+        "projectId": "demo",
+        "sourceId": "compute-1",
+        "entityId": "host-1",
+        "category": "resource",
+        "title": "GPU observations",
+        "reporter": "test collector",
+        "provenance": "synthetic fixture only",
+        "origin": "synthetic",
+        "status": "unknown",
+        "observedAt": now.isoformat(),
+        "expiresAt": (now + timedelta(minutes=5)).isoformat(),
+        "metrics": [
+            {
+                "name": "GPU utilization",
+                "value": 30.5,
+                "unit": "%",
+                "meaning": "observed",
+                "history": [
+                    {"at": (now - timedelta(seconds=20)).isoformat(), "value": 20.0},
+                    {"at": now.isoformat(), "value": 30.5},
+                ],
+            }
+        ],
+    }
+    observation = Observation.model_validate_json(json.dumps(value))
+    assert store.observe(observation) == observation
+    assert store.observe(observation) == observation
+    assert ObservationStore(ws).observations().observations == (observation,)
+    with pytest.raises(DashboardError, match="advance source time"):
+        store.observe(observation.model_copy(update={"status": "up"}))
+    with pytest.raises(DashboardError, match="foreign"):
+        store.observe(observation.model_copy(update={"project_id": "other"}))
+    value["observedAt"] = (now + timedelta(hours=1)).isoformat()
+    value["expiresAt"] = (now + timedelta(hours=2)).isoformat()
+    with pytest.raises(ValidationError, match="future observation"):
+        Observation.model_validate_json(json.dumps(value))
+    value["observedAt"] = now.isoformat()
+    value["explanation"] = "Unsupported anonymous analysis"
+    with pytest.raises(ValidationError, match="attributed author"):
+        Observation.model_validate_json(json.dumps(value))
+    value["explanationAuthor"] = "test-agent"
+    value["metrics"][0]["history"].reverse()
+    with pytest.raises(ValidationError, match="strictly ordered"):
+        Observation.model_validate_json(json.dumps(value))
+    assert not ws.control_db.exists()
+    assert not ws.receipt_db.exists()
+
+
+def test_agent_and_observation_routes_share_session_boundary(tmp_path):
+    from llm_research_os.dashboard.agents import AgentInbox
+
+    ws = workspace(tmp_path)
+    DashboardStore(ws).write(request())
+    client = Client(
+        LocalApi(
+            ws,
+            sessions=SessionStore(bootstrap_token=BOOTSTRAP),
+            allowed_hosts=frozenset({HOST}),
+            allowed_origin=ORIGIN,
+        )
+    )
+    assert client.request("GET", "/api/v0alpha1/dashboard/observations")[0] == 401
+    client.bootstrap()
+    assert client.request("GET", "/api/v0alpha1/dashboard/observations")[2]["observations"] == []
+    raw = json.dumps(
+        {
+            "kind": "DashboardAgentAsk",
+            "projectId": "demo",
+            "requestId": "api-ask",
+            "expectedRevision": 1,
+            "scope": ["pinned"],
+            "prompt": "Explain this",
+        }
+    ).encode()
+    status, _, body = client.request(
+        "POST",
+        "/api/v0alpha1/dashboard/agents",
+        origin=ORIGIN,
+        content_type="application/json",
+        body=raw,
+    )
+    assert status == 200
+    assert body["snapshot"]["revision"] == 1
+    assert len(AgentInbox(ws).list_tasks().tasks) == 1
+    assert client.request("GET", "/api/v0alpha1/dashboard/agents")[2]["tasks"][0]["request"][
+        "scope"
+    ] == ["pinned"]
+    assert (
+        client.request(
+            "POST",
+            "/api/v0alpha1/dashboard/agents",
+            origin="https://foreign.invalid",
+            content_type="application/json",
+            body=raw,
+        )[0]
+        == 403
+    )
+    assert client.request("POST", "/api/v0alpha1/dashboard/observations", origin=ORIGIN)[0] == 405
+
+
+def test_published_dashboard_examples():
+    from jsonschema import Draft202012Validator
+
+    from llm_research_os.dashboard.schema import build_schema
+
+    validator = Draft202012Validator(build_schema())
+    root = Path(__file__).parents[1] / "examples/dashboard"
+    validator.validate(json.loads((root / "valid/write.json").read_text()))
+    for path in (root / "valid").glob("*.json"):
+        validator.validate(json.loads(path.read_text()))
+    with pytest.raises(ValidationError, match="parent"):
+        DashboardWrite.model_validate_json((root / "invalid/missing-parent.json").read_bytes())

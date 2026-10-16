@@ -28,7 +28,9 @@ from llm_research_os.application.service import ApplicationService
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.canonical import content_digest
+from llm_research_os.dashboard.agents import AgentAsk, AgentInbox, AgentReply
 from llm_research_os.dashboard.models import DashboardWrite
+from llm_research_os.dashboard.observations import ObservationStore
 from llm_research_os.dashboard.store import DashboardStore
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
@@ -192,6 +194,20 @@ class LocalApi:
         self._sessions.check_csrf(
             session, csrf_header if isinstance(csrf_header, str) else None, method=method
         )
+        if route == "/dashboard/observations":
+            if method != "GET":
+                raise LocalApiError(
+                    "method-not-allowed",
+                    "Import observations through the local collector CLI.",
+                    status=405,
+                )
+            return self._json(
+                ObservationStore(self._workspace)
+                .observations()
+                .model_dump(mode="json", by_alias=True)
+            )
+        if route == "/dashboard/agents":
+            return self._dashboard_agents(environ, method)
         if route == "/dashboard":
             return self._dashboard(environ, method)
         if route == "/stream":
@@ -215,6 +231,39 @@ class LocalApi:
                 status=405,
             )
         return self._read(environ, route, session)
+
+    def _dashboard_agents(self, environ: dict[str, Any], method: str) -> Response:
+        try:
+            inbox = AgentInbox(self._workspace)
+            if method == "GET":
+                result = inbox.list_tasks().model_dump(mode="json", by_alias=True)
+            elif method == "POST":
+                if str(environ.get("CONTENT_TYPE", "")).split(";", 1)[0] != "application/json":
+                    raise bad_request("content-type-unsupported", "Use application/json.")
+                raw = read_bounded_body(
+                    environ["wsgi.input"],
+                    content_length=environ.get("CONTENT_LENGTH"),
+                    limits=self._limits,
+                )
+                decoded = decode_bounded_json(raw, limits=self._limits)
+                if decoded.get("kind") == "DashboardAgentReply":
+                    task = inbox.reply(AgentReply.model_validate_json(json.dumps(decoded)))
+                else:
+                    task = inbox.ask(AgentAsk.model_validate_json(json.dumps(decoded)))
+                result = task.model_dump(mode="json", by_alias=True)
+            else:
+                raise LocalApiError(
+                    "method-not-allowed", "Use GET or POST for Agent requests.", status=405
+                )
+        except ValidationError as exc:
+            raise bad_request("document-invalid", "Invalid Agent document.") from exc
+        except (ValueError, OSError) as exc:
+            raise LocalApiError(
+                "command-refused",
+                "Agent request refused. Check the saved revision, scope and existing response.",
+                status=409,
+            ) from exc
+        return self._json(result)
 
     def _dashboard(self, environ: dict[str, Any], method: str) -> Response:
         try:

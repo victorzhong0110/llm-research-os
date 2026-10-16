@@ -1,19 +1,51 @@
 /** Workbench shell: bootstrap, navigation, and the read-only view switch. */
 
 import { useCallback, useEffect, useState } from "react";
-import { api, exchangeBootstrap, SessionExpiredError, takeBootstrapSecret } from "./api";
+import {
+  api,
+  exchangeBootstrap,
+  SessionExpiredError,
+  takeBootstrapSecret,
+} from "./api";
 import type { WorkspaceView } from "./generated/local-api";
-import { ArtifactsView, EventsView, OutcomeLegend, RunsView } from "./components/DataViews";
+import {
+  ArtifactsView,
+  EventsView,
+  OutcomeLegend,
+  RunsView,
+} from "./components/DataViews";
 import { OperationsView } from "./components/OperationsView";
 import { EvaluationActions } from "./components/EvaluationActions";
 import { ResearchView } from "./components/ResearchView";
-import { EnvironmentView, GraphView, ProjectView, RevisionsView } from "./components/ProjectViews";
+import {
+  EnvironmentView,
+  GraphView,
+  ProjectView,
+  RevisionsView,
+} from "./components/ProjectViews";
 import { ObjectInspectionView } from "./components/Inspection";
+import { Dashboard } from "./dashboard/Dashboard";
 import { Failure, Loading } from "./components/Primitives";
 
-type ViewId = "results" | "operations" | "research" | "history" | "metrics" | "logs" | "artifacts" | "environment" | "events" | "graph" | "legend" | "project" | "revisions" | "runs";
+type ViewId =
+  | "dashboard"
+  | "results"
+  | "operations"
+  | "research"
+  | "history"
+  | "metrics"
+  | "logs"
+  | "artifacts"
+  | "environment"
+  | "events"
+  | "graph"
+  | "legend"
+  | "project"
+  | "revisions"
+  | "runs";
 
 const VIEWS: ReadonlyArray<{ readonly id: ViewId; readonly label: string }> = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "project", label: "Project" },
   { id: "revisions", label: "Spec revisions" },
   { id: "graph", label: "Execution graph" },
@@ -38,7 +70,7 @@ type Phase =
 
 export function App() {
   const [phase, setPhase] = useState<Phase>({ status: "bootstrapping" });
-  const [view, setView] = useState<ViewId>("project");
+  const [view, setView] = useState<ViewId>("dashboard");
   const [workspace, setWorkspace] = useState<WorkspaceView | null>(null);
   const expectedHead = workspace?.highWaterMark;
 
@@ -61,7 +93,10 @@ export function App() {
         setPhase({ status: "needs-secret" });
         return;
       }
-      const message = error instanceof Error ? error.message : "The local API could not be reached.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The local API could not be reached.";
       setPhase({ status: "refused", message });
     }
   }, []);
@@ -81,7 +116,10 @@ export function App() {
   if (phase.status === "refused") {
     return (
       <main className="shell shell--center">
-        <Failure error={new Error(phase.message)} onRetry={() => void establish()} />
+        <Failure
+          error={new Error(phase.message)}
+          onRetry={() => void establish()}
+        />
       </main>
     );
   }
@@ -92,9 +130,11 @@ export function App() {
         <div className="state state--error" role="alert">
           <h2>Session required</h2>
           <p>
-            The one-time bootstrap secret has already been used, or this browser has no local session. Restart
-            the server with <code>researchos web serve</code> and open the bootstrap URL it prints. A session
-            cannot be created any other way, and a browser session is never a Worker credential.
+            The one-time bootstrap secret has already been used, or this browser
+            has no local session. Restart the server with{" "}
+            <code>researchos web serve</code> and open the bootstrap URL it
+            prints. A session cannot be created any other way, and a browser
+            session is never a Worker credential.
           </p>
           <button type="button" onClick={() => void establish()}>
             Check again
@@ -109,8 +149,9 @@ export function App() {
       <header className="shell__head">
         <h1>Research workbench</h1>
         <p className="shell__sub">
-          Workspace <code>{phase.projectId}</code>. Inspect recorded evidence and submit explicit research
-          commands. A cancellation request does not prove a process stopped.
+          Workspace <code>{phase.projectId}</code>. Inspect recorded evidence
+          and submit explicit research commands. A cancellation request does not
+          prove a process stopped.
         </p>
       </header>
       <nav className="tabs" aria-label="Workbench views">
@@ -127,14 +168,44 @@ export function App() {
         ))}
       </nav>
       <main className="shell__body">
+        <div className="dashboard-view" hidden={view !== "dashboard"}>
+          <Dashboard
+            active={view === "dashboard"}
+            projectId={phase.projectId}
+            onNavigate={(id) => {
+              if (VIEWS.some((entry) => entry.id === id)) setView(id as ViewId);
+            }}
+          />
+        </div>
         {view === "project" ? <ProjectView onError={() => undefined} /> : null}
         {view === "revisions" ? <RevisionsView /> : null}
         {view === "graph" ? <GraphView /> : null}
         {view === "runs" ? <RunsView /> : null}
         {view === "events" ? <EventsView /> : null}
-        {view === "history" ? <EventsView title="Decision, dissent and authorization history" types="proposal.submitted,dissent.recorded,decision.recorded,question.asked,question.answered,plan.authorization.evaluated,authorization.grant.recorded,authorization.grant.revoked" /> : null}
-        {view === "logs" ? <><EventsView title="Attempt log references" types="attempt.started,attempt.failed,attempt.succeeded,run.failed" /><ObjectInspectionView title="Recorded log content" /></> : null}
-        {view === "metrics" ? <><EventsView title="Recorded metric / result references" types="attempt.succeeded,run.completed" /><ObjectInspectionView title="Recorded metric values" /></> : null}
+        {view === "history" ? (
+          <EventsView
+            title="Decision, dissent and authorization history"
+            types="proposal.submitted,dissent.recorded,decision.recorded,question.asked,question.answered,plan.authorization.evaluated,authorization.grant.recorded,authorization.grant.revoked"
+          />
+        ) : null}
+        {view === "logs" ? (
+          <>
+            <EventsView
+              title="Attempt log references"
+              types="attempt.started,attempt.failed,attempt.succeeded,run.failed"
+            />
+            <ObjectInspectionView title="Recorded log content" />
+          </>
+        ) : null}
+        {view === "metrics" ? (
+          <>
+            <EventsView
+              title="Recorded metric / result references"
+              types="attempt.succeeded,run.completed"
+            />
+            <ObjectInspectionView title="Recorded metric values" />
+          </>
+        ) : null}
         {view === "artifacts" ? <ArtifactsView /> : null}
         {view === "environment" ? <EnvironmentView /> : null}
         {view === "legend" ? <OutcomeLegend /> : null}

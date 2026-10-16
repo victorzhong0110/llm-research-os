@@ -75,7 +75,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | Record the confirmed semantic research dashboard direction and proposed delivery plan from verified #150 main. Product usability is the priority; runtime implementation and first-user evidence remain pending. |
+| Current package | Semantic workspace Dashboard implementation candidate: map, themes, toolbox, Agent inbox and observation ingestion. See BUILD-20261016-02; PR integration and first-user acceptance remain pending. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1338,3 +1338,30 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Existing checkpoint campaign remains paused; no live or first-user acceptance claimed.
 - Local validation: focused map/API/asset checks and strict typing; final immutable
   candidate checks and PR evidence will be recorded before integration.
+
+
+## BUILD-20261016-02 — Map, Agent inbox and observation candidate
+
+- Date: 2026-10-16 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-01. State: candidate implementation, not merged/accepted.
+- Foundation remote head: 34f9fd170b6c6957a6d0a6512be045514145adc9 on
+  docs/semantic-research-dashboard; verified main remains fe61937072db21258e01e2ca685ef1d07afa0a0c.
+- Implemented: default semantic map; theme/custom controls; browse/edit/AI toolbox;
+  containment, view arrows, pin/resize/undo/history, search and large-map navigation;
+  real bounded run/event/research projections; scoped durable Agent requests,
+  immutable replies and reviewed proposals; observation CLI, provenance/expiry,
+  charts and attributed interpretation. Existing workbench operations remain reachable.
+- Actual local checks so far: 109 focused map/API/asset tests passed; strict mypy
+  (284 source files), Ruff, generated schemas, 13 digest vectors and wheel/sdist build
+  passed. Supplemental Chromium 153 exercised map persistence, theme reload,
+  manual editing/undo, Agent inbox/reply/proposal application, collector import,
+  time-series rendering and mobile layout with synthetic fixtures.
+- Final browser regression, scale/uncertain-save checks and full coverage are being
+  run on the candidate. CI uses its pinned Playwright browser; local Chromium is
+  supplemental evidence, not a replacement for that gate.
+- Gaps: own Agent must consume inbox; no automatic host/provider collector install;
+  older backups omit the sidecar; domain-operation onboarding, full conversation
+  archival, source-backed execution edges and human first-use acceptance remain.
+  Existing paused checkpoint campaign and pending-live rows remain unchanged.
+- Next action/owner: Codex reviews the complete diff, resolves checks and publishes
+  one coherent candidate PR. No collaborator acknowledgement or merge is inferred.

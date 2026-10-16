@@ -1,5 +1,182 @@
 {
   "$defs": {
+    "AgentAsk": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "minimum": 1,
+          "title": "Expectedrevision",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "DashboardAgentAsk",
+          "default": "DashboardAgentAsk",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "requestId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Requestid",
+          "type": "string"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+                "type": "string"
+              },
+              "maxItems": 2000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        }
+      },
+      "required": [
+        "projectId",
+        "requestId",
+        "expectedRevision",
+        "prompt"
+      ],
+      "title": "AgentAsk",
+      "type": "object"
+    },
+    "AgentInboxDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardAgentInbox",
+          "default": "DashboardAgentInbox",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/AgentTask"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "projectId",
+        "tasks"
+      ],
+      "title": "AgentInboxDocument",
+      "type": "object"
+    },
+    "AgentReply": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Author",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardAgentReply",
+          "default": "DashboardAgentReply",
+          "title": "Kind",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "proposal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DashboardWrite"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requestId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Requestid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId",
+        "author",
+        "message"
+      ],
+      "title": "AgentReply",
+      "type": "object"
+    },
+    "AgentTask": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentReply"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "request": {
+          "$ref": "#/$defs/AgentAsk"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/DashboardDocument"
+        }
+      },
+      "required": [
+        "request",
+        "snapshot",
+        "createdAt"
+      ],
+      "title": "AgentTask",
+      "type": "object"
+    },
     "Appearance": {
       "additionalProperties": false,
       "properties": {
@@ -304,6 +481,23 @@
           "title": "Requestid",
           "type": "string"
         },
+        "scope": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+                "type": "string"
+              },
+              "maxItems": 2000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
         "state": {
           "$ref": "#/$defs/MapState"
         }
@@ -348,6 +542,220 @@
         }
       },
       "title": "MapState",
+      "type": "object"
+    },
+    "Metric": {
+      "additionalProperties": false,
+      "properties": {
+        "history": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Sample"
+          },
+          "maxItems": 100,
+          "title": "History",
+          "type": "array"
+        },
+        "meaning": {
+          "default": "observed",
+          "enum": [
+            "observed",
+            "allocated",
+            "reserved",
+            "estimated"
+          ],
+          "title": "Meaning",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "unit": {
+          "default": "",
+          "maxLength": 24,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "resource",
+            "pool",
+            "provider",
+            "service",
+            "availability",
+            "cost",
+            "dataset",
+            "model",
+            "recovery",
+            "access",
+            "custom"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "entityId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Entityid",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "title": "Expiresat",
+          "type": "string"
+        },
+        "explanation": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "explanationAuthor": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanationauthor"
+        },
+        "kind": {
+          "const": "DashboardObservation",
+          "default": "DashboardObservation",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metrics": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Metric"
+          },
+          "maxItems": 20,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "title": "Observedat",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "real",
+            "synthetic"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Provenance",
+          "type": "string"
+        },
+        "reporter": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Reporter",
+          "type": "string"
+        },
+        "sourceId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Sourceid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "up",
+            "degraded",
+            "down",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "sourceId",
+        "entityId",
+        "category",
+        "title",
+        "reporter",
+        "provenance",
+        "observedAt",
+        "expiresAt",
+        "origin",
+        "status"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "ObservationList": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardObservations",
+          "default": "DashboardObservations",
+          "title": "Kind",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "observations"
+      ],
+      "title": "ObservationList",
       "type": "object"
     },
     "Position": {
@@ -439,6 +847,26 @@
       "title": "Relation",
       "type": "object"
     },
+    "Sample": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "at",
+        "value"
+      ],
+      "title": "Sample",
+      "type": "object"
+    },
     "Viewport": {
       "additionalProperties": false,
       "properties": {
@@ -476,6 +904,24 @@
     },
     {
       "$ref": "#/$defs/DashboardWrite"
+    },
+    {
+      "$ref": "#/$defs/AgentAsk"
+    },
+    {
+      "$ref": "#/$defs/AgentReply"
+    },
+    {
+      "$ref": "#/$defs/AgentInboxDocument"
+    },
+    {
+      "$ref": "#/$defs/Observation"
+    },
+    {
+      "$ref": "#/$defs/ObservationList"
+    },
+    {
+      "$ref": "#/$defs/AgentTask"
     }
   ]
 }

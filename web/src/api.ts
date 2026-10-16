@@ -6,6 +6,12 @@
  */
 
 import type {
+  ObservationList,
+  AgentAsk,
+  AgentTask,
+  AgentInboxDocument,
+  DashboardDocument,
+  DashboardWrite,
   ArtifactView,
   InspectionView,
   LineageLink,
@@ -38,7 +44,11 @@ export class ApiRequestError extends Error {
 /** Raised when the session is gone and the operator must bootstrap again. */
 export class SessionExpiredError extends ApiRequestError {
   constructor() {
-    super("session-expired", "The local session expired; open the bootstrap URL again.", 401);
+    super(
+      "session-expired",
+      "The local session expired; open the bootstrap URL again.",
+      401,
+    );
     this.name = "SessionExpiredError";
   }
 }
@@ -84,13 +94,16 @@ function isApiError(value: unknown): value is ApiError {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    const isUnsafe = init?.method !== undefined && init.method.toUpperCase() !== "GET";
+    const isUnsafe =
+      init?.method !== undefined && init.method.toUpperCase() !== "GET";
     response = await fetch(`${API_PREFIX}${path}`, {
       ...init,
       credentials: "same-origin",
       headers: {
         Accept: "application/json",
-        ...(isUnsafe ? unsafeHeaders(init.headers as Record<string, string> | undefined) : {}),
+        ...(isUnsafe
+          ? unsafeHeaders(init.headers as Record<string, string> | undefined)
+          : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -103,17 +116,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       payload = JSON.parse(text) as unknown;
     } catch {
-      throw new ApiRequestError("response-invalid", "The server sent a malformed body.", 502);
+      throw new ApiRequestError(
+        "response-invalid",
+        "The server sent a malformed body.",
+        502,
+      );
     }
   }
   if (isApiError(payload)) {
-    if (payload.code === "session-expired" || payload.code === "session-required") {
+    if (
+      payload.code === "session-expired" ||
+      payload.code === "session-required"
+    ) {
       throw new SessionExpiredError();
     }
     throw new ApiRequestError(payload.code, payload.message, response.status);
   }
   if (!response.ok) {
-    throw new ApiRequestError("request-failed", `The request failed (${response.status}).`, response.status);
+    throw new ApiRequestError(
+      "request-failed",
+      `The request failed (${response.status}).`,
+      response.status,
+    );
   }
   return payload as T;
 }
@@ -133,6 +157,31 @@ export interface Paged<T> {
 }
 
 export const api = {
+  observations(): Promise<ObservationList> {
+    return request<ObservationList>("/dashboard/observations");
+  },
+  agentInbox(): Promise<AgentInboxDocument> {
+    return request<AgentInboxDocument>("/dashboard/agents");
+  },
+  askAgent(document: AgentAsk): Promise<AgentTask> {
+    return request<AgentTask>("/dashboard/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(document),
+    });
+  },
+  dashboard(revision?: number): Promise<DashboardDocument> {
+    return request<DashboardDocument>(
+      `/dashboard${revision === undefined ? "" : `?revision=${revision}`}`,
+    );
+  },
+  saveDashboard(document: DashboardWrite): Promise<DashboardDocument> {
+    return request<DashboardDocument>("/dashboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(document),
+    });
+  },
   /** Liveness lives outside the versioned prefix and needs no session. */
   async health(): Promise<Health> {
     let response: Response;
@@ -142,7 +191,11 @@ export const api = {
       throw new OfflineError();
     }
     if (!response.ok) {
-      throw new ApiRequestError("request-failed", `Health check failed (${response.status}).`, response.status);
+      throw new ApiRequestError(
+        "request-failed",
+        `Health check failed (${response.status}).`,
+        response.status,
+      );
     }
     return (await response.json()) as Health;
   },
@@ -157,33 +210,61 @@ export const api = {
   workspace(): Promise<WorkspaceView> {
     return request<WorkspaceView>("/workspace");
   },
-  events(cursor: string | null, limit: number, runId?: string, types?: string): Promise<Paged<EventPage["items"][number]>> {
-    return request<EventPage>(`/events${pageQuery(cursor, limit)}${runId === undefined ? "" : `&runId=${encodeURIComponent(runId)}`}${types === undefined ? "" : `&type=${encodeURIComponent(types)}`}`).then((page) => ({
+  events(
+    cursor: string | null,
+    limit: number,
+    runId?: string,
+    types?: string,
+  ): Promise<Paged<EventPage["items"][number]>> {
+    return request<EventPage>(
+      `/events${pageQuery(cursor, limit)}${runId === undefined ? "" : `&runId=${encodeURIComponent(runId)}`}${types === undefined ? "" : `&type=${encodeURIComponent(types)}`}`,
+    ).then((page) => ({
       items: page.items,
       nextCursor: page.nextCursor ?? null,
       highWaterMark: page.highWaterMark,
     }));
   },
-  revisions(cursor: string | null, limit: number): Promise<Paged<RevisionPage["items"][number]>> {
-    return request<RevisionPage>(`/revisions${pageQuery(cursor, limit)}`).then((page) => ({
-      items: page.items,
-      nextCursor: page.nextCursor ?? null,
-      highWaterMark: page.highWaterMark,
-    }));
+  revisions(
+    cursor: string | null,
+    limit: number,
+  ): Promise<Paged<RevisionPage["items"][number]>> {
+    return request<RevisionPage>(`/revisions${pageQuery(cursor, limit)}`).then(
+      (page) => ({
+        items: page.items,
+        nextCursor: page.nextCursor ?? null,
+        highWaterMark: page.highWaterMark,
+      }),
+    );
   },
-  runs(cursor: string | null, limit: number): Promise<Paged<RunPage["items"][number]>> {
-    return request<RunPage>(`/runs${pageQuery(cursor, limit)}`).then((page) => ({
-      items: page.items,
-      nextCursor: page.nextCursor ?? null,
-      highWaterMark: page.highWaterMark,
-    }));
+  runs(
+    cursor: string | null,
+    limit: number,
+  ): Promise<Paged<RunPage["items"][number]>> {
+    return request<RunPage>(`/runs${pageQuery(cursor, limit)}`).then(
+      (page) => ({
+        items: page.items,
+        nextCursor: page.nextCursor ?? null,
+        highWaterMark: page.highWaterMark,
+      }),
+    );
   },
   async research(): Promise<ResearchLedgerView> {
     return request<ResearchLedgerView>("/research");
   },
-  inspect(kind: LineageLink["kind"], identity: string, via: ReadonlyArray<string> = []): Promise<InspectionView> {
-    const group = kind === "event" ? "events" : kind === "revision" ? "revisions" : "artifacts";
-    return request<InspectionView>(`/inspect/${group}/${encodeURIComponent(identity)}?via=${encodeURIComponent(JSON.stringify(via))}`);
+  inspect(
+    kind: LineageLink["kind"],
+    identity: string,
+    via: ReadonlyArray<string> = [],
+  ): Promise<InspectionView> {
+    const group =
+      kind === "event"
+        ? "events"
+        : kind === "revision"
+          ? "revisions"
+          : "artifacts";
+    return request<InspectionView>(
+      `/inspect/${group}/${encodeURIComponent(identity)}?via=${encodeURIComponent(JSON.stringify(via))}`,
+    );
   },
   artifact(digest: string): Promise<ArtifactView> {
     return request<ArtifactView>(`/artifacts/${encodeURIComponent(digest)}`);

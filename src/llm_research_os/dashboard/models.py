@@ -144,12 +144,43 @@ class DashboardWrite(Model):
     author: str = Field(min_length=1, max_length=120)
     author_kind: Literal["human", "agent"] = Field(alias="authorKind")
     state: MapState
+    scope: tuple[Identifier, ...] | None = Field(default=None, max_length=2000)
 
 
-def check_agent_edit(before: MapState, after: MapState) -> None:
+def check_agent_edit(
+    before: MapState, after: MapState, scope: tuple[str, ...] | None = None
+) -> None:
     """TM-100: protect human pins, including movement through an ancestor."""
     previous = {node.id: node for node in before.components}
     proposed = {node.id: node for node in after.components}
+    if scope is not None:
+        allowed = set(scope)
+        if not allowed.issubset(previous):
+            raise ValueError("unknown Agent scope")
+        if any(node.parent_id in allowed and node.id not in allowed for node in before.components):
+            raise ValueError("Agent scope must include region descendants")
+        # New descendants may be added inside the selected region, while unrelated
+        # roots and existing outside nodes cannot be pulled into the scope.
+        for _ in range(8):
+            allowed.update(
+                node.id
+                for node in after.components
+                if node.id not in previous and node.parent_id in allowed
+            )
+        for identity in previous.keys() | proposed.keys():
+            if identity not in allowed and previous.get(identity) != proposed.get(identity):
+                raise ValueError("Agent edit exceeds frozen scope")
+        old_edges = {edge.id: edge for edge in before.relations}
+        new_edges = {edge.id: edge for edge in after.relations}
+        for identity in old_edges.keys() | new_edges.keys():
+            if old_edges.get(identity) != new_edges.get(identity):
+                for edge in (old_edges.get(identity), new_edges.get(identity)):
+                    if edge is not None and (
+                        edge.source not in allowed or edge.target not in allowed
+                    ):
+                        raise ValueError("Agent relation exceeds frozen scope")
+        if before.appearance != after.appearance or before.viewport != after.viewport:
+            raise ValueError("scoped Agent edit changes global appearance or viewport")
     for node in before.components:
         if not node.pinned:
             continue
@@ -166,6 +197,8 @@ def check_agent_edit(before: MapState, after: MapState) -> None:
         while parent_id is not None:
             old = previous[parent_id]
             new = proposed.get(parent_id)
+            if new is not None and not old.collapsed and new.collapsed:
+                raise ValueError("Agent edit hides a pinned descendant")
             if new is None or (new.position.x, new.position.y, new.parent_id) != (
                 old.position.x,
                 old.position.y,

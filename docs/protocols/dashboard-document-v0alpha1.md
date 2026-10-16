@@ -32,3 +32,23 @@ same-user process. No model is called and no credentials are read by composition
 The schema permits 2,000 components and 6,000 edges; actual documents must also
 fit the advertised API byte/node/depth limits. Do not infer those cardinalities
 are simultaneously available under every configured request limit.
+
+
+## Agent inbox and external observations
+
+GET/POST `/api/v0alpha1/dashboard/agents` lists tasks or accepts AgentAsk/AgentReply.
+The existing session, origin, CSRF and body limits apply. Ask freezes the saved
+map revision and scope transactionally. Reply is idempotent and immutable; it
+never applies its proposal. A scoped DashboardWrite cannot change outside nodes,
+global appearance/viewport or relations crossing outside the scope. New
+contained descendants may extend a selected region. Pin and revision checks also
+run at apply time. Attribution is cooperative, not proof of Agent identity.
+
+`researchos dashboard observe` accepts the closed DashboardObservation contract;
+GET `/api/v0alpha1/dashboard/observations` returns stored source reports. Browser
+POST is not supported. The CLI bounds a source to 32 KiB and storage to 100
+sources. Values are finite; timestamps are timezone-aware, history is ordered,
+and sample times cannot exceed the report time. Reports more than five minutes
+in the future are refused. An update must advance its source timestamp; exact
+replays are idempotent. The UI evaluates expiry independently and labels origin,
+measurement meaning, provenance and attributed interpretation.
