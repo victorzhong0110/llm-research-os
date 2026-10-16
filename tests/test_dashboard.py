@@ -399,3 +399,20 @@ def test_published_dashboard_examples():
         validator.validate(json.loads(path.read_text()))
     with pytest.raises(ValidationError, match="parent"):
         DashboardWrite.model_validate_json((root / "invalid/missing-parent.json").read_bytes())
+
+
+def test_published_activity_examples():
+    from jsonschema import Draft202012Validator
+
+    from llm_research_os.web.contracts import ActivitySnapshot
+    from llm_research_os.web.schema import build_schema
+
+    root = Path(__file__).parents[1] / "examples/dashboard/activity"
+    valid = json.loads((root / "valid.json").read_text())
+    validator = Draft202012Validator(build_schema())
+    validator.validate(valid)
+    ActivitySnapshot.model_validate_json(json.dumps(valid))
+    invalid = (root / "invalid.json").read_bytes()
+    assert not validator.is_valid(json.loads(invalid))
+    with pytest.raises(ValidationError, match="highWaterMark"):
+        ActivitySnapshot.model_validate_json(invalid)

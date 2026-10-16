@@ -1402,3 +1402,6 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   Backup integration, inbox archival, guided domain operations and actual
   collector/Agent connections remain subsequent slices. Human first-use and the
   paused checkpoint campaign remain unclaimed; no acknowledgement is inferred.
+
+- Protocol completeness follow-up: activity API includes valid/invalid published
+  examples and schema/model validation. Negative high-water marks are refused.
