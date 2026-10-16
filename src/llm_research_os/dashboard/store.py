@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
+import os
 import sqlite3
+import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from llm_research_os.application.workspace import Workspace
 from llm_research_os.dashboard.models import DashboardDocument, DashboardWrite, check_agent_edit
+from llm_research_os.spec.io import SpecLoadError, decode_document_text
 
 MAX_BYTES = 1048576
 
@@ -141,19 +143,37 @@ class DashboardStore:
             return document
 
 
+def read_json_input(path: Path, *, max_bytes: int = MAX_BYTES) -> bytes:
+    """Freeze bounded regular-file JSON before validating a dashboard command."""
+    if path.is_symlink():
+        raise DashboardError("document must not be a symbolic link")
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags | getattr(os, "O_CLOEXEC", 0))
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise DashboardError("document must be a regular file")
+        if metadata.st_size > max_bytes:
+            raise DashboardError("document exceeds byte limit")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(65536, max_bytes + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > max_bytes:
+                raise DashboardError("document exceeds byte limit")
+        raw = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    try:
+        decode_document_text(raw.decode("utf-8"), suffix=".json")
+    except (SpecLoadError, UnicodeError) as exc:
+        raise DashboardError("duplicate keys or invalid bounded JSON document") from exc
+    return raw
+
+
 def read_write_request(path: Path) -> DashboardWrite:
-    with path.open("rb") as stream:
-        raw = stream.read(MAX_BYTES + 1)
-    if len(raw) > MAX_BYTES:
-        raise DashboardError("view document exceeds limit")
-
-    def unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
-        result: dict[str, object] = {}
-        for key, value in pairs:
-            if key in result:
-                raise DashboardError("duplicate JSON key")
-            result[key] = value
-        return result
-
-    json.loads(raw, object_pairs_hook=unique)
-    return DashboardWrite.model_validate_json(raw)
+    return DashboardWrite.model_validate_json(read_json_input(path))

@@ -1061,3 +1061,9 @@ advance time; fabricated same-user source assertions remain outside independent
 host verification. Agent task capacity is 100 and the current listing is 20;
 observation capacity is 100 at 32 KiB each. Tests include actual local API, CLI
 inbox/reply/observation and browser display with clearly synthetic fixtures.
+
+TM-100 CLI input follow-up: apply/reply/observe share a bounded nonblocking,
+no-follow regular-file reader and the existing strict JSON decoder. Duplicate
+keys at any nesting, excessive decoded depth/nodes, symlinks and special files
+are refused before storage. FIFO regressions use subprocess timeouts so a
+blocking-open regression fails instead of hanging the test runner.

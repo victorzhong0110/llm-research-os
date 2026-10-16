@@ -416,3 +416,80 @@ def test_published_activity_examples():
     assert not validator.is_valid(json.loads(invalid))
     with pytest.raises(ValidationError, match="highWaterMark"):
         ActivitySnapshot.model_validate_json(invalid)
+
+
+@pytest.mark.parametrize("command", ["apply", "observe", "reply"])
+@pytest.mark.parametrize("nested", [False, True])
+def test_cli_duplicate_keys_are_refused_before_storage(
+    tmp_path, capsys, monkeypatch, command, nested
+):
+    from llm_research_os.dashboard.agents import AgentInbox
+    from llm_research_os.dashboard.observations import ObservationStore
+
+    workspace(tmp_path)
+    names = {"apply": "write", "observe": "observation", "reply": "agent-reply"}
+    source = Path(__file__).parents[1] / "examples/dashboard/valid" / f"{names[command]}.json"
+    body = json.loads(source.read_text())
+    if nested:
+        if command == "reply":
+            body["proposal"] = payload()
+        if command == "observe":
+            raw = json.dumps(body).replace('"value": 23.0', '"value": 1, "value": 23.0')
+        else:
+            raw = json.dumps(body).replace('"state": {', '"state": {"components": [],')
+    else:
+        key = "sourceId" if command == "observe" else "requestId"
+        raw = json.dumps(body).replace('"' + key + '":', '"' + key + '": "other", "' + key + '":')
+    target = tmp_path / "request.json"
+    target.write_text(raw)
+
+    def must_not_write(*args, **kwargs):
+        pytest.fail("ambiguous input reached storage")
+
+    monkeypatch.setattr(DashboardStore, "write", must_not_write)
+    monkeypatch.setattr(ObservationStore, "observe", must_not_write)
+    monkeypatch.setattr(AgentInbox, "reply", must_not_write)
+    assert main(["dashboard", command, "--root", str(tmp_path), str(target)]) == 1
+    assert json.loads(capsys.readouterr().out)["reason"] == "DashboardError"
+    assert not (tmp_path / "dashboard.sqlite").exists()
+
+
+@pytest.mark.parametrize("command", ["apply", "observe", "reply"])
+@pytest.mark.parametrize("source_kind", ["fifo", "directory", "symlink"])
+def test_cli_refuses_special_files_without_blocking(tmp_path, command, source_kind):
+    import os
+    import subprocess
+    import sys
+
+    workspace(tmp_path)
+    source = tmp_path / "input.json"
+    if source_kind == "fifo":
+        try:
+            os.mkfifo(source)
+        except PermissionError:
+            pytest.skip("container forbids FIFO creation; real FIFO exercised by Linux/macOS CI")
+    elif source_kind == "directory":
+        source.mkdir()
+    else:
+        regular = tmp_path / "regular.json"
+        regular.write_text(json.dumps(payload()))
+        source.symlink_to(regular)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "llm_research_os",
+            "dashboard",
+            command,
+            "--root",
+            str(tmp_path),
+            str(source),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert json.loads(result.stdout)["error"] == "dashboard-refused"
+    assert not (tmp_path / "dashboard.sqlite").exists()

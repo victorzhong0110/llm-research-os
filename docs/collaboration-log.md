@@ -30,7 +30,7 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-16, dashboard PR #156 review corrections**.
+Snapshot date: **2026-10-17, dashboard PR #156 CLI review corrections**.
 Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
 [main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
 passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
@@ -1405,3 +1405,22 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 
 - Protocol completeness follow-up: activity API includes valid/invalid published
   examples and schema/model validation. Negative high-water marks are refused.
+
+
+## BUILD-20261017-01 — Resolve PR #156 CLI review findings
+
+- Date: 2026-10-17 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261016-03. State: final candidate corrections, not merged.
+- Head c78937fa84cc3b2037f47842973737e982d48415 passed all 11 applicable jobs in
+  CI 38873044330. Subsequent review identified blocking special-file opens and
+  inconsistent duplicate-key rejection in reply/observe. Both findings are valid.
+- Correction: apply/reply/observe share a bounded nonblocking no-follow reader,
+  verify regular-file descriptors and use the existing strict JSON decoder before
+  contract validation. The API depth/node limits and per-command byte caps hold.
+- Regression checks cover nested/top-level duplicate keys before storage and
+  subprocess-bounded FIFO/directory/symlink refusal for all three commands.
+  All 137 focused map/API/asset/regression checks passed locally, including real
+  FIFO cases; strict mypy, lint/format and generated-schema checks passed. Fresh
+  exact-head CI remains required before merging these corrections.
+- No authority, acceptance or checkpoint scope changes. Codex owns the final
+  verification and authorized merge; no collaborator acknowledgement inferred.

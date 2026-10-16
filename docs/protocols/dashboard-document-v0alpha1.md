@@ -52,3 +52,8 @@ and sample times cannot exceed the report time. Reports more than five minutes
 in the future are refused. An update must advance its source timestamp; exact
 replays are idempotent. The UI evaluates expiry independently and labels origin,
 measurement meaning, provenance and attributed interpretation.
+
+All three CLI file inputs (apply, reply, observe) require regular files, refuse
+symlinks, and open nonblocking before checking file type. JSON duplicate keys
+are refused at every nesting level, with the same decoded depth/node limits as
+the API. Observation input retains its tighter 32 KiB byte limit.

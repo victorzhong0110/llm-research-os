@@ -11,7 +11,7 @@ from llm_research_os.application.workspace import load_workspace
 from llm_research_os.dashboard.agents import AgentInbox, AgentInboxDocument, AgentReply, AgentTask
 from llm_research_os.dashboard.models import DashboardDocument
 from llm_research_os.dashboard.observations import Observation, ObservationStore
-from llm_research_os.dashboard.store import DashboardStore, read_write_request
+from llm_research_os.dashboard.store import DashboardStore, read_json_input, read_write_request
 
 
 def add_dashboard_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -42,18 +42,12 @@ def run_dashboard(args: argparse.Namespace) -> int:
         elif args.dashboard_command == "inbox":
             result = AgentInbox(load_workspace(args.root)).list_tasks()
         elif args.dashboard_command == "observe":
-            with args.document.open("rb") as stream:
-                raw = stream.read(32769)
-            if len(raw) > 32768:
-                raise ValueError("observation too large")
+            raw = read_json_input(args.document, max_bytes=32768)
             result = ObservationStore(load_workspace(args.root)).observe(
                 Observation.model_validate_json(raw)
             )
         elif args.dashboard_command == "reply":
-            with args.document.open("rb") as stream:
-                raw = stream.read(1048577)
-            if len(raw) > 1048576:
-                raise ValueError("Agent response too large")
+            raw = read_json_input(args.document)
             result = AgentInbox(load_workspace(args.root)).reply(
                 AgentReply.model_validate_json(raw)
             )
