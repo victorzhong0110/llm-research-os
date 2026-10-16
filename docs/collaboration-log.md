@@ -1249,3 +1249,23 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   evidence record after checks; assigned operator completes remaining live
   faults/onboarding/GPU rows, maintainer reviews complete acceptance separately.
 - Proposed normative changes: none.
+
+
+## MAINT-20261017-01 — Preserve monetary schemas under Pydantic 2.14
+
+- Date: 2026-10-17 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- State: candidate correction for PR #154, original head
+  f789a8b764e09d984b27a75b6ddc07259bb21259 on verified base fe619370.
+- Original CI 38803135315 failed five schema-drift tests. Read-only comparison
+  found exactly four removed decimal-string patterns across ResearchSpec and
+  dry-run report maxCost fields; other registered schemas were unchanged.
+- Corrective implementation explicitly retains the existing published monetary
+  string pattern through field schema metadata. No generated schema is relaxed;
+  runtime Decimal parsing, bounds, canonical digests and paid-action authority
+  are unchanged. Regression fixtures cover valid decimal text, nonnumeric text,
+  nonfinite spellings, empty/sign-only text and exponent notation.
+- Validation: all registered generated schemas match their committed bytes under
+  Pydantic 2.14.1; 42 schema/CLI and 97 budget/canonical/planner tests passed.
+  Strict typing, lint/format, all 13 digest vectors and wheel/sdist build passed.
+  Exact-head CI and integration remain pending. Codex owns sequential integration
+  under existing authorization. No protocol, authority or acceptance change.

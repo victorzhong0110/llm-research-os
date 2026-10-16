@@ -189,3 +189,30 @@ def test_valid_events_round_trip_through_pydantic(path: Path) -> None:
     event = validate_event_document(json.loads(path.read_text(encoding="utf-8")))
     dumped = event.model_dump(mode="json", by_alias=True, exclude_none=True)
     assert validate_event_document(dumped) == event
+
+
+@pytest.mark.parametrize(
+    "value,valid",
+    [
+        ("12.50", True),
+        ("0", True),
+        (".5", True),
+        (None, True),
+        ("garbage", False),
+        ("NaN", False),
+        ("Infinity", False),
+        ("", False),
+        ("1e3", False),
+        ("+", False),
+        (".", False),
+    ],
+)
+def test_money_text_contract_survives_generator_upgrades(value, valid):
+    # These are the already-published v0alpha1 constraints, not a new grammar.
+    for schema, names in [
+        (build_schema(), ("ResourceSpec", "LoopBlock")),
+        (build_dry_run_schema(), ("PlannedResource", "PlannedLoop")),
+    ]:
+        for name in names:
+            field = schema["$defs"][name]["properties"]["maxCost"]
+            assert Draft202012Validator(field).is_valid(value) is valid
