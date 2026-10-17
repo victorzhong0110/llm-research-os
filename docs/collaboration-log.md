@@ -30,29 +30,26 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-17, dashboard PR #156 CLI review corrections**.
-Current verified main: `fe61937072db21258e01e2ca685ef1d07afa0a0c`, after #150;
-[main CI 38699740458](https://github.com/victorzhong0110/llm-research-os/actions/runs/38699740458)
-passed. #149 integrated at `9732958e0383c4b568081224a20b44c6e8d42895`, with
-all 11 applicable final-head CI jobs and 80 independent focused tests passing;
-[its main CI 38697958006](https://github.com/victorzhong0110/llm-research-os/actions/runs/38697958006)
-also passed. #150's corrected head
-`19841e947390d417afa419b4936cfd34bbd56b4d` passed all 11 applicable CI jobs
-before squash integration at the current main above. Its partial operator-reported
-two-host CPU evidence remains attributed to execution base
-`c6b21b929ed35c853116fcd186559f9caad1e9ae`; no independent rerun or Checkpoint B
-closure is claimed.
+Snapshot date: **2026-10-17, Dashboard integrated and maintenance reconciliation**.
+Latest verified main: `0a67da5d7c27499a32cbb685fdd46cf7cfd9d9de`, after #156;
+[main CI 38962991931](https://github.com/victorzhong0110/llm-research-os/actions/runs/38962991931)
+passed. Dashboard final head `589fee8ae1a1cb037c0a86780201b2a3062e4501`
+also passed its full CI 38961513691, including macOS.
+Maintenance #155, #151, #152 and #153 were subsequently reviewed and merged
+sequentially; combined main `b242e32911f77e14597bdcf8fcae4ce5dfc89d20`
+is awaiting its own push CI. Each original maintenance head passed all applicable
+CI jobs. Pydantic #154 correction `14e0b626f877e0af3cd5a3a004185a934d86be97`
+passed CI 38961923871 and is being reconciled with that combined main.
 
-The maintainer paused the existing checkpoint trial campaign and confirmed the
-[research dashboard direction](plans/research-dashboard.md). The maintainer subsequently authorized full implementation, including a unified
-one-person AI organization map spanning research, infrastructure, serving,
-reliability, costs and governance. [PR #156](https://github.com/victorzhong0110/llm-research-os/pull/156)
-contains the composition UI, scoped Agent inbox and observation sources. Its
-initial head `4cb8011d4c13e9e2fb842663cce5aa014fa259ff` passed all 11 applicable
-CI jobs; review corrections are awaiting their own immutable-head CI.
-First-use acceptance remains open. The follow-up adds a side toolbox
-with Browse/Edit/AI modes and contextual Agent markers. See DESIGN-20261015-01
-and DESIGN-20261016-02 below.
+The maintainer paused the checkpoint trial campaign and authorized the full
+[research dashboard direction](plans/research-dashboard.md): a one-person AI
+organization map spanning research, infrastructure, serving, reliability, costs
+and governance. #156 integrates the semantic map, Browse/Edit/AI toolbox,
+scoped Agent inbox, observations, themes and large-map navigation. This is
+integration evidence, not human first-use acceptance. Guided first-use setup,
+automatic source adapters and the recorded live acceptance gaps remain open.
+Prior #150 two-host evidence remains attributed to its original execution base
+`c6b21b929ed35c853116fcd186559f9caad1e9ae`; no Checkpoint B closure is claimed.
 
 Historical maintenance snapshot follows:
 Historical maintenance base: `d59fd954076bd5060e86d78e7514e0c0ef9dd25f`, integrating
@@ -78,7 +75,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | Semantic workspace Dashboard implementation candidate: map, themes, toolbox, Agent inbox and observation ingestion. See BUILD-20261016-02; PR integration and first-user acceptance remain pending. |
+| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. #154 maintenance reconciliation is current; guided first-use and human acceptance remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1424,3 +1421,40 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   exact-head CI remains required before merging these corrections.
 - No authority, acceptance or checkpoint scope changes. Codex owns the final
   verification and authorized merge; no collaborator acknowledgement inferred.
+
+## MAINT-20261017-01 — Preserve monetary schemas under Pydantic 2.14
+
+- Date: 2026-10-17 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- State: candidate correction for PR #154, original head
+  f789a8b764e09d984b27a75b6ddc07259bb21259 on verified base fe619370.
+- Original CI 38803135315 failed five schema-drift tests. Read-only comparison
+  found exactly four removed decimal-string patterns across ResearchSpec and
+  dry-run report maxCost fields; other registered schemas were unchanged.
+- Corrective implementation explicitly retains the existing published monetary
+  string pattern through field schema metadata. No generated schema is relaxed;
+  runtime Decimal parsing, bounds, canonical digests and paid-action authority
+  are unchanged. Regression fixtures cover valid decimal text, nonnumeric text,
+  nonfinite spellings, empty/sign-only text and exponent notation.
+- Validation: all registered generated schemas match their committed bytes under
+  Pydantic 2.14.1; 42 schema/CLI and 97 budget/canonical/planner tests passed.
+  Strict typing, lint/format, all 13 digest vectors and wheel/sdist build passed.
+  Exact-head CI and integration remain pending. Codex owns sequential integration
+  under existing authorization. No protocol, authority or acceptance change.
+
+## MAINT-20261017-02 — Reconcile reviewed maintenance with the Dashboard
+
+- Date: 2026-10-17 UTC. Sender: Codex. Recipient: maintainer / next implementer.
+- State: integrated #156, #155, #151, #152 and #153 under existing authorization;
+  #154 merge reconciliation is a candidate until its updated-head CI passes.
+- #156 final PR CI 38961513691 and main CI 38962991931 passed. The prior
+  Pydantic correction head 14e0b626 passed CI 38961923871. Original reviewed
+  maintenance heads and applicable CI passed before their sequential merges.
+- Reconciliation preserves both append-only communication histories, the
+  Dashboard implementation and all dependency locks. Published monetary schemas
+  retain their prior grammar; no schema regeneration or authority change.
+- Combined local validation: 264 schema/CLI/budget/canonical/planner/Dashboard/API/asset
+  tests passed; strict typing (289 source files), lint, formatting and all registered
+  generated schemas passed with the merged locks. Updated-head CI remains pending.
+- Next action / owner: Codex validates the combined candidate, merges #154 after
+  its required checks, and proceeds to guided first-use from verified main.
+  Existing checkpoint campaigns remain paused; human acceptance stays open.

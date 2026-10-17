@@ -17,6 +17,7 @@ from llm_research_os.spec.models import (
     ResourceKind,
     SemanticVersion,
     StrictModel,
+    preserve_money_json_schema,
 )
 
 NonNegativeInt = Annotated[int, Field(ge=0)]
@@ -86,7 +87,9 @@ class PlannedResource(FrozenPlanModel):
     provider: NonEmptyText | None = None
     model: NonEmptyText | None = None
     paid: bool
-    max_cost: Decimal | None = Field(default=None, alias="maxCost")
+    max_cost: Decimal | None = Field(
+        default=None, alias="maxCost", json_schema_extra=preserve_money_json_schema
+    )
     currency: CurrencyCode
     max_wall_time_seconds: int | None = Field(default=None, ge=1, alias="maxWallTimeSeconds")
 
@@ -129,7 +132,9 @@ class PlannedLoop(FrozenPlanModel):
     depends_on: tuple[NonEmptyText, ...] = Field(default_factory=tuple, alias="dependsOn")
     max_iterations: int = Field(ge=1, alias="maxIterations")
     max_wall_time_seconds: int | None = Field(default=None, ge=1, alias="maxWallTimeSeconds")
-    max_cost: Decimal | None = Field(default=None, ge=0, alias="maxCost")
+    max_cost: Decimal | None = Field(
+        default=None, ge=0, alias="maxCost", json_schema_extra=preserve_money_json_schema
+    )
     currency: CurrencyCode
     may_incur_cost: bool = Field(alias="mayIncurCost")
     checkpoint: bool

@@ -1,8 +1,8 @@
 # Research dashboard: design direction and delivery plan
 
 Status: **Maintainer-confirmed product direction, 2026-10-15; full implementation
-authorized 2026-10-16. Current map, composition and observation slice is a candidate,
-not merged or accepted. Human first-use evidence remains pending.**
+authorized 2026-10-16. Map, composition and observation slice merged in #156;
+main CI 38962991931 passed at 0a67da5d. Human first-use evidence remains pending.**
 Constraint record: [ADR-0066](../adr/0066-semantic-research-dashboard.md).
 Canonical package and acceptance authority remains the
 [M3 plan](m3-development-plan.md) and its

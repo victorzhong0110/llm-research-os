@@ -84,6 +84,15 @@ SemanticVersion = Annotated[
         ),
     ),
 ]
+
+
+def preserve_money_json_schema(schema: dict[str, Any]) -> None:
+    """Pin the published decimal text grammar across Pydantic generator versions."""
+    for branch in schema.get("anyOf", [schema]):
+        if branch.get("type") == "string":
+            branch["pattern"] = r"^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$"
+
+
 NonNegativeMoney = Annotated[Decimal, Field(ge=0)]
 JsonObject = Annotated[dict[str, Any], AfterValidator(_require_json_object)]
 
@@ -240,7 +249,9 @@ class ResourceSpec(StrictModel):
     provider: NonEmptyText | None = None
     model: NonEmptyText | None = None
     paid: bool = False
-    max_cost: NonNegativeMoney | None = Field(default=None, alias="maxCost")
+    max_cost: NonNegativeMoney | None = Field(
+        default=None, alias="maxCost", json_schema_extra=preserve_money_json_schema
+    )
     currency: CurrencyCode = "USD"
     max_wall_time_seconds: PositiveInt | None = Field(default=None, alias="maxWallTimeSeconds")
 
@@ -299,7 +310,9 @@ class LoopBlock(StrictModel):
     body: WorkflowGraph
     max_iterations: PositiveInt = Field(alias="maxIterations")
     max_wall_time_seconds: PositiveInt | None = Field(default=None, alias="maxWallTimeSeconds")
-    max_cost: NonNegativeMoney | None = Field(default=None, alias="maxCost")
+    max_cost: NonNegativeMoney | None = Field(
+        default=None, alias="maxCost", json_schema_extra=preserve_money_json_schema
+    )
     currency: CurrencyCode = "USD"
     may_incur_cost: bool = Field(default=False, alias="mayIncurCost")
     until: ConditionExpression | None = None
