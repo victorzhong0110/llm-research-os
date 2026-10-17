@@ -1,0 +1,7 @@
+{
+  "apiVersion": "researchos.dev/local-api/v0alpha1",
+  "kind": "ActivitySnapshot",
+  "items": [],
+  "highWaterMark": 0,
+  "olderAvailable": false
+}

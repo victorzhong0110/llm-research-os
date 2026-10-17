@@ -684,3 +684,10 @@ authorized release.
 - Persist inert/reviewed extension lifecycle and diagnostics through the CLI;
   demonstrate the existing CPU evaluator under the existing subprocess bounds.
 - Keep untrusted code refused and backup restore free of executable trust.
+
+- Add a semantic workspace Dashboard with Graphite/Warm paper/custom themes,
+  Browse/Edit/AI tools, containment, contextual view arrows, zoom/search/minimap,
+  revision-bound persistence and a scoped inbox for user-owned Agents.
+- Add source-attributed observation ingestion and metric/time-series components
+  for infrastructure, providers, serving, availability, costs and custom views.
+  Missing and stale sources remain explicit; view edits never authorize execution.

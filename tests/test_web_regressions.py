@@ -252,3 +252,35 @@ def test_trickling_headers_expire_and_release_handler(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
+
+
+@pytest.mark.parametrize("count", [0, 100, 105])
+def test_dashboard_activity_reads_latest_project_events(tmp_path: Path, count: int) -> None:
+    root = _root(tmp_path)
+    with EventStore(root / "control.db") as store:
+        for index in range(count):
+            _append(store, index)
+        _append(store, count, project="proj-foreign")
+        # Existing event pagination retains ascending append order.
+        assert [row.sequence for row in store.read_events(limit=2)] == list(
+            range(1, min(count + 1, 2) + 1)
+        )
+    client = Client(
+        LocalApi(
+            load_workspace(root),
+            sessions=SessionStore(bootstrap_token=BOOTSTRAP),
+            allowed_hosts=frozenset({HOST}),
+            allowed_origin=ORIGIN,
+        )
+    )
+    assert client.request("GET", "/api/v0alpha1/dashboard/activity")[0] == 401
+    assert client.bootstrap(BOOTSTRAP)[0] == 201
+    status, _, body = client.request("GET", "/api/v0alpha1/dashboard/activity")
+    assert status == 200
+    assert body["kind"] == "ActivitySnapshot"
+    assert body["highWaterMark"] == count + 1
+    assert body["olderAvailable"] is (count > 100)
+    assert [item["sequence"] for item in body["items"]] == list(
+        range(max(1, count - 99), count + 1)
+    )
+    assert all(item["projectId"] == "proj-alpha" for item in body["items"])

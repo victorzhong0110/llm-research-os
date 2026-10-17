@@ -9,6 +9,173 @@ export const API_PREFIX = "/api/v0alpha1";
 export const CONTRACT_VERSION = "v0alpha1";
 
 
+export interface ActivitySnapshot {
+  readonly apiVersion: "researchos.dev/local-api/v0alpha1";
+  readonly kind: "ActivitySnapshot";
+  readonly items: ReadonlyArray<EventItem>;
+  readonly highWaterMark: number;
+  readonly olderAvailable: boolean;
+}
+
+export interface EventItem {
+  readonly sequence: number;
+  readonly eventId: string;
+  readonly type: string;
+  readonly occurredAt: string;
+  readonly projectId: string;
+  readonly runId?: string | null;
+  readonly attemptId?: string | null;
+}
+
+export interface Observation {
+  readonly kind?: "DashboardObservation";
+  readonly projectId: string;
+  readonly sourceId: string;
+  readonly entityId: string;
+  readonly category: "resource" | "pool" | "provider" | "service" | "availability" | "cost" | "dataset" | "model" | "recovery" | "access" | "custom";
+  readonly title: string;
+  readonly reporter: string;
+  readonly provenance: string;
+  readonly observedAt: string;
+  readonly expiresAt: string;
+  readonly origin: "real" | "synthetic";
+  readonly status: "up" | "degraded" | "down" | "unknown";
+  readonly metrics?: ReadonlyArray<Metric>;
+  readonly explanation?: string;
+  readonly explanationAuthor?: string | null;
+}
+
+export interface Metric {
+  readonly name: string;
+  readonly value: number;
+  readonly unit?: string;
+  readonly meaning?: "observed" | "allocated" | "reserved" | "estimated";
+  readonly history?: ReadonlyArray<Sample>;
+}
+
+export interface Sample {
+  readonly at: string;
+  readonly value: number;
+}
+
+export interface ObservationList {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly kind?: "DashboardObservations";
+  readonly projectId: string;
+  readonly observations: ReadonlyArray<Observation>;
+}
+
+export interface AgentAsk {
+  readonly kind?: "DashboardAgentAsk";
+  readonly projectId: string;
+  readonly requestId: string;
+  readonly expectedRevision: number;
+  readonly scope?: ReadonlyArray<string> | null;
+  readonly prompt: string;
+}
+
+export interface AgentReply {
+  readonly kind?: "DashboardAgentReply";
+  readonly requestId: string;
+  readonly author: string;
+  readonly message: string;
+  readonly proposal?: DashboardWrite | null;
+}
+
+export interface DashboardWrite {
+  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
+  readonly kind?: "DashboardWrite";
+  readonly projectId: string;
+  readonly requestId: string;
+  readonly expectedRevision: number;
+  readonly author: string;
+  readonly authorKind: "human" | "agent";
+  readonly state: MapState;
+  readonly scope?: ReadonlyArray<string> | null;
+}
+
+export interface MapState {
+  readonly components?: ReadonlyArray<Component>;
+  readonly relations?: ReadonlyArray<Relation>;
+  readonly appearance?: Appearance;
+  readonly viewport?: Viewport;
+}
+
+export interface Appearance {
+  readonly skin?: "graphite" | "paper" | "custom";
+  readonly background?: string;
+  readonly accent?: string;
+  readonly density?: "comfortable" | "compact";
+  readonly textScale?: number;
+}
+
+export interface Component {
+  readonly id: string;
+  readonly type: "group" | "project" | "run" | "agent" | "research" | "evaluation" | "resource" | "provider" | "dataset" | "model" | "service" | "pool" | "availability" | "cost" | "access" | "recovery" | "note" | "custom";
+  readonly title: string;
+  readonly parentId?: string | null;
+  readonly position: Position;
+  readonly pinned?: boolean;
+  readonly collapsed?: boolean;
+  readonly binding?: Binding | null;
+  readonly body?: string;
+  readonly renderer?: "summary" | "metric" | "table" | "chart" | "timeline";
+}
+
+export interface Binding {
+  readonly source: "workspace" | "runs" | "research" | "events" | "telemetry";
+  readonly entityId?: string | null;
+  readonly sourceId?: string | null;
+}
+
+export interface Position {
+  readonly x: number;
+  readonly y: number;
+  readonly width?: number;
+  readonly height?: number;
+}
+
+export interface Relation {
+  readonly id: string;
+  readonly source: string;
+  readonly target: string;
+  readonly type: "dependency" | "evidence" | "shared" | "peer" | "association";
+  readonly label: string;
+  readonly scope?: "view";
+}
+
+export interface Viewport {
+  readonly x?: number;
+  readonly y?: number;
+  readonly zoom?: number;
+}
+
+export interface AgentInboxDocument {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly kind?: "DashboardAgentInbox";
+  readonly projectId: string;
+  readonly tasks: ReadonlyArray<AgentTask>;
+}
+
+export interface AgentTask {
+  readonly apiVersion?: "researchos.dev/local-api/v0alpha1";
+  readonly request: AgentAsk;
+  readonly snapshot: DashboardDocument;
+  readonly createdAt: string;
+  readonly reply?: AgentReply | null;
+}
+
+export interface DashboardDocument {
+  readonly apiVersion?: "researchos.dev/dashboard/v0alpha1";
+  readonly kind?: "DashboardDocument";
+  readonly projectId: string;
+  readonly revision?: number;
+  readonly state?: MapState;
+  readonly author?: string;
+  readonly authorKind?: "human" | "agent" | "system";
+  readonly updatedAt?: string | null;
+}
+
 export interface ArtifactView {
   readonly apiVersion: "researchos.dev/local-api/v0alpha1";
   readonly kind: "ArtifactView";
@@ -106,16 +273,6 @@ export interface EventPage {
   readonly highWaterMark: number;
   readonly kind: "EventPage";
   readonly items: ReadonlyArray<EventItem>;
-}
-
-export interface EventItem {
-  readonly sequence: number;
-  readonly eventId: string;
-  readonly type: string;
-  readonly occurredAt: string;
-  readonly projectId: string;
-  readonly runId?: string | null;
-  readonly attemptId?: string | null;
 }
 
 export interface Health {

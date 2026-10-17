@@ -1,0 +1,32 @@
+{
+  "kind": "DashboardObservation",
+  "projectId": "demo",
+  "sourceId": "example-host",
+  "entityId": "host-1",
+  "category": "resource",
+  "title": "Example host CPU",
+  "reporter": "example collector",
+  "provenance": "Synthetic example only, not a live host",
+  "observedAt": "2026-01-01T00:00:00Z",
+  "expiresAt": "2026-01-01T00:01:00Z",
+  "origin": "synthetic",
+  "status": "unknown",
+  "metrics": [
+    {
+      "name": "CPU utilization",
+      "value": 23.0,
+      "unit": "%",
+      "meaning": "observed",
+      "history": [
+        {
+          "at": "2025-12-31T23:59:30Z",
+          "value": 21.0
+        },
+        {
+          "at": "2026-01-01T00:00:00Z",
+          "value": 23.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,268 @@
 {
   "$defs": {
+    "ActivitySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "highWaterMark": {
+          "minimum": 0,
+          "title": "Highwatermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EventItem"
+          },
+          "maxItems": 100,
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ActivitySnapshot",
+          "title": "Kind",
+          "type": "string"
+        },
+        "olderAvailable": {
+          "title": "Olderavailable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "items",
+        "highWaterMark",
+        "olderAvailable"
+      ],
+      "title": "ActivitySnapshot",
+      "type": "object"
+    },
+    "AgentAsk": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "minimum": 1,
+          "title": "Expectedrevision",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "DashboardAgentAsk",
+          "default": "DashboardAgentAsk",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "requestId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Requestid",
+          "type": "string"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+                "type": "string"
+              },
+              "maxItems": 2000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        }
+      },
+      "required": [
+        "projectId",
+        "requestId",
+        "expectedRevision",
+        "prompt"
+      ],
+      "title": "AgentAsk",
+      "type": "object"
+    },
+    "AgentInboxDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardAgentInbox",
+          "default": "DashboardAgentInbox",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/AgentTask"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "projectId",
+        "tasks"
+      ],
+      "title": "AgentInboxDocument",
+      "type": "object"
+    },
+    "AgentReply": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Author",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardAgentReply",
+          "default": "DashboardAgentReply",
+          "title": "Kind",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "proposal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DashboardWrite"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requestId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Requestid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId",
+        "author",
+        "message"
+      ],
+      "title": "AgentReply",
+      "type": "object"
+    },
+    "AgentTask": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentReply"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "request": {
+          "$ref": "#/$defs/AgentAsk"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/DashboardDocument"
+        }
+      },
+      "required": [
+        "request",
+        "snapshot",
+        "createdAt"
+      ],
+      "title": "AgentTask",
+      "type": "object"
+    },
+    "Appearance": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "default": "#262626",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "title": "Accent",
+          "type": "string"
+        },
+        "background": {
+          "default": "#f5f5f4",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "title": "Background",
+          "type": "string"
+        },
+        "density": {
+          "default": "comfortable",
+          "enum": [
+            "comfortable",
+            "compact"
+          ],
+          "title": "Density",
+          "type": "string"
+        },
+        "skin": {
+          "default": "graphite",
+          "enum": [
+            "graphite",
+            "paper",
+            "custom"
+          ],
+          "title": "Skin",
+          "type": "string"
+        },
+        "textScale": {
+          "default": 1,
+          "maximum": 1.4,
+          "minimum": 0.9,
+          "title": "Textscale",
+          "type": "number"
+        }
+      },
+      "title": "Appearance",
+      "type": "object"
+    },
     "ArtifactDocument": {
       "additionalProperties": false,
       "properties": {
@@ -57,6 +320,53 @@
         "inline"
       ],
       "title": "ArtifactDocument",
+      "type": "object"
+    },
+    "Binding": {
+      "additionalProperties": false,
+      "properties": {
+        "entityId": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entityid"
+        },
+        "source": {
+          "enum": [
+            "workspace",
+            "runs",
+            "research",
+            "events",
+            "telemetry"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "sourceId": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceid"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "Binding",
       "type": "object"
     },
     "CapabilitiesDocument": {
@@ -214,6 +524,250 @@
         "result"
       ],
       "title": "CommandReceipt",
+      "type": "object"
+    },
+    "Component": {
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Binding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "body": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Body",
+          "type": "string"
+        },
+        "collapsed": {
+          "default": false,
+          "title": "Collapsed",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parentid"
+        },
+        "pinned": {
+          "default": false,
+          "title": "Pinned",
+          "type": "boolean"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "renderer": {
+          "default": "summary",
+          "enum": [
+            "summary",
+            "metric",
+            "table",
+            "chart",
+            "timeline"
+          ],
+          "title": "Renderer",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "group",
+            "project",
+            "run",
+            "agent",
+            "research",
+            "evaluation",
+            "resource",
+            "provider",
+            "dataset",
+            "model",
+            "service",
+            "pool",
+            "availability",
+            "cost",
+            "access",
+            "recovery",
+            "note",
+            "custom"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "position"
+      ],
+      "title": "Component",
+      "type": "object"
+    },
+    "DashboardDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/dashboard/v0alpha1",
+          "default": "researchos.dev/dashboard/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "author": {
+          "default": "system",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Author",
+          "type": "string"
+        },
+        "authorKind": {
+          "default": "system",
+          "enum": [
+            "human",
+            "agent",
+            "system"
+          ],
+          "title": "Authorkind",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardDocument",
+          "default": "DashboardDocument",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "revision": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/MapState"
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updatedat"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "title": "DashboardDocument",
+      "type": "object"
+    },
+    "DashboardWrite": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/dashboard/v0alpha1",
+          "default": "researchos.dev/dashboard/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "author": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Author",
+          "type": "string"
+        },
+        "authorKind": {
+          "enum": [
+            "human",
+            "agent"
+          ],
+          "title": "Authorkind",
+          "type": "string"
+        },
+        "expectedRevision": {
+          "minimum": 0,
+          "title": "Expectedrevision",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "DashboardWrite",
+          "default": "DashboardWrite",
+          "title": "Kind",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "requestId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Requestid",
+          "type": "string"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+                "type": "string"
+              },
+              "maxItems": 2000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
+        "state": {
+          "$ref": "#/$defs/MapState"
+        }
+      },
+      "required": [
+        "projectId",
+        "requestId",
+        "expectedRevision",
+        "author",
+        "authorKind",
+        "state"
+      ],
+      "title": "DashboardWrite",
       "type": "object"
     },
     "DocumentPreviewDocument": {
@@ -586,6 +1140,340 @@
       "title": "LineageLink",
       "type": "object"
     },
+    "MapState": {
+      "additionalProperties": false,
+      "properties": {
+        "appearance": {
+          "$ref": "#/$defs/Appearance"
+        },
+        "components": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Component"
+          },
+          "maxItems": 2000,
+          "title": "Components",
+          "type": "array"
+        },
+        "relations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Relation"
+          },
+          "maxItems": 6000,
+          "title": "Relations",
+          "type": "array"
+        },
+        "viewport": {
+          "$ref": "#/$defs/Viewport"
+        }
+      },
+      "title": "MapState",
+      "type": "object"
+    },
+    "Metric": {
+      "additionalProperties": false,
+      "properties": {
+        "history": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Sample"
+          },
+          "maxItems": 100,
+          "title": "History",
+          "type": "array"
+        },
+        "meaning": {
+          "default": "observed",
+          "enum": [
+            "observed",
+            "allocated",
+            "reserved",
+            "estimated"
+          ],
+          "title": "Meaning",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "unit": {
+          "default": "",
+          "maxLength": 24,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "resource",
+            "pool",
+            "provider",
+            "service",
+            "availability",
+            "cost",
+            "dataset",
+            "model",
+            "recovery",
+            "access",
+            "custom"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "entityId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Entityid",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "title": "Expiresat",
+          "type": "string"
+        },
+        "explanation": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "explanationAuthor": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanationauthor"
+        },
+        "kind": {
+          "const": "DashboardObservation",
+          "default": "DashboardObservation",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metrics": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Metric"
+          },
+          "maxItems": 20,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "title": "Observedat",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "real",
+            "synthetic"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Provenance",
+          "type": "string"
+        },
+        "reporter": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Reporter",
+          "type": "string"
+        },
+        "sourceId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Sourceid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "up",
+            "degraded",
+            "down",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "sourceId",
+        "entityId",
+        "category",
+        "title",
+        "reporter",
+        "provenance",
+        "observedAt",
+        "expiresAt",
+        "origin",
+        "status"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "ObservationList": {
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "researchos.dev/local-api/v0alpha1",
+          "default": "researchos.dev/local-api/v0alpha1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "DashboardObservations",
+          "default": "DashboardObservations",
+          "title": "Kind",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "projectId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Projectid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "observations"
+      ],
+      "title": "ObservationList",
+      "type": "object"
+    },
+    "Position": {
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "default": 190,
+          "maximum": 20000,
+          "minimum": 120,
+          "title": "Height",
+          "type": "number"
+        },
+        "width": {
+          "default": 280,
+          "maximum": 20000,
+          "minimum": 180,
+          "title": "Width",
+          "type": "number"
+        },
+        "x": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Position",
+      "type": "object"
+    },
+    "Relation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "scope": {
+          "const": "view",
+          "default": "view",
+          "title": "Scope",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "dependency",
+            "evidence",
+            "shared",
+            "peer",
+            "association"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "type",
+        "label"
+      ],
+      "title": "Relation",
+      "type": "object"
+    },
     "RevisionItem": {
       "additionalProperties": false,
       "properties": {
@@ -770,6 +1658,26 @@
       "title": "RunPageDocument",
       "type": "object"
     },
+    "Sample": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "at",
+        "value"
+      ],
+      "title": "Sample",
+      "type": "object"
+    },
     "SessionDetails": {
       "additionalProperties": false,
       "properties": {
@@ -832,6 +1740,34 @@
       "title": "SessionDocument",
       "type": "object"
     },
+    "Viewport": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "default": 0,
+          "maximum": 200000,
+          "minimum": -200000,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "default": 0,
+          "maximum": 200000,
+          "minimum": -200000,
+          "title": "Y",
+          "type": "number"
+        },
+        "zoom": {
+          "default": 0.75,
+          "maximum": 2,
+          "minimum": 0.1,
+          "title": "Zoom",
+          "type": "number"
+        }
+      },
+      "title": "Viewport",
+      "type": "object"
+    },
     "WorkspaceDocument": {
       "additionalProperties": false,
       "properties": {
@@ -883,6 +1819,21 @@
   "$id": "https://researchos.dev/schemas/local-api-response/v0alpha1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
+    {
+      "$ref": "#/$defs/DashboardDocument"
+    },
+    {
+      "$ref": "#/$defs/AgentInboxDocument"
+    },
+    {
+      "$ref": "#/$defs/AgentTask"
+    },
+    {
+      "$ref": "#/$defs/ObservationList"
+    },
+    {
+      "$ref": "#/$defs/ActivitySnapshot"
+    },
     {
       "$ref": "#/$defs/ArtifactDocument"
     },
