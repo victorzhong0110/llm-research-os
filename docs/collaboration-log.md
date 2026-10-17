@@ -30,15 +30,23 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-17, guided research preparation integrated; official status candidate**.
-Latest verified main: `b0538983fba8625ab302bfbbc14d3af9123a4845` (#157);
-[main CI 39021120360](https://github.com/victorzhong0110/llm-research-os/actions/runs/39021120360)
-passed. #157 final head `19e418c3269e2b447fa3f9c9f14e49f22023ed2c` passed all
-11 applicable jobs in CI 39002496121; code/security reviews reported no findings.
-Maintenance #151–#155 is integrated; #154 main CI 39002226291 also passed.
-The official OpenAI/Claude status slice is a candidate based on b0538983,
-pending its own PR review and CI. Direct endpoint verification is unavailable
-in this execution environment because the public hostnames do not resolve.
+Snapshot date: **2026-10-18 Asia/Taipei, repository/issue cleanup**.
+Latest verified main: `c112bd7465c2891095c80df4bce6e5163429fb39` (#158);
+[main CI 39055968178](https://github.com/victorzhong0110/llm-research-os/actions/runs/39055968178)
+passed. #158 final head `d9e17f2606da480543f2afe1ac379288c8a12c87` passed all
+11 applicable jobs in CI 39022329013; code/security reviews reported no findings.
+#156–#158 integrate the map, guided brief and manual official-provider status.
+Maintenance #151–#155 is integrated. Direct official endpoint verification in
+the development environment remains unavailable because public DNS failed;
+synthetic browser fixtures do not establish live connectivity.
+
+The maintainer explicitly requested repository, PR and issue cleanup.
+No PR was open at the start. Completed bookkeeping/scoped-acceptance issues
+#88–#90 were closed using existing #84/#106/#110 evidence. #91–#103 and #53
+remain open with corrected implementation status and explicit review/live/human
+work. #104 is the refreshed package index; #159 tracks active Dashboard work.
+#26 remains a deferred direction. This documentation cleanup is a candidate;
+its own PR integration must be recorded only after it occurs.
 
 The maintainer paused the checkpoint trial campaign and authorized the full
 [research dashboard direction](plans/research-dashboard.md): a one-person AI
@@ -46,8 +54,8 @@ organization map spanning research, infrastructure, serving, reliability, costs
 and governance. #156 integrates the semantic map, Browse/Edit/AI toolbox,
 scoped Agent inbox, observations, themes and large-map navigation. This is
 integration evidence, not human first-use acceptance. The merged research brief begins guided first-use preparation. Guided execution
-setup and recorded live acceptance gaps remain open; manual official status
-collectors are the next candidate slice.
+setup and recorded live acceptance gaps remain open. Manual official status
+collectors are integrated in #158; further product work is tracked in #159.
 Prior #150 two-host evidence remains attributed to its original execution base
 `c6b21b929ed35c853116fcd186559f9caad1e9ae`; no Checkpoint B closure is claimed.
 
@@ -75,7 +83,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. Maintenance #151–#155 and guided research brief #157 are integrated with passing main CI. Official status collectors are a candidate; guided execution setup and human acceptance remain open. |
+| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. Maintenance #151–#155 and guided research brief #157 are integrated with passing main CI. Official status collectors #158 are integrated with passing main CI. Guided execution setup and human acceptance remain open in #159. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -89,7 +97,7 @@ passed). Documentation changes do not advance the execution baseline.
 | Message | Recipient | State | Next action / owner |
 | --- | --- | --- | --- |
 | COMM-0004 | Maintainer / resource owner | Partially addressed by merged #150; remaining campaign paused, evidence open | Preserve reported s1–s4 and remaining R07/fault/GPU gaps. Resume the campaign only under a subsequent maintainer direction; no reusable private connection configuration was received. See DESIGN-20261015-01. |
-| DESIGN-20261015-01 / DESIGN-20261016-02 | Planning/review assistant and next assigned implementer | Design and toolbox follow-up recorded; implementation handoff open | Use the dashboard plan, including Browse/Edit/AI modes, for the next sequential product slice. Detailed contracts and usability evidence are pending; no collaborator acknowledgement is inferred. |
+| DESIGN-20261015-01 / DESIGN-20261016-02 | Planning/review assistant and next assigned implementer | Design and toolbox follow-up recorded; implementation handoff open | Map/toolbox contracts and implementation are integrated in #156–#158. Use #159 and the Dashboard plan for guided execution, source expansion and first-use evidence; no collaborator acknowledgement or human acceptance is inferred. |
 | COMM-0005 / COMM-0006 | Planning/review assistant and maintainer | Resolved for integration by COMM-0008 / COMM-0009 | Bounded local transport approved; explicit maintainer direction superseded withheld merges. No phase acceptance inferred. |
 | COMM-0012 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
 | COMM-0013 | Planning/review assistant and maintainer | Reviewed as partial slices; acceptance open | See REVIEW-20261006-R15/R16 and the final PR records; human trials and live evidence remain pending. |
@@ -1515,3 +1523,29 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   model calls, executable extension, host exporter or checkpoint resumption.
   Guided execution setup and human acceptance remain open. TM-101 records the
   new bounded network capability; no normative authority/acceptance changes.
+
+## MAINT-20261018-01 — Reconcile repository and issue status
+
+- Date: 2026-10-18 Asia/Taipei. Sender: Codex. Recipient: maintainer / next implementer.
+- Request: the maintainer clarified the earlier typo and explicitly requested
+  repository cleanup, including PR integration and issue maintenance.
+- Reply to BUILD-20261017-03: #158 merged at c112bd7465c2891095c80df4bce6e5163429fb39.
+  Final-head CI 39022329013 and main CI 39055968178 passed; code/security reviews
+  completed without findings. Direct endpoint connectivity remains unverified.
+- Inventory: no open PRs at the start; 19 open issues. Closed #88/#89/#90 from
+  already-recorded R01 bookkeeping and scoped R02/R03 acceptance. Corrected
+  #91–#103 and #53 without claiming their remaining acceptance complete. Updated
+  #104; created #159 for the active Dashboard continuation. Result: 17 open
+  issues, including the new product tracker. #26 is deliberately retained.
+- Historical issue bodies and original criteria remain in collapsible sections.
+  Stale implementation claims no longer appear as current work. Package merges,
+  passing CI and missing live/human evidence remain separate. The checkpoint
+  campaign stays paused; this cleanup does not close #53 or Checkpoints A/B/C/D.
+- Repository reconciliation: update current snapshots and R10/R14/R15/R16 merge
+  identities in the matrix, retaining candidate history and acceptance limits.
+  This is documentation only: no runtime, schemas, dependencies or authority change.
+- Validation: GitHub issue/PR metadata and the recorded matrix/review evidence
+  support each state change; documentation checks and the cleanup PR's CI are
+  required before integration. No live trial, model call or release was performed.
+- Next action / owner: Codex submits and integrates this documentation slice after
+  checks; subsequent implementation follows #159 from verified main.

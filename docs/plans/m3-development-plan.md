@@ -2,6 +2,14 @@
 
 Status: **R01 integrated by PR #84 at `7d1bcbe`; R02 integrated and scoped-accepted via PR #105 at `9fb8f514`.** This is the
 single maintained M3 task plan. Recording a task does not complete it.
+
+Current engineering snapshot (2026-10-18 Asia/Taipei): implementation slices
+through R16 and Dashboard #156–#158 are integrated. Verified main is `c112bd7`
+([CI 39055968178](https://github.com/victorzhong0110/llm-research-os/actions/runs/39055968178)).
+This does not extend scoped acceptance or close outstanding checkpoints. Current
+product work is [#159](https://github.com/victorzhong0110/llm-research-os/issues/159);
+the old live campaign remains paused. The matrix retains package-specific gaps.
+
 Planning baseline: `main@e1282c5601e08a0bb46ebe10f8d2eca470b4a015`, after #81.
 R01 integration: `7d1bcbe0c956e0fd7d7ce98f07b6c42c8439cc47`.
 R02 integration: `9fb8f5142bb18adffa1423e96ecf2ca43f650432`; [post-merge CI](https://github.com/victorzhong0110/llm-research-os/actions/runs/35810232891) passed.
@@ -121,7 +129,7 @@ runnable demonstration, validation results, and remaining gaps for review.
 | #81 restricted native noop | Merged; CI-verified fixed helper and cancellation behavior | ADR-0063; entrypoint not imported; no real task lifecycle or artifact claim |
 | #81 SSH pack writer and SSH refusal | Merged; validator/writer/refusal tested | Actual onboarding and execution remain pending-live; a pack is not a two-host proof |
 | R02 shared application services | Merged in #105; accepted for the scoped application command and receipt contract | [R02 evidence](../evidence/m3/acceptance-matrix.md); no native launch or live evaluation claim |
-| R03–R16 capabilities | Planned | Per-package evidence must be supplied; no new capability is accepted by this plan |
+| R03–R16 capabilities | Implementation slices integrated; package-specific status in the M3 matrix | R03 has scoped validation-only acceptance; later integration/verification does not establish missing live/human evidence or checkpoint closure |
 | Paid cloud, hosted multi-tenancy, marketplace | Deferred | No new spend or publication authorized by the plan |
 
 Verification always records its scope and implementation/evidence identity.
