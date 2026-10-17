@@ -4,8 +4,9 @@ Status: **Maintainer-confirmed product direction, 2026-10-15; full implementatio
 authorized 2026-10-16. Map, composition and observation slice merged in #156;
 main CI 38962991931 passed at 0a67da5d. Guided research-brief preparation merged
 in #157; main CI 39021120360 passed at b0538983. Official OpenAI/Claude status
-collectors are a follow-up candidate. Guided execution setup and human first-use
-evidence remain pending.**
+collectors merged in #158; main CI 39055968178 passed at c112bd7. Active remaining
+work is tracked in [#159](https://github.com/victorzhong0110/llm-research-os/issues/159).
+Guided execution setup and human first-use evidence remain pending.**
 Constraint record: [ADR-0066](../adr/0066-semantic-research-dashboard.md).
 Canonical package and acceptance authority remains the
 [M3 plan](m3-development-plan.md) and its
