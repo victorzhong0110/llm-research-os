@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { api } from "../api";
 import type { DashboardDocument, DashboardWrite } from "../generated/local-api";
 import { Canvas } from "./Canvas";
+import { ResearchBrief, appendBrief, emptyBrief } from "./ResearchBrief";
 import type { Mode } from "./Canvas";
 import { Inspector } from "./Inspector";
 import { AgentPanel, download } from "./AgentPanel";
@@ -28,8 +29,12 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
   const [relations, setRelations] = useState(false);
   const [query, setQuery] = useState("");
   const [panel, setPanel] = useState<
-    "none" | "add" | "appearance" | "ai" | "help" | "history"
+    "none" | "add" | "appearance" | "ai" | "help" | "history" | "brief"
   >("none");
+  const [briefDraft, setBriefDraft] = useState(emptyBrief);
+  const [briefId, setBriefId] = useState<string | null>(null);
+  const briefComplete = !!briefId && !!saved?.state?.components?.some(n => n.id === briefId);
+  const briefDirty = !briefComplete && Object.values(briefDraft).some(value => value.trim());
   const [history, setHistory] = useState<ReadonlyArray<State>>([]);
   const [restoreRevision, setRestoreRevision] = useState(0);
   const pending = useRef<DashboardWrite | null>(null);
@@ -60,13 +65,13 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
     void load();
   }, [load]);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !briefDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, briefDirty]);
   function change(next: State, remember = true) {
     if (busy || pending.current) return;
     if (remember) setHistory((old) => [...old.slice(-29), state]);
@@ -107,6 +112,22 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
       setError(failure instanceof Error ? failure.message : "Save failed");
     } finally {
       setBusy(false);
+    }
+  }
+  async function createBrief() {
+    if (busy) return;
+    if (pending.current) { await save(); return; }
+    try {
+      const id = `brief.${crypto.randomUUID()}`;
+      const next = appendBrief(state, briefDraft, id);
+      setBriefId(id);
+      await save({
+        apiVersion: "researchos.dev/dashboard/v0alpha1", kind: "DashboardWrite",
+        projectId, requestId: crypto.randomUUID(), expectedRevision: saved?.revision ?? 0,
+        author: "workspace operator", authorKind: "human", state: next,
+      });
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not prepare the brief");
     }
   }
   function focus(id: string) {
@@ -182,6 +203,7 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
           </p>
         </div>
         <div className="map-header-actions">
+          <button type="button" onClick={() => setPanel("brief")}>Research brief</button>
           <button
             type="button"
             onClick={() =>
@@ -210,6 +232,12 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
           </button>
         </div>
       </header>
+      {loaded && (saved?.revision ?? 0) === 0 && panel !== "brief" && (
+        <div className="map-first-use">
+          <div><strong>Start with your research question.</strong><p>Create a brief, then use the map to prepare materials, resources and your next decision.</p></div>
+          <button type="button" className="map-primary" onClick={() => setPanel("brief")}>Create my first brief</button>
+        </div>
+      )}
       <div className="map-situation">
         <div>
           <span className="map-dot tone-active" />
@@ -589,9 +617,9 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
                 <button
                   type="button"
                   className="map-primary"
-                  onClick={() => onNavigate("operations")}
+                  onClick={() => setPanel("brief")}
                 >
-                  Set up your first experiment ↗
+                  Create a research brief
                 </button>
               </>
             )}
@@ -647,6 +675,19 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
                   Export the map separately with older workspace backup formats.
                 </p>
               </>
+            )}
+            {panel === "brief" && pending.current && !pending.current.state.components?.some(n => n.id === briefId) && (
+              <p>Retry the current map save or reload the saved map before creating a brief. Your brief draft stays here.</p>
+            )}
+            {panel === "brief" && (!pending.current || pending.current.state.components?.some(n => n.id === briefId)) && (
+              <ResearchBrief
+                draft={briefDraft} onChange={setBriefDraft} busy={busy}
+                pending={!!pending.current} complete={briefComplete}
+                onSave={() => void createBrief()}
+                onView={() => { if (briefId) { setMode("browse"); focus(briefId); } }}
+                onAgent={() => { if (briefId) agent(briefId); }}
+                onNew={() => { setBriefDraft(emptyBrief()); setBriefId(null); }}
+              />
             )}
             {panel === "ai" && (
               <AgentPanel

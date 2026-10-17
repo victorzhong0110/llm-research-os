@@ -30,24 +30,23 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-17, Dashboard integrated and maintenance reconciliation**.
-Latest verified main: `0a67da5d7c27499a32cbb685fdd46cf7cfd9d9de`, after #156;
-[main CI 38962991931](https://github.com/victorzhong0110/llm-research-os/actions/runs/38962991931)
-passed. Dashboard final head `589fee8ae1a1cb037c0a86780201b2a3062e4501`
-also passed its full CI 38961513691, including macOS.
-Maintenance #155, #151, #152 and #153 were subsequently reviewed and merged
-sequentially; combined main `b242e32911f77e14597bdcf8fcae4ce5dfc89d20`
-is awaiting its own push CI. Each original maintenance head passed all applicable
-CI jobs. Pydantic #154 correction `14e0b626f877e0af3cd5a3a004185a934d86be97`
-passed CI 38961923871 and is being reconciled with that combined main.
+Snapshot date: **2026-10-17, maintenance integrated; guided research brief candidate**.
+Latest verified main: `b242e32911f77e14597bdcf8fcae4ce5dfc89d20`;
+[main CI 39001348389](https://github.com/victorzhong0110/llm-research-os/actions/runs/39001348389)
+passed after Dashboard #156 and maintenance #155/#151/#152/#153.
+Pydantic #154 then integrated at `9b526133c0fe07275d3bdc86a66b61d61a54b6d6`;
+its final head `40a21f565ae4c7355d56bed2655b28bb6efce293` passed every applicable
+job in CI 39001496999. Post-merge CI 39002226291 is pending at this snapshot.
+The research-brief slice was developed from verified Dashboard main 0a67da5d
+and reconciled onto 9b526133; it remains a candidate pending its own review/CI.
 
 The maintainer paused the checkpoint trial campaign and authorized the full
 [research dashboard direction](plans/research-dashboard.md): a one-person AI
 organization map spanning research, infrastructure, serving, reliability, costs
 and governance. #156 integrates the semantic map, Browse/Edit/AI toolbox,
 scoped Agent inbox, observations, themes and large-map navigation. This is
-integration evidence, not human first-use acceptance. Guided first-use setup,
-automatic source adapters and the recorded live acceptance gaps remain open.
+integration evidence, not human first-use acceptance. The research-brief candidate begins guided first-use preparation; guided execution
+setup, automatic source adapters and recorded live acceptance gaps remain open.
 Prior #150 two-host evidence remains attributed to its original execution base
 `c6b21b929ed35c853116fcd186559f9caad1e9ae`; no Checkpoint B closure is claimed.
 
@@ -75,7 +74,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. #154 maintenance reconciliation is current; guided first-use and human acceptance remain open. |
+| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. Maintenance #151–#155 is integrated; the guided research-brief slice is a candidate. Guided execution setup and human acceptance remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1458,3 +1457,31 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
 - Next action / owner: Codex validates the combined candidate, merges #154 after
   its required checks, and proceeds to guided first-use from verified main.
   Existing checkpoint campaigns remain paused; human acceptance stays open.
+
+## BUILD-20261017-02 — Guided first-use research preparation
+
+- Date: 2026-10-17 +08:00. Sender: Codex. Recipient: maintainer / next implementer.
+- State: candidate on branch feat/guided-research-brief, reconciled onto main
+  9b526133 after #154. This is a product slice within the confirmed Dashboard
+  direction; no M3 package is renumbered or accepted by this change.
+- Replaces the Quick guide's direct jump into technical Operations forms with
+  goal, success criterion, optional material/resource notes and a review step.
+  A single existing DashboardWrite saves a new region and four editable notes,
+  preserving other components and geometry. Header and first-map entry points
+  keep the flow discoverable. Closing a panel retains the draft within the tab;
+  a leave-page warning protects unsaved drafts. Saved content survives restart.
+- Uncertain response retry retains the exact identity and frozen map snapshot;
+  closing/reopening preserves the retry. Opening Agent discussion selects only
+  the saved brief region and does not automatically send a message.
+- Validation: real fresh-workspace browser check passed required fields, draft
+  retention, committed-response-loss retry (one revision, one region), reload,
+  Agent scope, mobile width and absence of EventStore/operation-receipt creation.
+  Existing Dashboard browser checks passed persistence, theme reload, drag/undo,
+  scoped Agent reply, observation/chart and large-map behavior. TypeScript and
+  production build passed; the Python fixture passed Ruff/format.
+- Scope: view-level human preparation only. No model call, source upload, grant,
+  scientific conclusion or execution fact. Guided resource installation and
+  executable-plan setup remain subsequent work; no human first-use acceptance
+  or resumed live checkpoint campaign is claimed. No normative changes.
+- Next action / owner: Codex reviews the final bundle, submits the independently
+  reviewable slice, and integrates after required checks and main verification.
