@@ -1,3 +1,49 @@
+# R16 independent trials: current task pack and historical kit
+
+Status: **dashboard-v1 specified, not performed**. The maintainer requested a
+new acceptance journey on 2026-10-18 after the interaction redesign. Use
+[Dashboard acceptance](../../guides/dashboard-acceptance.md) and
+[ADR-0067](../../adr/0067-dashboard-acceptance-rebaseline.md) for future trials.
+The earlier campaign remains paused; this update does not invite participants
+or run machines.
+
+## Current task pack
+
+| Task | Current journey | State |
+| --- | --- | --- |
+| T1 | Install, open and understand the map | Specified; unperformed |
+| T2 | Create a brief, arrange/reload and understand Agent scope | Specified; unperformed |
+| T3 | Prepare a reviewed CPU experiment, inspect results and record a conclusion | Blocked where guided preparation is incomplete; unperformed |
+| T4 | Disconnect, cancel, back up and recover the workspace | Dashboard backup coverage remains a blocker; unperformed |
+| T5 | Inspect source freshness/reliability and review a diagnostic | Specified; unperformed |
+| REMOTE | Authorized real-host journey with matching map/host identities | Pending-live; unperformed under this pack |
+
+At least two independent intended users and one authorized remote journey remain
+required. Record exact build, pack and prompt identities; keep old and new packs
+in different directories. TrialRecord v0alpha1 supports the new prompts via its
+existing fields. Scaffold/aggregation only check record structure and reported
+coverage; reviewers must verify pack consistency, independence, source evidence
+and usability. `checkpointD` remains false until separate acceptance review.
+
+The old tasks below concern the earlier CLI journey. Their tooling is integrated
+in #140, but their wording is superseded for current-map acceptance. Historical
+results, if subsequently cited, retain their original build/platform/scope and
+cannot be pooled with dashboard-v1. The implementation matrix is the source of
+package integration status, not old candidate language below.
+
+## Pending current work
+
+- Finish missing user paths tracked in #159 before claiming full trial readiness.
+- Freeze a build and scenario manifest; run formative sessions only when resumed
+  by the maintainer, recording blocked and assisted outcomes honestly.
+- Record both independent participants' journeys, defects and affected-path retests.
+- Obtain real-host evidence under existing authorization, preserving R07/R08
+  fault, identity, integrity and platform requirements.
+- Review technical host verification, map usability and scoped acceptance separately.
+
+<details>
+<summary>Historical CLI task pack, templates and original candidate record</summary>
+
 # R16 independent trials: kit, record, and current state
 
 Status: **prepared, not performed.** The trial kit below is complete and
@@ -219,3 +265,5 @@ implementer is not a trial.
 Document reads reject non-regular files and are bounded at 1 MiB per record and
 32 MiB per kit. Confirmation is a reported field rather than authenticated
 identity; reviewers verify participant independence and the linked evidence.
+
+</details>

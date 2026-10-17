@@ -22,6 +22,19 @@ unchanged. Use the [live runbook](../../guides/r08-live-acceptance.md) and
 [pending evidence checklist](r08-live-acceptance.md) to close R07/R08. No B
 acceptance or R09 start is claimed by this direction update.
 
+## Current acceptance journey: dashboard-v1
+
+The maintainer requested a rebaseline on 2026-10-18 after the map redesign.
+[ADR-0067](../../adr/0067-dashboard-acceptance-rebaseline.md) and the
+[task pack](../../guides/dashboard-acceptance.md) govern future participant
+prompts and add map-to-host observations. The old R16 CLI wording is historical.
+No dashboard-v1 trial has been performed. Missing guided setup and Dashboard
+backup coverage remain blockers. Existing two-user/authorized-remote requirements
+and execution, identity, integrity, cancellation/unknown and profile checks remain.
+Report technical host verification, independent map usability and scoped closure
+separately. Existing historical evidence is neither deleted nor promoted to the
+new interface/build. The campaign is still paused.
+
 ## Recording rules
 
 Implementation, integration, verification, and acceptance are separate columns.

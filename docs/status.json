@@ -1,51 +1,46 @@
 {
-  "baseline": "7e5fc33412c61177d0f1ae1623f6034af9c2a819",
+  "baseline": "6b492559cf30c25cd3bc2919d81d702a20800b43",
   "acceptedEvidence": "57ffdae1358484b047a091e5d9a60d41c9615d3e",
   "rows": [
     [
-      "M0",
-      "Closed (ADR-0037)",
-      "已收口（ADR-0037）"
+      "Dashboard",
+      "Map, Browse/Edit/AI, persistent arrangement and themes integrated (#156)",
+      "地图、Browse/Edit/AI、持久布局与主题已集成（#156）"
     ],
     [
-      "M1",
-      "Accepted offline checkpoint (ADR-0062); #38 closure",
-      "离线检查点已验收（ADR-0062）；#38 收口"
+      "First use",
+      "Guided brief available (#157); material/resource/executable-plan setup remains in progress",
+      "研究 brief 引导已提供（#157）；材料、资源与可执行计划配置仍在开发"
     ],
     [
-      "M2",
-      "Accepted local/two-host scope (ADR-0062); #73/#77/#78 merged",
-      "本地／两机范围已验收（ADR-0062）；#73/#77/#78 已合并"
+      "Agent",
+      "Durable scoped inbox and map proposals; your own Agent supplies replies",
+      "持久限定范围的收件箱与地图提案；回复由自己的 Agent 提供"
     ],
     [
-      "Mac / MPS",
-      "Live LoRA; process-group isolation",
-      "LoRA 已实测；进程组隔离"
+      "Provider status",
+      "Manual OpenAI/Claude public reports (#158); source/expiry shown; direct development-host connectivity unverified",
+      "手动采集 OpenAI／Claude 公共报告（#158），显示来源与过期状态；开发环境直连尚未验证"
     ],
     [
-      "Windows / WSL2 + Docker Engine",
-      "Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live",
-      "两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测"
+      "Execution and evaluation",
+      "Reviewed native CPU and remote Worker paths, real CPU evaluation and durable reports implemented; package/live acceptance gaps remain",
+      "已实现审查后的原生 CPU、远端 Worker 执行、真实 CPU 评估和持久报告；工作包及实机验收仍有缺口"
     ],
     [
-      "Paid cloud",
-      "Not run; ¥0. No paid-cloud claim",
-      "未执行；¥0，不宣称付费云验收"
+      "Human / real-host acceptance",
+      "dashboard-v1 tasks specified; no independent current-map trial; old checkpoint campaign paused",
+      "已制定 dashboard-v1 任务；尚无当前地图的独立真人试用，旧检查点测试暂停"
     ],
     [
-      "Unknown execution",
-      "Unit/loopback coverage; no dedicated two-host unknown live",
-      "已有单测与回环验证；无专门两机 unknown 实测"
+      "Historical M1/M2",
+      "Offline research and scoped local/two-host CPU, CUDA and MPS evidence accepted under ADR-0062 at recorded identities",
+      "离线研究及特定本地／两机 CPU、CUDA、MPS 证据已按 ADR-0062 在原身份范围内验收"
     ],
     [
-      "NativeProcessRuntime",
-      "M3 slice 1 merged (ADR-0063, #81): local restricted noop helper over sealed preflight + SSH onboard pending-live; SSH execution refused; live SSH and real-profile launch remain planned; #53 stays open",
-      "M3 首片已合并（ADR-0063，#81）：本地受限 noop helper（密封预检）+ SSH 接入 pending-live；SSH 执行已拒绝；现场 SSH 与真实受限 profile 仍属计划；#53 保持开放"
-    ],
-    [
-      "Public MVP",
-      "Not released; usable SSH onboarding and Web UI belong to M3",
-      "未发布；可用的 SSH 接入与 Web 界面属于 M3"
+      "Release",
+      "Pre-release 0.0.0; no public release or paid-cloud certification",
+      "预发布 0.0.0；未公开发布，无付费云验收声明"
     ]
   ]
 }

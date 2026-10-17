@@ -30,23 +30,28 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-18 Asia/Taipei, repository/issue cleanup**.
-Latest verified main: `c112bd7465c2891095c80df4bce6e5163429fb39` (#158);
-[main CI 39055968178](https://github.com/victorzhong0110/llm-research-os/actions/runs/39055968178)
-passed. #158 final head `d9e17f2606da480543f2afe1ac379288c8a12c87` passed all
-11 applicable jobs in CI 39022329013; code/security reviews reported no findings.
+Snapshot date: **2026-10-18 Asia/Taipei, acceptance journey and README rebaseline**.
+The repository cleanup merged in #160 at
+`6b492559cf30c25cd3bc2919d81d702a20800b43`; its tree matches final PR head
+`7f00a6b63f639a374c55fc87c6631e9d434726ed`, which passed all 11 applicable jobs
+in CI 39058242389 and code/security review without findings. Post-merge main
+CI 39076870174 is pending at this snapshot. Earlier verified feature main is
+`c112bd7465c2891095c80df4bce6e5163429fb39` (#158, CI 39055968178 passed).
 #156–#158 integrate the map, guided brief and manual official-provider status.
-Maintenance #151–#155 is integrated. Direct official endpoint verification in
-the development environment remains unavailable because public DNS failed;
-synthetic browser fixtures do not establish live connectivity.
+Maintenance #151–#155 is integrated. Development-host direct official endpoint
+connectivity remains unverified; synthetic browser transport is not live proof.
 
-The maintainer explicitly requested repository, PR and issue cleanup.
-No PR was open at the start. Completed bookkeeping/scoped-acceptance issues
-#88–#90 were closed using existing #84/#106/#110 evidence. #91–#103 and #53
-remain open with corrected implementation status and explicit review/live/human
-work. #104 is the refreshed package index; #159 tracks active Dashboard work.
-#26 remains a deferred direction. This documentation cleanup is a candidate;
-its own PR integration must be recorded only after it occurs.
+The maintainer requested that real-host/human acceptance follow the redesigned
+interface and that the README be regenerated. The current candidate adds
+ADR-0067 and dashboard-v1 tasks, preserves technical host gates and historical
+evidence, and rewrites English/Chinese entrypoints and generated status.
+No new trial or package acceptance has occurred. Missing guided execution and
+Dashboard-store recovery are explicit product blockers.
+
+Issue cleanup closed completed #88–#90 from existing #84/#106/#110 evidence.
+#91–#103 and #53 retain explicit review/live/human work; #104 is the package
+index and #159 the active Dashboard tracker. #26 remains deferred. The cleanup
+left 17 open issues, including #159; the original criteria/history are preserved.
 
 The maintainer paused the checkpoint trial campaign and authorized the full
 [research dashboard direction](plans/research-dashboard.md): a one-person AI
@@ -1549,3 +1554,38 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   required before integration. No live trial, model call or release was performed.
 - Next action / owner: Codex submits and integrates this documentation slice after
   checks; subsequent implementation follows #159 from verified main.
+
+## DESIGN-20261018-01 — Rebaseline human journeys and regenerate the README
+
+- Date: 2026-10-18 Asia/Taipei. Sender: Codex. Recipient: maintainer / next implementer.
+- Request: the maintainer asked to adjust real-host/human acceptance after the
+  interface redesign and regenerate the README. Existing implementation/merge
+  authorization continues; no live campaign or participant invitation was requested.
+- Reply to MAINT-20261018-01: #160 merged at 6b492559 after final-head CI
+  39058242389 passed all 11 applicable jobs and code/security reviews reported no
+  findings. Issue cleanup is reflected in #104/#159 and the current snapshot.
+- Candidate: ADR-0067 and dashboard-v1 define T1 install/orient, T2 brief/arrange,
+  T3 reviewed CPU work/result/conclusion, T4 disconnect/cancel/recover and T5
+  reliability/diagnostics, plus REMOTE. Host fault checks add matching UI/source
+  observations. Two independent users and one authorized remote journey remain
+  required; identity, authority, integrity and unknown/stop requirements remain.
+- Evidence compatibility: exact pack/build/prompt manifests, separate old/new
+  directories, participant confirmation and explicit assisted/blocked outcomes.
+  Existing TrialRecord fields carry the new prompts; aggregate remains coverage
+  only and cannot verify pack consistency or accept Checkpoint D. Historical
+  evidence retains its original scope and is not relabeled as new-map usability.
+- Documentation: rebuild English/Chinese README around the current map and a
+  working no-key/no-GPU fresh-workspace entry. Regenerate bilingual status from
+  docs/status.json. Correct outdated installed-wheel and R15 candidate language,
+  and disclose the older backup format's missing Dashboard-store coverage.
+- Validation: 53 local links in the new README/pack/ADR resolve; status generation
+  is idempotent and its drift check passes. The documented workspace init ran
+  successfully. Generator lint/format, event-catalog and diff checks passed.
+  Exact-head CI/review remain the integration gates. No extra runtime tests were
+  added for documentation and the small status renderer change.
+- Normative change: future participant task wording and map/host presentation
+  checks are versioned by ADR-0067 under the maintainer's request. No lower-level
+  execution boundary, historical acceptance, package identity or release changes.
+- Next action / owner: Codex verifies, reviews and integrates this slice, then
+  updates #103/#104/#159. The checkpoint campaign stays paused; implementation
+  and actual independent trials remain separate work.

@@ -1,7 +1,10 @@
 # Use the research workbench
 
 Requirements: [workbench protocol](../protocols/workbench-v0alpha1.md),
-[local API](m3-local-api.md). Status: **R10 candidate, not accepted.**
+[local API](m3-local-api.md). Status: **R10 integrated in #132; full first-use acceptance remains open.**
+The default entry is now the [research Dashboard](research-dashboard.md); the
+views below provide advanced inspection. Current participant tasks are
+[dashboard-v1](dashboard-acceptance.md).
 
 ## Open it
 

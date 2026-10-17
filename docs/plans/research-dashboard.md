@@ -254,6 +254,15 @@ the evidence rather than postponing usability until the end. Detailed API/schema
 choices, layout/rendering libraries and quantitative usability thresholds are
 still to be specified. Do not turn these proposals into claimed acceptance.
 
+## Acceptance task pack
+
+The maintainer requested revised real-host/human acceptance on 2026-10-18.
+Use [dashboard-v1](../guides/dashboard-acceptance.md) for current-map participant
+journeys and real-host presentation checks. [ADR-0067](../adr/0067-dashboard-acceptance-rebaseline.md)
+records the revision. Preserve historical evidence and underlying host/authority
+requirements; record independent completion, assisted outcomes and blocked paths.
+This is a prepared task pack, not a resumed campaign or an acceptance result.
+
 ## Review scenarios and completion evidence
 
 - A newcomer identifies active work, its resources, the last meaningful result

@@ -132,3 +132,10 @@ The Agent inbox needs an external Agent to consume it. No live provider call,
 paid host or participant study is part of this slice. Source-backed execution
 edges, guided domain operations, automatic collector installation, conversational
 archival and complete onboarding acceptance remain separately reviewable work.
+
+## Evaluate first use
+
+Use the versioned [dashboard-v1 acceptance pack](dashboard-acceptance.md) for
+participant journeys and real-host presentation checks. Old CLI trials and
+synthetic browser fixtures do not establish current-map comprehension. Missing
+guided setup or Dashboard-store restore is recorded as a blocker.
