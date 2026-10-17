@@ -1,638 +1,165 @@
 # LLM Research OS
 
-A research control plane that turns AI proposals, human decisions, execution, and evidence into a replayable record.
+A personal workspace for LLM research, organized around one interactive map.
+Bring research questions, experiments, your Agent, compute, service health and
+evidence into the same view. Open a component to inspect the details behind it.
 
-## Understand it in 3 minutes
+[中文](README.zh-CN.md) · [Dashboard guide](docs/guides/research-dashboard.md) ·
+[Current work](https://github.com/victorzhong0110/llm-research-os/issues/159)
 
-[![Architecture: decisions, execution, and evidence](docs/assets/project-tour/architecture.png)](docs/assets/project-tour/architecture.html)
+## The workspace
 
-| **1,661 tests passed** | **85.38% coverage** | **2 real hosts** |
-| --- | --- | --- |
-| Linux Python 3.12, PR #118 | Statement + branch coverage, same run | Accepted M2 CPU/CUDA, cancel and restore evidence |
+The Dashboard is a map with meaningful groups and relationships. Browse to read,
+Edit to arrange components, or use AI mode to ask your own Agent to help maintain
+it. Hover for a summary; select a component for its source data, charts and
+attributed interpretation. Search, zoom, collapse and the minimap help with
+larger workspaces.
 
-[**Watch the 80-second CLI recording**](docs/assets/project-tour/research-loop.mp4) · [Animated preview](docs/assets/project-tour/research-loop.gif) · [Numbers and provenance](docs/assets/project-tour/README.md)
+| On the map | What you can inspect |
+| --- | --- |
+| Research and experiments | Questions, planning notes, recorded Runs, results and evidence |
+| Compute and execution | Connected source observations, Worker information and recorded task activity |
+| Serving and reliability | Provider reports, imported service observations and their freshness |
+| Decisions and stewardship | Human decisions, disagreement, costs/budget sources and recovery information |
 
-[![CLI recording: rejecting a proposal queues no Run](docs/assets/project-tour/recording-poster.png)](docs/assets/project-tour/research-loop.mp4)
+Arrange related work with containment, peers, pins and optional arrows. Moving a
+card changes your view; execution dependencies and permissions use their own
+reviewed operations. Choose Graphite, Warm paper or a custom theme.
 
-The recording runs real CLI commands with a deterministic Mock model and a simulated Run; it uses no GPU. Rejecting the proposal queues no Run. Accepting it records the offline research loop, then verifies its durable event log. The two-host number refers to historical accepted M2 evidence, not unfinished M3 native acceptance.
+The map provides reusable presets and configurable components. Data appears only
+when its source exists: missing load, utilization, cost or Agent activity stays
+missing. Official provider status and your own request health are separate.
 
-Try the offline loop (Python 3.12+ and uv; choose a new database path):
+## Try it from this repository
+
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The built browser bundle
+is committed; these steps do not require Node, a model key or a GPU.
 
 ```bash
+git clone https://github.com/victorzhong0110/llm-research-os.git
+cd llm-research-os
 uv sync --locked --all-groups
-uv run researchos m1 prove examples/m1-checkpoint demo.db
-uv run researchos events verify demo.db
+uv run researchos app init \
+  --root ./research-workspace \
+  --project my-research \
+  --control-db control/events.sqlite \
+  --cas-root cas \
+  --worker-root worker
+uv run researchos web serve --root ./research-workspace --port 8787
 ```
 
-Architecture generated and checked with [Archify](https://github.com/tt-a1i/archify). Checkpoint B remains open. The maintainer authorized sequential completion through R16 on 2026-10-04. Begin with the remaining [R08 live acceptance](docs/guides/r08-live-acceptance.md). The R09 read-only [local API](docs/guides/m3-local-api.md) and the R10 [research workbench](docs/guides/m3-workbench.md) are tracked in #131 (R09 merged) and #132 (R10 review repairs). Integration does not close the outstanding live acceptance gate.
+Open the bootstrap URL printed by the server. It opens the local Dashboard and
+establishes a browser session. Keep that URL private.
 
-> Canonical English README. Chinese translation: [README.zh-CN.md](README.zh-CN.md)
-> (keep both in the same pull request; [ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)).
->
-> The current name is a working title. The public name will be confirmed by ADR
-> before a public release.
+1. Choose **Create my first brief** and describe a research question and what
+   would count as progress. Materials and resources can remain undecided.
+2. Review and save. Your goal and preparation notes become an editable region
+   on the map. Save the map before reloading.
+3. Browse the notes, try Edit, and switch themes. Add an **OpenAI official
+   status** or **Claude official status** component and explicitly refresh it
+   when public internet access is available.
 
-LLM Research OS is an independent, open-source, model-neutral, training-backend-neutral,
-and compute-provider-neutral operating system for LLM research. It is used to state
-research questions, compose experiments, let AI propose and contest plans, execute
-on local or remote Workers, and record training, evaluation, system, cost, lineage,
-and AI decisions.
+A brief records planning notes. Guided setup from those notes to an executable
+experiment is still being developed. Advanced research and execution operations
+already exist, but some require operator-prepared profiles and identifiers.
 
-It serves the period in which human help remains necessary for AI: it turns the
-information and the authority a researcher supplies into cheap, high-information,
-durable, auditable facts. The researcher is a teacher, not only an approver
-([ADR-0039](docs/adr/0039-human-help-period-purpose.md)).
+For a separate offline demonstration with existing recorded research data:
 
-## Current status
+```bash
+uv run researchos workspace demo --root ./research-demo
+uv run researchos web serve --root ./research-demo --port 8788
+```
+
+The demo uses a deterministic Mock model and a simulated Run. It is labeled
+example data, not a real training result. An installed wheel also includes the
+browser bundle and offline corpus; see [installation and recovery](docs/guides/r15-installation-and-recovery.md)
+for installation from a locally built or supplied wheel. The project is pre-release.
+
+## Work with your own Agent
+
+AI mode creates a durable, scoped request in the workspace inbox. Your Agent
+reads it with `researchos dashboard inbox`, replies with
+`researchos dashboard reply`, and may propose a revision-bound map change.
+Human pins, selected scope and conflicting edits are checked. The application
+does not automatically start an LLM or an Agent when you open AI mode.
+
+See the [Agent workflow](docs/guides/research-dashboard.md#connect-your-own-agent)
+and [component contracts](docs/protocols/dashboard-document-v0alpha1.md).
+
+## Implementation and evidence
 
 <!-- generated-status:start -->
 
 | Scope | Status |
 | --- | --- |
-| M0 | Closed (ADR-0037) |
-| M1 | Accepted offline checkpoint (ADR-0062); #38 closure |
-| M2 | Accepted local/two-host scope (ADR-0062); #73/#77/#78 merged |
-| Mac / MPS | Live LoRA; process-group isolation |
-| Windows / WSL2 + Docker Engine | Two-host CPU, reconnect, cancel, CUDA 20-step, checkpoint upload and 10→12 restore live |
-| Paid cloud | Not run; ¥0. No paid-cloud claim |
-| Unknown execution | Unit/loopback coverage; no dedicated two-host unknown live |
-| NativeProcessRuntime | M3 slice 1 merged (ADR-0063, #81): local restricted noop helper over sealed preflight + SSH onboard pending-live; SSH execution refused; live SSH and real-profile launch remain planned; #53 stays open |
-| Public MVP | Not released; usable SSH onboarding and Web UI belong to M3 |
+| Dashboard | Map, Browse/Edit/AI, persistent arrangement and themes integrated (#156) |
+| First use | Guided brief available (#157); material/resource/executable-plan setup remains in progress |
+| Agent | Durable scoped inbox and map proposals; your own Agent supplies replies |
+| Provider status | Manual OpenAI/Claude public reports (#158); source/expiry shown; direct development-host connectivity unverified |
+| Execution and evaluation | Reviewed native CPU and remote Worker paths, real CPU evaluation and durable reports implemented; package/live acceptance gaps remain |
+| Human / real-host acceptance | dashboard-v1 tasks specified; no independent current-map trial; old checkpoint campaign paused |
+| Historical M1/M2 | Offline research and scoped local/two-host CPU, CUDA and MPS evidence accepted under ADR-0062 at recorded identities |
+| Release | Pre-release 0.0.0; no public release or paid-cloud certification |
 
-[Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
-Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
+[Current M3 evidence and gaps](docs/evidence/m3/acceptance-matrix.md) · [Historical M1/M2 scope](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md).
+Implementation snapshot: `6b49255`; historical accepted evidence: `57ffdae`.
 
 <!-- generated-status:end -->
 
-## M0 goals
+Current priorities are guided execution preparation, more source-backed
+components and independent first-use evaluation. See [#159](https://github.com/victorzhong0110/llm-research-os/issues/159)
+and the [Dashboard delivery plan](docs/plans/research-dashboard.md).
 
-The historical goals below were closed by
-[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md). The list is kept as the
-acceptance checklist of that milestone.
+Known limits include manual provider refresh, no bundled host utilization
+exporter, and separate export of saved map state because older workspace backup
+formats omit `dashboard.sqlite`. A resource note is not a connected machine or
+allocated budget. Browser tests and screenshots do not establish human usability.
 
-1. Short ADRs and a living threat model;
-2. Pydantic models for `ResearchSpec v0alpha1`;
-3. Versioned JSON Schema with valid and invalid examples;
-4. A validator and semantic diff;
-5. CloudEvents-compatible `ResearchEvent`;
-6. A minimal SQLite fact store and `SimulatedRuntime`;
-7. A first vertical loop with no GPU.
+## Research and execution foundations
 
-## Accepted baseline
+The map sits on a shared research control plane: versioned specifications,
+append-only events, content-addressed artifacts, human decisions and preserved AI
+disagreement. CLI, Python and browser callers share domain services and receipts.
+Reviewed execution binds the plan, materials, environment and Worker authority.
 
-- Python 3.12+, `pyproject.toml`, uv;
-- Pydantic is the M0 authoring entry; versioned JSON Schema is the external contract;
-- Append-only events, rebuildable projections, content-addressed artifacts;
-- An independent Research IR, not a shell around NeMo, ms-swift, or an agent framework;
-- The researcher has the final decision by default; AI may and should file dissent;
-- Any real GPU spend, external-account action, or irreversible operation still
-  needs a separate approval.
+A cancellation request is distinct from an observed stop. An unconfirmed outcome
+stays unknown and cannot automatically launch a replacement task. Reviewed native
+code runs with its documented host limits; required isolation that a profile
+cannot enforce is refused. See the [security policy](SECURITY.md),
+[threat model](docs/security/threat-model.md) and
+[native execution guide](docs/guides/m3-native-reviewed-execution.md).
 
-## Project documents
+## Documentation
 
-- [Partial reviewed Python extension API](docs/guides/extensions.md)
-- [Fixture evaluation and human conclusion mechanics](docs/protocols/evaluation-conclusion-v0alpha1.md)
-- [M1/M2 acceptance and M3 boundary](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
-- [M3 development plan (R01–R16)](docs/plans/m3-development-plan.md)
-- [M3 evidence and acceptance matrix](docs/evidence/m3/acceptance-matrix.md)
+- [Dashboard use and composition](docs/guides/research-dashboard.md)
+- [Installation, diagnostics, backup and restore](docs/guides/r15-installation-and-recovery.md)
+- [Dashboard acceptance tasks and real-host checks](docs/guides/dashboard-acceptance.md)
+- [M3 plan](docs/plans/m3-development-plan.md) and [evidence matrix](docs/evidence/m3/acceptance-matrix.md)
+- [All guides](docs/guides), [protocols](docs/protocols) and [architecture decisions](docs/adr/README.md)
+- [Contributing](CONTRIBUTING.md), [engineering standards](docs/engineering-standards.md) and [changelog](CHANGELOG.md)
 
-- [Consolidated charter v0.2](docs/charter-v0.2.md)
-- [Project charter and minimal kernel spec v0.1](docs/charter-v0.1.md) (Chinese original)
-- [Chapter 18 decision guide v0.1](docs/chapter-18-decision-guide-v0.1.md) (Chinese original)
-- [Engineering standards](docs/engineering-standards.md)
-- [Changelog](CHANGELOG.md)
-- [ResearchSpec v0alpha1](docs/protocols/research-spec-v0alpha1.md)
-- [ResearchEvent v0alpha1](docs/protocols/research-event-v0alpha1.md)
-- [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
-- [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
-- [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
-- [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
-- [OpenAI-compatible generate / budget v0alpha1](docs/protocols/openai-compat-v0alpha1.md)
-- [Synthetic metrics and static Run report v0alpha1](docs/protocols/run-report-v0alpha1.md)
-- [BlockManifest v0alpha1](docs/protocols/block-manifest-v0alpha1.md)
-- [DryRunReport v0alpha1](docs/protocols/dry-run-report-v0alpha1.md)
-- [Block command report v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
-- [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
-- [Semantic content digest v0alpha1](docs/protocols/digest-v0alpha1.md)
-- [Run/Attempt state v0alpha1](docs/protocols/run-attempt-state-v0alpha1.md)
-- [SimulationRequest v0alpha1](docs/protocols/simulation-request-v0alpha1.md)
-- [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
-- [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
-- [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
-- [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
-- [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
-- [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
-- [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)
-- [Native reviewed execution v0alpha1](docs/protocols/native-reviewed-execution-v0alpha1.md)
-- [Native reviewed preparation v0alpha1](docs/protocols/native-reviewed-preparation-v0alpha1.md)
-- [Static planning kernel guide](docs/guides/m0-static-planning.md)
-- [M0 SQLite event store](docs/guides/m0-event-store.md)
-- [M0 local artifact store](docs/guides/m0-artifact-store.md)
-- [M0 RunControl](docs/guides/m0-run-control.md)
-- [M0 deterministic plan-authorization gate](docs/guides/m0-plan-authorization.md)
-- [M0 explicit plan-authorization CLI](docs/guides/m0-plan-authorization-cli.md)
-- [M0 plan-authorization evaluation events](docs/guides/m0-plan-authorization-events.md)
-- [M0 plan-authorization lineage](docs/guides/m0-plan-authorization-lineage.md)
-- [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
-- [M3 native process runtime](docs/guides/m3-native-process-runtime.md)
-- [M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)
-- [M3 scoped native transfer](docs/guides/m3-native-transfer.md)
-- [M3 reviewed native execution contract](docs/guides/m3-native-reviewed-execution.md)
-- [M3 reviewed native preparation](docs/guides/m3-native-reviewed-preparation.md)
-- [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md)
-- [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
-- [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
-- [M1 research decision CLI](docs/guides/m1-research-decisions.md)
-- [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
-- [M1 evidence import CLI](docs/guides/m1-evidence-import.md)
-- [M1 OpenAI-compatible generate CLI](docs/guides/m1-openai-compat.md)
-- [M1 synthetic metrics and static Run report](docs/guides/m1-run-report.md)
-- [M1 checkpoint CLI](docs/guides/m1-checkpoint.md)
-- [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
-- [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
-- [M2 Worker CLI](docs/guides/m2-worker.md)
-- [M2 CPU OCI](docs/guides/m2-oci.md)
-- [M2 GPU slice (direction only)](docs/guides/m2-gpu-slice.md)
-- [M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md)
-- [First experiment](docs/guides/first-experiment.md)
-- [Architecture decision records](docs/adr/README.md)
-- [Living threat model](docs/security/threat-model.md)
-- [Contributing](CONTRIBUTING.md)
-
-## Local development
-
-Python 3.12+ and [uv](https://docs.astral.sh/uv/). Training backends are not
-installed into the core control-plane environment.
+## Development
 
 ```bash
 uv sync --locked --all-groups
-uv run researchos validate examples/valid/minimal.yaml
-uv run researchos blocks list
-uv run researchos dry-run examples/valid/minimal.yaml
-uv run researchos schema --check-all
 uv run ruff check .
+uv run ruff format --check .
 uv run mypy src
-uv run pytest --cov=llm_research_os --cov-fail-under=85
+uv run pytest -m "not oci_live and not slow and not ray_native_live" \
+  --cov=llm_research_os --cov-fail-under=85
+uv run researchos schema --check-all
+python scripts/project_status.py --check
 node conformance/digest/verify.mjs
+uv build
 ```
 
-Generated JSON Schema is the language-neutral contract for third-party implementers:
-
-```text
-schemas/research-spec/v0alpha1.schema.json
-schemas/research-event/v0alpha1.schema.json
-schemas/block-manifest/v0alpha1.schema.json
-schemas/block-command-report/v0alpha1.schema.json
-schemas/dry-run-report/v0alpha1.schema.json
-schemas/problem-report/v0alpha1.schema.json
-schemas/run-state/v0alpha1.schema.json
-schemas/simulation-request/v0alpha1.schema.json
-schemas/run-cancellation-request/v0alpha1.schema.json
-schemas/artifact-object-report/v0alpha1.schema.json
-schemas/plan-authorization-request/v0alpha1.schema.json
-schemas/plan-authorization-report/v0alpha1.schema.json
-schemas/native-process-preflight-request/v0alpha1.schema.json
-schemas/native-process-preflight-report/v0alpha1.schema.json
-schemas/native-reviewed-execution-request/v0alpha1.schema.json
-schemas/native-reviewed-execution-report/v0alpha1.schema.json
-schemas/native-reviewed-preparation-receipt/v0alpha1.schema.json
-schemas/native-reviewed-preparation-diagnosis/v0alpha1.schema.json
-schemas/native-reviewed-python-bundle/v0alpha1.schema.json
-schemas/native-reviewed-code-review/v0alpha1.schema.json
-schemas/native-reviewed-interpreter-identity/v0alpha1.schema.json
-schemas/native-reviewed-dependency-lock/v0alpha1.schema.json
-schemas/native-reviewed-dependency-inventory/v0alpha1.schema.json
-```
-
-Do not edit these files by hand. `researchos schema --check-all` checks every
-committed schema against the CLI contract registry; a new contract is registered
-once in `src/llm_research_os/cli/contracts.py`. After changing a Pydantic authoring
-model, regenerate with the matching `--contract` and review the protocol diff:
-
-```bash
-uv run researchos schema --output schemas/research-spec/v0alpha1.schema.json
-```
-
-## Static dry-run
-
-```bash
-uv run researchos dry-run examples/valid/minimal.yaml --format json
-```
-
-`ready` only means the spec, block resolution, ports, resources, and static plan
-are complete. It does not mean the experiment is approved, executed, or
-scientifically correct. Loops are not expanded, `until` is not evaluated, and
-config and approval bodies enter the report only as digests.
-
-Additional block manifests are read only from ordinary YAML/JSON files or a
-non-recursive directory the user names explicitly:
-
-```bash
-uv run researchos blocks validate examples/manifests/example-train.yaml
-uv run researchos dry-run examples/valid/bounded-loop.yaml \
-  --registry examples/manifests/example-train.yaml
-```
-
-## Plan-authorization gate
-
-`authorize_plan` re-validates a ready report semantically and binds the
-authorization policy to `specDigest`, `registryDigest`, and `planDigest` at once.
-Declared capabilities and permissions must be granted exactly; every requirement
-the planner produced must be approved explicitly. Missing grants or a denial yield
-`denied`; missing approvals yield `pending`; only `authorized` may enter an
-execution path. The gate does not authenticate the approver, persist a decision,
-or emit events or runtime side effects. See
-[M0 deterministic plan-authorization gate](docs/guides/m0-plan-authorization.md).
-
-External callers can evaluate the exact plan regenerated from the current inputs
-with a versioned request:
-
-```bash
-uv run researchos authorize \
-  examples/valid/minimal.yaml \
-  examples/plan-authorization-requests/valid/minimal.json \
-  --format json
-```
-
-`authorized` exits `0`; a valid `pending`/`denied` exits `1`; input or digest-binding
-errors exit `2`. The report always declares `not-authenticated`, `not-persisted`,
-and `not-executed`. It is not a signed or revocable authorization receipt. See
-[M0 explicit plan-authorization CLI](docs/guides/m0-plan-authorization-cli.md).
-
-For append-only audit, a second strict request records the recomputed result into
-an already-existing EventStore:
-
-```bash
-uv run researchos authorizations record \
-  examples/valid/minimal.yaml \
-  examples/plan-authorization-requests/valid/minimal.json \
-  examples/plan-authorization-events/valid/minimal.json \
-  research.db --format json
-```
-
-The command fully verifies the event store first, then appends one
-`plan.authorization.evaluated` under global head CAS. `authorized` exits `0`; a
-recorded `pending`/`denied` exits `1`; input, integrity, or concurrency errors
-exit `2`. The event declares `not-authenticated`, `audit-only`, and
-`not-executed`, so it is a replayable audit fact, not a runtime credential. See
-[M0 plan-authorization evaluation events](docs/guides/m0-plan-authorization-events.md).
-
-The same plan identity can then be rebuilt from matching audit facts by a
-read-only query, without promoting them to a Run reference or a launch credential:
-
-```bash
-uv run researchos authorizations find \
-  examples/plan-authorization-lineage/valid/minimal.json \
-  research.db --format json
-```
-
-Exit `0` only means a frozen event prefix was rebuilt; `matchCount` may be `0`.
-The report always declares `not-authenticated`, `audit-only`, `not-executed`, and
-`not-consumed`. See
-[M0 plan-authorization lineage](docs/guides/m0-plan-authorization-lineage.md).
-
-## Native-process preflight
-
-A single, already-authorized Python task may enter pure preflight, not process
-execution:
-
-```bash
-uv run researchos native preflight \
-  examples/native-process-preflight/spec.yaml \
-  examples/native-process-preflight/authorization-request.json \
-  examples/native-process-preflight/preflight-request.json \
-  --registry examples/native-process-preflight/manifest.yaml \
-  --format json
-```
-
-Preflight re-validates the ready plan, the sealed registry, three-digest
-authorization, and the authorization decision digest. It accepts only a fixed
-JSON-stdio runner, `shell=false`, network denied, an empty environment allowlist,
-an isolated temporary workspace request, and bounded output/timeout. Exit `0`
-only means the report is reviewable; the report is always `launchAllowed=false`,
-`isolation=not-enforced`, `execution=not-executed`, and the entrypoint appears
-only as a digest. The command does not resolve an interpreter, import a module,
-create a workspace, start a process, send a signal, or write durable storage.
-See [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md).
-
-M3 slice 1 adds a local restricted run over that sealed preflight plus a
-pending-live SSH onboarding pack ([ADR-0063](docs/adr/0063-m3-native-process-runtime-slice-1.md)).
-`native run` consumes one local authorization citation on an existing store
-before spawning a fixed noop helper; the manifest entrypoint is never
-imported and no lifecycle fact is appended. `--transport ssh` is validated
-past authorization and then refused without a socket. `native ssh-onboard`
-writes a `pending-live` checklist without dialing. See
-[M3 native process runtime](docs/guides/m3-native-process-runtime.md) and
-[M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md).
-
-R07's `native ssh-doctor` candidate now probes a pinned SSH host, installs a
-verified offline wheelhouse into its dedicated workdir, and verifies the
-registered Worker over HTTPS. Cross-host acceptance remains pending an
-authorized host; `native run --transport ssh` is still refused.
-
-## Event query and replay
-
-Read-only commands open an existing SQLite database. They do not create a missing
-path and they do not append events:
-
-```bash
-uv run researchos events get research.db evt.example.1 --format json
-uv run researchos events list research.db --after-sequence 0 --limit 100
-uv run researchos events replay research.db --page-size 100
-uv run researchos events verify research.db --format json
-```
-
-`replay` writes JSON Lines and freezes the high-water mark at start, so events
-appended during the run do not enter this result.
-
-## RunControl
-
-`RunControl` replays and preflights Run/Attempt lifecycle events against a frozen
-global head before writing to the EventStore, then uses `expected_last_sequence`
-as global CAS. It does not generate `id`/`time`/`streamid`, does not retry
-conflicts, and does not execute any block. After a CAS failure the caller must
-`append` again so replay and validation run on the new head.
-
-## SimulatedRuntime
-
-`SimulatedRuntime` re-runs dry-run on a frozen ResearchSpec snapshot, calls the
-plan-authorization gate through a fixed T0 `simulate` capability policy, consumes
-the cited local authorization row, and appends Run/Attempt lifecycle events through
-RunControl only when the plan is a single `simulated.experiment@0.1.0` whose config
-names `outcome` explicitly. `id`/`time`/`streamid` and the authorization citation
-are still supplied by the caller; conflicts are not retried; `unknown` is not
-collapsed into failure or success. A simulated `completed` only means a controlled
-lifecycle ended, not that training succeeded or a hypothesis held. Create the
-EventStore, record the authorization fact, then simulate. A minimal runnable
-example is in [M0 SimulatedRuntime](docs/guides/m0-simulated-runtime.md).
-
-The command-line vertical loop uses a separate explicit request file. It does not
-generate `id`, `time`, or `streamid`:
-
-```bash
-uv run researchos runs simulate \
-  examples/valid/minimal.yaml \
-  examples/simulation-requests/valid/success.json \
-  research.db --format json
-```
-
-JSON stdout is a `RunSnapshot` constrained by the published schema. Exit `0` only
-means the simulated lifecycle `completed`; `failed`, `unknown`, and `unresolved`
-exit `1`; input, integrity, or concurrency errors exit `2`. The facts can then be
-checked independently with `events verify` / `events replay`.
-
-Cancelling an existing Run or an active Attempt requires another explicit request.
-The command only appends a `*.cancel.requested` fact. It does not send a process
-signal and it does not emit a `*.cancelled` outcome:
-
-```bash
-uv run researchos runs cancel \
-  examples/run-cancellation-requests/valid/run.json \
-  research.db --format json
-```
-
-The database must already exist; a missing path is not created. Exit `0` only
-means the cancellation-request fact was committed. Inspect
-`RunSnapshot.cancellationRequested`; do not claim the job has stopped.
-
-One command records the offline research chain the M1 checkpoint names. It does
-not close Issue #38:
-
-```bash
-uv run researchos m1 prove \
-  examples/m1-checkpoint \
-  research.db \
-  --format json
-```
-
-`--decision reject` records the same research facts and must not queue a Run.
-See [M1 checkpoint CLI](docs/guides/m1-checkpoint.md).
-
-One command records a loopback Worker CPU loop (CAS brick, artifact, report).
-It does not spend GPU and does not close Issue #38:
-
-```bash
-uv run researchos m2 prove \
-  examples/m2-checkpoint \
-  research.db \
-  --format json
-```
-
-Mac/MPS Worker loop (process-group isolation, not OCI):
-
-```bash
-uv run researchos m2 mps \
-  examples/m2-mps-checkpoint \
-  research-mps.db \
-  --format json
-```
-
-See [M2 Worker CLI](docs/guides/m2-worker.md),
-[M2 CPU OCI](docs/guides/m2-oci.md),
-[M2 Mac/MPS acceptance](docs/guides/m2-mps-acceptance.md),
-[M2 performance baseline](docs/guides/m2-perf.md), and
-[first experiment](docs/guides/first-experiment.md).
-
-Research proposals, dissents, decisions, and questions are separate EventStore
-facts. The database must already exist. `accept` is not a launch credential.
-An answer is data with rights, not an instruction:
-
-```bash
-uv run researchos proposals submit \
-  examples/research-decisions/valid/proposal-submit.json \
-  research.db --format json
-uv run researchos dissents record \
-  examples/research-decisions/valid/dissent-record.json \
-  research.db --format json
-uv run researchos decisions record \
-  examples/research-decisions/valid/decision-record.json \
-  research.db --format json
-uv run researchos questions ask \
-  examples/research-decisions/valid/question-ask.json \
-  research.db --format json
-uv run researchos questions answer \
-  examples/research-decisions/valid/question-answer.json \
-  research.db --format json
-uv run researchos research ledger research.db \
-  --project example-minimal --format json
-```
-
-A deterministic mock model call is a pair of EventStore facts. Prompt and
-output text stay in the fixture file:
-
-```bash
-uv run researchos models generate \
-  examples/model-generate-requests/valid/generate.json \
-  research.db \
-  --fixture examples/model-fixtures/valid/generate-json.json \
-  --format json
-```
-
-An OpenAI-compatible local server is the default HTTP path (cap `0.00` CNY).
-Prompt and completion stay off the event; budget facts are recorded:
-
-```bash
-uv run researchos models generate \
-  examples/openai-compat-requests/valid/local.json \
-  research.db \
-  --fixture examples/model-fixtures/valid/compat-local.json \
-  --format json
-```
-
-Local Markdown or PDF notes become `evidence.imported` facts. The file path and
-extracted text stay off the event. PDF extract is subprocess-isolated with page,
-character, wall-clock bounds, and a minimal worker environment:
-
-```bash
-mkdir -m 700 artifacts
-uv run researchos evidence import \
-  examples/evidence/valid/import-markdown.json \
-  research.db \
-  --source examples/evidence/sources/eval-split.md \
-  --artifacts artifacts \
-  --format json
-```
-
-A success SimulationRequest may also name `training.step` and
-`evaluation.metric` identities. The report is a static projection:
-
-```bash
-uv run researchos report run.simulated \
-  --database research.db \
-  --format markdown
-```
-
-A local artifact object root must be created first. Import and full verification
-both return a versioned object report and never print object bodies:
-
-```bash
-mkdir -m 700 artifacts
-uv run researchos artifacts put artifacts checkpoint.bin --format json
-uv run researchos artifacts verify artifacts \
-  sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
-  --format json
-```
-
-`put` does not overwrite an existing object whose digest conflicts; `verify`
-fully recomputes the digest and does not repair corruption. Neither writes
-SQLite, emits a ResearchEvent, nor assigns project/Run, media-type, or URI
-semantics to the object.
-
-## Current security boundary
-
-The M0 kernel proof is closed ([ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)).
-The boundary below is still a security fact of the current code; closure does not
-erase it.
-
-M0 currently validates protocols and diffs, compiles a side-effect-free static
-plan, and uses a three-digest-bound pure authorization gate to deny ungranted
-capabilities, permissions, or approvals item by item. It can append, query, and
-replay event facts in local SQLite, import ordinary local files into a
-content-addressed artifact directory, reject illegal lifecycle events before write
-through RunControl, and append deterministic lifecycle facts for a single built-in
-simulated task through SimulatedRuntime.
-`authorize` only reconstructs the static plan and prints a versioned evaluation
-report that is explicitly not a credential; it writes no events, artifacts, or
-database.
-`authorizations record` may append an exact four-digest-bound evaluation fact to
-an existing event store, but the actor is still unauthenticated, the event is
-audit-only, and no runtime may launch from it.
-`native preflight` only freezes the fixed process-review shape of a single task,
-explicitly forbids launch, and does not enforce the declared isolation.
-The R03 reviewed-native validator checks `native-reviewed-python/v0alpha1`
-documents and returns `launchAllowed=false`. It does not import an entrypoint,
-spawn a process, or honor `execute.native`. Network, filesystem, and memory
-limits on that profile are not enforced.
-`native prepare` and `native doctor` (R04) rebuild the authorization fact,
-HMAC grant, and CAS bytes, then materialize or diagnose a private workspace.
-They do not install packages, import an entrypoint, or start user code.
-A mismatched existing workspace is refused and left in place.
-`launchAllowed` stays false.
-`native execute-reviewed` (R05) is a separate path for one
-prepared `native-reviewed-python/v0alpha1` Attempt. It rebuilds the cited
-plan and Worker binding, consumes a live `execute.native` grant, records
-Run/Attempt and Worker facts, and stores a bounded structured task result
-in CAS. It needs `--spec`, `--registry`, and a private `--state-dir` in
-addition to the `native prepare` arguments. Repeating an Attempt is refused.
-The child waits for durable process identity before importing reviewed code;
-unknown outcomes require observation and never trigger an automatic rerun.
-`native reconcile-reviewed` (R06) uses the same request, database, artifact
-root, workspace, grant credentials, and `--state-dir` to observe that Attempt
-after restart. An existing cancellation request (or `--cancel-request` for a
-new request) stops the recorded process group with TERM, a three-second grace,
-then KILL if required. Only observed exit is recorded as cancelled; missing or
-unverifiable identity stays unknown. A checkpoint input requires a separately
-authorized new Run/Attempt plus `--source-request` and `--restore-claim` on
-`native execute-reviewed`. The claim binds a completed source result in CAS,
-the new input, code/environment compatibility, and `full-state` versus
-`adapter-only` state fields. The reviewed task implements the actual state
-load; the runner does not infer optimizer restoration from file presence.
-The requested network, filesystem, and memory isolation remains advisory
-unless a selected profile enforces it; this profile rejects restrictions
-marked `required` when the host cannot enforce them.
-`native run` (M3 slice 1) recomputes that sealed preflight, consumes one local
-human authorization citation on the existing store before spawn, and then runs
-only a fixed noop helper with bounded capture, an empty environment allowlist,
-an isolated temporary cwd, and process-group supervision. The manifest
-entrypoint is never imported, no lifecycle fact is appended, network denial is
-requested but not enforced, and `--transport ssh` fails closed without a
-socket. `native ssh-onboard` writes a `pending-live` checklist pack and never
-dials SSH.
-`runs simulate` only hands a strict local request to that existing boundary and
-does not retry conflicts.
-`runs cancel` likewise appends a single request fact through RunControl, requires
-an existing database, and neither signals nor infers a cancellation outcome.
-`artifacts put` / `verify` only reuse the local object layer: they do not print
-object bodies and they do not build an index or lineage.
-`models generate` records digest-only `ai.call.*` facts from a local fixture.
-The mock path does not open a network connection. The OpenAI-compatible path
-defaults to loopback with a `0.00` CNY cap; remote endpoints require `SecretRef`,
-`read.external_api`, HTTPS, a recorded project CNY limit, and a request cap that
-matches that limit. Uncertain transport after dispatch keeps the reservation.
-`researchos m1 prove` records one empty-store research chain from a corpus; it
-does not close Issue #38.
-`researchos m2 prove` records one loopback Worker CPU loop from a corpus; it
-does not spend GPU and does not close Issue #38.
-`researchos m2 mps` records one macOS/MPS Worker training loop
-(`execute.mps`, process-group isolation). Stub pytest does not require
-Apple GPU. A live extras interpreter must probe MPS and fail closed on
-CPU. It does not inherit OCI isolation, does not spend cloud GPU, and
-does not close Issue #38.
-`researchos m2 oci` records the digest-pinned OCI CPU loop when a live
-engine has the planned image; otherwise it fails closed and MUST NOT be
-described as a successful container run. Ordinary pytest may skip
-`oci_live`; the GitHub job `Linux OCI integration` runs `-m oci_live`
-(success brick and live faults) and must fail instead of skip.
-`researchos m2 bench` records 10k or 100k EventStore timings; it is not
-an SLA and does not spend GPU.
-`researchos training plan` prints pinned `swift sft` argv and MUST NOT
-execute. It is not a real training run.
-`researchos training bind` prints the GPU docker argv for that plan and
-MUST NOT start a container (`gpu: not-run`).
-`researchos training snapshot` / `overlay` / `collect` pin Hub identity,
-print resume argv, and put `/work/output` files into CAS. They MUST NOT
-download, train, or claim a GPU checkpoint.
-`researchos workers serve` / `workers run` split that loop across two
-processes over pinned loopback HTTPS; they do not prove a remote Worker.
-Cancel supervision records a process or container identity and confirms
-exit; it does not stop a cloud instance.
-`evidence import` stores a local Markdown or PDF snapshot in CAS and appends
-digest-only `evidence.imported`; PDF extract is subprocess-bounded with a
-minimal worker environment; unknown
-rights cannot authorize training.
-`report` rebuilds a static HTML or Markdown projection; it is not a fact source.
-The tree does not import block entrypoints, does not execute arbitrary training
-frameworks, expressions, plugins, or non-loopback Workers, does not write a
-SQLite artifact index or durable projections, and does not provide object
-export/delete, a real GPU stop adapter, an executable NativeProcessRuntime, or
-network upload of training artifacts.
-A simulated `completed` is not scientific success; `unknown` stays unresolved.
-Any real GPU spend, external-account action, or irreversible operation still needs
-a separate approval. See the [security policy](SECURITY.md).
+Frontend source lives in `web/`; rebuilding it requires the pinned Node/npm
+workflow described in [the workbench guide](docs/guides/m3-workbench.md).
+Published JSON Schema is the external contract; regenerate it from its registered
+model instead of editing generated files by hand.
 
 ## License
 
-Copyright 2026 victorzhong0110.
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE)
-and [NOTICE](NOTICE).
+Copyright 2026 victorzhong0110. [Apache-2.0](LICENSE); see [NOTICE](NOTICE).
+The project name is a working title. Releases, tags and publication are separate
+decisions.

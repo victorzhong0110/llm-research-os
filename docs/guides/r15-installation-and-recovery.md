@@ -1,8 +1,9 @@
 # Install, start, back up, and recover
 
-Current state: **candidate on the R15 branch; not merged, not accepted.** The
-commands described here are implemented with tests; Checkpoint D is not
-accepted and the independent trials in R16 have not been performed.
+Current state: **R15 engineering integrated in #139, with repairs preserved in
+#140; full acceptance remains open.** Checkpoint D is not accepted. Future human
+journeys use [dashboard-v1](dashboard-acceptance.md); independent trials have not
+been performed.
 
 The offline wire format is in
 [backup and restore v0alpha1](../protocols/backup-restore-v0alpha1.md).
@@ -12,11 +13,22 @@ The offline wire format is in
 The wheel carries the built workbench bundle, so an operator needs neither a
 source checkout nor Node.
 
+For an installed-use journey, receive the verified wheel and its dependencies
+from the operator. No source checkout or public package release is assumed:
+
 ```bash
-uv venv .venv
-uv pip install --python .venv/bin/python llm-research-os
-.venv/bin/researchos --help
+uv venv .installed
+uv pip install --python .installed/bin/python ./wheelhouse/llm_research_os-0.0.0-py3-none-any.whl
+.installed/bin/researchos --help
 ```
+
+Use the actual supplied wheel path. For offline installation, the operator also
+supplies an approved dependency wheelhouse; add `--no-index --find-links ./wheelhouse`
+to the install command. Keep the package/build digest in the trial manifest.
+
+An operator building from this repository runs `uv build`; the resulting wheel
+is under `dist/`. This is a separate preparation step, not a requirement for an
+independent participant to clone the repository.
 
 Python 3.12 or newer is required. Training extras are optional and are not
 needed for anything in this guide; the core runs without a model key and
@@ -117,6 +129,12 @@ A missing asset bundle is a startup failure, not an empty project; the
 researchos backup create --root ./workspace --out ./backup-2026-10-05
 researchos backup verify --image ./backup-2026-10-05
 ```
+
+Dashboard state currently needs a separate export with
+`researchos dashboard show --root ./workspace`. Existing backup formats omit
+`dashboard.sqlite`, including its map history, inbox and source observations.
+A map export preserves view state, not all Dashboard-store data. Verify the
+coverage you need before treating an image as complete workspace recovery.
 
 A backup is a **verified high-water prefix** of the EventStore plus the
 immutable CAS objects that prefix references. The SQLite copy is taken with the

@@ -9,6 +9,10 @@ authorized release.
 
 ## Unreleased
 
+- Rebuilt the English/Chinese README around the research map and generated current
+  implementation status. Added dashboard-v1 participant/real-host acceptance tasks
+  with versioned evidence and preserved historical scope (ADR-0067).
+
 - Add fixed public OpenAI/Claude status collectors and map presets with explicit
   refresh, attributed reports, expiry and failure retention. Keep official
   aggregate reports separate from personal request health and execution facts.

@@ -11,6 +11,17 @@ to the planning/review assistant. This file is therefore a **proposed input** to
 that review, not the closure decision itself, and it deliberately does not
 create or modify any acceptance criterion.
 
+## Current journey rebaseline — 2026-10-18
+
+Future human acceptance uses [dashboard-v1](../../guides/dashboard-acceptance.md)
+under [ADR-0067](../../adr/0067-dashboard-acceptance-rebaseline.md). The roll-up
+below preserves its historical evidence; current engineering identities are in
+the maintained matrix. Old CLI task completion cannot establish current-map
+comprehension. No new pack trial has been performed. Report technical host
+verification, independent map completion and scoped closure separately, including
+blocked guided preparation and Dashboard-store backup coverage. The old campaign
+remains paused; this record accepts nothing.
+
 ## Phase scope supported by recorded evidence
 
 | Package | Implementation | Verification recorded | Accepted? |

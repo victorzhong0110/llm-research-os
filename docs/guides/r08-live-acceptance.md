@@ -6,6 +6,17 @@ record that it ran. The maintainer's 2026-10-04 direction is to complete through
 R16 sequentially, integrating and accepting each predecessor first. The
 [M3 plan](../plans/m3-development-plan.md) defines the unchanged gates.
 
+## Current Dashboard journey
+
+The old campaign is paused under the maintainer's later direction. The
+2026-10-18 [dashboard-v1 task pack](dashboard-acceptance.md) supplies the current
+participant journey and map-to-host observations when acceptance resumes.
+The fault mechanics below remain technical requirements. Preserve #150's
+partial historical CPU observations at their original identity; they do not
+prove current-map comprehension or current-build host behavior. Record stale,
+unconfirmed, cancel-requested, observed-stop and unknown states in both the UI
+and the authoritative host evidence for the same task identity.
+
 ## Inputs needed to run
 
 The maintainer has confirmed that two hosts and a GPU environment exist. The

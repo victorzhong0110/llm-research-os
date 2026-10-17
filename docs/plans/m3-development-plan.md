@@ -45,6 +45,25 @@ execution, renumber R01–R16, or change checkpoint acceptance. Outstanding evid
 remains pending-live. The dashboard plan subdivides the product continuation;
 its proposed slices are not completed work or a replacement acceptance matrix.
 
+## Acceptance journey update: dashboard-v1, 2026-10-18
+
+After the interface redesign, the maintainer requested revised real-host/human
+acceptance and a current README. [ADR-0067](../adr/0067-dashboard-acceptance-rebaseline.md)
+and the [dashboard-v1 task pack](../guides/dashboard-acceptance.md) supersede the
+old CLI participant task wording for future trials. T1–T5/REMOTE retain their
+identifiers with exact versioned prompts and build manifests. Do not mix old and
+new packs when reporting task coverage.
+
+The two independent users and authorized remote journey remain required. Add
+map comprehension, Browse/Edit/AI scope, source freshness, geometry-versus-domain
+meaning, result drilldown and personal-workspace recovery to the review. Retain
+execution authority, identity, integrity, cancellation/unknown and supported
+platform checks; historical evidence keeps its original scope. Missing guided
+execution and Dashboard-store recovery are product blockers, not successful CLI
+workarounds. Technical host verification, independent usability and scoped
+acceptance have separate review outcomes. This update does not resume the paused
+campaign or supply any trial/host result.
+
 ## Maintainer execution direction: complete sequentially through R16
 
 On 2026-10-04 at 18:41:11 Asia/Taipei, the maintainer instructed: complete all
@@ -463,7 +482,7 @@ Validate the usable product and close only the scope supported by evidence.
 
 **Deliverables**
 
-- Prepare fixed tasks for at least two intended users who did not implement the system; the maintainer handles invitations/authorization.
+- Prepare the versioned [dashboard-v1 tasks](../guides/dashboard-acceptance.md) for at least two intended users who did not implement the system; the maintainer handles invitations/authorization.
 - Record install/offline journey results, interventions, confusion, and recovery; at least one authorized remote journey must be evidenced.
 - Fix main-path defects and rerun affected paths. Aggregate the evidence recorded with each preceding package; do not postpone evidence collection until this package.
 - The planning/review assistant prepares the scoped closure ADR and remaining backlog; keep implementation, accepted evidence, and live runtime identities distinct.
@@ -471,7 +490,7 @@ Validate the usable product and close only the scope supported by evidence.
 
 **Acceptance**
 
-- Independent users complete core journeys; material defects are resolved and remaining limitations are explicit.
+- Independent users complete the current map journeys, including comprehension and evidence drilldown; material defects are resolved and remaining limitations are explicit. Facilitator CLI rescue is recorded as assistance, and missing user paths remain blockers.
 - Checkpoint D provides the installed demonstration, trial evidence, acceptance matrix, and scoped closure record for maintainer review.
 - Unperformed live work remains pending-live and prevents claiming the corresponding checkpoint complete.
 

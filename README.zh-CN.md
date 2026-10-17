@@ -1,532 +1,151 @@
-# LLM Research OS（中文）
+# LLM Research OS
 
-把 AI 提案、人的决策、实验执行和证据串成可回放记录的研究控制平面。
+围绕一张可交互地图组织的个人 LLM 研究工作空间。
+把研究问题、实验、自己的 Agent、算力、服务状态和证据放在同一视野中，
+点击组件即可查看背后的具体信息。
 
-## 3 分钟看懂
+[English](README.md) · [Dashboard 使用指南](docs/guides/research-dashboard.md) ·
+[当前待办](https://github.com/victorzhong0110/llm-research-os/issues/159)
 
-[![架构：决策、执行与证据](docs/assets/project-tour/architecture.png)](docs/assets/project-tour/architecture.html)
+## 工作空间是什么样的
 
-| **1,661 项测试通过** | **85.38% 覆盖率** | **2 台真实主机** |
-| --- | --- | --- |
-| PR #118，Linux Python 3.12 | 同一 CI 的语句与分支覆盖率 | 已验收的 M2 CPU/CUDA、取消与恢复证据 |
+Dashboard 是一张具有分组和逻辑关系的地图。Browse 用来阅读，Edit 用来编排，
+AI 模式用来请自己的 Agent 协助维护。悬停看摘要，点击查看来源数据、图表和注明
+作者的解读。地图变大后，可以使用搜索、缩放、折叠和小地图导航。
 
-[**看 80 秒 CLI 录屏**](docs/assets/project-tour/research-loop.mp4) · [动图预览](docs/assets/project-tour/research-loop.gif) · [数字与来源](docs/assets/project-tour/README.md)
+| 地图区域 | 可以查看的内容 |
+| --- | --- |
+| 研究与实验 | 研究问题、准备笔记、已记录的 Run、结果及证据 |
+| 算力与执行 | 已接入的数据源观测、Worker 信息和已记录的任务活动 |
+| 服务与可靠性 | 官方服务报告、导入的服务观测及其时效 |
+| 决策与管理 | 人类决策、异议、费用／预算来源和恢复信息 |
 
-[![CLI 录屏：拒绝提案不会排队执行 Run](docs/assets/project-tour/recording-poster.png)](docs/assets/project-tour/research-loop.mp4)
+通过包含、并列、固定位置和可选箭头组织相关工作。移动卡片改变视图；
+执行依赖和权限通过各自的审查操作处理。外观提供黑白 Graphite、暖纸 Warm paper
+和自定义主题。
 
-录屏执行真实 CLI 命令，使用确定性 Mock 模型与模拟 Run，不使用 GPU。拒绝提案不会排队执行 Run；接受后记录离线研究闭环，再验证持久化事件日志。两主机数字来自历史上已验收的 M2 证据，不代表尚未完成的 M3 原生执行验收。
+地图包含预设和可配置组件。只有数据源存在时才会显示对应观测；缺少服务器负载、
+利用率、费用或 Agent 活动时，会明确显示缺失。官方整体状态与自己的请求健康分开呈现。
 
-体验离线闭环（Python 3.12+ 与 uv；数据库路径须为新路径）：
+## 从仓库开始体验
+
+需要 Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)。仓库已包含构建后的浏览器界面，
+以下步骤无需 Node、模型密钥或 GPU。
 
 ```bash
+git clone https://github.com/victorzhong0110/llm-research-os.git
+cd llm-research-os
 uv sync --locked --all-groups
-uv run researchos m1 prove examples/m1-checkpoint demo.db
-uv run researchos events verify demo.db
+uv run researchos app init \
+  --root ./research-workspace \
+  --project my-research \
+  --control-db control/events.sqlite \
+  --cas-root cas \
+  --worker-root worker
+uv run researchos web serve --root ./research-workspace --port 8787
 ```
 
-架构图使用 [Archify](https://github.com/tt-a1i/archify) 生成并检查。检查点 B 仍未验收。维护者于 2026-10-04 授权按顺序完成至 R16。当前先补齐 [R08 真实环境验收](docs/guides/r08-live-acceptance.md)。R09 只读[本地 API](docs/guides/m3-local-api.md)与 R10 [研究工作台](docs/guides/m3-workbench.md)分别由 #131（R09 已合入）和 #132（R10 审查修复）跟踪。代码合入不代表真实环境验收闸门已经关闭。
+打开服务器打印的 bootstrap URL，进入本地 Dashboard 并建立浏览器会话。
+这个 URL 含有会话引导信息，请妥善保管。
 
-> 本文是 [README.md](README.md) 的中文版。英文版是权威文本，两者随同一 PR 更新（[ADR-0040](docs/adr/0040-english-primary-and-engineering-standards.md)）。
->
-> 当前名称为临时工作名，正式名称将在公开发布前通过 ADR 确认。
+1. 选择 **Create my first brief**，写下研究问题和什么结果算有进展。
+   材料和资源可以暂时不确定。
+2. 审阅并保存。目标与准备笔记会成为地图上可编辑的区域。重新加载页面前保存地图。
+3. 阅读笔记，尝试 Edit，切换主题。可以添加 **OpenAI official status** 或
+   **Claude official status** 组件，在能够访问公共互联网时手动刷新。
 
-LLM Research OS 是一个独立、开源、模型无关、训练后端无关、算力供应商无关的 LLM 研究操作系统。它用于表达研究问题、组合实验、让 AI 提出并反驳方案、在本地或远程 Worker 上执行，并记录训练、评测、系统、成本、血缘与 AI 决策。
+研究 brief 保存的是准备笔记。从笔记到可执行实验的引导配置仍在开发中。
+高级研究和执行操作已经存在，但部分操作仍要求预先安装配置并提供内部标识。
 
-它服务于人类的帮助对 AI 仍然必要的时期：把研究者提供的信息与授权做成便宜、高信息量、可持久、可审计的事实，研究者是教师而不只是审批者（[ADR-0039](docs/adr/0039-human-help-period-purpose.md)）。
+也可以另建一个包含已有研究记录的离线演示工作空间：
 
-## 当前状态
+```bash
+uv run researchos workspace demo --root ./research-demo
+uv run researchos web serve --root ./research-demo --port 8788
+```
+
+演示使用确定性 Mock 模型和模拟 Run；示例数据不代表真实训练结果。
+安装 wheel 也会包含浏览器界面和离线材料。从本地构建或收到的 wheel 安装，请参阅
+[安装与恢复指南](docs/guides/r15-installation-and-recovery.md)。项目目前处于预发布阶段。
+
+## 接入自己的 Agent
+
+AI 模式会向工作空间收件箱写入持久、限定范围的请求。自己的 Agent 用
+`researchos dashboard inbox` 读取，用 `researchos dashboard reply` 回复，
+也可以提出绑定地图版本的修改。系统会检查固定位置、选定范围及编辑冲突。
+打开 AI 模式本身不会自动启动 LLM 或 Agent。
+
+详见 [Agent 工作流](docs/guides/research-dashboard.md#connect-your-own-agent) 和
+[组件契约](docs/protocols/dashboard-document-v0alpha1.md)。
+
+## 实现与验证状态
 
 <!-- generated-status:start -->
 
-| Scope | Status |
+| 范围 | 状态 |
 | --- | --- |
-| M0 | 已收口（ADR-0037） |
-| M1 | 离线检查点已验收（ADR-0062）；#38 收口 |
-| M2 | 本地／两机范围已验收（ADR-0062）；#73/#77/#78 已合并 |
-| Mac / MPS | LoRA 已实测；进程组隔离 |
-| Windows / WSL2 + Docker Engine | 两机 CPU、重连、取消、CUDA 20 步、checkpoint 上传及 10→12 恢复已实测 |
-| Paid cloud | 未执行；¥0，不宣称付费云验收 |
-| Unknown execution | 已有单测与回环验证；无专门两机 unknown 实测 |
-| NativeProcessRuntime | M3 首片已合并（ADR-0063，#81）：本地受限 noop helper（密封预检）+ SSH 接入 pending-live；SSH 执行已拒绝；现场 SSH 与真实受限 profile 仍属计划；#53 保持开放 |
-| Public MVP | 未发布；可用的 SSH 接入与 Web 界面属于 M3 |
+| Dashboard | 地图、Browse/Edit/AI、持久布局与主题已集成（#156） |
+| First use | 研究 brief 引导已提供（#157）；材料、资源与可执行计划配置仍在开发 |
+| Agent | 持久限定范围的收件箱与地图提案；回复由自己的 Agent 提供 |
+| Provider status | 手动采集 OpenAI／Claude 公共报告（#158），显示来源与过期状态；开发环境直连尚未验证 |
+| Execution and evaluation | 已实现审查后的原生 CPU、远端 Worker 执行、真实 CPU 评估和持久报告；工作包及实机验收仍有缺口 |
+| Human / real-host acceptance | 已制定 dashboard-v1 任务；尚无当前地图的独立真人试用，旧检查点测试暂停 |
+| Historical M1/M2 | 离线研究及特定本地／两机 CPU、CUDA、MPS 证据已按 ADR-0062 在原身份范围内验收 |
+| Release | 预发布 0.0.0；未公开发布，无付费云验收声明 |
 
-[Evidence and limits](docs/evidence/m2-wsl2-cuda-live/m2-closure-matrix.md).
-Integrated baseline: `7e5fc33`; accepted evidence: `57ffdae`.
+[当前 M3 证据与缺口](docs/evidence/m3/acceptance-matrix.md) · [历史 M1/M2 范围](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)。
+实现快照: `6b49255`; 历史已验收证据: `57ffdae`。
 
 <!-- generated-status:end -->
 
-## M0 目标
+当前重点是执行准备引导、更多具有真实来源的组件，以及独立用户的首次使用评估。
+见 [#159](https://github.com/victorzhong0110/llm-research-os/issues/159) 和
+[Dashboard 交付计划](docs/plans/research-dashboard.md)。
 
-下列历史目标已由 [ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md) 收口；条目保留为当时的验收清单。
+当前限制包括：官方状态需要手动刷新，尚无内置主机利用率采集器；旧工作空间备份格式
+不包含 `dashboard.sqlite`，已保存的地图需单独导出。资源笔记不代表机器已连接或预算
+已分配。浏览器自动化和截图不能替代真人可用性验收。
 
-1. 编写短版 ADR 与持续更新的威胁模型；
-2. 定义 `ResearchSpec v0alpha1` 的 Pydantic 模型；
-3. 生成版本化 JSON Schema，并提供正反例；
-4. 实现验证器与语义差异；
-5. 定义 CloudEvents 兼容的 `ResearchEvent`；
-6. 建立 SQLite 最小事实源与 `SimulatedRuntime`；
-7. 在无 GPU 条件下跑通首个纵向闭环。
+## 研究与执行基础
 
-## 已接受基线
+地图下面是共享的研究控制面：版本化规格、追加式事件、按内容寻址的产物、人类决策，
+以及保留的 AI 异议。CLI、Python 和浏览器共用领域服务与操作收据。
+经过审查的执行会绑定计划、材料、环境及 Worker 权限。
 
-- Python 3.12+、`pyproject.toml`、uv；
-- Pydantic 是 M0 编写入口，版本化 JSON Schema 是对外契约；
-- 追加式事件、可重建投影与内容寻址制品；
-- 独立 Research IR，不附属于 NeMo、ms-swift 或任何 Agent 框架；
-- 研究者默认拥有最终决定权，AI 可以并应当提交异议；
-- 任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。
+取消请求与实际观测到停止分开记录。未确认的结果保持 unknown，不会自动重新启动任务。
+经过审查的原生代码遵循所选宿主执行配置的限制；执行配置无法强制落实的必要隔离要求
+会被拒绝。详见 [安全策略](SECURITY.md)、[威胁模型](docs/security/threat-model.md) 和
+[原生执行指南](docs/guides/m3-native-reviewed-execution.md)。
 
-## 项目文档
+## 文档入口
 
-- [部分实现：已审查的 Python 扩展 API](docs/guides/extensions.md)
-- [合成数据评估与人工结论机制](docs/protocols/evaluation-conclusion-v0alpha1.md)
-- [M1/M2 验收与 M3 边界](docs/adr/0062-m1-m2-acceptance-and-m3-boundary.md)
-- [M3 计划文档（R01–R16）](docs/plans/m3-development-plan.md)
-- [M3 证据与验收矩阵](docs/evidence/m3/acceptance-matrix.md)
+- [Dashboard 使用与编排](docs/guides/research-dashboard.md)
+- [安装、诊断、备份与恢复](docs/guides/r15-installation-and-recovery.md)
+- [Dashboard 验收任务与实机检查](docs/guides/dashboard-acceptance.md)
+- [M3 计划](docs/plans/m3-development-plan.md) 与 [证据矩阵](docs/evidence/m3/acceptance-matrix.md)
+- [全部指南](docs/guides)、[协议](docs/protocols) 与 [架构决策](docs/adr/README.md)
+- [参与贡献](CONTRIBUTING.zh-CN.md)、[工程标准](docs/engineering-standards.md) 与 [变更记录](CHANGELOG.md)
 
-- [宪章 v0.2 合并阅读版](docs/charter-v0.2.md)
-
-- [项目宪章与最小内核规格 v0.1](docs/charter-v0.1.md)
-- [第 18 章决策指南与确认记录 v0.1](docs/chapter-18-decision-guide-v0.1.md)
-- [ResearchSpec v0alpha1规范说明](docs/protocols/research-spec-v0alpha1.md)
-- [ResearchEvent v0alpha1规范说明](docs/protocols/research-event-v0alpha1.md)
-- [Research decision objects v0alpha1](docs/protocols/research-decision-objects-v0alpha1.md)
-- [SecretRef v0alpha1](docs/protocols/secret-ref-v0alpha1.md)
-- [ModelProvider / ai.call v0alpha1](docs/protocols/model-provider-v0alpha1.md)
-- [Evidence import v0alpha1](docs/protocols/evidence-import-v0alpha1.md)
-- [OpenAI-compatible generate / budget v0alpha1](docs/protocols/openai-compat-v0alpha1.md)
-- [Synthetic metrics and static Run report v0alpha1](docs/protocols/run-report-v0alpha1.md)
-- [BlockManifest v0alpha1规范说明](docs/protocols/block-manifest-v0alpha1.md)
-- [DryRunReport v0alpha1规范说明](docs/protocols/dry-run-report-v0alpha1.md)
-- [Block 命令报告 v0alpha1](docs/protocols/block-command-report-v0alpha1.md)
-- [ProblemReport v0alpha1](docs/protocols/problem-report-v0alpha1.md)
-- [语义内容摘要 v0alpha1](docs/protocols/digest-v0alpha1.md)
-- [Run/Attempt 状态 v0alpha1](docs/protocols/run-attempt-state-v0alpha1.md)
-- [SimulationRequest v0alpha1](docs/protocols/simulation-request-v0alpha1.md)
-- [RunCancellationRequest v0alpha1](docs/protocols/run-cancellation-request-v0alpha1.md)
-- [ArtifactObjectReport v0alpha1](docs/protocols/artifact-object-report-v0alpha1.md)
-- [PlanAuthorizationRequest/Report v0alpha1](docs/protocols/plan-authorization-v0alpha1.md)
-- [PlanAuthorizationEventRequest v0alpha1](docs/protocols/plan-authorization-event-v0alpha1.md)
-- [PlanAuthorizationLineageQuery/Report v0alpha1](docs/protocols/plan-authorization-lineage-v0alpha1.md)
-- [NativeProcessPreflightRequest/Report v0alpha1](docs/protocols/native-process-preflight-v0alpha1.md)
-- [NativeProcessRuntime v0alpha1](docs/protocols/native-process-runtime-v0alpha1.md)（英文）
-- [已审查原生执行 v0alpha1](docs/protocols/native-reviewed-execution-v0alpha1.md)（英文）
-- [已审查原生准备 v0alpha1](docs/protocols/native-reviewed-preparation-v0alpha1.md)（英文）
-- [静态规划内核导读](docs/guides/m0-static-planning.md)
-- [M0 SQLite事件存储导读](docs/guides/m0-event-store.md)
-- [M0 本地制品存储导读](docs/guides/m0-artifact-store.md)
-- [M0 RunControl 导读](docs/guides/m0-run-control.md)
-- [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)
-- [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)
-- [M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)
-- [M0 计划授权血缘查询](docs/guides/m0-plan-authorization-lineage.md)
-- [M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)
-- [M3 本地受限执行](docs/guides/m3-native-process-runtime.md)（英文）
-- [M3 SSH 接入](docs/guides/m3-native-ssh-onboarding.md)（英文）
-- [M3 授权范围传输](docs/guides/m3-native-transfer.md)（英文）
-- [M3 已审查原生执行契约](docs/guides/m3-native-reviewed-execution.md)（英文）
-- [M3 已审查原生准备](docs/guides/m3-native-reviewed-preparation.md)（英文）
-- [M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)
-- [M0 Simulated Run CLI](docs/guides/m0-simulated-run-cli.md)
-- [M0 Run Cancellation CLI](docs/guides/m0-run-cancellation-cli.md)
-- [M1 研究决定 CLI](docs/guides/m1-research-decisions.md)
-- [M1 ModelProvider mock CLI](docs/guides/m1-model-provider.md)
-- [M1 资料导入 CLI](docs/guides/m1-evidence-import.md)
-- [M1 OpenAI 兼容 generate CLI](docs/guides/m1-openai-compat.md)
-- [M1 合成指标与静态 Run 报告](docs/guides/m1-run-report.md)
-- [M1 检查点 CLI](docs/guides/m1-checkpoint.md)
-- [Worker protocol v0alpha1](docs/protocols/worker-v0alpha1.md)
-- [Authorization grant v0alpha1](docs/protocols/authorization-grant-v0alpha1.md)
-- [M2 Worker CLI](docs/guides/m2-worker.md)
-- [M2 CPU OCI](docs/guides/m2-oci.md)
-- [M2 GPU 切片（仅方向）](docs/guides/m2-gpu-slice.md)
-- [M2 Mac/MPS 验收](docs/guides/m2-mps-acceptance.md)
-- [首次实验](docs/guides/first-experiment.md)
-- [架构决策记录](docs/adr/README.md)
-- [持续威胁模型](docs/security/threat-model.md)
-- [工程规范](docs/engineering-standards.md)（英文）
-- [Changelog](CHANGELOG.md)
-- [参与贡献](CONTRIBUTING.zh-CN.md)
-
-## 本地开发
-
-需要 Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)。训练后端不安装到核心控制面环境中。
+## 开发
 
 ```bash
 uv sync --locked --all-groups
-uv run researchos validate examples/valid/minimal.yaml
-uv run researchos blocks list
-uv run researchos dry-run examples/valid/minimal.yaml
-uv run researchos schema --check-all
 uv run ruff check .
+uv run ruff format --check .
 uv run mypy src
-uv run pytest --cov=llm_research_os --cov-fail-under=85
+uv run pytest -m "not oci_live and not slow and not ray_native_live" \
+  --cov=llm_research_os --cov-fail-under=85
+uv run researchos schema --check-all
+python scripts/project_status.py --check
 node conformance/digest/verify.mjs
+uv build
 ```
 
-生成的 JSON Schema 是第三方实现使用的语言中立契约：
+前端源码在 `web/`；重新构建需要按 [工作台指南](docs/guides/m3-workbench.md) 使用固定的
+Node/npm 流程。发布的 JSON Schema 是外部契约，应从注册的模型重新生成，
+不要直接修改生成文件。
 
-```text
-schemas/research-spec/v0alpha1.schema.json
-schemas/research-event/v0alpha1.schema.json
-schemas/block-manifest/v0alpha1.schema.json
-schemas/block-command-report/v0alpha1.schema.json
-schemas/dry-run-report/v0alpha1.schema.json
-schemas/problem-report/v0alpha1.schema.json
-schemas/run-state/v0alpha1.schema.json
-schemas/simulation-request/v0alpha1.schema.json
-schemas/run-cancellation-request/v0alpha1.schema.json
-schemas/artifact-object-report/v0alpha1.schema.json
-schemas/plan-authorization-request/v0alpha1.schema.json
-schemas/plan-authorization-report/v0alpha1.schema.json
-schemas/native-process-preflight-request/v0alpha1.schema.json
-schemas/native-process-preflight-report/v0alpha1.schema.json
-schemas/native-reviewed-execution-request/v0alpha1.schema.json
-schemas/native-reviewed-execution-report/v0alpha1.schema.json
-schemas/native-reviewed-preparation-receipt/v0alpha1.schema.json
-schemas/native-reviewed-preparation-diagnosis/v0alpha1.schema.json
-schemas/native-reviewed-python-bundle/v0alpha1.schema.json
-schemas/native-reviewed-code-review/v0alpha1.schema.json
-schemas/native-reviewed-interpreter-identity/v0alpha1.schema.json
-schemas/native-reviewed-dependency-lock/v0alpha1.schema.json
-schemas/native-reviewed-dependency-inventory/v0alpha1.schema.json
-```
+## 许可
 
-不要手工编辑这些文件。`researchos schema --check-all` 按 CLI 契约注册表校验全部已提交
-schema；新增契约只需在 `src/llm_research_os/cli/contracts.py` 登记一处。修改 Pydantic
-编写模型后，使用对应的 `--contract` 选项重新生成并审查协议差异：
-
-```bash
-uv run researchos schema --output schemas/research-spec/v0alpha1.schema.json
-```
-
-## 静态 dry-run
-
-```bash
-uv run researchos dry-run examples/valid/minimal.yaml --format json
-```
-
-`ready`只表示规范、积木解析、端口、资源和静态计划完整，不表示实验已批准、
-已执行或科学上正确。循环不会展开，`until`不会求值，配置与审批正文只以摘要进入报告。
-
-附加积木清单只能从用户明确提供的普通 YAML/JSON 文件或非递归目录读取：
-
-```bash
-uv run researchos blocks validate examples/manifests/example-train.yaml
-uv run researchos dry-run examples/valid/bounded-loop.yaml \
-  --registry examples/manifests/example-train.yaml
-```
-
-## 计划授权门
-
-`authorize_plan` 对 ready report 重新做语义校验，并把授权策略同时绑定到
-`specDigest`、`registryDigest` 与 `planDigest`。声明的 capability/permission 必须精确授予，
-planner 产生的每个 requirement 必须显式批准；缺权限或拒绝得到 `denied`，尚缺审批得到
-`pending`，只有 `authorized` 可进入执行路径。它不认证审批者、不持久化决定，也不产生事件或
-运行时副作用。详见 [M0 确定性计划授权门](docs/guides/m0-plan-authorization.md)。
-
-外部调用者可用版本化请求对当前输入重新生成的精确计划求值：
-
-```bash
-uv run researchos authorize \
-  examples/valid/minimal.yaml \
-  examples/plan-authorization-requests/valid/minimal.json \
-  --format json
-```
-
-`authorized` 返回 `0`，有效的 `pending`/`denied` 返回 `1`，输入或摘要绑定错误返回 `2`。
-报告固定声明 `not-authenticated`、`not-persisted` 与 `not-executed`；它不是签名或可撤销的授权
-回执。详见 [M0 显式计划授权 CLI](docs/guides/m0-plan-authorization-cli.md)。
-
-需要追加式审计时，可用另一份严格请求把重新计算的结果记录到已经存在的 EventStore：
-
-```bash
-uv run researchos authorizations record \
-  examples/valid/minimal.yaml \
-  examples/plan-authorization-requests/valid/minimal.json \
-  examples/plan-authorization-events/valid/minimal.json \
-  research.db --format json
-```
-
-该命令先完整验证事件库，再以全局 head CAS 追加一个
-`plan.authorization.evaluated`；`authorized` 返回 `0`，已记录的 `pending`/`denied` 返回 `1`，
-输入、完整性或并发错误返回 `2`。事件明确声明 `not-authenticated`、`audit-only` 与
-`not-executed`，因此是可回放的审计事实而不是 runtime 凭证。详见
-[M0 计划授权求值事件](docs/guides/m0-plan-authorization-events.md)。
-
-同一份计划身份可再通过只读查询重建匹配的审计事实，而不把它们升格为 Run 引用或启动凭证：
-
-```bash
-uv run researchos authorizations find \
-  examples/plan-authorization-lineage/valid/minimal.json \
-  research.db --format json
-```
-
-成功退出 `0` 只表示已冻结的事件前缀被重建；`matchCount` 可以为 `0`。报告固定声明
-`not-authenticated`、`audit-only`、`not-executed` 与 `not-consumed`。详见
-[M0 计划授权血缘查询](docs/guides/m0-plan-authorization-lineage.md)。
-
-## 原生进程预检
-
-单个、已授权的 Python task 可进入纯预检，但不能进入进程执行：
-
-```bash
-uv run researchos native preflight \
-  examples/native-process-preflight/spec.yaml \
-  examples/native-process-preflight/authorization-request.json \
-  examples/native-process-preflight/preflight-request.json \
-  --registry examples/native-process-preflight/manifest.yaml \
-  --format json
-```
-
-预检重新验证 ready plan、密封 registry、三摘要授权和授权决定摘要，只接受固定 JSON-stdio
-runner、`shell=false`、network denied、空环境 allowlist、隔离临时 workspace 请求及有界输出/超时。
-成功退出 `0` 只表示报告可复核；报告固定为 `launchAllowed=false`、
-`isolation=not-enforced`、`execution=not-executed`，入口点仅以摘要出现。命令不解析解释器、导入
-模块、创建 workspace、启动进程、发信号或写入持久存储。详见
-[M0 Native Process Preflight](docs/guides/m0-native-process-preflight.md)。
-
-M3 首片在该密封预检之上增加本地受限执行与 pending-live SSH 接入包
-（[ADR-0063](docs/adr/0063-m3-native-process-runtime-slice-1.md)，英文）。
-`native run` 先消费既有库中的本地授权引用，再启动固定 noop helper；清单入口点永不导入，
-不追加生命周期事实。`--transport ssh` 在授权检查之后失败关闭，不打开 socket。
-`native ssh-onboard` 只写 `pending-live` 清单，不拨号。详见英文指南
-[M3 native process runtime](docs/guides/m3-native-process-runtime.md) 与
-[M3 native SSH onboarding](docs/guides/m3-native-ssh-onboarding.md)。
-
-R07 候选的 `native ssh-doctor` 可探测固定主机密钥的 SSH 主机，在专用目录离线安装
-已校验的 wheel 包，并通过 HTTPS 验证 Worker 注册。跨主机验收仍待获授权主机；
-`native run --transport ssh` 仍拒绝执行。
-
-## 事件查询与回放
-
-只读命令打开既有 SQLite 数据库，不会在路径缺失时创建文件，也不会追加事件：
-
-```bash
-uv run researchos events get research.db evt.example.1 --format json
-uv run researchos events list research.db --after-sequence 0 --limit 100
-uv run researchos events replay research.db --page-size 100
-uv run researchos events verify research.db --format json
-```
-
-`replay` 输出 JSON Lines，并在开始时冻结高水位，因此执行期间追加的新事件不会进入本次结果。
-
-## RunControl
-
-`RunControl` 在 EventStore 写入前用冻结的全局 head 回放并预检 Run/Attempt 生命周期事件，
-再用 `expected_last_sequence` 做全局 CAS。它不生成 `id`/`time`/`streamid`，不自动重试
-conflict，也不执行任何积木。CAS 失败后必须由调用者再次 `append`，以重新回放和验证。
-
-## SimulatedRuntime
-
-`SimulatedRuntime` 对冻结的 ResearchSpec 快照重新 dry-run，通过固定的 T0 `simulate`
-capability 策略调用计划授权门，消费所引用的本机授权行，并仅当计划是单个
-`simulated.experiment@0.1.0` 且 config 显式给出 `outcome` 时，才通过 RunControl
-追加 Run/Attempt 生命周期事件。`id`/`time`/`streamid` 与授权引用仍由调用方提供；conflict
-不会自动重试；`unknown` 不会被收敛成 failure 或 success。模拟 `completed` 只表示
-受控生命周期结束，不表示训练成功或假设成立。先创建 EventStore、记录授权事实，再模拟。最小可运行示例见
-[M0 SimulatedRuntime 导读](docs/guides/m0-simulated-runtime.md)。
-
-命令行纵向闭环使用单独的显式请求文件；不会生成 `id`、`time` 或 `streamid`：
-
-```bash
-uv run researchos runs simulate \
-  examples/valid/minimal.yaml \
-  examples/simulation-requests/valid/success.json \
-  research.db --format json
-```
-
-JSON stdout 是已发布 Schema 约束的 `RunSnapshot`。退出码 `0` 仅表示模拟生命周期
-`completed`；`failed`、`unknown`、`unresolved` 返回 `1`，输入、完整性或并发错误返回
-`2`。可随后用 `events verify` / `events replay` 独立检查事实。
-
-取消一个既有 Run 或 active Attempt 必须使用另一份显式请求。命令只追加
-`*.cancel.requested` 事实，不发送进程信号，也不生成 `*.cancelled` 结果：
-
-```bash
-uv run researchos runs cancel \
-  examples/run-cancellation-requests/valid/run.json \
-  research.db --format json
-```
-
-数据库必须已经存在；缺失路径不会被创建。退出码 `0` 仅说明取消请求事实已提交，
-应检查返回的 `RunSnapshot.cancellationRequested`，不能据此声称任务已经停止。
-
-一条命令记录 M1 检查点所要求的离线研究链。它不会关闭 Issue #38：
-
-```bash
-uv run researchos m1 prove \
-  examples/m1-checkpoint \
-  research.db \
-  --format json
-```
-
-`--decision reject` 记录同样的研究事实，且不得排队 Run。
-见 [M1 检查点 CLI](docs/guides/m1-checkpoint.md)。
-
-一条命令记录回环 Worker CPU 闭环（CAS 积木、制品、报告）。它不花费 GPU，也不会关闭 Issue #38：
-
-```bash
-uv run researchos m2 prove \
-  examples/m2-checkpoint \
-  research.db \
-  --format json
-```
-
-Mac/MPS Worker 闭环（进程组隔离，不是 OCI）：
-
-```bash
-uv run researchos m2 mps \
-  examples/m2-mps-checkpoint \
-  research-mps.db \
-  --format json
-```
-
-见 [M2 Worker CLI](docs/guides/m2-worker.md)、
-[M2 CPU OCI](docs/guides/m2-oci.md)、
-[M2 Mac/MPS 验收](docs/guides/m2-mps-acceptance.md)、
-[M2 性能基线](docs/guides/m2-perf.md) 与
-[首次实验](docs/guides/first-experiment.md)。
-
-研究提案、异议、决定与提问是独立的 EventStore 事实。数据库必须已存在。`accept` 不是启动凭证。回答是带权利的数据，不是指令：
-
-```bash
-uv run researchos proposals submit \
-  examples/research-decisions/valid/proposal-submit.json \
-  research.db --format json
-uv run researchos dissents record \
-  examples/research-decisions/valid/dissent-record.json \
-  research.db --format json
-uv run researchos decisions record \
-  examples/research-decisions/valid/decision-record.json \
-  research.db --format json
-uv run researchos questions ask \
-  examples/research-decisions/valid/question-ask.json \
-  research.db --format json
-uv run researchos questions answer \
-  examples/research-decisions/valid/question-answer.json \
-  research.db --format json
-uv run researchos research ledger research.db \
-  --project example-minimal --format json
-```
-
-确定性 mock 模型调用写成一对 EventStore 事实。prompt 与 output 正文留在 fixture 文件中：
-
-```bash
-uv run researchos models generate \
-  examples/model-generate-requests/valid/generate.json \
-  research.db \
-  --fixture examples/model-fixtures/valid/generate-json.json \
-  --format json
-```
-
-OpenAI 兼容本地服务器是默认 HTTP 路径（上限 `0.00` CNY）。prompt 与 completion 不写入事件；预算事实会入账：
-
-```bash
-uv run researchos models generate \
-  examples/openai-compat-requests/valid/local.json \
-  research.db \
-  --fixture examples/model-fixtures/valid/compat-local.json \
-  --format json
-```
-
-本地 Markdown 或 PDF 笔记成为 `evidence.imported` 事实。文件路径与抽取正文不写入事件。PDF 抽取在子进程中受页数、字符数与墙钟上限约束，且只继承最小环境：
-
-```bash
-mkdir -m 700 artifacts
-uv run researchos evidence import \
-  examples/evidence/valid/import-markdown.json \
-  research.db \
-  --source examples/evidence/sources/eval-split.md \
-  --artifacts artifacts \
-  --format json
-```
-
-成功路径的 SimulationRequest 也可提供 `training.step` 与 `evaluation.metric` 身份。报告是静态投影：
-
-```bash
-uv run researchos report run.simulated \
-  --database research.db \
-  --format markdown
-```
-
-本地制品对象根目录必须预先创建。导入与完整校验都返回版本化对象报告，不打印对象正文：
-
-```bash
-mkdir -m 700 artifacts
-uv run researchos artifacts put artifacts checkpoint.bin --format json
-uv run researchos artifacts verify artifacts \
-  sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
-  --format json
-```
-
-`put` 不覆盖摘要冲突的既有对象；`verify` 会完整重算摘要且不会修复损坏。两者都不写
-SQLite、不发 ResearchEvent，也不赋予对象 project/Run、media type 或 URI 语义。
-
-## 当前安全边界
-
-M0 内核证明已收口（[ADR-0037](docs/adr/0037-m0-kernel-proof-closure.md)）。下列边界仍是当前代码的安全事实，不因收口而消失。
-
-M0 当前验证协议和差异、编译无副作用的静态计划，并以绑定三摘要的纯授权门逐项拒绝未授予的
-capability、permission 或 approval；可向本地 SQLite 追加、查询和回放事件事实，
-可将常规本地文件导入内容寻址制品目录，可通过 RunControl 在写入前拒绝非法生命周期事件，
-并可通过 SimulatedRuntime 对单个内置 simulated task 追加确定性生命周期事实。
-`authorize` 只重新构造静态计划并输出明确非凭证的版本化求值报告，不写事件、制品或数据库。
-`authorizations record` 可向既有事件库追加精确四摘要绑定的求值事实，但 actor 仍未认证，事件
-只具有审计意义，任何 runtime 都不能据此启动。
-`native preflight` 只冻结单 task 的固定进程审查形状，明确禁止启动且不实施所声明的隔离。
-R03 已审查原生执行验证器只检查 `native-reviewed-python/v0alpha1` 文档，并返回
-`launchAllowed=false`。它不导入入口点、不启动子进程，也不兑现 `execute.native`。
-该画像上的网络、文件系统和内存限制均未实施。
-`native prepare` 与 `native doctor`（R04）会重建授权事实、HMAC grant 和 CAS 字节，
-再物化或诊断私有工作区。它们不安装依赖、不导入入口点、不启动用户代码。
-已存在且不匹配的工作区会被拒绝并保持原样。`launchAllowed` 仍为 false。
-`native execute-reviewed`（R05）是独立路径，只运行一个已准备的
-`native-reviewed-python/v0alpha1` Attempt。它重新构建被引用的计划与 Worker 绑定，
-消费有效的 `execute.native` grant，记录 Run/Attempt 和 Worker 事实，并将有界、结构化的任务
-结果存入 CAS。除 `native prepare` 的参数外，还需要 `--spec`、`--registry` 和私有的
-`--state-dir`；重复运行同一 Attempt 会被拒绝。子进程在执行身份持久化前不会导入审查过的代码；
-结果不确定时必须先观察，不能自动重跑。该画像中请求的网络、文件系统和内存隔离仍属声明性
-约束；宿主无法实施却标记为 `required` 的限制会被拒绝。
-`native reconcile-reviewed`（R06）复用同一请求、数据库、CAS、工作区、grant 凭据与
-`--state-dir`，在重启后观察该 Attempt。已有取消请求或新传入的 `--cancel-request` 会对
-已记录的进程组先发 TERM，等待三秒后在必要时发 KILL。只有观察到退出才记录 cancelled；
-身份缺失或无法核实则保持 unknown。含 checkpoint 的新 Attempt 必须单独获授权，并向
-`native execute-reviewed` 提供 `--source-request` 和 `--restore-claim`。检查会核对源 Run
-完成事实、CAS 结果、新输入及代码/环境兼容性，区分 `full-state` 与 `adapter-only` 字段。
-实际状态加载由审查过的任务实现；运行器不因文件存在就推断优化器状态已恢复。
-`native run`（M3 首片）重新计算该密封预检，先消费既有库中的本地人工授权引用，再只运行
-固定 noop helper（有界捕获、空环境 allowlist、隔离临时 cwd、进程组监管）。清单入口点永不
-导入，不追加生命周期事实，network 拒绝仅声明不实施，`--transport ssh` 失败关闭且不打开
-socket。`native ssh-onboard` 只写 `pending-live` 清单，不拨号。
-`runs simulate` 只把严格的本地请求交给这条现有边界，且不自动重试冲突。
-`runs cancel` 同样只通过 RunControl 追加单个请求事实，要求既有数据库，且不发送信号或
-推断取消结果。
-`artifacts put` / `verify` 只复用本地对象层，既不输出对象正文，也不建立索引或血缘。
-`models generate` 把仅含摘要的 `ai.call.*` 事实写入既有库。mock 路径不打开网络。
-OpenAI 兼容路径默认回环且上限 `0.00` CNY；远端端点需要 `SecretRef`、`read.external_api`、HTTPS、
-已记录的项目 CNY 上限，以及与该上限一致的请求 cap。派发后结果不确定时保留预留。
-`researchos m1 prove` 从语料向空库记录一条研究链；它不会关闭 Issue #38。
-`researchos m2 prove` 从语料记录一条回环 Worker CPU 闭环；它不花费 GPU，不是内核沙箱，也不会关闭 Issue #38。
-`researchos m2 mps` 记录一条 macOS/MPS Worker 训练闭环（`execute.mps`，进程组隔离）。普通 pytest 使用 stub，不要求 Apple GPU。真实 extras 解释器必须探测 MPS，CPU fallback 失败关闭。它不继承 OCI 隔离，不花费云 GPU，也不关闭 Issue #38。
-`researchos m2 oci` 在本机已有按摘要钉死的镜像时记录 CPU OCI 闭环；否则失败关闭，不得表述为容器实测成功。普通环境可以跳过 `oci_live`；GitHub 作业 `Linux OCI integration` 跑全部 `-m oci_live`（成功积木与故障），必须失败关闭。
-`researchos m2 bench` 记录 1 万或 10 万事件的 EventStore 耗时；它不是 SLA，也不花费 GPU。`researchos m2 usage` 走 Worker/RunControl 路径，不是这次填充。
-`researchos training plan` 打印钉死的 `swift sft` argv，且不得执行；它不是真实训练。
-`researchos training bind` 打印该计划的 GPU docker argv，且不得启动容器（`gpu: not-run`）。
-`researchos training snapshot` / `overlay` / `collect` 钉死 Hub 身份、打印恢复 argv，并把 `/work/output` 文件写入 CAS；它们不得下载、训练或宣称 GPU checkpoint 成功。
-`researchos workers serve` / `workers run` 把该闭环拆成两个进程、经钉死的回环 HTTPS 通信；它们不证明远端 Worker。取消监督记录进程或容器身份并确认退出；它不停止云实例。
-`evidence import` 把本地 Markdown/PDF 快照写入 CAS 并追加仅含摘要的 `evidence.imported`；
-PDF 抽取在子进程中设上限且不继承进程密钥；未知权利不能授权训练。
-`report` 重建静态 HTML 或 Markdown 投影；它不是事实源。
-它不导入积木入口点，不执行任意训练框架、表达式、插件或非回环 Worker，不写 SQLite 制品索引
-或持久化投影，也不提供对象导出/删除、真实 GPU 停止适配器、可执行的 NativeProcessRuntime 或训练制品网络上传。
-模拟 `completed` 不是科学成功；`unknown` 保持未决。
-任何真实 GPU 消费、外部账户操作或不可逆操作仍需单独批准。安全问题请参阅
-[安全政策](SECURITY.md)。
-
-## License
-
-Copyright 2026 victorzhong0110.
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE)
-and [NOTICE](NOTICE).
+Copyright 2026 victorzhong0110。[Apache-2.0](LICENSE)，另见 [NOTICE](NOTICE)。
+当前项目名称是工作名。版本发布、tag 与公开分发需要单独决定。
