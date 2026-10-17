@@ -9,6 +9,10 @@ authorized release.
 
 ## Unreleased
 
+- Add fixed public OpenAI/Claude status collectors and map presets with explicit
+  refresh, attributed reports, expiry and failure retention. Keep official
+  aggregate reports separate from personal request health and execution facts.
+
 - Add a guided research brief in the Dashboard: goal, success criterion and optional
   material/resource notes become an editable map region. Preserve drafts within
   the tab, exact save retries, existing geometry and scoped Agent discussion.

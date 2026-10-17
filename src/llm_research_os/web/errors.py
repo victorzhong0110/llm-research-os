@@ -30,6 +30,7 @@ ApiErrorCode = Literal[
     "query-timeout",
     "session-expired",
     "session-required",
+    "source-unavailable",
     "bootstrap-invalid",
     "bootstrap-consumed",
     "workspace-invalid",

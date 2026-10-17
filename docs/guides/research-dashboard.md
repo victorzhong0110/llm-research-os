@@ -77,6 +77,32 @@ The current inbox retains at most 100 tasks and returns the latest 20; capacity
 refusal is explicit. Conversation archival and full inbox navigation remain
 follow-up work. No hidden reasoning or unobserved background activity is shown.
 
+## Add official provider status
+
+Choose **Add → OpenAI official status** or **Claude official status**. Select the
+new component and click **Refresh OpenAI status** / **Refresh Claude status**.
+Save the map to retain its source binding. The refresh itself stores the report
+independently, and a later failed refresh leaves that report intact until it
+becomes stale. The official-page link opens the full provider page.
+
+No API key is required. This retrieves public aggregate status, not your own
+request success rate, account limits, region health or available model capacity.
+The card shows provenance and retrieval/expiry times; the page's last update is
+retained separately. Component and incident counts are counts in the source,
+not measured availability percentages. Refresh is manual in this slice.
+
+Agents and operators can use the same collector:
+
+```bash
+researchos dashboard provider-status --root WORKSPACE openai
+researchos dashboard provider-status --root WORKSPACE claude
+```
+
+Only the two fixed HTTPS endpoints are supported. Redirects, environment proxies
+and custom URLs are not used. If DNS, TLS or the provider endpoint is unavailable,
+the UI reports failure and preserves previous data. It does not retry through a
+different host or turn a fetch error into healthy status.
+
 ## Connect infrastructure and status sources
 
 A collector or your Agent may supply a DashboardObservation with:
@@ -93,8 +119,9 @@ not independent verification of that host or provider's availability.
 Select the source in the component's Edit panel. A category binds automatically
 only when exactly one source matches. Provider official status and your own
 request health must use different sources. No arbitrary URL is fetched by a
-binding. The current slice supplies ingestion and display, not a bundled host
-exporter or automatic provider-status poller. Each source is bounded to 32 KiB,
+binding. The current slice supplies ingestion/display and manual fixed official-status
+collectors, not a bundled host exporter or automatic provider-status poller. Each
+source is bounded to 32 KiB,
 100 source identities per workspace; time must advance on replacement. These
 observations do not create Run/Attempt facts or authorize execution.
 

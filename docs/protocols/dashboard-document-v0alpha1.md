@@ -57,3 +57,36 @@ All three CLI file inputs (apply, reply, observe) require regular files, refuse
 symlinks, and open nonblocking before checking file type. JSON duplicate keys
 are refused at every nesting level, with the same decoded depth/node limits as
 the API. Observation input retains its tighter 32 KiB byte limit.
+
+## Fixed official provider-status refresh
+
+`researchos dashboard provider-status --root WORKSPACE openai` and the `claude`
+variant fetch one fixed public HTTPS summary and persist one DashboardObservation.
+Source identities are `official.openai` / `official.claude`, with entity identities
+`provider.openai` / `provider.claude`. Their category is `provider`. Endpoints:
+
+- <https://status.openai.com/api/v2/summary.json>
+- <https://status.claude.com/api/v2/summary.json>
+
+The same collector is exposed by authenticated, same-origin, CSRF-protected
+`POST /api/v0alpha1/dashboard/providers/openai/refresh` and the `claude` variant.
+The body must be empty. GET is refused; callers cannot supply URLs, credentials,
+headers, fetch intervals or redirect targets. Success returns the existing
+DashboardObservations envelope containing the refreshed source. Failure returns
+503 `source-unavailable` and preserves the previous report. This is an additive
+local API error value, generated into the registered response schema/types.
+
+A report expires five minutes after retrieval. `observedAt` records retrieval;
+provenance separately preserves the upstream page update time. A report is a
+provider assertion, not a request probe or an uptime measurement. Empty component
+lists, unknown overall indicators and unrecognized component states cannot become
+an all-operational report. Known affected components prevent an overall `none`
+indicator from becoming healthy. Missing incident lists stay missing; a supplied
+empty list can report zero listed incidents. Metrics count reported components,
+affected components, unknown states and, when supplied, listed incidents. Text
+shows at most 20 components and five incidents with truncation disclosed.
+
+Refresh is explicit, with no background polling or model API call. It neither
+changes the map revision nor appends EventStore/Run/Attempt/receipt facts. Adding
+and saving a component is a separate view change; generic imported observations
+continue to use their own source identities and provenance.

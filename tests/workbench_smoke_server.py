@@ -5,14 +5,18 @@ from __future__ import annotations
 import json
 import signal
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from wsgiref.simple_server import make_server
 
 from test_run_control import _draft, _queued_draft, _started_draft
 from test_web_regressions import _append, _root
 
-from llm_research_os.application.workspace import init_workspace, load_workspace
+from llm_research_os.application.workspace import Workspace, init_workspace, load_workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
+from llm_research_os.dashboard.observations import Observation, ObservationStore
+from llm_research_os.dashboard.providers import provider_observation
+from llm_research_os.dashboard.store import DashboardError
 from llm_research_os.research.control import ResearchControl
 from llm_research_os.research.requests import (
     DecisionRecordRequestDocument,
@@ -21,12 +25,44 @@ from llm_research_os.research.requests import (
 from llm_research_os.runs.control import RunControl
 from llm_research_os.spec.io import load_spec
 from llm_research_os.storage import EventStore
+from llm_research_os.web import app as web_app
 from llm_research_os.web.app import LocalApi
 from llm_research_os.web.serve import BoundedWSGIServer, _QuietHandler
 from llm_research_os.web.sessions import SessionStore
 
 base = Path(sys.argv[1])
 root = base / "project"
+if "--provider-fixture" in sys.argv[2:]:
+    # Only this test server replaces transport; production has no fixture switch.
+    provider_calls: dict[str, int] = {}
+
+    def fixture_collect(workspace: Workspace, provider: str) -> Observation:
+        provider_calls[provider] = provider_calls.get(provider, 0) + 1
+        if provider_calls[provider] > 1:
+            raise DashboardError("synthetic collector failure")
+        raw = json.dumps(
+            {
+                "page": {"updated_at": "2025-01-01T00:00:00Z"},
+                "status": {"indicator": "minor", "description": "Synthetic provider report"},
+                "components": [{"name": "Synthetic service", "status": "partial_outage"}],
+                "incidents": [],
+            }
+        ).encode()
+        observation = provider_observation(provider, workspace.project_id, raw)
+        changes: dict[str, object] = {
+            "origin": "synthetic",
+            "reporter": "browser fixture",
+            "provenance": "Synthetic browser fixture; no official endpoint was requested.",
+            "explanation_author": "browser fixture",
+        }
+        if provider == "claude":
+            changes.update(
+                observed_at=datetime.now(UTC) - timedelta(minutes=10),
+                expires_at=datetime.now(UTC) - timedelta(minutes=5),
+            )
+        return ObservationStore(workspace).observe(observation.model_copy(update=changes))
+
+    web_app.collect_provider_status = fixture_collect
 if "--fresh" in sys.argv[2:]:
     init_workspace(
         root,

@@ -158,6 +158,9 @@ export interface Paged<T> {
 }
 
 export const api = {
+  refreshProvider(provider: "openai" | "claude"): Promise<ObservationList> {
+    return request<ObservationList>(`/dashboard/providers/${provider}/refresh`, { method: "POST" });
+  },
   activity(): Promise<ActivitySnapshot> { return request<ActivitySnapshot>("/dashboard/activity"); },
   observations(): Promise<ObservationList> {
     return request<ObservationList>("/dashboard/observations");

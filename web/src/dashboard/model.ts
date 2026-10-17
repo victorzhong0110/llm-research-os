@@ -324,6 +324,7 @@ export const presets: ReadonlyArray<{
   type: Component["type"];
   title: string;
   source?: NonNullable<Component["binding"]>["source"];
+  sourceId?: string;
 }> = [
   { type: "group", title: "Group" },
   { type: "note", title: "Note" },
@@ -333,6 +334,8 @@ export const presets: ReadonlyArray<{
   { type: "resource", title: "Compute", source: "telemetry" },
   { type: "pool", title: "Load balancing", source: "telemetry" },
   { type: "provider", title: "Provider status", source: "telemetry" },
+  { type: "provider", title: "OpenAI official status", source: "telemetry", sourceId: "official.openai" },
+  { type: "provider", title: "Claude official status", source: "telemetry", sourceId: "official.claude" },
   { type: "availability", title: "Availability", source: "telemetry" },
   { type: "cost", title: "Costs", source: "telemetry" },
   { type: "dataset", title: "Dataset" },

@@ -426,6 +426,7 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
             onClose={() => setSelected(null)}
             onNavigate={onNavigate}
             onAgent={() => agent(node.id)}
+            onRefreshSources={() => void refresh()}
           />
         )}
         {panel !== "none" && (
@@ -450,7 +451,7 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
                   {presets.map((preset) => (
                     <button
                       type="button"
-                      key={preset.type}
+                      key={preset.title}
                       onClick={() => {
                         const id = crypto.randomUUID();
                         change({
@@ -476,7 +477,7 @@ export function Dashboard({ active, projectId, onNavigate }: Props) {
                                 height: preset.type === "group" ? 470 : 190,
                               },
                               ...(preset.source
-                                ? { binding: { source: preset.source } }
+                                ? { binding: { source: preset.source, ...(preset.sourceId ? { sourceId: preset.sourceId } : {}) } }
                                 : {}),
                             },
                           ],

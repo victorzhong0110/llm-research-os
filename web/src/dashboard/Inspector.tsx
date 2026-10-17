@@ -6,6 +6,7 @@ import { absolute, clampPosition, descendants } from "./model";
 import type { Mode } from "./Canvas";
 import type { Sources } from "./data";
 import { eventsFor, summary, observationFor } from "./data";
+import { OfficialStatus } from "./OfficialStatus";
 
 interface Props {
   node: Node;
@@ -16,6 +17,7 @@ interface Props {
   onClose: () => void;
   onNavigate: (view: string) => void;
   onAgent: () => void;
+  onRefreshSources: () => void;
 }
 export function Inspector({
   node,
@@ -26,6 +28,7 @@ export function Inspector({
   onClose,
   onNavigate,
   onAgent,
+  onRefreshSources,
 }: Props) {
   const info = summary(node, data);
   const observation = observationFor(node, data);
@@ -78,6 +81,13 @@ export function Inspector({
       <h2>{node.title}</h2>
       <p className={`map-status tone-${info.tone}`}>{info.status}</p>
       <p>{info.detail}</p>
+      {node.type === "provider" && node.binding?.source === "telemetry" && (
+        <OfficialStatus
+          key={`${node.id}:${node.binding.sourceId}`}
+          sourceId={node.binding.sourceId}
+          onRefreshed={onRefreshSources}
+        />
+      )}
       {mode === "edit" ? (
         <>
           <label>
@@ -499,7 +509,7 @@ export function Inspector({
               {observation.explanation && (
                 <div className="map-context">
                   <b>Interpretation · {observation.explanationAuthor}</b>
-                  <p>{observation.explanation}</p>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{observation.explanation}</p>
                   <small>
                     Source-attributed interpretation; inspect the measurements
                     above.
