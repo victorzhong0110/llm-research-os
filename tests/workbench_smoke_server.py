@@ -11,7 +11,7 @@ from wsgiref.simple_server import make_server
 from test_run_control import _draft, _queued_draft, _started_draft
 from test_web_regressions import _append, _root
 
-from llm_research_os.application.workspace import load_workspace
+from llm_research_os.application.workspace import init_workspace, load_workspace
 from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.research.control import ResearchControl
 from llm_research_os.research.requests import (
@@ -27,6 +27,15 @@ from llm_research_os.web.sessions import SessionStore
 
 base = Path(sys.argv[1])
 root = base / "project"
+if "--fresh" in sys.argv[2:]:
+    init_workspace(
+        root,
+        project_id="proj-alpha",
+        control_db=Path("control/events.sqlite"),
+        cas_root=Path("cas"),
+        worker_root=Path("worker"),
+    )
+    (base / "fixture.json").write_text("{}")
 if not (root / "workspace.json").exists():
     _root(base)
     artifacts = LocalArtifactStore(root / "cas")

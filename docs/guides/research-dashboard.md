@@ -33,6 +33,29 @@ they do not execute arbitrary frontend code. Run/research/event snapshots state
 their bounded coverage. Activity contains the latest 100 project events, in append
 order, and explicitly marks older records outside the snapshot. Telemetry is missing until an observation is supplied.
 
+## Start with a research brief
+
+Choose **Create my first brief** on an unsaved map, **Research brief** in the
+header, or the entry in Quick guide. Describe a goal and what would count as
+progress. Materials and resources are optional: undecided items remain explicitly
+unidentified rather than appearing connected or allocated. Review the text, then
+**Save brief to map** creates a region with four editable planning notes and saves
+the current arrangement in the same revision-bound write.
+
+Closing the panel or visiting another view retains the draft in this browser tab.
+Save before reloading; unsaved drafts trigger the browser's leave-page warning.
+An unconfirmed save offers **Retry saving this brief** with the same identity and
+frozen content, including after closing and reopening the panel. A conflict needs
+review/reload; it is never silently rebased. Existing components and pins remain
+in place. Saved notes are edited with the ordinary Edit mode and map history.
+
+After saving, **View my research brief** locates the region. **Discuss this brief
+with my Agent** opens the inbox with that region selected; it sends no message
+until the user writes and submits one. The brief works with no EventStore, model
+connection or Worker. It does not create a proposal, decision, resource grant or
+Run, and does not upload the named materials. Preparing/importing actual material,
+connecting resources and reviewing an executable plan are subsequent work.
+
 ## Connect your own Agent
 
 After saving the map, send a message in AI mode. This records a durable request;

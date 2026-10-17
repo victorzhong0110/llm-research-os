@@ -9,6 +9,11 @@ authorized release.
 
 ## Unreleased
 
+- Add a guided research brief in the Dashboard: goal, success criterion and optional
+  material/resource notes become an editable map region. Preserve drafts within
+  the tab, exact save retries, existing geometry and scoped Agent discussion.
+  Preparation remains separate from connected resources and execution facts.
+
 - Add a Results and conclusions workbench: verified recent evaluation discovery,
   metric tables, paired error review, provenance/limitations, readable immutable
   human reports and direct result selection after restart or backup restore.

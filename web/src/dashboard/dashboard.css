@@ -1038,3 +1038,32 @@
 .map-stage-overview .map-group .map-node-hit {
   padding: 10px 20px;
 }
+
+.map-first-use {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 24px 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--map-border);
+  border-radius: 12px;
+}
+.map-first-use p { margin: 5px 0 0; font-size: 12px; }
+.map-first-use button { flex-shrink: 0; }
+.map-brief fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.map-brief-steps {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  gap: 16px;
+  font-size: 12px;
+}
+.map-brief-steps li { opacity: 0.5; }
+.map-brief-steps [aria-current="step"] { opacity: 1; font-weight: 650; }
+.map-brief-review dt { font-size: 11px; font-weight: 650; margin-top: 16px; }
+.map-brief-review dd { margin: 5px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.map-brief-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+@media (max-width: 700px) {
+  .map-first-use { margin: 0 10px 12px; align-items: stretch; flex-direction: column; }
+}
