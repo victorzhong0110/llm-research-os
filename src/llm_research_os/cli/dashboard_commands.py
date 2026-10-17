@@ -11,6 +11,7 @@ from llm_research_os.application.workspace import load_workspace
 from llm_research_os.dashboard.agents import AgentInbox, AgentInboxDocument, AgentReply, AgentTask
 from llm_research_os.dashboard.models import DashboardDocument
 from llm_research_os.dashboard.observations import Observation, ObservationStore
+from llm_research_os.dashboard.providers import PROVIDERS, collect_provider_status
 from llm_research_os.dashboard.store import DashboardStore, read_json_input, read_write_request
 
 
@@ -31,6 +32,11 @@ def add_dashboard_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
     observe = commands.add_parser("observe")
     observe.add_argument("--root", type=Path, required=True)
     observe.add_argument("document", type=Path)
+    status = commands.add_parser(
+        "provider-status", help="refresh one fixed official public status page"
+    )
+    status.add_argument("--root", type=Path, required=True)
+    status.add_argument("provider", choices=tuple(PROVIDERS))
 
 
 def run_dashboard(args: argparse.Namespace) -> int:
@@ -41,6 +47,8 @@ def run_dashboard(args: argparse.Namespace) -> int:
             result = store.read(args.revision)
         elif args.dashboard_command == "inbox":
             result = AgentInbox(load_workspace(args.root)).list_tasks()
+        elif args.dashboard_command == "provider-status":
+            result = collect_provider_status(load_workspace(args.root), args.provider)
         elif args.dashboard_command == "observe":
             raw = read_json_input(args.document, max_bytes=32768)
             result = ObservationStore(load_workspace(args.root)).observe(

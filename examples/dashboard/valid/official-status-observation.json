@@ -1,0 +1,25 @@
+{
+  "kind": "DashboardObservation",
+  "projectId": "demo",
+  "sourceId": "official.openai",
+  "entityId": "provider.openai",
+  "category": "provider",
+  "title": "OpenAI official status example",
+  "reporter": "example collector",
+  "provenance": "Synthetic example only; no official endpoint was requested",
+  "observedAt": "2026-01-01T00:00:00Z",
+  "expiresAt": "2026-01-01T00:05:00Z",
+  "origin": "synthetic",
+  "status": "degraded",
+  "metrics": [
+    {
+      "name": "Affected components",
+      "value": 1,
+      "unit": "components",
+      "meaning": "observed",
+      "history": []
+    }
+  ],
+  "explanation": "Synthetic example: a reported partial outage is not proof of this project request health.",
+  "explanationAuthor": "example author"
+}

@@ -30,7 +30,8 @@ from llm_research_os.artifacts.store import LocalArtifactStore
 from llm_research_os.canonical import content_digest
 from llm_research_os.dashboard.agents import AgentAsk, AgentInbox, AgentReply
 from llm_research_os.dashboard.models import DashboardWrite
-from llm_research_os.dashboard.observations import ObservationStore
+from llm_research_os.dashboard.observations import ObservationList, ObservationStore
+from llm_research_os.dashboard.providers import PROVIDERS, collect_provider_status
 from llm_research_os.dashboard.store import DashboardStore
 from llm_research_os.events.models import CLOUD_EVENTS_INTEGER_MAX
 from llm_research_os.storage import EventStore
@@ -194,6 +195,33 @@ class LocalApi:
         self._sessions.check_csrf(
             session, csrf_header if isinstance(csrf_header, str) else None, method=method
         )
+        if route in {f"/dashboard/providers/{provider}/refresh" for provider in PROVIDERS}:
+            if method != "POST":
+                raise LocalApiError(
+                    "method-not-allowed", "Refresh official status with POST.", status=405
+                )
+            raw = read_bounded_body(
+                environ["wsgi.input"],
+                content_length=environ.get("CONTENT_LENGTH"),
+                limits=self._limits,
+            )
+            if raw:
+                raise bad_request(
+                    "document-invalid", "Official status refresh takes no request body."
+                )
+            try:
+                observation = collect_provider_status(self._workspace, route.split("/")[3])
+            except (ValueError, OSError) as exc:
+                raise LocalApiError(
+                    "source-unavailable",
+                    "Official status refresh failed. The previous report has not been replaced.",
+                    status=503,
+                ) from exc
+            return self._json(
+                ObservationList(
+                    projectId=self._workspace.project_id, observations=(observation,)
+                ).model_dump(mode="json", by_alias=True)
+            )
         if route == "/dashboard/observations":
             if method != "GET":
                 raise LocalApiError(

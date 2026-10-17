@@ -1067,3 +1067,29 @@ no-follow regular-file reader and the existing strict JSON decoder. Duplicate
 keys at any nesting, excessive decoded depth/nodes, symlinks and special files
 are refused before storage. FIFO regressions use subprocess timeouts so a
 blocking-open regression fails instead of hanging the test runner.
+
+## TM-101 — Fixed public provider status collectors
+
+- Asset: local workspace/session boundary and honest source observations.
+- Entry: explicit CLI provider-status or authenticated, CSRF-protected POST for
+  one of two provider names. No user-provided URL, body, header or credential is
+  accepted. The observation is not authority or proof of personal request health.
+- Controls: fixed HTTPS URLs with default certificate verification; redirects
+  refused; environment proxies and cookies disabled; no workspace content or
+  model credentials sent. Response bodies stop at 256 KiB, use two-second socket
+  timeouts and an eight-second read deadline. System DNS resolution follows OS
+  behavior and is not a hard end-to-end deadline guarantee. JSON duplicate keys,
+  decoded depth/node bounds, malformed shapes, oversized collections and future
+  page timestamps are refused. Source text is rendered as escaped text.
+- Evidence semantics: five-minute retrieval freshness, separately attributed
+  upstream update time, conservative unknown/degraded mapping, bounded details
+  with truncation labels, and no invented zero when incidents are absent.
+  Failed refreshes preserve the existing observation. No automatic polling,
+  model call, Run, grant, paid operation or event/receipt write is introduced.
+- Residual limits: a provider's public report may lag a regional/account failure.
+  Same-user filesystem/source forgery is not an independent authenticity boundary.
+  The source list does not support custom hosts, proxies or provider credentials.
+- Validation: parser/transport/API/CLI checks cover unknown states, duplicate JSON,
+  malformed/oversized data, redirect/proxy/body refusals, timeout and failure
+  retention. Browser fixtures are explicitly synthetic and do not establish live
+  provider availability. Direct network verification depends on DNS/access.

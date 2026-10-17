@@ -30,23 +30,24 @@ evidence, rather than copying entire conversations or unrelated personal memory.
 
 ## Current snapshot
 
-Snapshot date: **2026-10-17, maintenance integrated; guided research brief candidate**.
-Latest verified main: `b242e32911f77e14597bdcf8fcae4ce5dfc89d20`;
-[main CI 39001348389](https://github.com/victorzhong0110/llm-research-os/actions/runs/39001348389)
-passed after Dashboard #156 and maintenance #155/#151/#152/#153.
-Pydantic #154 then integrated at `9b526133c0fe07275d3bdc86a66b61d61a54b6d6`;
-its final head `40a21f565ae4c7355d56bed2655b28bb6efce293` passed every applicable
-job in CI 39001496999. Post-merge CI 39002226291 is pending at this snapshot.
-The research-brief slice was developed from verified Dashboard main 0a67da5d
-and reconciled onto 9b526133; it remains a candidate pending its own review/CI.
+Snapshot date: **2026-10-17, guided research preparation integrated; official status candidate**.
+Latest verified main: `b0538983fba8625ab302bfbbc14d3af9123a4845` (#157);
+[main CI 39021120360](https://github.com/victorzhong0110/llm-research-os/actions/runs/39021120360)
+passed. #157 final head `19e418c3269e2b447fa3f9c9f14e49f22023ed2c` passed all
+11 applicable jobs in CI 39002496121; code/security reviews reported no findings.
+Maintenance #151–#155 is integrated; #154 main CI 39002226291 also passed.
+The official OpenAI/Claude status slice is a candidate based on b0538983,
+pending its own PR review and CI. Direct endpoint verification is unavailable
+in this execution environment because the public hostnames do not resolve.
 
 The maintainer paused the checkpoint trial campaign and authorized the full
 [research dashboard direction](plans/research-dashboard.md): a one-person AI
 organization map spanning research, infrastructure, serving, reliability, costs
 and governance. #156 integrates the semantic map, Browse/Edit/AI toolbox,
 scoped Agent inbox, observations, themes and large-map navigation. This is
-integration evidence, not human first-use acceptance. The research-brief candidate begins guided first-use preparation; guided execution
-setup, automatic source adapters and recorded live acceptance gaps remain open.
+integration evidence, not human first-use acceptance. The merged research brief begins guided first-use preparation. Guided execution
+setup and recorded live acceptance gaps remain open; manual official status
+collectors are the next candidate slice.
 Prior #150 two-host evidence remains attributed to its original execution base
 `c6b21b929ed35c853116fcd186559f9caad1e9ae`; no Checkpoint B closure is claimed.
 
@@ -74,7 +75,7 @@ passed). Documentation changes do not advance the execution baseline.
 
 | Item | State and evidence |
 | --- | --- |
-| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. Maintenance #151–#155 is integrated; the guided research-brief slice is a candidate. Guided execution setup and human acceptance remain open. |
+| Current package | Semantic workspace Dashboard integrated in #156 and main CI passed. Maintenance #151–#155 and guided research brief #157 are integrated with passing main CI. Official status collectors are a candidate; guided execution setup and human acceptance remain open. |
 | Native Worker CLI | [#127](https://github.com/victorzhong0110/llm-research-os/pull/127) merged; reviewed CPU execution and observation-only recovery. |
 | Optional Ray CPU project jobs | [#128](https://github.com/victorzhong0110/llm-research-os/pull/128) merged at the baseline above; fixed installed driver, durable single submission and native recovery outside Ray. |
 | Baseline verification | [Main CI 37144839460](https://github.com/victorzhong0110/llm-research-os/actions/runs/37144839460) passed all five Python and actual Ray project/resource, native and OCI gates. Linux 3.12: 1973 passed, zero failures/skips, coverage 26871/31324 = 85.784063%. Ray project gate: 3 real tests; native gate: 15 real tests. |
@@ -1485,3 +1486,32 @@ R15 integration confirmed on 2026-10-06: #139 merged at `76e16d2aae2cc748e0e9c94
   or resumed live checkpoint campaign is claimed. No normative changes.
 - Next action / owner: Codex reviews the final bundle, submits the independently
   reviewable slice, and integrates after required checks and main verification.
+
+## BUILD-20261017-03 — Official provider status components
+
+- Date: 2026-10-17 UTC. Sender: Codex. Recipient: maintainer / next implementer.
+- Reply to BUILD-20261017-02: #157 merged at b0538983; final-head CI
+  39002496121 and main CI 39021120360 passed. Code/security reviews reported
+  no findings. This integrates preparation, not human first-use acceptance.
+- State: candidate on feat/official-provider-status, based on verified main
+  b0538983fba8625ab302bfbbc14d3af9123a4845. PR review/CI remain pending.
+- Adds OpenAI and Claude official-status presets, explicit UI/CLI refresh,
+  attributed component/incident summaries, five-minute expiry and failure
+  retention. Fixed HTTPS endpoints take no credentials, caller URL or body;
+  source observations cannot establish personal request health or run authority.
+- Validation: 63 provider/Dashboard checks passed, including malformed HTTP,
+  bounded parsing, conservative states, authenticated/CSRF-protected API and
+  failure preservation. TypeScript, production build, Ruff/format, strict typing,
+  registered schemas, digest vectors, generated catalogs and wheel/sdist passed.
+  Browser checks passed map persistence, edit/undo, themes, scoped Agent flow,
+  fresh-workspace brief, collector failure/expiry, reload and mobile. Existing
+  research/CPU/result/conclusion browser chain also passed. The required full
+  protocol coverage suite and remote CI are not yet complete at this snapshot.
+- Evidence limit: official public JSON formats were inspected, but direct
+  collector requests from this execution environment failed DNS resolution.
+  Browser transport is explicitly synthetic; it is not live provider evidence.
+- Scope and next action: Codex reviews and integrates this independent slice
+  under existing authorization after required checks. No automatic polling,
+  model calls, executable extension, host exporter or checkpoint resumption.
+  Guided execution setup and human acceptance remain open. TM-101 records the
+  new bounded network capability; no normative authority/acceptance changes.

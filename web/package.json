@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build",
     "test:browser": "node scripts/smoke.mjs",
-    "test:dashboard": "node scripts/dashboard-smoke.mjs && node scripts/brief-smoke.mjs"
+    "test:dashboard": "node scripts/dashboard-smoke.mjs && node scripts/brief-smoke.mjs && node scripts/provider-smoke.mjs"
   },
   "dependencies": {
     "react": "19.3.0",
